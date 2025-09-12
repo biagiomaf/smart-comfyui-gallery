@@ -1,5 +1,5 @@
 # SmartGallery for ComfyUI ✨
-### Your Visual Hub with Universal Workflow Recall and Node Summary
+### Your Visual Hub with Universal Workflow Recall, Upload Magic & Node Summary
 
 <p align="center">
   <img src="assets/gallery_from_pc_screen.png" alt="SmartGallery Interface" width="800">
@@ -36,6 +36,8 @@ You've just created the most stunning AI image or video of your life. It's perfe
 
 Hours later, you're desperately trying to recreate that magic, clicking through endless nodes, tweaking parameters, and pulling your hair out because you can't remember the exact recipe that made it work.
 
+**Plus, what about those amazing AI images someone shared with you? Or that perfect generation you saved from Discord?** You want to know the workflow, but you can't load it into your gallery...
+
 **This stops now.**
 
 ---
@@ -52,12 +54,30 @@ SmartGallery isn't just another image viewer. It's a **time machine for your cre
 - 📁 **Total Organization**: Create, rename, delete folders; mark favorites; powerful search & filters
 - 🔧 **Standalone Power**: Works independently—manage your gallery even when ComfyUI is off
 - ⚡ **2-File Installation**: Just two files to transform your entire workflow
+- 🆕 **🎉 NEW: Universal Upload Magic**: Upload ANY ComfyUI-generated image/video from your PC or phone and instantly discover its workflow!
+
+### 🔥 NEW: Upload & Discover Feature
+
+**Game-changing addition!** Now you can upload images and videos from anywhere:
+
+- 📤 **Drag & Drop Upload**: From your PC, phone, or any device
+- 🔍 **Instant Workflow Detection**: Automatically extracts and displays the original ComfyUI workflow (if available)
+- 🌍 **Community Sharing**: Someone shared an amazing creation? Upload it and see exactly how they made it!
+- 💾 **Expand Your Collection**: Add AI art from other sources to your organized gallery
+- 🔄 **Cross-Platform Sync**: Upload from mobile, manage from desktop—seamlessly
+
+**Use Cases:**
+- 🎨 Add AI art you found online (with embedded workflows)
+- 📱 Upload creations from your phone to your main gallery
+- 👥 Analyze workflows from community shares
+- 🔄 Transfer work between different ComfyUI setups
+- 📚 Build a comprehensive reference library
 
 <div align="center">
   <img src="assets/gallery_from_mobile_screen.png" alt="Mobile View" width="300"">
 </div>
 <p align="center">
-  <em>📱 Perfect mobile experience</em>
+  <em>📱 Perfect mobile experience - now with upload!</em>
 </p>
 
 ---
@@ -112,6 +132,27 @@ Visit **`http://127.0.0.1:8189/galleryout`** and watch the magic happen!
 
 ---
 
+## 🆕 How to Use the Upload Feature
+
+### 🖱️ Desktop Upload
+1. **Drag & Drop**: Simply drag images/videos directly into the gallery
+2. **Upload Button**: Click the upload button and select files
+3. **Instant Analysis**: SmartGallery automatically scans for embedded workflows
+4. **Organize**: Uploaded files appear in your gallery with full workflow info (if available)
+
+### 📱 Mobile Upload
+1. **Touch Upload**: Tap the upload button on mobile
+2. **Camera/Gallery**: Choose from camera roll or take new photos
+3. **Seamless Integration**: Uploads integrate perfectly with your existing gallery
+
+### 🔍 Workflow Detection
+- **Automatic**: Works with any ComfyUI-generated image/video containing metadata
+- **Intelligent**: Recognizes various metadata formats and embedding methods
+- **Visual Feedback**: Clear indicators show when workflows are detected
+- **Fallback**: Files without workflows still get organized beautifully
+
+---
+
 ## 🛠️ Advanced Configuration
 
 Want to customize your experience? Here are the key settings you can tweak:
@@ -122,6 +163,7 @@ Want to customize your experience? Here are the key settings you can tweak:
 | `PAGE_SIZE` | Files to load initially | `100` |
 | `WEBP_ANIMATED_FPS` | Frame rate for WebP animations | `16.0` |
 | `SPECIAL_FOLDERS` | Custom folder names in menu | `['video', 'audio']` |
+| `MAX_UPLOAD_SIZE` | Maximum file size for uploads | `100MB` |
 
 **FFmpeg Recommendation**: While optional, having FFmpeg installed unlocks full video workflow extraction capabilities. Download it from [ffmpeg.org](https://ffmpeg.org/) for the complete experience.
 
@@ -152,7 +194,7 @@ Let's build something incredible together! 🚀
 
 ---
 
-## 📄 License & Disclaimer
+## 🔥 License & Disclaimer
 
 SmartGallery is released under the **MIT License** - see [LICENSE](LICENSE) for details.
 
