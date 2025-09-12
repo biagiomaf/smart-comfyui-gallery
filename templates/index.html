@@ -184,6 +184,65 @@
             background: rgba(0,0,0,0.2); padding: 2px 5px; border-radius: 4px;
         }
 
+        /* --- START: STYLES FOR UPLOAD MODAL --- */
+        #upload-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(10px);
+            z-index: 2200; display: flex; justify-content: center; align-items: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #upload-overlay.visible { opacity: 1; pointer-events: auto; }
+        #upload-panel {
+            background: var(--surface-color); border: 1px solid var(--border-color);
+            border-radius: 16px; box-shadow: var(--shadow-lg);
+            width: 90vw; max-width: 600px; max-height: 85vh;
+            display: flex; flex-direction: column;
+            transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #upload-overlay.visible #upload-panel { transform: scale(1); }
+        .upload-header {
+            padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color);
+            text-align: center;
+        }
+        .upload-header h2 { margin: 0; font-size: 1.2rem; font-weight: 600; }
+        .upload-header p { margin: 0.5rem 0 0; color: var(--text-muted); }
+        .upload-body { padding: 1.5rem; flex-grow: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        #drop-zone {
+            border: 2px dashed var(--border-color); border-radius: 12px; padding: 2rem;
+            text-align: center; color: var(--text-muted);
+            transition: all 0.3s; cursor: pointer;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            flex-grow: 1;
+        }
+        #drop-zone.dragover {
+            border-color: var(--primary-color); background: var(--surface-hover);
+            transform: scale(1.02);
+        }
+        #drop-zone p { font-size: 1.1rem; font-weight: 500; margin: 0 0 1rem 0; }
+        #file-upload-btn {
+            background: var(--primary-color); color: white; font-weight: 600;
+            padding: 0.75rem 1.5rem; border-radius: 8px; border: none; cursor: pointer;
+        }
+        #file-list { list-style: none; padding: 0; margin-top: 1.5rem; max-height: 200px; overflow-y: auto; }
+        #file-list li {
+            background: var(--glass-bg); padding: 0.75rem; border-radius: 8px;
+            margin-bottom: 0.5rem; font-size: 0.9rem;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .file-size { color: var(--text-muted); font-size: 0.8rem; }
+        .upload-footer {
+            padding: 1rem 1.5rem; border-top: 1px solid var(--border-color);
+            display: flex; justify-content: flex-end; gap: 1rem;
+        }
+        .upload-footer button { padding: 0.75rem 1.5rem; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; }
+        #upload-cancel-btn { background: var(--surface-hover); color: var(--text-color); }
+        #upload-submit-btn { background: var(--success-color); color: white; }
+        #upload-progress-container { display: none; margin-top: 1rem; }
+        #upload-progress-bar { width: 100%; height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden; }
+        #upload-progress-fill { width: 0%; height: 100%; background: var(--primary-color); transition: width 0.2s; }
+        #upload-file-input { display: none; }
+        /* --- END: STYLES FOR UPLOAD MODAL --- */
+
         @media (max-width: 1024px) {
             body { flex-direction: column; }
             .sidebar { width: 100%; height: auto; position: static; border-right: none; border-bottom: 1px solid var(--border-color); }
@@ -302,6 +361,9 @@
                         <button type="submit">🔍 Filter</button>
                         <a href="{{ url_for('gallery_view', folder_key=current_folder_key) }}">🔄 Reset</a>
                         <button type="button" id="refresh-btn" class="refresh-btn">♻️ Refresh</button>
+                        <!-- START: ADDED UPLOAD BUTTON -->
+                        <button type="button" id="show-upload-modal-btn">☁️ Upload</button>
+                        <!-- END: ADDED UPLOAD BUTTON -->
                     </div>
                 </div>
             </form>
@@ -357,10 +419,39 @@
         </div>
     </div>
 
+    <!-- START: UPLOAD MODAL HTML -->
+    <div id="upload-overlay">
+        <div id="upload-panel">
+            <div class="upload-header">
+                <h2>Upload Files</h2>
+                <p id="upload-destination-text">Upload to: <strong></strong></p>
+            </div>
+            <div class="upload-body">
+                <input type="file" id="upload-file-input" multiple>
+                <div id="drop-zone">
+                    <p>Drag & Drop files here</p>
+                    <button type="button" id="file-upload-btn">Or select files...</button>
+                </div>
+                <ul id="file-list"></ul>
+                <div id="upload-progress-container">
+                    <div id="upload-progress-bar">
+                        <div id="upload-progress-fill"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="upload-footer">
+                <button type="button" id="upload-cancel-btn">Cancel</button>
+                <button type="button" id="upload-submit-btn">Upload</button>
+            </div>
+        </div>
+    </div>
+    <!-- END: UPLOAD MODAL HTML -->
+
     <div id="loader-overlay"><div class="loader"></div></div>
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
     <script>
         const foldersData = {{ folders | tojson }};
+        const currentFolderInfo = {{ current_folder_info | tojson }};
         const protectedFolderKeys = {{ protected_folder_keys | tojson }};
         const initialFiles = {{ files | tojson }};
         const totalFiles = {{ total_files }};
@@ -874,6 +965,112 @@
             summaryOverlay.classList.remove('visible');
             summaryContent.innerHTML = '';
         }
+
+        // --- START: UPLOAD FUNCTIONALITY SCRIPT ---
+        const uploadOverlay = document.getElementById('upload-overlay');
+        const uploadPanel = document.getElementById('upload-panel');
+        const showUploadModalBtn = document.getElementById('show-upload-modal-btn');
+        const uploadCancelBtn = document.getElementById('upload-cancel-btn');
+        const uploadSubmitBtn = document.getElementById('upload-submit-btn');
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('upload-file-input');
+        const fileBrowseBtn = document.getElementById('file-upload-btn');
+        const fileList = document.getElementById('file-list');
+        const uploadProgressContainer = document.getElementById('upload-progress-container');
+        const uploadProgressFill = document.getElementById('upload-progress-fill');
+        const uploadDestinationText = document.getElementById('upload-destination-text').querySelector('strong');
+
+        let filesToUpload = [];
+
+        function resetUploadModal() {
+            filesToUpload = [];
+            fileList.innerHTML = '';
+            uploadProgressContainer.style.display = 'none';
+            uploadProgressFill.style.width = '0%';
+            fileInput.value = ''; // Reset file input
+            uploadSubmitBtn.disabled = false;
+        }
+
+        function showUploadModal() {
+            resetUploadModal();
+            uploadDestinationText.textContent = currentFolderInfo.display_name;
+            document.body.classList.add('modal-open');
+            uploadOverlay.classList.add('visible');
+        }
+
+        function closeUploadModal() {
+            document.body.classList.remove('modal-open');
+            uploadOverlay.classList.remove('visible');
+        }
+        
+        function handleFiles(files) {
+            filesToUpload = [...filesToUpload, ...Array.from(files)];
+            renderFileList();
+        }
+
+        function renderFileList() {
+            fileList.innerHTML = '';
+            filesToUpload.forEach(file => {
+                const li = document.createElement('li');
+                const sizeKB = (file.size / 1024).toFixed(1);
+                li.innerHTML = `<span>${file.name}</span> <span class="file-size">${sizeKB} KB</span>`;
+                fileList.appendChild(li);
+            });
+        }
+        
+        function performUpload() {
+            if (filesToUpload.length === 0) {
+                showNotification('Please select files to upload.', 'warning');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('folder_key', currentFolderKey);
+            filesToUpload.forEach(file => {
+                formData.append('files', file);
+            });
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/galleryout/upload', true);
+
+            uploadProgressContainer.style.display = 'block';
+            uploadSubmitBtn.disabled = true;
+            uploadSubmitBtn.textContent = 'Uploading...';
+
+            xhr.upload.onprogress = function(event) {
+                if (event.lengthComputable) {
+                    const percentComplete = (event.loaded / event.total) * 100;
+                    uploadProgressFill.style.width = percentComplete + '%';
+                }
+            };
+
+            xhr.onload = function() {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    const response = JSON.parse(xhr.responseText);
+                    showNotification(response.message || 'Upload successful!', 'success');
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    try {
+                         const response = JSON.parse(xhr.responseText);
+                         showNotification(`Upload failed: ${response.message}`, 'error');
+                    } catch (e) {
+                         showNotification(`Upload failed with status: ${xhr.status}`, 'error');
+                    }
+                    uploadSubmitBtn.disabled = false;
+                    uploadSubmitBtn.textContent = 'Upload';
+                }
+            };
+            
+            xhr.onerror = function() {
+                showNotification('An error occurred during the upload.', 'error');
+                uploadSubmitBtn.disabled = false;
+                uploadSubmitBtn.textContent = 'Upload';
+            };
+
+            xhr.send(formData);
+        }
+
+        // --- END: UPLOAD FUNCTIONALITY SCRIPT ---
         
         document.addEventListener('DOMContentLoaded', () => {
             loaderOverlay.style.opacity = '0';
@@ -925,6 +1122,23 @@
                 if (event.target === summaryOverlay) closeNodeSummary();
             });
 
+            // --- START: UPLOAD EVENT LISTENERS ---
+            showUploadModalBtn.addEventListener('click', showUploadModal);
+            uploadCancelBtn.addEventListener('click', closeUploadModal);
+            uploadOverlay.addEventListener('click', (event) => { if (event.target === uploadOverlay) closeUploadModal(); });
+            fileBrowseBtn.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+            
+            dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                handleFiles(e.dataTransfer.files);
+            });
+            uploadSubmitBtn.addEventListener('click', performUpload);
+            // --- END: UPLOAD EVENT LISTENERS ---
+
             const loadMoreBtn = document.getElementById('load-more-btn');
             if (loadMoreBtn) {
                 loadMoreBtn.addEventListener('click', async function() {
@@ -949,7 +1163,8 @@
                     event.preventDefault(); selectAll();
                 }
                 if (event.key === 'Escape') {
-                    if (summaryOverlay.classList.contains('visible')) closeNodeSummary();
+                    if (uploadOverlay.classList.contains('visible')) closeUploadModal();
+                    else if (summaryOverlay.classList.contains('visible')) closeNodeSummary();
                     else if (lightboxOverlay.classList.contains('visible')) closeLightbox();
                     else if (selectedFiles.size > 0) deselectAll();
                     hideDropZone();

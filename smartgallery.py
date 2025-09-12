@@ -1,7 +1,7 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025 — MIT License (free to use and modify)
 #
-# Version: 1.20 
+# Version: 1.21 
 # Check the GitHub repository regularly for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -22,6 +22,8 @@ import base64
 from flask import Flask, render_template, send_from_directory, abort, send_file, url_for, redirect, request, jsonify, Response
 from PIL import Image, ImageSequence
 import colorsys
+from werkzeug.utils import secure_filename
+
 
 # --- USER CONFIGURATION ---
 # Adjust the parameters in this section to customize the gallery.
@@ -89,7 +91,7 @@ def key_to_path(key):
     except Exception: return None
 
 # --- DERIVED SETTINGS ---
-DB_SCHEMA_VERSION = 20
+DB_SCHEMA_VERSION = 21
 BASE_INPUT_PATH_WORKFLOW = os.path.join(BASE_INPUT_PATH, WORKFLOW_FOLDER_NAME)
 THUMBNAIL_CACHE_DIR = os.path.join(BASE_OUTPUT_PATH, THUMBNAIL_CACHE_FOLDER_NAME)
 SQLITE_CACHE_DIR = os.path.join(BASE_OUTPUT_PATH, SQLITE_CACHE_FOLDER_NAME)
@@ -644,6 +646,53 @@ def gallery_view(folder_key):
                            # MODIFICATION 3: Pass the current sort order to the template
                            current_sort_order=sort_order,
                            protected_folder_keys=list(PROTECTED_FOLDER_KEYS))
+
+# --- START: NEW UPLOAD ROUTE ---
+@app.route('/galleryout/upload', methods=['POST'])
+def upload_files():
+    # Get the target folder key from the form data
+    folder_key = request.form.get('folder_key')
+    if not folder_key:
+        return jsonify({'status': 'error', 'message': 'No destination folder provided.'}), 400
+
+    # Get the folder configuration and find the destination path
+    folders = get_dynamic_folder_config()
+    if folder_key not in folders:
+        return jsonify({'status': 'error', 'message': 'Destination folder not found.'}), 404
+    
+    destination_path = folders[folder_key]['path']
+
+    # Check if any files were uploaded
+    if 'files' not in request.files:
+        return jsonify({'status': 'error', 'message': 'No files were uploaded.'}), 400
+
+    uploaded_files = request.files.getlist('files')
+    errors = {}
+    success_count = 0
+
+    for file in uploaded_files:
+        if file and file.filename:
+            # Sanitize the filename to prevent security risks like directory traversal
+            filename = secure_filename(file.filename)
+            try:
+                # Construct the full path and save the file
+                file.save(os.path.join(destination_path, filename))
+                success_count += 1
+            except Exception as e:
+                errors[filename] = str(e)
+    
+    # After saving, trigger a sync for the folder to update the database
+    if success_count > 0:
+        sync_folder_on_demand(destination_path)
+
+    if errors:
+        return jsonify({
+            'status': 'partial_success',
+            'message': f'Successfully uploaded {success_count} files. The following files failed: {", ".join(errors.keys())}'
+        }), 207
+
+    return jsonify({'status': 'success', 'message': f'Successfully uploaded {success_count} files.'})
+# --- END: NEW UPLOAD ROUTE ---
                            
 @app.route('/galleryout/create_folder', methods=['POST'])
 def create_folder():
