@@ -49,12 +49,16 @@
         .folder-link.navigation-link:not(.no-children):hover { color: var(--primary-color) !important; text-decoration: underline; }
         #create-folder-btn { width: 100%; background: var(--gradient-secondary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 12px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.3s; box-shadow: var(--shadow-sm); margin-top: 1.5rem; }
         #create-folder-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-        .breadcrumbs { display: flex; align-items: center; gap: 0.5rem; padding: 1.5rem 2rem; background: var(--surface-color); border-bottom: 1px solid var(--border-color); flex-wrap: wrap; }
-        .breadcrumbs a, .breadcrumbs span { color: var(--text-muted); text-decoration: none; font-weight: 500; }
-        .breadcrumbs a:hover { color: var(--text-color); }
-        .breadcrumbs span:last-child { color: var(--text-color); font-weight: 700; }
+        .breadcrumbs { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1rem 2rem; background: var(--surface-color); border-bottom: 1px solid var(--border-color); flex-wrap: nowrap; }
+        .breadcrumb-links { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; overflow: hidden; }
+        .breadcrumb-links a, .breadcrumb-links span { color: var(--text-muted); text-decoration: none; font-weight: 500; white-space: nowrap; }
+        .breadcrumb-links a:hover { color: var(--text-color); }
+        .breadcrumb-links span:last-child { color: var(--text-color); font-weight: 700; text-overflow: ellipsis; overflow: hidden; }
+        .breadcrumbs .sort-btn { flex-shrink: 0; padding: 0.5rem 1rem; font-size: 0.85rem; background: var(--surface-hover); color: var(--text-color); font-weight: 600; text-decoration: none; border-radius: 8px; border: 1px solid var(--glass-border); transition: all 0.3s; }
+        .breadcrumbs .sort-btn:hover { background: var(--surface-color); }
         .filter-bar { padding: 1.5rem 2rem; }
-        .filter-bar form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; align-items: end; }
+        .filter-bar form { display: flex; flex-direction: column; gap: 1.5rem; }
+        .filter-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; align-items: end; }
         .filter-group { display: flex; flex-direction: column; }
         .filter-bar label { font-weight: 600; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
         .filter-bar select, .filter-bar input[type="text"], .filter-bar button, .filter-bar a { background: var(--glass-bg); color: var(--text-color); border: 1px solid var(--glass-border); border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.9rem; transition: all 0.3s; backdrop-filter: blur(10px); }
@@ -66,12 +70,12 @@
         .filter-bar a:hover { background: var(--surface-hover); color: var(--text-color); }
         .filter-group-inline { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
         .filter-group-inline input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary-color); }
-        .filter-actions { display: flex; gap: 0.75rem; justify-content: flex-start; flex-wrap: wrap; }
-        .filter-actions .sort-btn {
-            background: var(--surface-hover);
-            color: var(--text-color);
-            font-weight: 600;
-        }
+        .filter-actions-row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+        .filter-actions-row > a, .filter-actions-row > button { display: inline-flex; align-items: center; justify-content: center; }
+        .filter-actions-row button[type="submit"] { padding-left: 0.8rem; padding-right: 0.8rem; }
+        .mobile-actions-row { display: flex; gap: 0.75rem; }
+        .mobile-actions-row > * { flex-grow: 1; text-align: center; justify-content: center; }
+        .mobile-actions-row button { padding-left: 0.8rem; padding-right: 0.8rem; }
         .ts-control { background: var(--glass-bg) !important; border: 1px solid var(--glass-border) !important; border-radius: 8px !important; backdrop-filter: blur(10px) !important; }
         .ts-dropdown, .ts-control, .ts-control input { color: var(--text-color) !important; }
         .ts-dropdown { background: var(--surface-color) !important; border: 1px solid var(--border-color) !important; z-index: 1000; border-radius: 8px !important; box-shadow: var(--shadow-lg) !important; }
@@ -87,7 +91,9 @@
         .thumbnail-wrapper img, .thumbnail-wrapper video { display: block; width: 100%; height: auto; transition: transform 0.3s; }
         .gallery-item:hover .thumbnail-wrapper img, .gallery-item:hover .thumbnail-wrapper video { transform: scale(1.05); }
         .item-info { padding: 1.5rem; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; padding-bottom: 48px; }
-        .item-info p { margin: 0 0 1.5rem 0; word-wrap: break-word; font-size: 0.95rem; font-weight: 500; line-height: 1.4; }
+        .item-info p { margin: 0; word-wrap: break-word; font-size: 0.95rem; font-weight: 500; line-height: 1.4; margin-bottom: 0.75rem; }
+        .file-metadata { font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem 0.75rem; }
+        .file-metadata span { display: inline-flex; align-items: center; gap: 0.3rem; }
         .item-actions { display: flex; gap: 0.75rem; margin-top: auto; flex-wrap: wrap; }
         .item-actions a, .item-actions button { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; background: var(--glass-bg); color: var(--text-color); padding: 0.6rem 1rem; border-radius: 8px; font-size: 0.8rem; border: 1px solid var(--glass-border); cursor: pointer; transition: all 0.3s; font-weight: 500; backdrop-filter: blur(10px); }
         .item-actions .delete-btn { background: var(--danger-color); border-color: var(--danger-color); color: white; }
@@ -158,9 +164,7 @@
         .node-summary-panel {
             background: var(--surface-color); border: 1px solid var(--border-color);
             border-radius: 16px; box-shadow: var(--shadow-lg);
-            width: 90vw; /* Usa il 90% della larghezza della viewport */
-            max-width: 900px; /* NUOVA larghezza massima, aumentata di 300px */
-            max-height: 85vh; display: flex; flex-direction: column;
+            width: 90vw; max-width: 900px; max-height: 85vh; display: flex; flex-direction: column;
             transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         #node-summary-overlay.visible .node-summary-panel { transform: scale(1); }
@@ -176,15 +180,16 @@
         .summary-node-header { color: white; padding: 0.75rem 1rem; font-weight: bold; font-size: 0.9rem; }
         .summary-node-header small { opacity: 0.8; font-weight: normal; margin-left: 0.5rem; }
         .summary-node-params { list-style: none; margin: 0; padding: 1rem; background: var(--glass-bg); }
-        .summary-node-params li { padding: 0.5rem 0; font-size: 1rem; /* FONT AUMENTATO */ border-bottom: 1px solid var(--glass-border); }
+        .summary-node-params li { padding: 0.5rem 0; font-size: 1rem; border-bottom: 1px solid var(--glass-border); }
         .summary-node-params li:last-child { border-bottom: none; }
         .summary-node-params strong { color: var(--text-color); margin-right: 0.5rem; }
         .summary-node-params code {
             color: var(--text-muted); word-break: break-all; white-space: pre-wrap;
             background: rgba(0,0,0,0.2); padding: 2px 5px; border-radius: 4px;
         }
-
-        /* --- START: STYLES FOR UPLOAD MODAL --- */
+        #refresh-btn {
+            margin-left: auto;
+        }
         #upload-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0,0,0,0.8); backdrop-filter: blur(10px);
@@ -200,10 +205,7 @@
             transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         #upload-overlay.visible #upload-panel { transform: scale(1); }
-        .upload-header {
-            padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color);
-            text-align: center;
-        }
+        .upload-header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color); text-align: center; }
         .upload-header h2 { margin: 0; font-size: 1.2rem; font-weight: 600; }
         .upload-header p { margin: 0.5rem 0 0; color: var(--text-muted); }
         .upload-body { padding: 1.5rem; flex-grow: 1; display: flex; flex-direction: column; overflow-y: auto; }
@@ -214,15 +216,9 @@
             display: flex; flex-direction: column; justify-content: center; align-items: center;
             flex-grow: 1;
         }
-        #drop-zone.dragover {
-            border-color: var(--primary-color); background: var(--surface-hover);
-            transform: scale(1.02);
-        }
+        #drop-zone.dragover { border-color: var(--primary-color); background: var(--surface-hover); transform: scale(1.02); }
         #drop-zone p { font-size: 1.1rem; font-weight: 500; margin: 0 0 1rem 0; }
-        #file-upload-btn {
-            background: var(--primary-color); color: white; font-weight: 600;
-            padding: 0.75rem 1.5rem; border-radius: 8px; border: none; cursor: pointer;
-        }
+        #file-upload-btn { background: var(--primary-color); color: white; font-weight: 600; padding: 0.75rem 1.5rem; border-radius: 8px; border: none; cursor: pointer; }
         #file-list { list-style: none; padding: 0; margin-top: 1.5rem; max-height: 200px; overflow-y: auto; }
         #file-list li {
             background: var(--glass-bg); padding: 0.75rem; border-radius: 8px;
@@ -241,20 +237,32 @@
         #upload-progress-bar { width: 100%; height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden; }
         #upload-progress-fill { width: 0%; height: 100%; background: var(--primary-color); transition: width 0.2s; }
         #upload-file-input { display: none; }
-        /* --- END: STYLES FOR UPLOAD MODAL --- */
-
+        
+        #mobile-filter-toggle {
+            display: none; width: 100%;
+            background: var(--surface-hover); color: var(--text-color);
+            border: 1px solid var(--border-color); padding: 0.75rem 1rem;
+            border-radius: 8px; cursor: pointer;
+            font-size: 0.9rem; font-weight: 600; text-align: left;
+        }
+        
+        .mobile-actions-only { display: none; }
         @media (max-width: 1024px) {
             body { flex-direction: column; }
             .sidebar { width: 100%; height: auto; position: static; border-right: none; border-bottom: 1px solid var(--border-color); }
             #selection-bar { left: 0; }
             #sidebar-toggle-btn { display: block; }
             .sidebar.nav-collapsed nav,
-            .sidebar.nav-collapsed #create-folder-btn {
-                display: none;
-            }
+            .sidebar.nav-collapsed #create-folder-btn { display: none; }
         }
         @media (max-width: 768px) {
             .filter-bar form { grid-template-columns: 1fr; }
+            #mobile-filter-toggle { display: block; margin-bottom: 1rem;}
+            .filter-form-grid { display: none; }
+            .filter-form-grid.visible { display: grid; grid-template-columns: 1fr; }
+            .desktop-actions-only { display: none; }
+            .mobile-actions-only { display: flex; flex-direction: column; gap: 0.75rem; }
+
             .gallery-container { grid-template-columns: 1fr; padding: 1rem; }
             #selection-bar { flex-direction: column; align-items: stretch; gap: 0.5rem; padding: 1rem; }
             #selection-bar .actions-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; width: 100%; }
@@ -264,16 +272,8 @@
             .lightbox-nav { width: 50px; height: 50px; }
             #lightbox-prev { left: 10px; }
             #lightbox-next { right: 10px; }
-        }
-        @media (max-width: 768px) {
-            .node-summary-panel {
-                width: 95vw; /* Su mobile, occupa quasi tutto lo schermo */
-                max-height: 90vh; /* Permetti un'altezza leggermente maggiore */
-            }
-
-            .summary-node-params li {
-                font-size: 0.9rem; /* Un font leggermente più piccolo su mobile per non occupare troppo spazio verticale */
-            }
+            .node-summary-panel { width: 95vw; max-height: 90vh; }
+            .summary-node-params li { font-size: 0.9rem; }
         }
     </style>
 </head>
@@ -331,40 +331,46 @@
 
     <div class="main-content">
         <header class="breadcrumbs">
-            {% for crumb in breadcrumbs %}
-                <a href="{{ url_for('gallery_view', folder_key=crumb.key) }}">{{ crumb.display_name }}</a>
-                {% if not loop.last %}<span>/</span>{% endif %}
-            {% endfor %}
+            <div class="breadcrumb-links">
+                {% for crumb in breadcrumbs %}
+                    <a href="{{ url_for('gallery_view', folder_key=crumb.key) }}">{{ crumb.display_name }}</a>
+                    {% if not loop.last %}<span>/</span>{% endif %}
+                {% endfor %}
+            </div>
+            {% set next_sort_order = 'asc' if current_sort_order == 'desc' else 'desc' %}
+            {% set query_params = dict(request.args.to_dict(flat=False), sort_order=next_sort_order) %}
+            <a href="{{ url_for('gallery_view', folder_key=current_folder_key, **query_params) }}" class="sort-btn" title="Change sort order">
+                Sort by Date {% if current_sort_order == 'asc' %}↑{% else %}↓{% endif %}
+            </a>
         </header>
+
         <div class="filter-bar">
              <form method="GET" action="{{ url_for('gallery_view', folder_key=current_folder_key) }}">
-                <div class="filter-group"><label for="search-input">🔍 Search by Name</label><input type="text" name="search" id="search-input" placeholder="Search files in this folder..." value="{{ request.args.get('search', '') }}"></div>
-                <div class="filter-group"><label for="extension-select">📄 Extensions</label><select name="extension" id="extension-select" multiple>{% for ext in available_extensions %}<option value="{{ ext }}" {% if ext in selected_extensions %}selected{% endif %}>{{ ext }}</option>{% endfor %}</select></div>
-                <div class="filter-group"><label for="prefix-select">🏷️ Prefixes</label><select name="prefix" id="prefix-select" multiple>{% for pfx in available_prefixes %}{% if pfx != '.gallery ' %}<option value="{{ pfx }}" {% if pfx in selected_prefixes %}selected{% endif %}>{{ pfx }}</option>{% endif %}{% endfor %}</select></div>
-                <div class="filter-group"><div class="filter-group-inline"><input type="checkbox" name="favorites" id="favorites-check" value="true" {% if show_favorites %}checked{% endif %}><label for="favorites-check">⭐ Favorites Only</label></div></div>
-                <div class="filter-group">
-                    <label>Actions</label>
-                    <div class="filter-actions">
-                        {# --- Inizio Logica Corretta per il Link di Ordinamento --- #}
-                        {% set next_sort_order = 'asc' if current_sort_order == 'desc' else 'desc' %}
-                        
-                        {# Crea un dizionario con tutti i parametri della query corrente (preservando valori multipli come le estensioni)
-                           e aggiunge/sovrascrive il parametro 'sort_order' con il nuovo valore. #}
-                        {% set query_params = dict(request.args.to_dict(flat=False), sort_order=next_sort_order) %}
-                        
-                        <a href="{{ url_for('gallery_view', folder_key=current_folder_key, **query_params) }}" class="sort-btn" title="Change sort order">
-                            Sort by Date {% if current_sort_order == 'asc' %}↑{% else %}↓{% endif %}
-                        </a>
-                        {# --- Fine Logica Corretta per il Link di Ordinamento --- #}
+                
+                <button type="button" id="mobile-filter-toggle">⚙️ Filters & Options</button>
 
-                        {# --- REINSERIMENTO DEI BOTTONI MANCANTI --- #}
+                <div class="filter-form-grid" id="filter-form-grid">
+                    <div class="filter-group"><label for="search-input">🔍 Search by Name</label><input type="text" name="search" id="search-input" placeholder="Search files in this folder..." value="{{ request.args.get('search', '') }}"></div>
+                    <div class="filter-group"><label for="extension-select">📄 Extensions</label><select name="extension" id="extension-select" multiple>{% for ext in available_extensions %}<option value="{{ ext }}" {% if ext in selected_extensions %}selected{% endif %}>{{ ext }}</option>{% endfor %}</select></div>
+                    <div class="filter-group"><label for="prefix-select">🏷️ Prefixes</label><select name="prefix" id="prefix-select" multiple>{% for pfx in available_prefixes %}{% if pfx != '.gallery ' %}<option value="{{ pfx }}" {% if pfx in selected_prefixes %}selected{% endif %}>{{ pfx }}</option>{% endif %}{% endfor %}</select></div>
+                    <div class="filter-group"><div class="filter-group-inline"><input type="checkbox" name="favorites" id="favorites-check" value="true" {% if show_favorites %}checked{% endif %}><label for="favorites-check">⭐ Favorites Only</label></div></div>
+                    
+                    <div class="filter-group mobile-actions-only">
+                        <label>Actions</label>
+                        <div class="mobile-actions-row">
+                            <button type="submit">🔍 Filter</button>
+                            <a href="{{ url_for('gallery_view', folder_key=current_folder_key) }}">🔄 Reset</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="filter-actions-row">
+                    <div class="filter-actions-row desktop-actions-only">
                         <button type="submit">🔍 Filter</button>
                         <a href="{{ url_for('gallery_view', folder_key=current_folder_key) }}">🔄 Reset</a>
-                        <button type="button" id="refresh-btn" class="refresh-btn">♻️ Refresh</button>
-                        <!-- START: ADDED UPLOAD BUTTON -->
-                        <button type="button" id="show-upload-modal-btn">☁️ Upload</button>
-                        <!-- END: ADDED UPLOAD BUTTON -->
                     </div>
+                    <button type="button" id="show-upload-modal-btn">☁️ Upload</button>
+                    <button type="button" id="refresh-btn" class="refresh-btn">♻️ Refresh</button>
                 </div>
             </form>
         </div>
@@ -387,11 +393,9 @@
             <button id="deselect-all-btn">❌ None</button>
         </div>
     </div>
-    
     <div id="lightbox-overlay">
         <div id="lightbox-header">
             <div id="lightbox-title"></div>
-            <!-- MODIFICATO: Aggiunto il pulsante Node Summary alla toolbar della Lightbox -->
             <div id="lightbox-toolbar">
                 <button id="lightbox-zoom-out" title="Zoom out">-</button>
                 <button id="lightbox-zoom-in" title="Zoom in">+</button>
@@ -408,7 +412,6 @@
         <button id="lightbox-prev" class="lightbox-nav" title="Previous (←)">‹</button>
         <button id="lightbox-next" class="lightbox-nav" title="Next (→)">›</button>
     </div>
-    
     <div id="node-summary-overlay">
         <div class="node-summary-panel">
             <div class="node-summary-header">
@@ -418,8 +421,6 @@
             <div id="node-summary-content"></div>
         </div>
     </div>
-
-    <!-- START: UPLOAD MODAL HTML -->
     <div id="upload-overlay">
         <div id="upload-panel">
             <div class="upload-header">
@@ -445,7 +446,6 @@
             </div>
         </div>
     </div>
-    <!-- END: UPLOAD MODAL HTML -->
 
     <div id="loader-overlay"><div class="loader"></div></div>
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
@@ -521,6 +521,18 @@
                 ? `<button title="Node Summary" onclick="showNodeSummary(event, '${file.id}')">📝</button>`
                 : '';
 
+            let metadataHTML = '';
+            if (file.dimensions || file.mtime) {
+                const date = new Date(file.mtime * 1000);
+                const formattedDate = date.toLocaleString(undefined, { 
+                    year: 'numeric', month: '2-digit', day: '2-digit', 
+                    hour: '2-digit', minute: '2-digit', second: '2-digit'
+                });
+                const dimensionsPart = file.dimensions ? `<span>📐 ${file.dimensions}</span>` : '';
+                const datePart = file.mtime ? `<span>📅 ${formattedDate}</span>` : '';
+                metadataHTML = `<div class="file-metadata">${dimensionsPart}${datePart}</div>`;
+            }
+
             item.innerHTML = `
                 <div class="selection-checkmark" onclick="toggleSelection(event, '${file.id}', this.closest('.gallery-item'))">✓</div>
                 <div class="thumbnail-link" onclick="openLightbox(event, '${file.id}'); event.stopPropagation();" draggable="false">
@@ -531,7 +543,10 @@
                     </div>
                 </div>
                 <div class="item-info">
-                    <p title="${file.name}"><strong>${file.name}</strong>${file.dimensions ? `<br><span style="font-size:0.8rem; color: var(--text-muted)">📐 ${file.dimensions}</span>` : ''}</p>
+                    <div>
+                        <p title="${file.name}"><strong>${file.name}</strong></p>
+                        ${metadataHTML}
+                    </div>
                     <div class="item-actions">
                         ${summaryButtonHTML}
                         <button class="favorite-btn ${file.is_favorite ? 'favorited' : ''}" title="Favorite" onclick="toggleFavorite(event, '${file.id}', this)">${file.is_favorite ? '⭐' : '☆'}</button>
@@ -567,11 +582,7 @@
         function updateLoadMoreVisibility() {
             const loadMoreContainer = document.getElementById('load-more-container');
             if (!loadMoreContainer) return;
-
-            // Nascondi il bottone se il numero di elementi visualizzati è uguale o superiore al totale
-            // che il backend ha comunicato per la query corrente, o se non ci sono proprio file.
             const shouldHide = currentItemCount >= totalFiles || totalFiles === 0;
-            
             loadMoreContainer.style.display = shouldHide ? 'none' : 'block';
         }
         
@@ -845,10 +856,8 @@
             if (!item) return;
             const file = allFilesData.find(f => f.id === item.dataset.fileId);
             if (!file) return;
-
             lightboxMedia.innerHTML = '';
             lightboxTitle.textContent = file.name;
-            
             if (file.type === 'audio') {
                 const audio = document.createElement('audio');
                 audio.src = `/galleryout/file/${file.id}`;
@@ -868,11 +877,8 @@
             } else {
                 lightboxMedia.innerHTML = `<div style="color: white; font-size: 1.2rem; text-align: center;">📄<br>Preview not available</div>`;
             }
-
             lightboxDownload.href = `/galleryout/download/${file.id}`;
             lightboxNewTab.href = `/galleryout/file/${file.id}`;
-
-            // --- MODIFICATO: Gestione dinamica dei pulsanti Workflow e Node Summary ---
             const summaryBtn = document.getElementById('lightbox-summary-btn');
             if (file.has_workflow) {
                 lightboxWorkflow.href = `/galleryout/workflow/${file.id}`;
@@ -906,19 +912,13 @@
         const summaryContent = document.getElementById('node-summary-content');
 
         function escapeHTML(value) {
-            if (value === null || typeof value === 'undefined') {
-                return '<em>null</em>'; 
-            }
-
+            if (value === null || typeof value === 'undefined') { return '<em>null</em>'; }
             if (typeof value === 'object') {
                 try {
                     const jsonString = JSON.stringify(value, null, 2); 
                     return jsonString.replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[m]);
-                } catch (e) {
-                    return '[Unserializable Object]';
-                }
+                } catch (e) { return '[Unserializable Object]'; }
             }
-
             return value.toString().replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;','&quot;': '&quot;', "'": '&#39;'})[m]);
         }
 
@@ -927,11 +927,9 @@
             summaryContent.innerHTML = '<div class="loader" style="margin: 2rem auto;"></div>';
             document.body.classList.add('modal-open');
             summaryOverlay.classList.add('visible');
-
             try {
                 const response = await fetch(`/galleryout/node_summary/${fileId}`);
                 const data = await response.json();
-
                 if (data.status === 'success' && data.summary) {
                     if (data.summary.length > 0) {
                         let contentHTML = '';
@@ -941,19 +939,13 @@
                                 node.params.forEach(p => {
                                     paramsHTML += `<li><strong>${escapeHTML(p.name)}:</strong> <code>${escapeHTML(p.value)}</code></li>`;
                                 });
-                            } else {
-                                paramsHTML += `<li>No parameters</li>`;
-                            }
+                            } else { paramsHTML += `<li>No parameters</li>`; }
                             paramsHTML += '</ul>';
                             contentHTML += `<div class="summary-node-item"><div class="summary-node-header" style="background-color: ${node.color};">${escapeHTML(node.type)} <small>(ID: ${node.id})</small></div>${paramsHTML}</div>`;
                         });
                         summaryContent.innerHTML = contentHTML;
-                    } else {
-                        summaryContent.innerHTML = '<p>No active nodes found in this workflow.</p>';
-                    }
-                } else {
-                    summaryContent.innerHTML = `<p style="color: var(--danger-color);">Error: ${data.message || 'Could not load summary.'}</p>`;
-                }
+                    } else { summaryContent.innerHTML = '<p>No active nodes found in this workflow.</p>'; }
+                } else { summaryContent.innerHTML = `<p style="color: var(--danger-color);">Error: ${data.message || 'Could not load summary.'}</p>`; }
             } catch (error) {
                 handleError(error);
                 summaryContent.innerHTML = `<p style="color: var(--danger-color);">A network error occurred while fetching the summary.</p>`;
@@ -966,9 +958,7 @@
             summaryContent.innerHTML = '';
         }
 
-        // --- START: UPLOAD FUNCTIONALITY SCRIPT ---
         const uploadOverlay = document.getElementById('upload-overlay');
-        const uploadPanel = document.getElementById('upload-panel');
         const showUploadModalBtn = document.getElementById('show-upload-modal-btn');
         const uploadCancelBtn = document.getElementById('upload-cancel-btn');
         const uploadSubmitBtn = document.getElementById('upload-submit-btn');
@@ -979,7 +969,6 @@
         const uploadProgressContainer = document.getElementById('upload-progress-container');
         const uploadProgressFill = document.getElementById('upload-progress-fill');
         const uploadDestinationText = document.getElementById('upload-destination-text').querySelector('strong');
-
         let filesToUpload = [];
 
         function resetUploadModal() {
@@ -987,7 +976,7 @@
             fileList.innerHTML = '';
             uploadProgressContainer.style.display = 'none';
             uploadProgressFill.style.width = '0%';
-            fileInput.value = ''; // Reset file input
+            fileInput.value = '';
             uploadSubmitBtn.disabled = false;
         }
 
@@ -1023,27 +1012,20 @@
                 showNotification('Please select files to upload.', 'warning');
                 return;
             }
-
             const formData = new FormData();
             formData.append('folder_key', currentFolderKey);
-            filesToUpload.forEach(file => {
-                formData.append('files', file);
-            });
-
+            filesToUpload.forEach(file => { formData.append('files', file); });
             const xhr = new XMLHttpRequest();
             xhr.open('POST', '/galleryout/upload', true);
-
             uploadProgressContainer.style.display = 'block';
             uploadSubmitBtn.disabled = true;
             uploadSubmitBtn.textContent = 'Uploading...';
-
             xhr.upload.onprogress = function(event) {
                 if (event.lengthComputable) {
                     const percentComplete = (event.loaded / event.total) * 100;
                     uploadProgressFill.style.width = percentComplete + '%';
                 }
             };
-
             xhr.onload = function() {
                 if (xhr.status >= 200 && xhr.status < 300) {
                     const response = JSON.parse(xhr.responseText);
@@ -1053,39 +1035,29 @@
                     try {
                          const response = JSON.parse(xhr.responseText);
                          showNotification(`Upload failed: ${response.message}`, 'error');
-                    } catch (e) {
-                         showNotification(`Upload failed with status: ${xhr.status}`, 'error');
-                    }
+                    } catch (e) { showNotification(`Upload failed with status: ${xhr.status}`, 'error'); }
                     uploadSubmitBtn.disabled = false;
                     uploadSubmitBtn.textContent = 'Upload';
                 }
             };
-            
             xhr.onerror = function() {
                 showNotification('An error occurred during the upload.', 'error');
                 uploadSubmitBtn.disabled = false;
                 uploadSubmitBtn.textContent = 'Upload';
             };
-
             xhr.send(formData);
         }
-
-        // --- END: UPLOAD FUNCTIONALITY SCRIPT ---
         
         document.addEventListener('DOMContentLoaded', () => {
             loaderOverlay.style.opacity = '0';
             setTimeout(() => { loaderOverlay.style.display = 'none'; }, 400);
-
             appendFiles(initialFiles);
-
             new TomSelect('#extension-select', { plugins: ['checkbox_options', 'clear_button'], placeholder: '📄 Select extensions...' });
             new TomSelect('#prefix-select', { plugins: ['checkbox_options', 'clear_button'], placeholder: '🏷️ Select prefixes...' });
-
             const sidebar = document.querySelector('.sidebar');
             const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
             const galleryAnchor = document.getElementById('gallery-anchor');
             const isMobile = window.innerWidth <= 1024;
-
             if (sidebar && sidebarToggleBtn && isMobile) {
                 sidebar.classList.add('nav-collapsed');
                 sidebarToggleBtn.textContent = '☰ Show Folders';
@@ -1094,12 +1066,19 @@
                     sidebarToggleBtn.textContent = sidebar.classList.contains('nav-collapsed') ? '☰ Show Folders' : '✕ Hide Folders';
                 });
             }
-            
             if (isMobile && sessionStorage.getItem('galleryMobileNav') === 'true' && galleryAnchor) {
                 setTimeout(() => galleryAnchor.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
                 sessionStorage.removeItem('galleryMobileNav');
             }
-
+            const mobileFilterToggle = document.getElementById('mobile-filter-toggle');
+            const filterFormGrid = document.getElementById('filter-form-grid');
+            if (mobileFilterToggle) {
+                mobileFilterToggle.addEventListener('click', () => {
+                    filterFormGrid.classList.toggle('visible');
+                    const isVisible = filterFormGrid.classList.contains('visible');
+                    mobileFilterToggle.textContent = isVisible ? '✕  Hide Filters' : '⚙️ Filters & Options';
+                });
+            }
             document.getElementById('folder-tree-nav').addEventListener('click', handleMainTreeToggle);
             document.getElementById('refresh-btn').addEventListener('click', () => window.location.reload());
             document.getElementById('create-folder-btn').addEventListener('click', createFolder);
@@ -1110,25 +1089,18 @@
             document.getElementById('delete-selected-btn').addEventListener('click', deleteSelected);
             document.getElementById('favorite-selected-btn').addEventListener('click', () => favoriteSelected(true));
             document.getElementById('unfavorite-selected-btn').addEventListener('click', () => favoriteSelected(false));
-
             document.querySelector('#lightbox-overlay .close-btn').addEventListener('click', closeLightbox);
             document.getElementById('lightbox-prev').addEventListener('click', () => navigateLightbox(-1));
             document.getElementById('lightbox-next').addEventListener('click', () => navigateLightbox(1));
             document.getElementById('lightbox-zoom-in').addEventListener('click', () => zoomLightbox(0.2));
             document.getElementById('lightbox-zoom-out').addEventListener('click', () => zoomLightbox(-0.2));
-
             document.getElementById('close-summary-btn').addEventListener('click', closeNodeSummary);
-            summaryOverlay.addEventListener('click', (event) => {
-                if (event.target === summaryOverlay) closeNodeSummary();
-            });
-
-            // --- START: UPLOAD EVENT LISTENERS ---
+            summaryOverlay.addEventListener('click', (event) => { if (event.target === summaryOverlay) closeNodeSummary(); });
             showUploadModalBtn.addEventListener('click', showUploadModal);
             uploadCancelBtn.addEventListener('click', closeUploadModal);
             uploadOverlay.addEventListener('click', (event) => { if (event.target === uploadOverlay) closeUploadModal(); });
             fileBrowseBtn.addEventListener('click', () => fileInput.click());
             fileInput.addEventListener('change', () => handleFiles(fileInput.files));
-            
             dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
             dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
             dropZone.addEventListener('drop', (e) => {
@@ -1137,8 +1109,6 @@
                 handleFiles(e.dataTransfer.files);
             });
             uploadSubmitBtn.addEventListener('click', performUpload);
-            // --- END: UPLOAD EVENT LISTENERS ---
-
             const loadMoreBtn = document.getElementById('load-more-btn');
             if (loadMoreBtn) {
                 loadMoreBtn.addEventListener('click', async function() {
@@ -1157,7 +1127,6 @@
                     }
                 });
             }
-
             document.addEventListener('keydown', (event) => {
                 if ((event.ctrlKey || event.metaKey) && event.key === 'a') {
                     event.preventDefault(); selectAll();
@@ -1174,12 +1143,12 @@
                     if (event.key === 'ArrowRight') navigateLightbox(1);
                 }
             });
-
             window.onscroll = () => {
-                backToTopBtn.style.display = (window.scrollY > 300) ? 'block' : 'none';
+                if (backToTopBtn) {
+                    backToTopBtn.style.display = (window.scrollY > 300) ? 'block' : 'none';
+                }
             };
         });
-
         function scrollToTop() {
             window.scrollTo({top: 0, behavior: 'smooth'});
         }
