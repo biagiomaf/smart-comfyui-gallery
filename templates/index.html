@@ -379,7 +379,12 @@
         <div id="load-more-container"><button id="load-more-btn">📂 Load More</button></div>
     </div>
 
-    <button onclick="scrollToTop()" id="backToTopBtn" title="Back to top">⬆️</button>
+    <button onclick="scrollToTop()" id="backToTopBtn" title="Go to Top" style="display: none;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="18 15 12 9 6 15"></polyline>
+      </svg>
+    </button>
+    
     <div id="drag-drop-overlay"></div>
     <div id="drop-zone-panel"><h3 id="drop-zone-title">📁 Move to Folder:</h3><div id="drop-zone-folders"></div><button id="cancel-drop-btn">❌ Cancel</button></div>
     <div id="selection-bar">

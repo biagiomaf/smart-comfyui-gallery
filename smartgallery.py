@@ -764,33 +764,99 @@ def get_file_info_from_db(file_id, column='*'):
     if not row: abort(404)
     return dict(row) if column == '*' else row[0]
 
+# --- START: MODIFIED SECTION ---
+def _get_unique_filepath(destination_folder, filename):
+    """
+    Generates a unique file path in the destination folder.
+    If a file with the same name exists, it appends a progressive number in parentheses.
+    e.g., file.jpg -> file(1).jpg -> file(2).jpg
+    """
+    base, ext = os.path.splitext(filename)
+    counter = 1
+    new_filepath = os.path.join(destination_folder, filename)
+    
+    while os.path.exists(new_filepath):
+        new_filename = f"{base}({counter}){ext}"
+        new_filepath = os.path.join(destination_folder, new_filename)
+        counter += 1
+        
+    return new_filepath
+
 @app.route('/galleryout/move_batch', methods=['POST'])
 def move_batch():
     data = request.json
     file_ids, dest_key = data.get('file_ids', []), data.get('destination_folder')
     folders = get_dynamic_folder_config()
-    if not all([file_ids, dest_key, dest_key in folders]): return jsonify({'status': 'error', 'message': 'Invalid data.'}), 400
-    failed_moves, moved_count = [], 0
+    
+    if not all([file_ids, dest_key, dest_key in folders]):
+        return jsonify({'status': 'error', 'message': 'Invalid data provided.'}), 400
+
+    moved_count = 0
+    renamed_count = 0
+    failed_files = []
     dest_path_folder = folders[dest_key]['path']
+
     with get_db_connection() as conn:
         for file_id in file_ids:
+            source_path = None # Initialize for robust error handling
             try:
-                source_path = conn.execute("SELECT path FROM files WHERE id = ?", (file_id,)).fetchone()['path']
-                source_filename = os.path.basename(source_path)
-                dest_path_file = os.path.join(dest_path_folder, source_filename)
-                if os.path.exists(dest_path_file):
-                    failed_moves.append(source_filename)
+                # 1. Get current file info from the database
+                file_info = conn.execute("SELECT path, name FROM files WHERE id = ?", (file_id,)).fetchone()
+                if not file_info:
+                    failed_files.append(f"ID {file_id} not found in DB")
                     continue
-                shutil.move(source_path, dest_path_file)
-                new_id = hashlib.md5(dest_path_file.encode()).hexdigest()
-                conn.execute("UPDATE files SET id = ?, path = ? WHERE id = ?", (new_id, dest_path_file, file_id))
+                
+                source_path = file_info['path']
+                source_filename = file_info['name']
+
+                # 2. Verify that the source file exists on disk before attempting to move
+                if not os.path.exists(source_path):
+                    failed_files.append(f"{source_filename} (not found on disk)")
+                    # Optional: Clean up the stale database entry
+                    conn.execute("DELETE FROM files WHERE id = ?", (file_id,))
+                    continue
+
+                # 3. Determine the final, unique destination path using the helper function
+                final_dest_path = _get_unique_filepath(dest_path_folder, source_filename)
+                final_filename = os.path.basename(final_dest_path)
+                
+                # 4. Check if the file had to be renamed
+                if final_filename != source_filename:
+                    renamed_count += 1
+                
+                # 5. Perform the actual file move operation
+                shutil.move(source_path, final_dest_path)
+                
+                # 6. Update the database record to reflect the move and potential rename
+                new_id = hashlib.md5(final_dest_path.encode()).hexdigest()
+                conn.execute(
+                    "UPDATE files SET id = ?, path = ?, name = ? WHERE id = ?",
+                    (new_id, final_dest_path, final_filename, file_id)
+                )
                 moved_count += 1
-            except Exception: continue
-        conn.commit()
-    if failed_moves:
-        message = f"Moved {moved_count} files. Failed to move {len(failed_moves)} (already exist)."
-        return jsonify({'status': 'partial_success', 'message': message})
-    return jsonify({'status': 'success', 'message': f'Successfully moved {moved_count} files.'})
+
+            except Exception as e:
+                # If an error occurs for one file, record it and continue with the next
+                filename_for_error = os.path.basename(source_path) if source_path else f"ID {file_id}"
+                failed_files.append(filename_for_error)
+                print(f"ERROR: Failed to move file {filename_for_error}. Reason: {e}") # Server-side log
+                continue
+        
+        conn.commit() # Commit all the successful changes at the end of the loop
+
+    # 7. Construct a clear and informative response message for the user
+    if moved_count > 0:
+        message = f"Successfully moved {moved_count} file(s)."
+        if renamed_count > 0:
+            message += f" {renamed_count} of them were renamed to avoid conflicts."
+        if failed_files:
+            message += f" Failed to move {len(failed_files)} file(s)."
+        return jsonify({'status': 'partial_success' if failed_files else 'success', 'message': message})
+    else:
+        message = f"Operation failed. Could not move any files. Errors occurred with: {', '.join(failed_files)}"
+        return jsonify({'status': 'error', 'message': message})
+
+# --- END: MODIFIED SECTION ---
 
 @app.route('/galleryout/delete_batch', methods=['POST'])
 def delete_batch():
