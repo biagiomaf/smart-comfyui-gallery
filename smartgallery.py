@@ -1,7 +1,7 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025 — MIT License (free to use and modify)
 #
-# Version: 1.21 
+# Version: 1.22 
 # Check the GitHub repository regularly for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -31,8 +31,8 @@ from werkzeug.utils import secure_filename
 # IMPORTANT:
 # - Even on Windows, always use forward slashes ( / ) in paths, 
 #   not backslashes ( \ ), to ensure compatibility.
-# - It is strongly recommended to have ffmpeg installed, 
-#   since some features depend on it.
+
+# - It is strongly recommended to have ffmpeg installed, since some features depend on it.
 
 # Path to the ComfyUI 'output' folder.
 BASE_OUTPUT_PATH = 'C:/sm/Data/Packages/ComfyUI/output'
