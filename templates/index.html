@@ -17,18 +17,36 @@
             --glass-bg: rgba(255, 255, 255, 0.05); --glass-border: rgba(255, 255, 255, 0.1);
             --shadow-sm: 0 2px 4px rgba(0,0,0,0.1); --shadow-md: 0 4px 12px rgba(0,0,0,0.2);
             --shadow-lg: 0 8px 24px rgba(0,0,0,0.3);
+            --sidebar-width: 320px;
         }
         * { box-sizing: border-box; }
         html { scroll-behavior: smooth; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif; margin: 0; background: var(--bg-color); color: var(--text-color); line-height: 1.6; display: flex; min-height: 100vh; }
         body.lightbox-open, body.modal-open { overflow: hidden; }
-        .sidebar { width: 320px; background: var(--surface-color); border-right: 1px solid var(--border-color); padding: 1.5rem; display: flex; flex-direction: column; height: 100vh; position: sticky; top: 0; overflow-y: auto; }
-        .main-content { flex-grow: 1; padding-bottom: 80px; }
-        .sidebar-header { margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+        
+        #notification-container { position: fixed; top: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
+        .notification { background-color: var(--surface-color); color: var(--text-color); padding: 12px 20px; border-radius: 8px; box-shadow: var(--shadow-lg); border-left: 5px solid var(--primary-color); opacity: 0; transform: translateX(100%); transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); font-weight: 600; }
+        .notification.show { opacity: 1; transform: translateX(0); }
+        .notification.success { background-color: var(--success-color); color: white; border-color: #1a9c77; }
+        .notification.error { background-color: var(--danger-color); color: white; border-color: #b32a38; }
+        .notification.warning { background-color: var(--favorite-color); color: #000; border-color: #d39e00;}
+        .notification.info { background-color: var(--primary-color); color: white; border-color: #0056b3; }
+
+        .sidebar { width: var(--sidebar-width); min-width: var(--sidebar-width); background: var(--surface-color); border-right: 1px solid var(--border-color); padding: 1.5rem; display: flex; flex-direction: column; height: 100vh; position: sticky; top: 0; transition: min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1000; }
+        body.sidebar-expanded .sidebar { min-width: 600px; }
+        .main-content { flex-grow: 1; padding-bottom: 80px; transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);}
+        .sidebar-header { margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-shrink: 0;}
         .sidebar-header h1 { margin: 0; font-size: 1.8rem; font-weight: 700; background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        #sidebar-toggle-btn { display: none; background: var(--surface-hover); color: var(--text-color); border: 1px solid var(--border-color); padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; }
+        #sidebar-toggle-btn { display: none; background: var(--surface-hover); color: var(--text-color); border: 1px solid var(--border-color); padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; align-items: center; gap: 0.5rem; }
+        .folder-controls { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem; flex-shrink: 0;}
+        .folder-search-input { width: 100%; background: var(--glass-bg); color: var(--text-color); border: 1px solid var(--glass-border); border-radius: 8px; padding: 0.5rem 0.75rem; font-size: 0.9rem; }
+        .folder-sort-buttons { display: flex; gap: 0.5rem; }
+        .folder-sort-buttons button { flex-grow: 1; background: var(--surface-hover); color: var(--text-muted); border: 1px solid var(--glass-border); padding: 0.5rem; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .folder-sort-buttons button.active { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+        .sidebar-actions { display: flex; gap: 0.5rem; align-items: center; }
+        .sidebar-actions button { background: none; border: 1px solid var(--glass-border); color: var(--text-color); border-radius: 8px; padding: 0.5rem 0.75rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; }
+        .folder-tree-container { flex-grow: 1; overflow-y: auto; min-height: 0; }
         .folder-tree, .folder-tree ul { list-style: none; padding: 0; margin: 0; }
-        .folder-tree { flex-grow: 1; }
         .folder-tree li { padding-left: 20px; position: relative; }
         .folder-tree > li:first-child { padding-left: 0; }
         .folder-item { display: flex; align-items: center; padding: 8px; border-radius: 8px; transition: background-color 0.2s; position: relative; }
@@ -37,25 +55,25 @@
         .toggle-btn { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); cursor: pointer; font-size: 1.1rem; line-height: 1; user-select: none; }
         .toggle-btn.empty { visibility: hidden; }
         .folder-link { flex-grow: 1; text-decoration: none; color: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-left: 25px; cursor: pointer; }
-        .folder-link.navigation-link { cursor: pointer; }
-        .folder-actions { margin-left: auto; display: flex; }
-        .folder-action-btn { background: none; border: none; color: inherit; cursor: pointer; padding: 4px; border-radius: 4px; font-size: 0.9rem; opacity: 0.7; transition: all 0.2s; }
-        .folder-action-btn:hover { opacity: 1; background-color: rgba(255,255,255,0.15); }
+        .folder-actions { margin-left: auto; display: flex; opacity: 1; }
+        .folder-action-btn { background: none; border: none; color: inherit; cursor: pointer; padding: 4px; border-radius: 4px; font-size: 0.9rem; }
+        .folder-action-btn:hover { background-color: rgba(255,255,255,0.15); }
         .folder-tree li.collapsed > ul { display: none; }
+        .folder-tree li.is-hidden { display: none; }
         .folder-tree li:not(.collapsed) > .folder-item > .toggle-btn::before { content: '▾'; }
         .folder-tree li.collapsed > .folder-item > .toggle-btn::before { content: '▸'; }
         .folder-tree li.no-children > .folder-item > .toggle-btn { visibility: hidden; }
-        .folder-link.navigation-link { cursor: pointer; transition: color 0.2s; }
-        .folder-link.navigation-link:not(.no-children):hover { color: var(--primary-color) !important; text-decoration: underline; }
-        #create-folder-btn { width: 100%; background: var(--gradient-secondary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 12px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.3s; box-shadow: var(--shadow-sm); margin-top: 1.5rem; }
+        #create-folder-btn { width: 100%; background: var(--gradient-secondary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 12px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.3s; box-shadow: var(--shadow-sm); margin-top: 1.5rem; flex-shrink: 0;}
         #create-folder-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-        .breadcrumbs { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1rem 2rem; background: var(--surface-color); border-bottom: 1px solid var(--border-color); flex-wrap: nowrap; }
-        .breadcrumb-links { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; overflow: hidden; }
+        .breadcrumbs { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1rem 2rem; background: var(--surface-color); border-bottom: 1px solid var(--border-color); flex-wrap: wrap; }
+        .breadcrumb-links { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; overflow: hidden; flex-grow: 1; }
         .breadcrumb-links a, .breadcrumb-links span { color: var(--text-muted); text-decoration: none; font-weight: 500; white-space: nowrap; }
         .breadcrumb-links a:hover { color: var(--text-color); }
         .breadcrumb-links span:last-child { color: var(--text-color); font-weight: 700; text-overflow: ellipsis; overflow: hidden; }
-        .breadcrumbs .sort-btn { flex-shrink: 0; padding: 0.5rem 1rem; font-size: 0.85rem; background: var(--surface-hover); color: var(--text-color); font-weight: 600; text-decoration: none; border-radius: 8px; border: 1px solid var(--glass-border); transition: all 0.3s; }
-        .breadcrumbs .sort-btn:hover { background: var(--surface-color); }
+        .gallery-sort-controls { display: flex; gap: 0.5rem; flex-shrink: 0; }
+        .gallery-sort-controls .sort-btn { flex-shrink: 0; padding: 0.5rem 1rem; font-size: 0.85rem; background: var(--surface-hover); color: var(--text-color); font-weight: 600; text-decoration: none; border-radius: 8px; border: 1px solid var(--glass-border); transition: all 0.3s; }
+        .gallery-sort-controls .sort-btn:hover { background: var(--surface-color); }
+        .gallery-sort-controls .sort-btn.active { background: var(--primary-color); color: white; border-color: var(--primary-color);}
         .filter-bar { padding: 1.5rem 2rem; }
         .filter-bar form { display: flex; flex-direction: column; gap: 1.5rem; }
         .filter-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; align-items: end; }
@@ -101,6 +119,7 @@
         .duration-overlay { position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.8); color: white; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 500; backdrop-filter: blur(10px); z-index: 10; }
         .workflow-badge { position: absolute; top: 8px; left: 8px; background: var(--workflow-color); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; text-decoration: none; font-weight: 600; }
         #selection-bar { position: fixed; bottom: 0; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); left: 320px; right: 0; background: var(--glass-bg); border-top: 1px solid var(--glass-border); padding: 1.5rem; display: flex; align-items: center; gap: 1rem; z-index: 1001; box-sizing: border-box; backdrop-filter: blur(20px); flex-wrap: wrap; }
+        body.sidebar-expanded #selection-bar { left: 600px; }
         #selection-bar.visible { transform: translateY(0); }
         #selection-bar button { padding: 0.75rem 1.5rem; font-size: 0.9rem; border-radius: 8px; border: none; background: var(--primary-color); color: white; cursor: pointer; transition: all 0.3s; font-weight: 600; }
         #selection-bar .delete-btn { background: var(--danger-color); }
@@ -109,70 +128,40 @@
         #drag-drop-overlay.visible { display: block; opacity: 1; }
         #drop-zone-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 400px; z-index: 1003; background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 16px; box-shadow: var(--shadow-lg); display: none; flex-direction: column; max-height: 80vh; }
         #drop-zone-panel.visible { display: flex; }
-        #drop-zone-panel h3 { margin: 0; padding: 1.5rem; text-align: center; border-bottom: 1px solid var(--border-color); font-weight: 600; background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        #drop-zone-folders { overflow-y: auto; display: flex; flex-direction: column; padding: 1rem; max-height: 60vh; }
-        .drop-zone-folder-item { display: flex; align-items: center; padding: 8px; border-radius: 8px; transition: background-color 0.2s; cursor: pointer; position: relative; }
-        .drop-zone-folder-item:hover { background-color: var(--surface-hover); }
-        .drop-zone-folder-item .folder-link { flex-grow: 1; text-decoration: none; color: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-left: 25px; cursor: pointer; }
-        .drop-zone-folder-item .folder-link:hover { background-color: rgba(0, 123, 255, 0.2); }
-        .drop-zone-folder-item .toggle-btn { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); cursor: pointer; font-size: 1.1rem; line-height: 1; user-select: none; }
-        .drop-zone-folder-item .toggle-btn.empty { visibility: hidden; }
-        #cancel-drop-btn { background: var(--danger-color); color: white; border: none; padding: 1rem; cursor: pointer; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; font-weight: 600; transition: background-color 0.3s; }
+        #drop-zone-panel h3 { margin: 0; padding: 1rem 1.5rem; text-align: center; border-bottom: 1px solid var(--border-color); font-weight: 600; flex-shrink: 0;}
+        #drop-zone-folders { overflow-y: auto; display: flex; flex-direction: column; padding: 0; min-height: 0; flex-grow: 1; }
+        #cancel-drop-btn { background: var(--danger-color); color: white; border: none; padding: 1rem; cursor: pointer; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; font-weight: 600; transition: background-color 0.3s; flex-shrink: 0;}
         #loader-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 9999; display: flex; justify-content: center; align-items: center; transition: opacity 0.4s; }
         .loader { border: 4px solid var(--surface-color); border-top: 4px solid var(--primary-color); border-radius: 50%; width: 48px; height: 48px; animation: spin 1.2s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
-        
         #lightbox-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.95); backdrop-filter: blur(20px); z-index: 2000; display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         #lightbox-overlay.visible { opacity: 1; pointer-events: auto; }
         .lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.6); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 50%; width: 60px; height: 60px; font-size: 1.8rem; cursor: pointer; transition: all 0.3s; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(10px); z-index: 2001; }
         #lightbox-prev { left: 30px; }
         #lightbox-next { right: 30px; }
-        #lightbox-header {
-            position: absolute; top: 0; left: 0; right: 0; z-index: 2002;
-            padding: 1rem; background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 70%, transparent 100%);
-            backdrop-filter: blur(10px); display: flex; flex-direction: column;
-            gap: 1rem; align-items: center; text-align: center;
-        }
+        #lightbox-header { position: absolute; top: 0; left: 0; right: 0; z-index: 2002; padding: 1rem; background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 70%, transparent 100%); backdrop-filter: blur(10px); display: flex; flex-direction: column; gap: 1rem; align-items: center; text-align: center; }
         #lightbox-title { font-size: 1.1rem; font-weight: 600; color: white; word-break: break-word; hyphens: auto; max-width: 90vw; }
         #lightbox-toolbar { display: flex; justify-content: center; flex-wrap: wrap; gap: 0.75rem; }
-        #lightbox-toolbar button, #lightbox-toolbar a {
-            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
-            color: white; padding: 0.75rem; border-radius: 10px; font-size: 1.2rem; cursor: pointer; transition: all 0.3s;
-            text-decoration: none; display: flex; align-items: center; justify-content: center;
-            min-width: 44px; height: 44px; backdrop-filter: blur(10px);
-        }
+        #lightbox-toolbar button, #lightbox-toolbar a { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 0.75rem; border-radius: 10px; font-size: 1.2rem; cursor: pointer; transition: all 0.3s; text-decoration: none; display: flex; align-items: center; justify-content: center; min-width: 44px; height: 44px; backdrop-filter: blur(10px); }
         #lightbox-toolbar button:hover, #lightbox-toolbar a:hover { background: rgba(255,255,255,0.2); }
-        #lightbox-content {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            width: 100%; height: 100%; padding: 10rem 1rem 2rem; 
-        }
-        #lightbox-media { display: flex; align-items: center; justify-content: center; max-width: 95vw; max-height: 80vh; }
+        #lightbox-content { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 6rem 1rem 2rem; }
+        #lightbox-media { display: flex; align-items: center; justify-content: center; max-width: 95vw; max-height: 90vh; }
         #lightbox-media img, #lightbox-media video { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 12px; box-shadow: var(--shadow-lg); cursor: grab; }
-        
         #backToTopBtn { display: none; position: fixed; bottom: 110px; right: 30px; z-index: 99; font-size: 1.2rem; border: none; background: var(--primary-color); color: white; cursor: pointer; padding: 12px 16px; border-radius: 50%; transition: all 0.3s; box-shadow: var(--shadow-md); }
         #load-more-container { text-align: center; padding: 3rem; }
         #load-more-btn { background: var(--gradient-primary); color: white; border: none; padding: 1rem 2.5rem; border-radius: 12px; cursor: pointer; font-size: 1rem; font-weight: 600; transition: all 0.3s; box-shadow: var(--shadow-sm); }
         .empty-state { text-align: center; padding: 4rem 2rem; color: var(--text-muted); }
-        
-        #node-summary-overlay {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0,0,0,0.8); backdrop-filter: blur(10px);
-            z-index: 2100; display: flex; justify-content: center; align-items: center;
-            opacity: 0; pointer-events: none; transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        #node-summary-overlay.visible { opacity: 1; pointer-events: auto; }
-        .node-summary-panel {
-            background: var(--surface-color); border: 1px solid var(--border-color);
-            border-radius: 16px; box-shadow: var(--shadow-lg);
-            width: 90vw; max-width: 900px; max-height: 85vh; display: flex; flex-direction: column;
-            transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        #node-summary-overlay.visible .node-summary-panel { transform: scale(1); }
-        .node-summary-header {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color);
-            position: sticky; top: 0; background: var(--surface-color);
-        }
+        #node-summary-overlay, #upload-overlay, #sync-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        #node-summary-overlay { z-index: 2100; }
+        #upload-overlay { z-index: 2200; }
+        #sync-overlay { z-index: 2300; display: none; opacity: 1; pointer-events: all;}
+        #node-summary-overlay.visible, #upload-overlay.visible { opacity: 1; pointer-events: auto; }
+        .node-summary-panel, #upload-panel, #sync-panel { background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 16px; box-shadow: var(--shadow-lg); width: 90vw; display: flex; flex-direction: column; transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .node-summary-panel { max-width: 900px; max-height: 85vh; }
+        #upload-panel { max-width: 600px; max-height: 85vh; }
+        #sync-panel { max-width: 500px; padding: 2rem; align-items: center; text-align: center; }
+        #node-summary-overlay.visible .node-summary-panel, #upload-overlay.visible #upload-panel { transform: scale(1); }
+        .node-summary-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; background: var(--surface-color); }
         .node-summary-header h2 { margin: 0; font-size: 1.2rem; font-weight: 600; }
         .node-summary-header .close-btn { background: none; border: none; color: var(--text-muted); font-size: 1.8rem; cursor: pointer; padding: 0; line-height: 1; }
         #node-summary-content { padding: 1.5rem; overflow-y: auto; }
@@ -183,53 +172,20 @@
         .summary-node-params li { padding: 0.5rem 0; font-size: 1rem; border-bottom: 1px solid var(--glass-border); }
         .summary-node-params li:last-child { border-bottom: none; }
         .summary-node-params strong { color: var(--text-color); margin-right: 0.5rem; }
-        .summary-node-params code {
-            color: var(--text-muted); word-break: break-all; white-space: pre-wrap;
-            background: rgba(0,0,0,0.2); padding: 2px 5px; border-radius: 4px;
-        }
-        #refresh-btn {
-            margin-left: auto;
-        }
-        #upload-overlay {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0,0,0,0.8); backdrop-filter: blur(10px);
-            z-index: 2200; display: flex; justify-content: center; align-items: center;
-            opacity: 0; pointer-events: none; transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        #upload-overlay.visible { opacity: 1; pointer-events: auto; }
-        #upload-panel {
-            background: var(--surface-color); border: 1px solid var(--border-color);
-            border-radius: 16px; box-shadow: var(--shadow-lg);
-            width: 90vw; max-width: 600px; max-height: 85vh;
-            display: flex; flex-direction: column;
-            transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        #upload-overlay.visible #upload-panel { transform: scale(1); }
+        .summary-node-params code { color: var(--text-muted); word-break: break-all; white-space: pre-wrap; background: rgba(0,0,0,0.2); padding: 2px 5px; border-radius: 4px; }
+        #refresh-btn { margin-left: auto; }
         .upload-header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color); text-align: center; }
         .upload-header h2 { margin: 0; font-size: 1.2rem; font-weight: 600; }
         .upload-header p { margin: 0.5rem 0 0; color: var(--text-muted); }
         .upload-body { padding: 1.5rem; flex-grow: 1; display: flex; flex-direction: column; overflow-y: auto; }
-        #drop-zone {
-            border: 2px dashed var(--border-color); border-radius: 12px; padding: 2rem;
-            text-align: center; color: var(--text-muted);
-            transition: all 0.3s; cursor: pointer;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            flex-grow: 1;
-        }
+        #drop-zone { border: 2px dashed var(--border-color); border-radius: 12px; padding: 2rem; text-align: center; color: var(--text-muted); transition: all 0.3s; cursor: pointer; display: flex; flex-direction: column; justify-content: center; align-items: center; flex-grow: 1; }
         #drop-zone.dragover { border-color: var(--primary-color); background: var(--surface-hover); transform: scale(1.02); }
         #drop-zone p { font-size: 1.1rem; font-weight: 500; margin: 0 0 1rem 0; }
         #file-upload-btn { background: var(--primary-color); color: white; font-weight: 600; padding: 0.75rem 1.5rem; border-radius: 8px; border: none; cursor: pointer; }
         #file-list { list-style: none; padding: 0; margin-top: 1.5rem; max-height: 200px; overflow-y: auto; }
-        #file-list li {
-            background: var(--glass-bg); padding: 0.75rem; border-radius: 8px;
-            margin-bottom: 0.5rem; font-size: 0.9rem;
-            display: flex; justify-content: space-between; align-items: center;
-        }
+        #file-list li { background: var(--glass-bg); padding: 0.75rem; border-radius: 8px; margin-bottom: 0.5rem; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; }
         .file-size { color: var(--text-muted); font-size: 0.8rem; }
-        .upload-footer {
-            padding: 1rem 1.5rem; border-top: 1px solid var(--border-color);
-            display: flex; justify-content: flex-end; gap: 1rem;
-        }
+        .upload-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 1rem; }
         .upload-footer button { padding: 0.75rem 1.5rem; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; }
         #upload-cancel-btn { background: var(--surface-hover); color: var(--text-color); }
         #upload-submit-btn { background: var(--success-color); color: white; }
@@ -237,32 +193,31 @@
         #upload-progress-bar { width: 100%; height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden; }
         #upload-progress-fill { width: 0%; height: 100%; background: var(--primary-color); transition: width 0.2s; }
         #upload-file-input { display: none; }
-        
-        #mobile-filter-toggle {
-            display: none; width: 100%;
-            background: var(--surface-hover); color: var(--text-color);
-            border: 1px solid var(--border-color); padding: 0.75rem 1rem;
-            border-radius: 8px; cursor: pointer;
-            font-size: 0.9rem; font-weight: 600; text-align: left;
-        }
-        
+        #sync-message { margin: 0 0 1rem; font-size: 1.1rem; font-weight: 500; }
+        #sync-progress-bar { width: 100%; height: 10px; background-color: var(--border-color); border-radius: 5px; overflow: hidden; }
+        #sync-progress-fill { width: 0%; height: 100%; background-color: var(--primary-color); transition: width 0.3s ease; }
+        #mobile-filter-toggle { display: none; width: 100%; background: var(--surface-hover); color: var(--text-color); border: 1px solid var(--border-color); padding: 0.75rem 1rem; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; text-align: left; }
         .mobile-actions-only { display: none; }
         @media (max-width: 1024px) {
-            body { flex-direction: column; }
+            body.sidebar-expanded-mobile .sidebar { position: fixed; width: 100%; min-width: 100%; height: 100%; top: 0; left: 0; transform: translateX(0); z-index: 1005; }
+            body.sidebar-expanded-mobile .main-content { display: none; }
+            body:not(.sidebar-expanded-mobile) { flex-direction: column; }
             .sidebar { width: 100%; height: auto; position: static; border-right: none; border-bottom: 1px solid var(--border-color); }
             #selection-bar { left: 0; }
-            #sidebar-toggle-btn { display: block; }
-            .sidebar.nav-collapsed nav,
-            .sidebar.nav-collapsed #create-folder-btn { display: none; }
+            body.sidebar-expanded #selection-bar { left: 0; }
+            #sidebar-toggle-btn { display: flex; }
+            #sidebar-expand-btn { display: none; }
+            .sidebar.nav-collapsed .folder-controls, .sidebar.nav-collapsed .folder-tree-container, .sidebar.nav-collapsed #create-folder-btn { display: none; }
         }
         @media (max-width: 768px) {
+            .breadcrumbs { flex-direction: column; align-items: stretch; }
+            .gallery-sort-controls { justify-content: space-around; width: 100%; }
             .filter-bar form { grid-template-columns: 1fr; }
             #mobile-filter-toggle { display: block; margin-bottom: 1rem;}
             .filter-form-grid { display: none; }
             .filter-form-grid.visible { display: grid; grid-template-columns: 1fr; }
             .desktop-actions-only { display: none; }
             .mobile-actions-only { display: flex; flex-direction: column; gap: 0.75rem; }
-
             .gallery-container { grid-template-columns: 1fr; padding: 1rem; }
             #selection-bar { flex-direction: column; align-items: stretch; gap: 0.5rem; padding: 1rem; }
             #selection-bar .actions-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; width: 100%; }
@@ -278,57 +233,31 @@
     </style>
 </head>
 <body>
-    {% macro render_folder_tree(folder_key, folders, current_folder_key, protected_keys, ancestor_keys, is_move_panel=false) %}
-        {% set folder = folders.get(folder_key) %}
-        {% if folder is not none %}
-            {% set has_children = folder.children and folder.children|length > 0 %}
-            {% set is_collapsed = folder_key not in ancestor_keys %}
-            <li data-folder-key="{{ folder_key }}" class="{{ 'collapsed' if is_collapsed else '' }} {{ 'no-children' if not has_children else '' }}">
-                <div class="{{ 'folder-item' if not is_move_panel else 'drop-zone-folder-item' }}">
-                    <span class="toggle-btn {{ 'empty' if not has_children else '' }}"></span>
-                    {% if is_move_panel %}
-                        <span class="folder-link" data-folder-key="{{ folder_key }}" title="{{ folder.display_name }}">
-                            📁 {{ folder.display_name }}
-                        </span>
-                    {% else %}
-                        <span class="folder-link navigation-link {{ 'active' if folder_key == current_folder_key else '' }}" 
-                              data-folder-key="{{ folder_key }}" 
-                              data-folder-url="{{ url_for('gallery_view', folder_key=folder_key) }}"
-                              title="{{ folder.display_name }} {% if has_children %}(Click to expand, Double-click to navigate){% endif %}">
-                            📁 {{ folder.display_name }}
-                        </span>
-                    {% endif %}
-                    {% if not is_move_panel and folder_key != '_root_' and folder_key not in protected_keys %}
-                    <div class="folder-actions">
-                        <button class="folder-action-btn" title="Rename" onclick="renameFolder(event, '{{ folder_key }}', '{{ folder.display_name }}')">✏️</button>
-                        <button class="folder-action-btn" title="Delete" onclick="deleteFolder(event, '{{ folder_key }}', '{{ folder.display_name }}')">🗑️</button>
-                    </div>
-                    {% endif %}
-                </div>
-                {% if has_children %}
-                <ul>
-                    {% for child_key in folder.children %}
-                        {{ render_folder_tree(child_key, folders, current_folder_key, protected_keys, ancestor_keys, is_move_panel) }}
-                    {% endfor %}
-                </ul>
-                {% endif %}
-            </li>
-        {% endif %}
-    {% endmacro %}
-
+    <div id="notification-container"></div>
     <aside class="sidebar">
         <div class="sidebar-header">
             <a href="{{ url_for('gallery_view', folder_key='_root_') }}" style="text-decoration: none;"><h1>SmartGallery</h1></a>
-            <button id="sidebar-toggle-btn">☰ Folders</button>
+            <div class="sidebar-actions">
+                <button id="sidebar-expand-btn" title="Expand Sidebar">
+                    <span>↔️</span><span id="sidebar-expand-text">Expand</span>
+                </button>
+                <button id="sidebar-toggle-btn">
+                    <span>☰</span><span id="sidebar-toggle-text">Show Folders</span>
+                </button>
+            </div>
         </div>
-        <nav>
-            <ul class="folder-tree" id="folder-tree-nav">
-                {{ render_folder_tree(folder_key='_root_', folders=folders, current_folder_key=current_folder_key, protected_keys=protected_folder_keys, ancestor_keys=ancestor_keys) }}
-            </ul>
-        </nav>
+        <div class="folder-controls">
+            <input type="search" class="folder-search-input" id="folder-search-nav" placeholder="🔍 Search folders...">
+            <div class="folder-sort-buttons" id="folder-sort-nav">
+                <button data-sort="name" class="active" title="Sort by name">A-Z</button>
+                <button data-sort="mtime" title="Sort by date">🗓️</button>
+            </div>
+        </div>
+        <div class="folder-tree-container">
+            <ul class="folder-tree" id="folder-tree-nav"></ul>
+        </div>
         <button id="create-folder-btn">➕ Create New Folder</button>
     </aside>
-
     <div class="main-content">
         <header class="breadcrumbs">
             <div class="breadcrumb-links">
@@ -337,40 +266,38 @@
                     {% if not loop.last %}<span>/</span>{% endif %}
                 {% endfor %}
             </div>
-            {% set next_sort_order = 'asc' if current_sort_order == 'desc' else 'desc' %}
-            {% set query_params = dict(request.args.to_dict(flat=False), sort_order=next_sort_order) %}
-            <a href="{{ url_for('gallery_view', folder_key=current_folder_key, **query_params) }}" class="sort-btn" title="Change sort order">
-                Sort by Date {% if current_sort_order == 'asc' %}↑{% else %}↓{% endif %}
-            </a>
+            <div class="gallery-sort-controls">
+                {% set current_sort_by = request.args.get('sort_by', 'date') %}
+                {% set current_sort_order = request.args.get('sort_order', 'desc') %}
+                {% set date_is_active = current_sort_by == 'date' %}
+                {% set date_next_order = 'asc' if date_is_active and current_sort_order == 'desc' else 'desc' %}
+                {% set date_query_params = dict(request.args.to_dict(flat=False), sort_by='date', sort_order=date_next_order) %}
+                <a href="{{ url_for('gallery_view', folder_key=current_folder_key, **date_query_params) }}" class="sort-btn {{ 'active' if date_is_active else '' }}">
+                    Sort by Date {% if date_is_active %}{{ '↑' if current_sort_order == 'asc' else '↓' }}{% endif %}
+                </a>
+                {% set name_is_active = current_sort_by == 'name' %}
+                {% set name_next_order = 'desc' if name_is_active and current_sort_order == 'asc' else 'asc' %}
+                {% set name_query_params = dict(request.args.to_dict(flat=False), sort_by='name', sort_order=name_next_order) %}
+                <a href="{{ url_for('gallery_view', folder_key=current_folder_key, **name_query_params) }}" class="sort-btn {{ 'active' if name_is_active else '' }}">
+                    Sort by Name {% if name_is_active %}{{ '↑' if current_sort_order == 'asc' else '↓' }}{% endif %}
+                </a>
+            </div>
         </header>
-
         <div class="filter-bar">
              <form method="GET" action="{{ url_for('gallery_view', folder_key=current_folder_key) }}">
-                
+                <input type="hidden" name="sort_by" value="{{ request.args.get('sort_by', 'date') }}">
+                <input type="hidden" name="sort_order" value="{{ request.args.get('sort_order', 'desc') }}">
                 <button type="button" id="mobile-filter-toggle">⚙️ Filters & Options</button>
-
                 <div class="filter-form-grid" id="filter-form-grid">
-                    <div class="filter-group"><label for="search-input">🔍 Search by Name</label><input type="text" name="search" id="search-input" placeholder="Search files in this folder..." value="{{ request.args.get('search', '') }}"></div>
+                    <div class="filter-group"><label for="search-input">🔍 Search by Name</label><input type="text" name="search" id="search-input" placeholder="Search files..." value="{{ request.args.get('search', '') }}"></div>
                     <div class="filter-group"><label for="extension-select">📄 Extensions</label><select name="extension" id="extension-select" multiple>{% for ext in available_extensions %}<option value="{{ ext }}" {% if ext in selected_extensions %}selected{% endif %}>{{ ext }}</option>{% endfor %}</select></div>
                     <div class="filter-group"><label for="prefix-select">🏷️ Prefixes</label><select name="prefix" id="prefix-select" multiple>{% for pfx in available_prefixes %}{% if pfx != '.gallery ' %}<option value="{{ pfx }}" {% if pfx in selected_prefixes %}selected{% endif %}>{{ pfx }}</option>{% endif %}{% endfor %}</select></div>
                     <div class="filter-group"><div class="filter-group-inline"><input type="checkbox" name="favorites" id="favorites-check" value="true" {% if show_favorites %}checked{% endif %}><label for="favorites-check">⭐ Favorites Only</label></div></div>
-                    
-                    <div class="filter-group mobile-actions-only">
-                        <label>Actions</label>
-                        <div class="mobile-actions-row">
-                            <button type="submit">🔍 Filter</button>
-                            <a href="{{ url_for('gallery_view', folder_key=current_folder_key) }}">🔄 Reset</a>
-                        </div>
-                    </div>
+                    <div class="filter-group mobile-actions-only"><label>Actions</label><div class="mobile-actions-row"><button type="submit">🔍 Filter</button><a href="{{ url_for('gallery_view', folder_key=current_folder_key) }}">🔄 Reset</a></div></div>
                 </div>
-
                 <div class="filter-actions-row">
-                    <div class="filter-actions-row desktop-actions-only">
-                        <button type="submit">🔍 Filter</button>
-                        <a href="{{ url_for('gallery_view', folder_key=current_folder_key) }}">🔄 Reset</a>
-                    </div>
-                    <button type="button" id="show-upload-modal-btn">☁️ Upload</button>
-                    <button type="button" id="refresh-btn" class="refresh-btn">♻️ Refresh</button>
+                    <div class="filter-actions-row desktop-actions-only"><button type="submit">🔍 Filter</button><a href="{{ url_for('gallery_view', folder_key=current_folder_key) }}">🔄 Reset</a></div>
+                    <button type="button" id="show-upload-modal-btn">☁️ Upload</button><button type="button" id="refresh-btn" class="refresh-btn">♻️ Refresh</button>
                 </div>
             </form>
         </div>
@@ -378,80 +305,31 @@
         <main class="gallery-container" id="gallery-container"></main>
         <div id="load-more-container"><button id="load-more-btn">📂 Load More</button></div>
     </div>
-
-    <button onclick="scrollToTop()" id="backToTopBtn" title="Go to Top" style="display: none;">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="18 15 12 9 6 15"></polyline>
-      </svg>
-    </button>
-    
+    <button onclick="scrollToTop()" id="backToTopBtn" title="Go to Top" style="display: none;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg></button>
     <div id="drag-drop-overlay"></div>
-    <div id="drop-zone-panel"><h3 id="drop-zone-title">📁 Move to Folder:</h3><div id="drop-zone-folders"></div><button id="cancel-drop-btn">❌ Cancel</button></div>
+    <div id="drop-zone-panel">
+        <h3>📁 Move to Folder:</h3>
+        <div class="folder-controls" style="padding: 0 1rem; margin-top: 1rem;">
+            <input type="search" class="folder-search-input" id="folder-search-move" placeholder="🔍 Search folders..."><div class="folder-sort-buttons" id="folder-sort-move"><button data-sort="name" class="active">A-Z</button><button data-sort="mtime">🗓️</button></div>
+        </div>
+        <div id="drop-zone-folders"><div class="folder-tree-container" style="padding: 1rem;"><ul class="folder-tree" id="move-folder-tree"></ul></div></div>
+        <button id="cancel-drop-btn">❌ Cancel</button>
+    </div>
     <div id="selection-bar">
         <span id="selection-counter">0 files selected</span>
-        <div class="actions-grid">
-            <button id="move-selected-btn">📁 Move</button>
-            <button id="favorite-selected-btn">⭐ Add</button>
-            <button id="unfavorite-selected-btn">☆ Remove</button>
-            <button id="delete-selected-btn" class="delete-btn">🗑️ Delete</button>
-            <button id="select-all-btn">✅ All</button>
-            <button id="deselect-all-btn">❌ None</button>
-        </div>
+        <div class="actions-grid"><button id="move-selected-btn">📁 Move</button><button id="favorite-selected-btn">⭐ Add</button><button id="unfavorite-selected-btn">☆ Remove</button><button id="delete-selected-btn" class="delete-btn">🗑️ Delete</button><button id="select-all-btn">✅ All</button><button id="deselect-all-btn">❌ None</button></div>
     </div>
     <div id="lightbox-overlay">
         <div id="lightbox-header">
             <div id="lightbox-title"></div>
-            <div id="lightbox-toolbar">
-                <button id="lightbox-zoom-out" title="Zoom out">-</button>
-                <button id="lightbox-zoom-in" title="Zoom in">+</button>
-                <a id="lightbox-download" href="#" title="Download File">💾</a>
-                <button id="lightbox-summary-btn" title="Node Summary">📝</button>
-                <a id="lightbox-workflow" href="#" title="Download Workflow" class="workflow-btn">⚙️</a>
-                <a id="lightbox-new-tab" href="#" target="_blank" title="Open in new tab">↗️</a>
-                <button class="close-btn" onclick="closeLightbox()" title="Close (Esc)">×</button>
-            </div>
+            <div id="lightbox-toolbar"><button id="lightbox-zoom-out">-</button><button id="lightbox-zoom-in">+</button><a id="lightbox-download" href="#">💾</a><button id="lightbox-summary-btn">📝</button><a id="lightbox-workflow" href="#" class="workflow-btn">⚙️</a><button id="lightbox-delete-btn">🗑️</button><a id="lightbox-new-tab" href="#" target="_blank">↗️</a><button class="close-btn" onclick="closeLightbox()">×</button></div>
         </div>
-        <div id="lightbox-content">
-            <div id="lightbox-media"></div>
-        </div>
-        <button id="lightbox-prev" class="lightbox-nav" title="Previous (←)">‹</button>
-        <button id="lightbox-next" class="lightbox-nav" title="Next (→)">›</button>
+        <div id="lightbox-content"><div id="lightbox-media"></div></div>
+        <button id="lightbox-prev" class="lightbox-nav">‹</button><button id="lightbox-next" class="lightbox-nav">›</button>
     </div>
-    <div id="node-summary-overlay">
-        <div class="node-summary-panel">
-            <div class="node-summary-header">
-                <h2>📝 Node Summary</h2>
-                <button class="close-btn" id="close-summary-btn">×</button>
-            </div>
-            <div id="node-summary-content"></div>
-        </div>
-    </div>
-    <div id="upload-overlay">
-        <div id="upload-panel">
-            <div class="upload-header">
-                <h2>Upload Files</h2>
-                <p id="upload-destination-text">Upload to: <strong></strong></p>
-            </div>
-            <div class="upload-body">
-                <input type="file" id="upload-file-input" multiple>
-                <div id="drop-zone">
-                    <p>Drag & Drop files here</p>
-                    <button type="button" id="file-upload-btn">Or select files...</button>
-                </div>
-                <ul id="file-list"></ul>
-                <div id="upload-progress-container">
-                    <div id="upload-progress-bar">
-                        <div id="upload-progress-fill"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="upload-footer">
-                <button type="button" id="upload-cancel-btn">Cancel</button>
-                <button type="button" id="upload-submit-btn">Upload</button>
-            </div>
-        </div>
-    </div>
-
+    <div id="node-summary-overlay"><div class="node-summary-panel"><div class="node-summary-header"><h2>📝 Node Summary</h2><button class="close-btn" id="close-summary-btn">×</button></div><div id="node-summary-content"></div></div></div>
+    <div id="upload-overlay"><div id="upload-panel"><div class="upload-header"><h2>Upload Files</h2><p id="upload-destination-text">Upload to: <strong></strong></p></div><div class="upload-body"><input type="file" id="upload-file-input" multiple><div id="drop-zone"><p>Drag & Drop files here</p><button type="button" id="file-upload-btn">Or select files...</button></div><ul id="file-list"></ul><div id="upload-progress-container"><div id="upload-progress-bar"><div id="upload-progress-fill"></div></div></div></div><div class="upload-footer"><button type="button" id="upload-cancel-btn">Cancel</button><button type="button" id="upload-submit-btn">Upload</button></div></div></div>
+    <div id="sync-overlay"><div id="sync-panel"><h3 id="sync-message">Scanning...</h3><div id="sync-progress-bar"><div id="sync-progress-fill"></div></div></div></div>
     <div id="loader-overlay"><div class="loader"></div></div>
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
     <script>
@@ -461,614 +339,142 @@
         const initialFiles = {{ files | tojson }};
         const totalFiles = {{ total_files }};
         const currentFolderKey = '{{ current_folder_key }}';
-
+        const ancestorKeys = {{ ancestor_keys | tojson }};
         const galleryContainer = document.getElementById('gallery-container');
         const selectionBar = document.getElementById('selection-bar');
         const selectionCounter = document.getElementById('selection-counter');
         const loaderOverlay = document.getElementById('loader-overlay');
         const backToTopBtn = document.getElementById('backToTopBtn');
-
         let currentItemCount = 0;
         let galleryItems = [];
         let allFilesData = [];
         const selectedFiles = new Set();
         let lastSelectedItem = null;
-
-        function handleError(error) {
-            console.error('Error:', error);
-            showNotification('A network or server error occurred.', 'error');
-        }
-
-        function showNotification(message, type = 'info') {
-            const notification = document.createElement('div');
-            notification.className = `notification ${type}`;
-            notification.textContent = message;
-            notification.style.cssText = `position: fixed; top: 20px; right: 20px; padding: 1rem 1.5rem; border-radius: 8px; color: white; font-weight: 500; z-index: 10000; transform: translateX(400px); transition: transform 0.3s ease; background: ${type === 'error' ? 'var(--danger-color)' : type === 'success' ? 'var(--success-color)' : 'var(--primary-color)'}; box-shadow: var(--shadow-lg); backdrop-filter: blur(10px);`;
-            document.body.appendChild(notification);
-            setTimeout(() => notification.style.transform = 'translateX(0)', 100);
-            setTimeout(() => {
-                notification.style.transform = 'translateX(400px)';
-                setTimeout(() => document.body.removeChild(notification), 300);
-            }, 3000);
-        }
-
-        function handleGenericResponse(response) {
-            return response.json().then(data => {
-                if (data.status === 'success') {
-                    showNotification(data.message || 'Operation completed successfully!', 'success');
-                    setTimeout(() => window.location.reload(), 1000);
-                } else {
-                    showNotification(`Error: ${data.message || 'Operation failed'}`, 'error');
-                }
-            });
-        }
-
-        function createGalleryItem(file) {
-            const item = document.createElement('div');
-            item.className = 'gallery-item';
-            item.dataset.fileId = file.id;
-            item.dataset.fileType = file.type;
-            item.setAttribute('draggable', 'true');
-            item.addEventListener('dragstart', (event) => dragStart(event, file.id));
-
-            let mediaHTML = '';
-            if (file.type === 'audio') {
-                mediaHTML = `<div style="display:flex; align-items:center; justify-content:center; height:100%; font-size: 4rem; color: #1ed760;">🎵</div>`;
-            } else if (['image', 'animated_image'].includes(file.type)) {
-                mediaHTML = `<img class="lazy" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E" data-src="/galleryout/thumbnail/${file.id}" alt="${file.name}" loading="lazy">`;
-            } else if (file.type === 'video') {
-                mediaHTML = `<video autoplay muted loop playsinline class="lazy" data-src="/galleryout/file/${file.id}" poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E"></video>`;
-            } else {
-                mediaHTML = `<div style="display: flex; align-items: center; justify-content: center; height: 100%; font-size: 3rem; color: var(--text-muted);">📄</div>`;
-            }
-
-            const summaryButtonHTML = file.has_workflow 
-                ? `<button title="Node Summary" onclick="showNodeSummary(event, '${file.id}')">📝</button>`
-                : '';
-
-            let metadataHTML = '';
-            if (file.dimensions || file.mtime) {
-                const date = new Date(file.mtime * 1000);
-                const formattedDate = date.toLocaleString(undefined, { 
-                    year: 'numeric', month: '2-digit', day: '2-digit', 
-                    hour: '2-digit', minute: '2-digit', second: '2-digit'
-                });
-                const dimensionsPart = file.dimensions ? `<span>📐 ${file.dimensions}</span>` : '';
-                const datePart = file.mtime ? `<span>📅 ${formattedDate}</span>` : '';
-                metadataHTML = `<div class="file-metadata">${dimensionsPart}${datePart}</div>`;
-            }
-
-            item.innerHTML = `
-                <div class="selection-checkmark" onclick="toggleSelection(event, '${file.id}', this.closest('.gallery-item'))">✓</div>
-                <div class="thumbnail-link" onclick="openLightbox(event, '${file.id}'); event.stopPropagation();" draggable="false">
-                    <div class="thumbnail-wrapper">
-                        ${mediaHTML}
-                        ${file.has_workflow ? `<a href="/galleryout/workflow/${file.id}" class="workflow-badge" onclick="event.stopPropagation()">⚙️ Workflow</a>` : ''}
-                        ${file.duration ? `<span class="duration-overlay">⏱️ ${file.duration}</span>` : ''}
-                    </div>
-                </div>
-                <div class="item-info">
-                    <div>
-                        <p title="${file.name}"><strong>${file.name}</strong></p>
-                        ${metadataHTML}
-                    </div>
-                    <div class="item-actions">
-                        ${summaryButtonHTML}
-                        <button class="favorite-btn ${file.is_favorite ? 'favorited' : ''}" title="Favorite" onclick="toggleFavorite(event, '${file.id}', this)">${file.is_favorite ? '⭐' : '☆'}</button>
-                        <a href="/galleryout/download/${file.id}" onclick="event.stopPropagation()" title="Download">💾</a>
-                        <button class="delete-btn" onclick="deleteFile(event, '${file.id}', this)">🗑️</button>
-                    </div>
-                </div>`;
-            return item;
-        }
-        
-        function appendFiles(files) {
-            if (!files || files.length === 0) {
-                if (currentItemCount === 0) showEmptyState();
-                updateLoadMoreVisibility();
-                return;
-            }
-            const fragment = document.createDocumentFragment();
-            const newLazyElements = [];
-            files.forEach(file => {
-                allFilesData.push(file);
-                const item = createGalleryItem(file);
-                fragment.appendChild(item);
-                galleryItems.push(item);
-                const lazyEl = item.querySelector('.lazy');
-                if (lazyEl) newLazyElements.push(lazyEl);
-            });
-            galleryContainer.appendChild(fragment);
-            initializeLazyLoading(newLazyElements);
-            currentItemCount += files.length;
-            updateLoadMoreVisibility();
-        }
-
-        function updateLoadMoreVisibility() {
-            const loadMoreContainer = document.getElementById('load-more-container');
-            if (!loadMoreContainer) return;
-            const shouldHide = currentItemCount >= totalFiles || totalFiles === 0;
-            loadMoreContainer.style.display = shouldHide ? 'none' : 'block';
-        }
-        
-        function showEmptyState() {
-            galleryContainer.innerHTML = `<div class="empty-state" style="grid-column: 1/-1;"><h3>📭 No files found</h3><p>There are no files matching your criteria in this folder.</p></div>`;
-        }
-
-        function initializeLazyLoading(elements) {
-            const observer = new IntersectionObserver((entries, obs) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        const el = entry.target;
-                        if (el.dataset.src) {
-                            el.src = el.dataset.src;
-                            if (el.tagName === "VIDEO") el.load();
-                        }
-                        el.classList.remove("lazy");
-                        obs.unobserve(el);
-                    }
-                });
-            }, { rootMargin: '50px' });
-            elements.forEach(el => observer.observe(el));
-        }
-
-        function createFolder() {
-            const folderName = prompt("📁 Enter a name for the new folder (it will be created inside the current folder):");
-            if (folderName && folderName.trim()) {
-                fetch('/galleryout/create_folder', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ folder_name: folderName.trim(), parent_key: currentFolderKey })
-                }).then(handleGenericResponse).catch(handleError);
-            }
-        }
-
-        function renameFolder(event, folderKey, oldName) {
-            event.stopPropagation();
-            const newName = prompt("✏️ Enter the new name for the folder:", oldName);
-            if (newName && newName.trim() && newName.trim() !== oldName) {
-                fetch(`/galleryout/rename_folder/${folderKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ new_name: newName.trim() })
-                }).then(handleGenericResponse).catch(handleError);
-            }
-        }
-
-        function deleteFolder(event, folderKey, folderName) {
-            event.stopPropagation();
-            if (confirm(`🗑️ Are you sure you want to delete the folder "${folderName}" and all its contents?\n\nThis action cannot be undone.`)) {
-                fetch(`/galleryout/delete_folder/${folderKey}`, { method: 'POST' }).then(handleGenericResponse).catch(handleError);
-            }
-        }
-
-        function handleMainTreeToggle(event) {
-            const target = event.target;
-            const isMobile = window.innerWidth <= 1024;
-
-            if (target.classList.contains('toggle-btn') && !target.classList.contains('empty')) {
-                event.stopPropagation();
-                target.closest('li').classList.toggle('collapsed');
-                return;
-            }
-
-            if (target.classList.contains('folder-link') && target.classList.contains('navigation-link')) {
-                event.stopPropagation();
-                const folderLi = target.closest('li');
-                const folderUrl = target.dataset.folderUrl;
-                
-                if (isMobile) {
-                    sessionStorage.setItem('galleryMobileNav', 'true');
-                    window.location.href = folderUrl;
-                } else {
-                    if (!folderLi.classList.contains('no-children')) {
-                        folderLi.classList.toggle('collapsed');
-                    }
-                    if (event.detail === 2) {
-                        window.location.href = folderUrl;
-                    }
-                }
-                return;
-            }
-        }
-
-        function populateAndShowDropPanel() {
-            const dropZoneFolders = document.getElementById('drop-zone-folders');
-            let treeHtml = `<ul class="folder-tree">${renderMoveTree('_root_', foldersData)}</ul>`;
-            dropZoneFolders.innerHTML = treeHtml;
-            document.getElementById('drag-drop-overlay').classList.add('visible');
-            document.getElementById('drop-zone-panel').classList.add('visible');
-        }
-
-        function renderMoveTree(folderKey, allFolders) {
-            const folder = allFolders[folderKey];
-            if (!folder) return '';
-            const hasChildren = folder.children && folder.children.length > 0;
-            let html = `<li data-folder-key="${folderKey}" class="collapsed ${!hasChildren ? 'no-children' : ''}">
-                <div class="drop-zone-folder-item">
-                    <span class="toggle-btn ${!hasChildren ? 'empty' : ''}" onclick="event.stopPropagation(); this.closest('li').classList.toggle('collapsed');"></span>
-                    <span class="folder-link" onclick="event.stopPropagation(); this.closest('li').classList.toggle('collapsed');">📁 ${folder.display_name}</span>
-                    <button class="move-here-btn" style="margin-left:auto; padding: 2px 8px; font-size: 14px;" onclick="confirmMoveToFolder('${folderKey}')" ${folderKey === currentFolderKey ? 'disabled' : ''}>➜</button>
-                </div>`;
-            if (hasChildren) {
-                html += `<ul>${folder.children.map(key => renderMoveTree(key, allFolders)).join('')}</ul>`;
-            }
-            html += `</li>`;
-            return html;
-        }
-
-        function confirmMoveToFolder(folderKey) {
-            if (!selectedFiles || selectedFiles.size === 0) { showNotification('No files selected.', 'warning'); return; }
-            performBatchAction('/galleryout/move_batch', { file_ids: [...selectedFiles], destination_folder: folderKey });
-            hideDropZone();
-        }
-
-        function hideDropZone() {
-            document.getElementById('drag-drop-overlay').classList.remove('visible');
-            document.getElementById('drop-zone-panel').classList.remove('visible');
-        }
-
-        function dragStart(event, fileId) {
-            event.stopPropagation();
-            if (!selectedFiles.has(fileId)) {
-                deselectAll();
-                selectedFiles.add(fileId);
-                updateSelectionUI();
-            }
-            const dragImage = document.createElement('div');
-            dragImage.style.cssText = `position: absolute; top: -100px; background: var(--primary-color); color: white; padding: 8px 16px; border-radius: 8px; font-weight: 600;`;
-            dragImage.textContent = `📦 ${selectedFiles.size} file${selectedFiles.size !== 1 ? 's' : ''}`;
-            document.body.appendChild(dragImage);
-            event.dataTransfer.setDragImage(dragImage, 0, 0);
-            setTimeout(() => document.body.removeChild(dragImage), 0);
-            event.dataTransfer.setData('text/plain', [...selectedFiles].join(','));
-            populateAndShowDropPanel();
-        }
-
-        function toggleSelection(event, fileId, item) {
-            event.stopPropagation();
-            const isShift = event.shiftKey;
-            if (isShift && lastSelectedItem) {
-                const lastIndex = galleryItems.findIndex(i => i.dataset.fileId === lastSelectedItem.dataset.fileId);
-                const currentIndex = galleryItems.findIndex(i => i.dataset.fileId === fileId);
-                const [start, end] = [lastIndex, currentIndex].sort((a,b) => a - b);
-                for (let i = start; i <= end; i++) {
-                    selectedFiles.add(galleryItems[i].dataset.fileId);
-                }
-            } else {
-                selectedFiles.has(fileId) ? selectedFiles.delete(fileId) : selectedFiles.add(fileId);
-                lastSelectedItem = item;
-            }
-            updateSelectionUI();
-        }
-        
-        function updateSelectionUI() {
-            galleryItems.forEach(item => {
-                item.classList.toggle('selected', selectedFiles.has(item.dataset.fileId));
-            });
-            const count = selectedFiles.size;
-            selectionCounter.textContent = `📊 ${count} file${count !== 1 ? 's' : ''} selected`;
-            selectionBar.classList.toggle('visible', count > 0);
-        }
-
-        function selectAll() {
-            galleryItems.forEach(item => selectedFiles.add(item.dataset.fileId));
-            lastSelectedItem = galleryItems.length > 0 ? galleryItems[galleryItems.length - 1] : null;
-            updateSelectionUI();
-        }
-
-        function deselectAll() {
-            selectedFiles.clear();
-            lastSelectedItem = null;
-            updateSelectionUI();
-        }
-
-        function toggleFavorite(event, fileId, element) {
-            event.stopPropagation();
-            const originalContent = element.innerHTML;
-            element.innerHTML = '⏳'; element.disabled = true;
-            fetch(`/galleryout/toggle_favorite/${fileId}`, { method: 'POST' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        element.classList.toggle('favorited', data.is_favorite);
-                        element.innerHTML = data.is_favorite ? '⭐' : '☆';
-                        showNotification(data.is_favorite ? 'Added to favorites!' : 'Removed from favorites!', 'success');
-                    } else {
-                        element.innerHTML = originalContent; showNotification('Error toggling favorite', 'error');
-                    }
-                })
-                .catch(error => { element.innerHTML = originalContent; handleError(error); })
-                .finally(() => element.disabled = false);
-        }
-
-        function deleteFile(event, fileId, element) {
-            event.stopPropagation();
-            if (!confirm('🗑️ Are you sure you want to delete this file? This cannot be undone.')) return;
-            const item = element.closest('.gallery-item');
-            element.disabled = true;
-            fetch(`/galleryout/delete/${fileId}`, { method: 'POST' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        item.style.transition = 'all 0.4s ease';
-                        item.style.opacity = '0'; item.style.transform = 'scale(0.8)';
-                        showNotification('File deleted!', 'success');
-                        setTimeout(() => {
-                            item.remove();
-                            galleryItems = galleryItems.filter(gi => gi !== item);
-                            selectedFiles.delete(fileId);
-                            updateSelectionUI(); currentItemCount--; updateLoadMoreVisibility();
-                        }, 400);
-                    } else {
-                        showNotification(`Error: ${data.message || 'Deletion failed'}`, 'error');
-                        element.disabled = false;
-                    }
-                })
-                .catch(error => { handleError(error); element.disabled = false; });
-        }
-
+        let currentSort = { nav: { key: 'name', dir: 'asc' }, move: { key: 'name', dir: 'asc' } };
+        let currentSearch = { nav: '', move: '' };
+        function showNotification(message, type = 'info') { const container = document.getElementById('notification-container'); if (!container) return; const notification = document.createElement('div'); notification.className = `notification ${type}`; notification.textContent = message; container.appendChild(notification); setTimeout(() => { notification.classList.add('show'); }, 10); setTimeout(() => { notification.classList.remove('show'); notification.addEventListener('transitionend', () => notification.remove()); }, 3000); }
+        function handleError(error) { console.error('API Error:', error); showNotification(error.message || 'An unexpected network error occurred.', 'error'); }
+        function handleGenericResponse(response) { return response.json().then(data => { if (!response.ok) { throw new Error(data.message || `HTTP error! status: ${response.status}`); } if (data.status === 'success' || data.status === 'partial_success') { showNotification(data.message || 'Action completed successfully!', 'success'); setTimeout(() => window.location.reload(), 1200); } else { throw new Error(data.message || 'An unspecified error occurred.'); } }).catch(handleError); }
+        function sortChildren(folder, sortKey, direction) { if (!folder.children || folder.children.length === 0) return; const dirMultiplier = direction === 'asc' ? 1 : -1; folder.children.sort((keyA, keyB) => { const folderA = foldersData[keyA]; const folderB = foldersData[keyB]; if (!folderA || !folderB) return 0; let comparison = 0; if (sortKey === 'mtime') { comparison = (folderA.mtime || 0) - (folderB.mtime || 0); } else { const nameA = folderA.display_name || ''; const nameB = folderB.display_name || ''; comparison = nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' }); } return comparison * dirMultiplier; }); folder.children.forEach(childKey => sortChildren(foldersData[childKey], sortKey, direction)); }
+        function buildFolderTreeHTML(folderKey, isMovePanel = false) { const folder = foldersData[folderKey]; if (!folder) return ''; const hasChildren = folder.children && folder.children.length > 0; const isCollapsed = !ancestorKeys.includes(folderKey) && folderKey !== '_root_'; const isActive = !isMovePanel && folderKey === currentFolderKey; let childrenHTML = ''; if (hasChildren) { childrenHTML = folder.children.map(childKey => buildFolderTreeHTML(childKey, isMovePanel)).join(''); } const folderDisplayName = folder.display_name; const folderIcon = '📁'; let itemHTML; if (isMovePanel) { itemHTML = ` <div class="folder-item"> <span class="toggle-btn ${!hasChildren ? 'empty' : ''}"></span> <span class="folder-link" title="${folderDisplayName}">${folderIcon} ${folderDisplayName}</span> <button class="move-here-btn" data-folder-key="${folderKey}" title="Move here" ${folderKey === currentFolderKey ? 'disabled' : ''}>➜</button> </div>`; } else { itemHTML = ` <div class="folder-item ${isActive ? 'active' : ''}"> <span class="toggle-btn ${!hasChildren ? 'empty' : ''}"></span> <span class="folder-link navigation-link" data-folder-url="/galleryout/view/${folderKey}" title="${folderDisplayName}">${folderIcon} ${folderDisplayName}</span> ${ (folderKey !== '_root_' && !protectedFolderKeys.includes(folderKey)) ? `<div class="folder-actions"> <button class="folder-action-btn" title="Rename" data-action="rename" data-name="${folderDisplayName}">✏️</button> <button class="folder-action-btn" title="Delete" data-action="delete" data-name="${folderDisplayName}">🗑️</button> </div>` : '' } </div>`; } return `<li data-folder-key="${folderKey}" data-folder-name="${folderDisplayName.toLowerCase()}" class="${isCollapsed ? 'collapsed' : ''} ${!hasChildren ? 'no-children' : ''}">${itemHTML}${hasChildren ? `<ul>${childrenHTML}</ul>` : ''}</li>`; }
+        function renderAllTrees() { Object.values(foldersData).forEach(folder => sortChildren(folder, currentSort.nav.key, currentSort.nav.dir)); document.getElementById('folder-tree-nav').innerHTML = buildFolderTreeHTML('_root_', false); filterTree('folder-tree-nav', currentSearch.nav); Object.values(foldersData).forEach(folder => sortChildren(folder, currentSort.move.key, currentSort.move.dir)); document.getElementById('move-folder-tree').innerHTML = buildFolderTreeHTML('_root_', true); filterTree('move-folder-tree', currentSearch.move); }
+        function filterTree(treeId, searchTerm) { const term = searchTerm.toLowerCase().trim(); const tree = document.getElementById(treeId); if (!tree) return; const allItems = Array.from(tree.getElementsByTagName('li')); if (!term) { allItems.forEach(li => li.classList.remove('is-hidden')); return; } allItems.forEach(li => li.classList.add('is-hidden')); allItems.forEach(li => { if (li.dataset.folderName.includes(term)) { li.classList.remove('is-hidden'); let parent = li.parentElement.closest('li'); while (parent) { parent.classList.remove('is-hidden'); parent.classList.remove('collapsed'); parent = parent.parentElement.closest('li'); } } }); }
+        function setupFolderControls(navId, treeId) { document.getElementById(`folder-search-${navId}`).addEventListener('input', (e) => { currentSearch[navId] = e.target.value; filterTree(treeId, currentSearch[navId]); }); const sortContainer = document.getElementById(`folder-sort-${navId}`); sortContainer.addEventListener('click', (e) => { const button = e.target.closest('button'); if (!button) return; const newSortKey = button.dataset.sort; if (currentSort[navId].key === newSortKey) { currentSort[navId].dir = currentSort[navId].dir === 'asc' ? 'desc' : 'asc'; } else { currentSort[navId].key = newSortKey; currentSort[navId].dir = newSortKey === 'name' ? 'asc' : 'desc'; } updateSortButtonsUI(navId); renderAllTrees(); }); updateSortButtonsUI(navId); }
+        function updateSortButtonsUI(navId) { const sortContainer = document.getElementById(`folder-sort-${navId}`); sortContainer.querySelectorAll('button').forEach(btn => { const sortType = btn.dataset.sort; let text = sortType === 'name' ? 'A-Z' : '🗓️'; btn.classList.remove('active'); if (sortType === currentSort[navId].key) { btn.classList.add('active'); const arrow = currentSort[navId].dir === 'asc' ? '↑' : '↓'; text += ` ${arrow}`; } btn.innerHTML = text; }); }
+        function setupSidebarExpansion() { const btn = document.getElementById('sidebar-expand-btn'); const textEl = document.getElementById('sidebar-expand-text'); btn.addEventListener('click', () => { document.body.classList.toggle('sidebar-expanded'); if (document.body.classList.contains('sidebar-expanded')) { btn.querySelector('span:first-child').innerHTML = '⬅️'; textEl.textContent = 'Collapse'; btn.title = 'Collapse Sidebar'; } else { btn.querySelector('span:first-child').innerHTML = '↔️'; textEl.textContent = 'Expand'; btn.title = 'Expand Sidebar'; } }); }
+        function startSyncProcess(isManualRefresh = false) { const syncOverlay = document.getElementById('sync-overlay'); const syncMessage = document.getElementById('sync-message'); const syncProgressFill = document.getElementById('sync-progress-fill'); const eventSource = new EventSource(`/galleryout/sync_status/${currentFolderKey}`); let hasChanges = false; if (isManualRefresh) { syncOverlay.style.display = 'flex'; syncMessage.textContent = 'Checking for changes...'; syncProgressFill.style.width = '0%'; syncProgressFill.style.backgroundColor = 'var(--primary-color)'; } const cleanupAndClose = (shouldReload = false) => { eventSource.close(); if (shouldReload) { setTimeout(() => window.location.reload(), 1200); } else { setTimeout(() => { syncOverlay.style.display = 'none'; }, isManualRefresh ? 1200 : 0); } }; eventSource.onmessage = function(event) { try { const data = JSON.parse(event.data); if (!hasChanges && data.status !== 'no_changes') { syncOverlay.style.display = 'flex'; hasChanges = true; } if (syncOverlay.style.display === 'flex') { syncMessage.textContent = data.message; if (data.total > 0) { syncProgressFill.style.width = `${(data.current / data.total) * 100}%`; } } if (data.status === 'no_changes') { if (isManualRefresh) { syncProgressFill.style.width = '100%'; showNotification("Folder is up to date.", "info"); } cleanupAndClose(false); } else if (data.status === 'reloading') { cleanupAndClose(true); } else if (data.error) { syncProgressFill.style.backgroundColor = 'var(--danger-color)'; cleanupAndClose(false); } } catch(e) { console.error("Error parsing SSE data:", e); cleanupAndClose(false); } }; eventSource.onerror = function() { eventSource.close(); }; }
+        function appendFiles(files) { if (!files || files.length === 0) { if (currentItemCount === 0) showEmptyState(); updateLoadMoreVisibility(); return; } const fragment = document.createDocumentFragment(); const newLazyElements = []; files.forEach(file => { allFilesData.push(file); const item = createGalleryItem(file); fragment.appendChild(item); galleryItems.push(item); const lazyEl = item.querySelector('.lazy'); if (lazyEl) newLazyElements.push(lazyEl); }); galleryContainer.appendChild(fragment); initializeLazyLoading(newLazyElements); currentItemCount += files.length; updateLoadMoreVisibility(); }
+        function createGalleryItem(file) { const item = document.createElement('div'); item.className = 'gallery-item'; item.dataset.fileId = file.id; item.dataset.fileType = file.type; item.setAttribute('draggable', 'true'); item.addEventListener('dragstart', (event) => dragStart(event, file.id)); let mediaHTML = ''; if (file.type === 'audio') { mediaHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:4rem;color:#1ed760;">🎵</div>`; } else if (['image', 'animated_image'].includes(file.type)) { mediaHTML = `<img class="lazy" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E" data-src="/galleryout/thumbnail/${file.id}" alt="${file.name}" loading="lazy">`; } else if (file.type === 'video') { mediaHTML = `<video autoplay muted loop playsinline class="lazy" data-src="/galleryout/file/${file.id}" poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E"></video>`; } else { mediaHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:3rem;color:var(--text-muted);">📄</div>`; } const summaryButtonHTML = file.has_workflow ? `<button title="Node Summary" onclick="showNodeSummary(event, '${file.id}')">📝</button>` : ''; let metadataHTML = ''; if (file.dimensions || file.mtime) { const date = new Date(file.mtime * 1000); const formattedDate = date.toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }); const dimensionsPart = file.dimensions ? `<span>📐 ${file.dimensions}</span>` : ''; const datePart = file.mtime ? `<span>📅 ${formattedDate}</span>` : ''; metadataHTML = `<div class="file-metadata">${dimensionsPart}${datePart}</div>`; } item.innerHTML = `<div class="selection-checkmark" onclick="toggleSelection(event, '${file.id}', this.closest('.gallery-item'))">✓</div><div class="thumbnail-link" onclick="openLightbox(event, '${file.id}'); event.stopPropagation();" draggable="false"><div class="thumbnail-wrapper">${mediaHTML}${file.has_workflow ? `<a href="/galleryout/workflow/${file.id}" class="workflow-badge" onclick="event.stopPropagation()">⚙️ Workflow</a>` : ''}${file.duration ? `<span class="duration-overlay">⏱️ ${file.duration}</span>` : ''}</div></div><div class="item-info"><div><p title="${file.name}"><strong>${file.name}</strong></p>${metadataHTML}</div><div class="item-actions">${summaryButtonHTML}<button class="favorite-btn ${file.is_favorite ? 'favorited' : ''}" title="Favorite" onclick="toggleFavorite(event, '${file.id}', this)">${file.is_favorite ? '⭐' : '☆'}</button><a href="/galleryout/download/${file.id}" onclick="event.stopPropagation()" title="Download">💾</a><button class="delete-btn" onclick="deleteFile(event, '${file.id}', this)">🗑️</button></div></div>`; return item; }
+        function updateLoadMoreVisibility() { const loadMoreContainer = document.getElementById('load-more-container'); if (!loadMoreContainer) return; const shouldHide = currentItemCount >= totalFiles || totalFiles === 0; loadMoreContainer.style.display = shouldHide ? 'none' : 'block'; }
+        function showEmptyState() { galleryContainer.innerHTML = `<div class="empty-state" style="grid-column: 1/-1;"><h3>📭 No files found</h3><p>There are no files matching your criteria in this folder.</p></div>`; }
+        function initializeLazyLoading(elements) { const observer = new IntersectionObserver((entries, obs) => { entries.forEach(entry => { if (entry.isIntersecting) { const el = entry.target; if (el.dataset.src) { el.src = el.dataset.src; if (el.tagName === "VIDEO") el.load(); } el.classList.remove("lazy"); obs.unobserve(el); } }); }, { rootMargin: '50px' }); elements.forEach(el => observer.observe(el)); }
+        function createFolder() { const folderName = prompt("📁 Enter a name for the new folder:"); if (folderName && folderName.trim()) { fetch('/galleryout/create_folder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder_name: folderName.trim(), parent_key: currentFolderKey }) }).then(handleGenericResponse).catch(handleError); } }
+        function renameFolder(event, folderKey, oldName) { event.stopPropagation(); const newName = prompt("✏️ Enter the new name for the folder:", oldName); if (newName && newName.trim() && newName.trim() !== oldName) { fetch(`/galleryout/rename_folder/${folderKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ new_name: newName.trim() }) }).then(handleGenericResponse).catch(handleError); } }
+        function deleteFolder(event, folderKey, folderName) { event.stopPropagation(); if (confirm(`🗑️ Delete the folder "${folderName}" and all its contents? This cannot be undone.`)) { fetch(`/galleryout/delete_folder/${folderKey}`, { method: 'POST' }).then(handleGenericResponse).catch(handleError); } }
+        function populateAndShowDropPanel() { document.getElementById('drag-drop-overlay').classList.add('visible'); document.getElementById('drop-zone-panel').classList.add('visible'); renderAllTrees(); }
+        function confirmMoveToFolder(folderKey) { if (!selectedFiles || selectedFiles.size === 0) { showNotification('No files selected.', 'warning'); return; } performBatchAction('/galleryout/move_batch', { file_ids: [...selectedFiles], destination_folder: folderKey }); hideDropZone(); }
+        function hideDropZone() { document.getElementById('drag-drop-overlay').classList.remove('visible'); document.getElementById('drop-zone-panel').classList.remove('visible'); }
+        function dragStart(event, fileId) { event.stopPropagation(); if (!selectedFiles.has(fileId)) { deselectAll(); selectedFiles.add(fileId); updateSelectionUI(); } const dragImage = document.createElement('div'); dragImage.style.cssText = `position:absolute;top:-100px;background:var(--primary-color);color:white;padding:8px 16px;border-radius:8px;font-weight:600;`; dragImage.textContent = `📦 ${selectedFiles.size} file${selectedFiles.size !== 1 ? 's' : ''}`; document.body.appendChild(dragImage); event.dataTransfer.setDragImage(dragImage, 0, 0); setTimeout(() => document.body.removeChild(dragImage), 0); event.dataTransfer.setData('text/plain', [...selectedFiles].join(',')); populateAndShowDropPanel(); }
+        function toggleSelection(event, fileId, item) { event.stopPropagation(); const isShift = event.shiftKey; if (isShift && lastSelectedItem) { const lastIndex = galleryItems.findIndex(i => i.dataset.fileId === lastSelectedItem.dataset.fileId); const currentIndex = galleryItems.findIndex(i => i.dataset.fileId === fileId); const [start, end] = [lastIndex, currentIndex].sort((a,b) => a - b); for (let i = start; i <= end; i++) { selectedFiles.add(galleryItems[i].dataset.fileId); } } else { selectedFiles.has(fileId) ? selectedFiles.delete(fileId) : selectedFiles.add(fileId); lastSelectedItem = item; } updateSelectionUI(); }
+        function updateSelectionUI() { galleryItems.forEach(item => { item.classList.toggle('selected', selectedFiles.has(item.dataset.fileId)); }); const count = selectedFiles.size; selectionCounter.textContent = `📊 ${count} file${count !== 1 ? 's' : ''} selected`; selectionBar.classList.toggle('visible', count > 0); }
+        function selectAll() { galleryItems.forEach(item => selectedFiles.add(item.dataset.fileId)); lastSelectedItem = galleryItems.length > 0 ? galleryItems[galleryItems.length - 1] : null; updateSelectionUI(); }
+        function deselectAll() { selectedFiles.clear(); lastSelectedItem = null; updateSelectionUI(); }
+        function toggleFavorite(event, fileId, element) { event.stopPropagation(); const originalContent = element.innerHTML; element.innerHTML = '⏳'; element.disabled = true; fetch(`/galleryout/toggle_favorite/${fileId}`, { method: 'POST' }).then(res => res.json()).then(data => { if (data.status === 'success') { element.classList.toggle('favorited', data.is_favorite); element.innerHTML = data.is_favorite ? '⭐' : '☆'; showNotification(data.is_favorite ? 'Added to favorites!' : 'Removed from favorites!', 'success'); } else { element.innerHTML = originalContent; showNotification('Error toggling favorite', 'error'); } }).catch(error => { element.innerHTML = originalContent; handleError(error); }).finally(() => element.disabled = false); }
+        function deleteFile(event, fileId, element) { event.stopPropagation(); if (!confirm('🗑️ Delete this file? This cannot be undone.')) return; const item = element.closest('.gallery-item'); element.disabled = true; fetch(`/galleryout/delete/${fileId}`, { method: 'POST' }).then(res => res.json()).then(data => { if (data.status === 'success') { item.style.transition = 'all 0.4s ease'; item.style.opacity = '0'; item.style.transform = 'scale(0.8)'; showNotification('File deleted!', 'success'); setTimeout(() => { item.remove(); galleryItems = galleryItems.filter(gi => gi !== item); allFilesData = allFilesData.filter(f => f.id !== fileId); selectedFiles.delete(fileId); updateSelectionUI(); currentItemCount--; updateLoadMoreVisibility(); }, 400); } else { showNotification(`Error: ${data.message || 'Deletion failed'}`, 'error'); element.disabled = false; } }).catch(error => { handleError(error); element.disabled = false; }); }
         function moveSelected() { if (selectedFiles.size > 0) populateAndShowDropPanel(); }
-        function deleteSelected() {
-            const count = selectedFiles.size;
-            if (count > 0 && confirm(`🗑️ Delete ${count} files? This cannot be undone.`)) {
-                performBatchAction('/galleryout/delete_batch', { file_ids: [...selectedFiles] });
-            }
-        }
-        function favoriteSelected(status) {
-            if (selectedFiles.size === 0) return;
-            performBatchAction('/galleryout/favorite_batch', { file_ids: [...selectedFiles], status: status });
-        }
-        function performBatchAction(url, body) {
-            fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            }).then(handleGenericResponse).catch(handleError);
-        }
-
-        const lightboxOverlay = document.getElementById('lightbox-overlay');
-        const lightboxMedia = document.getElementById('lightbox-media');
-        const lightboxTitle = document.getElementById('lightbox-title');
-        const lightboxDownload = document.getElementById('lightbox-download');
-        const lightboxWorkflow = document.getElementById('lightbox-workflow');
-        const lightboxNewTab = document.getElementById('lightbox-new-tab');
-        let currentLightboxIndex = -1;
-        let currentZoom = 1;
-
-        function openLightbox(event, fileId) {
-            if (event.target.closest('a, button')) return;
-            event.stopPropagation();
-            currentLightboxIndex = galleryItems.findIndex(item => item.dataset.fileId === fileId);
-            if (currentLightboxIndex === -1) return;
-            document.body.classList.add('lightbox-open');
-            lightboxOverlay.classList.add('visible');
-            showItemAtIndex(currentLightboxIndex);
-        }
-
-        function closeLightbox() {
-            const mediaElement = lightboxMedia.querySelector('video, audio');
-            if (mediaElement) mediaElement.pause();
-            document.body.classList.remove('lightbox-open');
-            lightboxOverlay.classList.remove('visible');
-            lightboxMedia.innerHTML = '';
-            currentLightboxIndex = -1;
-        }
-
-        function showItemAtIndex(index) {
-            currentZoom = 1;
-            const item = galleryItems[index];
-            if (!item) return;
-            const file = allFilesData.find(f => f.id === item.dataset.fileId);
-            if (!file) return;
-            lightboxMedia.innerHTML = '';
-            lightboxTitle.textContent = file.name;
-            if (file.type === 'audio') {
-                const audio = document.createElement('audio');
-                audio.src = `/galleryout/file/${file.id}`;
-                audio.controls = true; audio.autoplay = true;
-                lightboxMedia.appendChild(audio);
-            } else if (['image', 'animated_image'].includes(file.type)) {
-                const img = document.createElement('img');
-                img.src = `/galleryout/file/${file.id}`;
-                img.alt = file.name;
-                img.style.transform = 'scale(1)';
-                lightboxMedia.appendChild(img);
-            } else if (file.type === 'video') {
-                const video = document.createElement('video');
-                video.src = `/galleryout/file/${file.id}`;
-                video.controls = true; video.autoplay = true; video.loop = true;
-                lightboxMedia.appendChild(video);
-            } else {
-                lightboxMedia.innerHTML = `<div style="color: white; font-size: 1.2rem; text-align: center;">📄<br>Preview not available</div>`;
-            }
-            lightboxDownload.href = `/galleryout/download/${file.id}`;
-            lightboxNewTab.href = `/galleryout/file/${file.id}`;
-            const summaryBtn = document.getElementById('lightbox-summary-btn');
-            if (file.has_workflow) {
-                lightboxWorkflow.href = `/galleryout/workflow/${file.id}`;
-                lightboxWorkflow.style.display = 'flex';
-                summaryBtn.style.display = 'flex';
-                summaryBtn.onclick = (event) => {
-                    event.stopPropagation();
-                    showNodeSummary(event, file.id);
-                };
-            } else {
-                lightboxWorkflow.style.display = 'none';
-                summaryBtn.style.display = 'none';
-                summaryBtn.onclick = null;
-            }
-        }
-
-        function navigateLightbox(direction) {
-            if (galleryItems.length === 0) return;
-            currentLightboxIndex = (currentLightboxIndex + direction + galleryItems.length) % galleryItems.length;
-            showItemAtIndex(currentLightboxIndex);
-        }
-
-        function zoomLightbox(amount) {
-            const img = lightboxMedia.querySelector('img');
-            if (!img) return;
-            currentZoom = Math.max(0.5, Math.min(3, currentZoom + amount));
-            img.style.transform = `scale(${currentZoom})`;
-        }
-
-        const summaryOverlay = document.getElementById('node-summary-overlay');
-        const summaryContent = document.getElementById('node-summary-content');
-
-        function escapeHTML(value) {
-            if (value === null || typeof value === 'undefined') { return '<em>null</em>'; }
-            if (typeof value === 'object') {
-                try {
-                    const jsonString = JSON.stringify(value, null, 2); 
-                    return jsonString.replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[m]);
-                } catch (e) { return '[Unserializable Object]'; }
-            }
-            return value.toString().replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;','&quot;': '&quot;', "'": '&#39;'})[m]);
-        }
-
-        async function showNodeSummary(event, fileId) {
-            event.stopPropagation();
-            summaryContent.innerHTML = '<div class="loader" style="margin: 2rem auto;"></div>';
-            document.body.classList.add('modal-open');
-            summaryOverlay.classList.add('visible');
-            try {
-                const response = await fetch(`/galleryout/node_summary/${fileId}`);
-                const data = await response.json();
-                if (data.status === 'success' && data.summary) {
-                    if (data.summary.length > 0) {
-                        let contentHTML = '';
-                        data.summary.forEach(node => {
-                            let paramsHTML = '<ul class="summary-node-params">';
-                            if (node.params && node.params.length > 0) {
-                                node.params.forEach(p => {
-                                    paramsHTML += `<li><strong>${escapeHTML(p.name)}:</strong> <code>${escapeHTML(p.value)}</code></li>`;
-                                });
-                            } else { paramsHTML += `<li>No parameters</li>`; }
-                            paramsHTML += '</ul>';
-                            contentHTML += `<div class="summary-node-item"><div class="summary-node-header" style="background-color: ${node.color};">${escapeHTML(node.type)} <small>(ID: ${node.id})</small></div>${paramsHTML}</div>`;
-                        });
-                        summaryContent.innerHTML = contentHTML;
-                    } else { summaryContent.innerHTML = '<p>No active nodes found in this workflow.</p>'; }
-                } else { summaryContent.innerHTML = `<p style="color: var(--danger-color);">Error: ${data.message || 'Could not load summary.'}</p>`; }
-            } catch (error) {
-                handleError(error);
-                summaryContent.innerHTML = `<p style="color: var(--danger-color);">A network error occurred while fetching the summary.</p>`;
-            }
-        }
+        function deleteSelected() { const count = selectedFiles.size; if (count > 0 && confirm(`🗑️ Delete ${count} files? This cannot be undone.`)) { performBatchAction('/galleryout/delete_batch', { file_ids: [...selectedFiles] }); } }
+        function favoriteSelected(status) { if (selectedFiles.size === 0) return; performBatchAction('/galleryout/favorite_batch', { file_ids: [...selectedFiles], status: status }); }
+        function performBatchAction(url, body) { fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(handleGenericResponse).catch(handleError); }
+        const lightboxOverlay = document.getElementById('lightbox-overlay'); const lightboxMedia = document.getElementById('lightbox-media'); const lightboxTitle = document.getElementById('lightbox-title'); const lightboxDownload = document.getElementById('lightbox-download'); const lightboxWorkflow = document.getElementById('lightbox-workflow'); const lightboxNewTab = document.getElementById('lightbox-new-tab'); let currentLightboxIndex = -1; let currentLightboxFile = null; let currentZoom = 1;
+        function updateLightboxTitle() { if (!currentLightboxFile) return; const zoomPercentage = Math.round(currentZoom * 100); lightboxTitle.textContent = `${currentLightboxFile.name} (${zoomPercentage}%)`; }
+        function openLightbox(event, fileId) { if (event.target.closest('a, button')) return; event.stopPropagation(); currentLightboxIndex = galleryItems.findIndex(item => item.dataset.fileId === fileId); if (currentLightboxIndex === -1) return; currentZoom = 1; document.body.classList.add('lightbox-open'); lightboxOverlay.classList.add('visible'); showItemAtIndex(currentLightboxIndex); }
+        function closeLightbox() { const mediaElement = lightboxMedia.querySelector('video, audio'); if (mediaElement) mediaElement.pause(); document.body.classList.remove('lightbox-open'); lightboxOverlay.classList.remove('visible'); lightboxMedia.innerHTML = ''; currentLightboxIndex = -1; currentLightboxFile = null; }
+        function showItemAtIndex(index) { const item = galleryItems[index]; if (!item) return; const file = allFilesData.find(f => f.id === item.dataset.fileId); if (!file) return; currentLightboxFile = file; updateLightboxTitle(); lightboxMedia.innerHTML = ''; let mediaEl; if (file.type === 'audio') { mediaEl = document.createElement('audio'); mediaEl.src = `/galleryout/file/${file.id}`; mediaEl.controls = true; mediaEl.autoplay = true; } else if (['image', 'animated_image'].includes(file.type)) { mediaEl = document.createElement('img'); mediaEl.src = `/galleryout/file/${file.id}`; mediaEl.alt = file.name; } else if (file.type === 'video') { mediaEl = document.createElement('video'); mediaEl.src = `/galleryout/file/${file.id}`; mediaEl.controls = true; mediaEl.autoplay = true; mediaEl.loop = true; } if (mediaEl) { if (mediaEl.style) { mediaEl.style.transform = `scale(${currentZoom})`; } lightboxMedia.appendChild(mediaEl); } else { lightboxMedia.innerHTML = `<div style="color:white;font-size:1.2rem;text-align:center;">📄<br>Preview not available</div>`; } lightboxDownload.href = `/galleryout/download/${file.id}`; lightboxNewTab.href = `/galleryout/file/${file.id}`; const summaryBtn = document.getElementById('lightbox-summary-btn'); if (file.has_workflow) { lightboxWorkflow.href = `/galleryout/workflow/${file.id}`; lightboxWorkflow.style.display = 'flex'; summaryBtn.style.display = 'flex'; summaryBtn.onclick = (event) => { event.stopPropagation(); showNodeSummary(event, file.id); }; } else { lightboxWorkflow.style.display = 'none'; summaryBtn.style.display = 'none'; summaryBtn.onclick = null; } }
+        function navigateLightbox(direction) { if (galleryItems.length === 0) return; currentLightboxIndex = (currentLightboxIndex + direction + galleryItems.length) % galleryItems.length; showItemAtIndex(currentLightboxIndex); }
+        function zoomLightbox(amount) { const mediaEl = lightboxMedia.querySelector('img, video'); if (!mediaEl) return; currentZoom = Math.max(0.5, Math.min(3, currentZoom + amount)); mediaEl.style.transform = `scale(${currentZoom})`; updateLightboxTitle(); }
         
-        function closeNodeSummary() {
-            document.body.classList.remove('modal-open');
-            summaryOverlay.classList.remove('visible');
-            summaryContent.innerHTML = '';
-        }
+        // --- FIX: ROBUST LIGHTBOX DELETE ---
+        function deleteFromLightbox(noConfirm = false) {
+            if (currentLightboxIndex < 0 || currentLightboxIndex >= galleryItems.length) return;
+            
+            const itemToDelete = galleryItems[currentLightboxIndex];
+            const fileId = itemToDelete.dataset.fileId;
+            const deleteBtn = document.getElementById('lightbox-delete-btn');
 
-        const uploadOverlay = document.getElementById('upload-overlay');
-        const showUploadModalBtn = document.getElementById('show-upload-modal-btn');
-        const uploadCancelBtn = document.getElementById('upload-cancel-btn');
-        const uploadSubmitBtn = document.getElementById('upload-submit-btn');
-        const dropZone = document.getElementById('drop-zone');
-        const fileInput = document.getElementById('upload-file-input');
-        const fileBrowseBtn = document.getElementById('file-upload-btn');
-        const fileList = document.getElementById('file-list');
-        const uploadProgressContainer = document.getElementById('upload-progress-container');
-        const uploadProgressFill = document.getElementById('upload-progress-fill');
-        const uploadDestinationText = document.getElementById('upload-destination-text').querySelector('strong');
-        let filesToUpload = [];
+            const proceedWithDelete = () => {
+                deleteBtn.disabled = true; // Disable button immediately
 
-        function resetUploadModal() {
-            filesToUpload = [];
-            fileList.innerHTML = '';
-            uploadProgressContainer.style.display = 'none';
-            uploadProgressFill.style.width = '0%';
-            fileInput.value = '';
-            uploadSubmitBtn.disabled = false;
-        }
-
-        function showUploadModal() {
-            resetUploadModal();
-            uploadDestinationText.textContent = currentFolderInfo.display_name;
-            document.body.classList.add('modal-open');
-            uploadOverlay.classList.add('visible');
-        }
-
-        function closeUploadModal() {
-            document.body.classList.remove('modal-open');
-            uploadOverlay.classList.remove('visible');
-        }
-        
-        function handleFiles(files) {
-            filesToUpload = [...filesToUpload, ...Array.from(files)];
-            renderFileList();
-        }
-
-        function renderFileList() {
-            fileList.innerHTML = '';
-            filesToUpload.forEach(file => {
-                const li = document.createElement('li');
-                const sizeKB = (file.size / 1024).toFixed(1);
-                li.innerHTML = `<span>${file.name}</span> <span class="file-size">${sizeKB} KB</span>`;
-                fileList.appendChild(li);
-            });
-        }
-        
-        function performUpload() {
-            if (filesToUpload.length === 0) {
-                showNotification('Please select files to upload.', 'warning');
-                return;
-            }
-            const formData = new FormData();
-            formData.append('folder_key', currentFolderKey);
-            filesToUpload.forEach(file => { formData.append('files', file); });
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', '/galleryout/upload', true);
-            uploadProgressContainer.style.display = 'block';
-            uploadSubmitBtn.disabled = true;
-            uploadSubmitBtn.textContent = 'Uploading...';
-            xhr.upload.onprogress = function(event) {
-                if (event.lengthComputable) {
-                    const percentComplete = (event.loaded / event.total) * 100;
-                    uploadProgressFill.style.width = percentComplete + '%';
-                }
+                fetch(`/galleryout/delete/${fileId}`, { method: 'POST' })
+                    .then(res => res.json().then(data => ({ ok: res.ok, data })))
+                    .then(({ ok, data }) => {
+                        if (ok && data.status === 'success') {
+                            showNotification(data.message || 'File deleted!', 'success');
+                            
+                            itemToDelete.remove();
+                            galleryItems.splice(currentLightboxIndex, 1);
+                            allFilesData = allFilesData.filter(f => f.id !== fileId);
+                            currentItemCount--;
+                            
+                            if (galleryItems.length === 0) {
+                                closeLightbox();
+                                showEmptyState();
+                            } else {
+                                if (currentLightboxIndex >= galleryItems.length) {
+                                    currentLightboxIndex = galleryItems.length - 1;
+                                }
+                                showItemAtIndex(currentLightboxIndex);
+                            }
+                        } else {
+                            throw new Error(data.message || 'Deletion failed on the server.');
+                        }
+                    })
+                    .catch(handleError)
+                    .finally(() => {
+                        // Re-enable the button regardless of success or failure
+                        if (deleteBtn) {
+                            deleteBtn.disabled = false;
+                        }
+                    });
             };
-            xhr.onload = function() {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    const response = JSON.parse(xhr.responseText);
-                    showNotification(response.message || 'Upload successful!', 'success');
-                    setTimeout(() => window.location.reload(), 1000);
-                } else {
-                    try {
-                         const response = JSON.parse(xhr.responseText);
-                         showNotification(`Upload failed: ${response.message}`, 'error');
-                    } catch (e) { showNotification(`Upload failed with status: ${xhr.status}`, 'error'); }
-                    uploadSubmitBtn.disabled = false;
-                    uploadSubmitBtn.textContent = 'Upload';
-                }
-            };
-            xhr.onerror = function() {
-                showNotification('An error occurred during the upload.', 'error');
-                uploadSubmitBtn.disabled = false;
-                uploadSubmitBtn.textContent = 'Upload';
-            };
-            xhr.send(formData);
+            
+            if (noConfirm || confirm('🗑️ Are you sure you want to delete this file? This cannot be undone.')) {
+                proceedWithDelete();
+            }
         }
-        
+
+        const summaryOverlay = document.getElementById('node-summary-overlay'); const summaryContent = document.getElementById('node-summary-content');
+        function escapeHTML(value) { if (value === null || typeof value === 'undefined') { return '<em>null</em>'; } if (typeof value === 'object') { try { const jsonString = JSON.stringify(value, null, 2); return jsonString.replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'})[m]); } catch (e) { return '[Unserializable Object]'; } } return value.toString().replace(/[&<>"']/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;','&quot;': '&quot;', "'": '&#39;'})[m]); }
+        async function showNodeSummary(event, fileId) { event.stopPropagation(); summaryContent.innerHTML = '<div class="loader" style="margin:2rem auto;"></div>'; document.body.classList.add('modal-open'); summaryOverlay.classList.add('visible'); try { const response = await fetch(`/galleryout/node_summary/${fileId}`); const data = await response.json(); if (data.status === 'success' && data.summary) { if (data.summary.length > 0) { let contentHTML = ''; data.summary.forEach(node => { let paramsHTML = '<ul class="summary-node-params">'; if (node.params && node.params.length > 0) { node.params.forEach(p => { paramsHTML += `<li><strong>${escapeHTML(p.name)}:</strong> <code>${escapeHTML(p.value)}</code></li>`; }); } else { paramsHTML += `<li>No parameters</li>`; } paramsHTML += '</ul>'; contentHTML += `<div class="summary-node-item"><div class="summary-node-header" style="background-color:${node.color};">${escapeHTML(node.type)} <small>(ID: ${node.id})</small></div>${paramsHTML}</div>`; }); summaryContent.innerHTML = contentHTML; } else { summaryContent.innerHTML = '<p>No active nodes found in this workflow.</p>'; } } else { summaryContent.innerHTML = `<p style="color:var(--danger-color);">Error: ${data.message || 'Could not load summary.'}</p>`; } } catch (error) { handleError(error); summaryContent.innerHTML = `<p style="color:var(--danger-color);">A network error occurred.</p>`; } }
+        function closeNodeSummary() { document.body.classList.remove('modal-open'); summaryOverlay.classList.remove('visible'); summaryContent.innerHTML = ''; }
+        const uploadOverlay = document.getElementById('upload-overlay'); const showUploadModalBtn = document.getElementById('show-upload-modal-btn'); const uploadCancelBtn = document.getElementById('upload-cancel-btn'); const uploadSubmitBtn = document.getElementById('upload-submit-btn'); const dropZone = document.getElementById('drop-zone'); const fileInput = document.getElementById('upload-file-input'); const fileBrowseBtn = document.getElementById('file-upload-btn'); const fileList = document.getElementById('file-list'); const uploadProgressContainer = document.getElementById('upload-progress-container'); const uploadProgressFill = document.getElementById('upload-progress-fill'); const uploadDestinationText = document.getElementById('upload-destination-text').querySelector('strong'); let filesToUpload = [];
+        function resetUploadModal() { filesToUpload = []; fileList.innerHTML = ''; uploadProgressContainer.style.display = 'none'; uploadProgressFill.style.width = '0%'; fileInput.value = ''; uploadSubmitBtn.disabled = false; }
+        function showUploadModal() { resetUploadModal(); uploadDestinationText.textContent = currentFolderInfo.display_name; document.body.classList.add('modal-open'); uploadOverlay.classList.add('visible'); }
+        function closeUploadModal() { document.body.classList.remove('modal-open'); uploadOverlay.classList.remove('visible'); }
+        function handleFiles(files) { filesToUpload = [...filesToUpload, ...Array.from(files)]; renderFileList(); }
+        function renderFileList() { fileList.innerHTML = ''; filesToUpload.forEach(file => { const li = document.createElement('li'); const sizeKB = (file.size / 1024).toFixed(1); li.innerHTML = `<span>${file.name}</span> <span class="file-size">${sizeKB} KB</span>`; fileList.appendChild(li); }); }
+        function performUpload() { if (filesToUpload.length === 0) { showNotification('Please select files to upload.', 'warning'); return; } const formData = new FormData(); formData.append('folder_key', currentFolderKey); filesToUpload.forEach(file => { formData.append('files', file); }); const xhr = new XMLHttpRequest(); xhr.open('POST', '/galleryout/upload', true); uploadProgressContainer.style.display = 'block'; uploadSubmitBtn.disabled = true; uploadSubmitBtn.textContent = 'Uploading...'; xhr.upload.onprogress = function(event) { if (event.lengthComputable) { const percentComplete = (event.loaded / event.total) * 100; uploadProgressFill.style.width = percentComplete + '%'; } }; xhr.onload = function() { if (xhr.status >= 200 && xhr.status < 300) { const response = JSON.parse(xhr.responseText); showNotification(response.message || 'Upload successful!', 'success'); setTimeout(() => window.location.reload(), 1000); } else { try { const response = JSON.parse(xhr.responseText); showNotification(`Upload failed: ${response.message}`, 'error'); } catch (e) { showNotification(`Upload failed with status: ${xhr.status}`, 'error'); } uploadSubmitBtn.disabled = false; uploadSubmitBtn.textContent = 'Upload'; } }; xhr.onerror = function() { showNotification('An error occurred during the upload.', 'error'); uploadSubmitBtn.disabled = false; uploadSubmitBtn.textContent = 'Upload'; }; xhr.send(formData); }
+        function scrollToTop() { window.scrollTo({top: 0, behavior: 'smooth'}); }
         document.addEventListener('DOMContentLoaded', () => {
             loaderOverlay.style.opacity = '0';
             setTimeout(() => { loaderOverlay.style.display = 'none'; }, 400);
+            setupFolderControls('nav', 'folder-tree-nav');
+            setupFolderControls('move', 'move-folder-tree');
+            renderAllTrees(); 
+            setupSidebarExpansion();
             appendFiles(initialFiles);
             new TomSelect('#extension-select', { plugins: ['checkbox_options', 'clear_button'], placeholder: '📄 Select extensions...' });
             new TomSelect('#prefix-select', { plugins: ['checkbox_options', 'clear_button'], placeholder: '🏷️ Select prefixes...' });
             const sidebar = document.querySelector('.sidebar');
             const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
+            const sidebarToggleText = document.getElementById('sidebar-toggle-text');
             const galleryAnchor = document.getElementById('gallery-anchor');
             const isMobile = window.innerWidth <= 1024;
             if (sidebar && sidebarToggleBtn && isMobile) {
                 sidebar.classList.add('nav-collapsed');
-                sidebarToggleBtn.textContent = '☰ Show Folders';
+                sidebarToggleText.textContent = 'Show Folders';
                 sidebarToggleBtn.addEventListener('click', () => {
                     sidebar.classList.toggle('nav-collapsed');
-                    sidebarToggleBtn.textContent = sidebar.classList.contains('nav-collapsed') ? '☰ Show Folders' : '✕ Hide Folders';
+                    sidebarToggleText.textContent = sidebar.classList.contains('nav-collapsed') ? 'Show Folders' : 'Hide Folders';
                 });
             }
             if (isMobile && sessionStorage.getItem('galleryMobileNav') === 'true' && galleryAnchor) {
@@ -1077,15 +483,10 @@
             }
             const mobileFilterToggle = document.getElementById('mobile-filter-toggle');
             const filterFormGrid = document.getElementById('filter-form-grid');
-            if (mobileFilterToggle) {
-                mobileFilterToggle.addEventListener('click', () => {
-                    filterFormGrid.classList.toggle('visible');
-                    const isVisible = filterFormGrid.classList.contains('visible');
-                    mobileFilterToggle.textContent = isVisible ? '✕  Hide Filters' : '⚙️ Filters & Options';
-                });
-            }
-            document.getElementById('folder-tree-nav').addEventListener('click', handleMainTreeToggle);
-            document.getElementById('refresh-btn').addEventListener('click', () => window.location.reload());
+            if (mobileFilterToggle) { mobileFilterToggle.addEventListener('click', () => { filterFormGrid.classList.toggle('visible'); mobileFilterToggle.textContent = filterFormGrid.classList.contains('visible') ? '✕  Hide Filters' : '⚙️ Filters & Options'; }); }
+            document.getElementById('folder-tree-nav').addEventListener('click', (e) => { const link = e.target.closest('.navigation-link'); const toggle = e.target.closest('.toggle-btn'); const actionBtn = e.target.closest('.folder-action-btn'); if (toggle) { toggle.closest('li').classList.toggle('collapsed'); } else if (actionBtn) { const li = actionBtn.closest('li'); const key = li.dataset.folderKey; const name = actionBtn.dataset.name; if (actionBtn.dataset.action === 'rename') renameFolder(e, key, name); if (actionBtn.dataset.action === 'delete') deleteFolder(e, key, name); } else if (link) { window.location.href = link.dataset.folderUrl; } });
+            document.getElementById('move-folder-tree').addEventListener('click', (e) => { const toggle = e.target.closest('.toggle-btn'); const moveBtn = e.target.closest('.move-here-btn'); if (toggle) toggle.closest('li').classList.toggle('collapsed'); if (moveBtn) confirmMoveToFolder(moveBtn.dataset.folderKey); });
+            document.getElementById('refresh-btn').addEventListener('click', (e) => { e.preventDefault(); startSyncProcess(true); });
             document.getElementById('create-folder-btn').addEventListener('click', createFolder);
             document.getElementById('cancel-drop-btn').addEventListener('click', hideDropZone);
             document.getElementById('select-all-btn').addEventListener('click', selectAll);
@@ -1099,6 +500,8 @@
             document.getElementById('lightbox-next').addEventListener('click', () => navigateLightbox(1));
             document.getElementById('lightbox-zoom-in').addEventListener('click', () => zoomLightbox(0.2));
             document.getElementById('lightbox-zoom-out').addEventListener('click', () => zoomLightbox(-0.2));
+            document.getElementById('lightbox-delete-btn').addEventListener('click', () => deleteFromLightbox(false));
+            document.getElementById('lightbox-content').addEventListener('wheel', (event) => { if (lightboxOverlay.classList.contains('visible')) { event.preventDefault(); zoomLightbox(event.deltaY < 0 ? 0.1 : -0.1); } });
             document.getElementById('close-summary-btn').addEventListener('click', closeNodeSummary);
             summaryOverlay.addEventListener('click', (event) => { if (event.target === summaryOverlay) closeNodeSummary(); });
             showUploadModalBtn.addEventListener('click', showUploadModal);
@@ -1108,55 +511,14 @@
             fileInput.addEventListener('change', () => handleFiles(fileInput.files));
             dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
             dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-            dropZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                dropZone.classList.remove('dragover');
-                handleFiles(e.dataTransfer.files);
-            });
+            dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
             uploadSubmitBtn.addEventListener('click', performUpload);
             const loadMoreBtn = document.getElementById('load-more-btn');
-            if (loadMoreBtn) {
-                loadMoreBtn.addEventListener('click', async function() {
-                    this.disabled = true; this.innerHTML = '📂 Loading...';
-                    try {
-                        const response = await fetch(`/galleryout/load_more?offset=${currentItemCount}&folder_key=${currentFolderKey}`);
-                        const data = await response.json();
-                        if (data.files && data.files.length > 0) appendFiles(data.files);
-                        else {
-                            showNotification('There are no more files to load.', 'info');
-                            this.style.display = 'none';
-                        }
-                    } catch (error) { handleError(error); }
-                    if (currentItemCount < totalFiles) {
-                        this.disabled = false; this.innerHTML = '📂 Load More';
-                    }
-                });
-            }
-            document.addEventListener('keydown', (event) => {
-                if ((event.ctrlKey || event.metaKey) && event.key === 'a') {
-                    event.preventDefault(); selectAll();
-                }
-                if (event.key === 'Escape') {
-                    if (uploadOverlay.classList.contains('visible')) closeUploadModal();
-                    else if (summaryOverlay.classList.contains('visible')) closeNodeSummary();
-                    else if (lightboxOverlay.classList.contains('visible')) closeLightbox();
-                    else if (selectedFiles.size > 0) deselectAll();
-                    hideDropZone();
-                }
-                if (lightboxOverlay.classList.contains('visible')) {
-                    if (event.key === 'ArrowLeft') navigateLightbox(-1);
-                    if (event.key === 'ArrowRight') navigateLightbox(1);
-                }
-            });
-            window.onscroll = () => {
-                if (backToTopBtn) {
-                    backToTopBtn.style.display = (window.scrollY > 300) ? 'block' : 'none';
-                }
-            };
+            if (loadMoreBtn) { loadMoreBtn.addEventListener('click', async function() { this.disabled = true; this.innerHTML = '📂 Loading...'; try { const response = await fetch(`/galleryout/load_more?offset=${currentItemCount}&folder_key=${currentFolderKey}&${new URLSearchParams(new FormData(document.querySelector('.filter-bar form')))}`); const data = await response.json(); if (data.files && data.files.length > 0) appendFiles(data.files); else { showNotification('No more files to load.', 'info'); this.style.display = 'none'; } } catch (error) { handleError(error); } if (currentItemCount < totalFiles) { this.disabled = false; this.innerHTML = '📂 Load More'; } }); }
+            document.addEventListener('keydown', (event) => { if ((event.ctrlKey || event.metaKey) && event.key === 'a') { event.preventDefault(); selectAll(); } if (event.key === 'Escape') { if (uploadOverlay.classList.contains('visible')) closeUploadModal(); else if (summaryOverlay.classList.contains('visible')) closeNodeSummary(); else if (lightboxOverlay.classList.contains('visible')) closeLightbox(); else if (selectedFiles.size > 0) deselectAll(); hideDropZone(); } if (lightboxOverlay.classList.contains('visible')) { if (event.key === 'ArrowLeft') navigateLightbox(-1); if (event.key === 'ArrowRight') navigateLightbox(1); if (event.key === 'Delete') { event.preventDefault(); deleteFromLightbox(true); } } });
+            window.onscroll = () => { if (backToTopBtn) { backToTopBtn.style.display = (window.scrollY > 300) ? 'block' : 'none'; } };
+            startSyncProcess(false);
         });
-        function scrollToTop() {
-            window.scrollTo({top: 0, behavior: 'smooth'});
-        }
     </script>
 </body>
 </html>

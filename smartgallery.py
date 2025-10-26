@@ -1,8 +1,8 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025 — MIT License (free to use and modify)
 #
-# Version: 1.22 
-# Check the GitHub repository regularly for updates, bug fixes, and contributions.
+# Version: 1.30 - October 26, 2025
+# Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
 # GitHub: https://github.com/biagiomaf/smart-comfyui-gallery
@@ -45,6 +45,9 @@ BASE_INPUT_PATH = 'C:/sm/Data/Packages/ComfyUI/input'
 # This is required for extracting workflows from .mp4 files.  
 # NOTE: Having a full ffmpeg installation is highly recommended.
 FFPROBE_MANUAL_PATH = "C:/omgp10/ffmpeg2/bin/ffprobe.exe"
+# - Even on Windows, always use forward slashes ( / ) in paths, 
+#   not backslashes ( \ ), to ensure compatibility.
+
 
 # Port on which the gallery web server will run. 
 # Must be different from the ComfyUI port.  
@@ -399,13 +402,20 @@ def get_dynamic_folder_config(force_refresh=False):
     print("INFO: Refreshing folder configuration by scanning directory tree...")
 
     base_path_normalized = os.path.normpath(BASE_OUTPUT_PATH).replace('\\', '/')
+    
+    try:
+        root_mtime = os.path.getmtime(BASE_OUTPUT_PATH)
+    except OSError:
+        root_mtime = time.time()
+
     dynamic_config = {
         '_root_': {
             'display_name': 'Main',
             'path': base_path_normalized,
             'relative_path': '',
             'parent': None,
-            'children': []
+            'children': [],
+            'mtime': root_mtime 
         }
     }
 
@@ -416,9 +426,15 @@ def get_dynamic_folder_config(force_refresh=False):
             for dirname in dirnames:
                 full_path = os.path.normpath(os.path.join(dirpath, dirname)).replace('\\', '/')
                 relative_path = os.path.relpath(full_path, BASE_OUTPUT_PATH).replace('\\', '/')
+                try:
+                    mtime = os.path.getmtime(full_path)
+                except OSError:
+                    mtime = time.time()
+                
                 all_folders[relative_path] = {
                     'full_path': full_path,
-                    'display_name': dirname
+                    'display_name': dirname,
+                    'mtime': mtime
                 }
 
         sorted_paths = sorted(all_folders.keys(), key=lambda x: x.count('/'))
@@ -427,20 +443,8 @@ def get_dynamic_folder_config(force_refresh=False):
             folder_data = all_folders[rel_path]
             key = path_to_key(rel_path)
             parent_rel_path = os.path.dirname(rel_path).replace('\\', '/')
-            if parent_rel_path == '.' or parent_rel_path == '':
-                parent_key = '_root_'
-            else:
-                parent_key = path_to_key(parent_rel_path)
+            parent_key = '_root_' if parent_rel_path == '.' or parent_rel_path == '' else path_to_key(parent_rel_path)
 
-            if parent_key not in dynamic_config:
-                parent_display_name = os.path.basename(parent_rel_path)
-                dynamic_config[parent_key] = {
-                    'display_name': parent_display_name,
-                    'path': os.path.join(BASE_OUTPUT_PATH, parent_rel_path).replace('\\', '/'),
-                    'relative_path': parent_rel_path,
-                    'parent': '_root_' if os.path.dirname(parent_rel_path) == '' else path_to_key(os.path.dirname(parent_rel_path)),
-                    'children': []
-                }
             if parent_key in dynamic_config:
                 dynamic_config[parent_key]['children'].append(key)
 
@@ -449,10 +453,12 @@ def get_dynamic_folder_config(force_refresh=False):
                 'path': folder_data['full_path'],
                 'relative_path': rel_path,
                 'parent': parent_key,
-                'children': []
+                'children': [],
+                'mtime': folder_data['mtime']
             }
     except FileNotFoundError:
         print(f"WARNING: The base directory '{BASE_OUTPUT_PATH}' was not found.")
+    
     folder_config_cache = dynamic_config
     return dynamic_config
     
@@ -491,38 +497,65 @@ def full_sync_database(conn):
     print(f"INFO: Full scan completed in {time.time() - start_time:.2f} seconds.")
 
 def sync_folder_on_demand(folder_path):
-    print(f"INFO: Starting on-demand sync for folder: '{os.path.basename(folder_path)}'")
+    yield f"data: {json.dumps({'message': 'Checking folder for changes...', 'current': 0, 'total': 1})}\n\n"
+    
     try:
         with get_db_connection() as conn:
             disk_files, valid_extensions = {}, {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.mp4', '.mkv', '.webm', '.mov', '.avi', '.mp3', '.wav', '.ogg', '.flac'}
-            for name in os.listdir(folder_path):
-                filepath = os.path.join(folder_path, name)
-                if os.path.isfile(filepath) and os.path.splitext(name)[1].lower() in valid_extensions:
-                    disk_files[filepath] = os.path.getmtime(filepath)
+            
+            if os.path.isdir(folder_path):
+                for name in os.listdir(folder_path):
+                    filepath = os.path.join(folder_path, name)
+                    if os.path.isfile(filepath) and os.path.splitext(name)[1].lower() in valid_extensions:
+                        disk_files[filepath] = os.path.getmtime(filepath)
+            
             db_files_query = conn.execute("SELECT path, mtime FROM files WHERE path LIKE ?", (folder_path + os.sep + '%',)).fetchall()
             db_files = {row['path']: row['mtime'] for row in db_files_query if os.path.normpath(os.path.dirname(row['path'])) == os.path.normpath(folder_path)}
+            
             disk_filepaths, db_filepaths = set(disk_files.keys()), set(db_files.keys())
-            files_to_add, files_to_delete = disk_filepaths - db_filepaths, db_filepaths - disk_filepaths
+            
+            files_to_add = disk_filepaths - db_filepaths
+            files_to_delete = db_filepaths - disk_filepaths
             files_to_update = {path for path in (disk_filepaths & db_filepaths) if disk_files[path] > db_files[path]}
-            if files_to_add or files_to_update:
-                print(f"INFO: Found {len(files_to_add)} new and {len(files_to_update)} modified files. Processing...")
+            
+            if not files_to_add and not files_to_update and not files_to_delete:
+                yield f"data: {json.dumps({'message': 'Folder is up-to-date.', 'status': 'no_changes', 'current': 1, 'total': 1})}\n\n"
+                return
+
+            files_to_process = list(files_to_add.union(files_to_update))
+            total_files_to_process = len(files_to_process)
+            
+            if total_files_to_process > 0:
+                yield f"data: {json.dumps({'message': f'Found {total_files_to_process} new/modified files...', 'current': 0, 'total': total_files_to_process})}\n\n"
+                time.sleep(1)
+
                 data_to_upsert = []
-                for path in files_to_add.union(files_to_update):
-                    mtime = disk_files[path]
+                for i, path in enumerate(files_to_process):
+                    progress_data = {'message': f'Processing: {os.path.basename(path)}', 'current': i + 1, 'total': total_files_to_process }
+                    yield f"data: {json.dumps(progress_data)}\n\n"
+                    
                     metadata = analyze_file_metadata(path)
-                    file_hash = hashlib.md5((path + str(mtime)).encode()).hexdigest()
-                    if not glob.glob(os.path.join(THUMBNAIL_CACHE_DIR, f"{file_hash}.*")): create_thumbnail(path, file_hash, metadata['type'])
-                    data_to_upsert.append((hashlib.md5(path.encode()).hexdigest(), path, mtime, os.path.basename(path), *metadata.values()))
-                if data_to_upsert: conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", data_to_upsert)
+                    file_hash = hashlib.md5((path + str(disk_files[path])).encode()).hexdigest()
+                    if not glob.glob(os.path.join(THUMBNAIL_CACHE_DIR, f"{file_hash}.*")): 
+                        create_thumbnail(path, file_hash, metadata['type'])
+                    
+                    data_to_upsert.append((hashlib.md5(path.encode()).hexdigest(), path, disk_files[path], os.path.basename(path), *metadata.values()))
+                
+                if data_to_upsert: 
+                    conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", data_to_upsert)
+
             if files_to_delete:
-                print(f"INFO: Found {len(files_to_delete)} deleted files. Removing from database...")
                 paths_to_delete_list = list(files_to_delete)
                 placeholders = ','.join('?' * len(paths_to_delete_list))
                 conn.execute(f"DELETE FROM files WHERE path IN ({placeholders})", paths_to_delete_list)
-            if files_to_add or files_to_update or files_to_delete:
-                conn.commit()
+
+            conn.commit()
+            yield f"data: {json.dumps({'message': 'Sync complete. Reloading...', 'status': 'reloading', 'current': total_files_to_process, 'total': total_files_to_process})}\n\n"
+
     except Exception as e:
-        print(f"ERROR: An error occurred during on-demand sync of folder '{folder_path}': {e}")
+        error_message = f"Error during sync: {e}"
+        print(f"ERROR: {error_message}")
+        yield f"data: {json.dumps({'message': error_message, 'current': 1, 'total': 1, 'error': True})}\n\n"
 
 def scan_folder_and_extract_options(folder_path):
     extensions, prefixes = set(), set()
@@ -564,24 +597,31 @@ def initialize_gallery():
 def gallery_redirect_base():
     return redirect(url_for('gallery_view', folder_key='_root_'))
 
+@app.route('/galleryout/sync_status/<string:folder_key>')
+def sync_status(folder_key):
+    folders = get_dynamic_folder_config()
+    if folder_key not in folders:
+        abort(404)
+    folder_path = folders[folder_key]['path']
+    return Response(sync_folder_on_demand(folder_path), mimetype='text/event-stream')
+
 @app.route('/galleryout/view/<string:folder_key>')
 def gallery_view(folder_key):
     global gallery_view_cache
     folders = get_dynamic_folder_config(force_refresh=True)
     if folder_key not in folders:
         return redirect(url_for('gallery_view', folder_key='_root_'))
+    
     current_folder_info = folders[folder_key]
     folder_path = current_folder_info['path']
-    sync_folder_on_demand(folder_path)
+    
     with get_db_connection() as conn:
         conditions, params = [], []
         conditions.append("path LIKE ?")
         params.append(folder_path + os.sep + '%')
         
-        # MODIFICATION 1: Get sort_order parameter from URL, defaulting to 'desc'
-        sort_order = request.args.get('sort_order', 'desc').lower()
-        if sort_order not in ['asc', 'desc']:
-            sort_order = 'desc' # Ensure only valid values are used
+        sort_by = 'name' if request.args.get('sort_by') == 'name' else 'mtime'
+        sort_order = 'asc' if request.args.get('sort_order', 'desc').lower() == 'asc' else 'desc'
 
         search_term = request.args.get('search', '').strip()
         if search_term:
@@ -592,27 +632,18 @@ def gallery_view(folder_key):
 
         selected_prefixes = request.args.getlist('prefix')
         if selected_prefixes:
-            prefix_conditions = []
-            for prefix in selected_prefixes:
-                prefix_clean = prefix.strip()
-                if prefix_clean:
-                    prefix_conditions.append("name LIKE ?")
-                    params.append(f"{prefix_clean}_%")
-            if prefix_conditions:
-                conditions.append(f"({' OR '.join(prefix_conditions)})")
+            prefix_conditions = [f"name LIKE ?" for p in selected_prefixes if p.strip()]
+            params.extend([f"{p.strip()}_%" for p in selected_prefixes if p.strip()])
+            if prefix_conditions: conditions.append(f"({' OR '.join(prefix_conditions)})")
 
         selected_extensions = request.args.getlist('extension')
         if selected_extensions:
-            ext_conditions = []
-            for ext in selected_extensions:
-                ext_clean = ext.lstrip('.').lower()
-                ext_conditions.append("name LIKE ?")
-                params.append(f"%.{ext_clean}")
-            conditions.append(f"({' OR '.join(ext_conditions)})")
+            ext_conditions = [f"name LIKE ?" for ext in selected_extensions if ext.strip()]
+            params.extend([f"%.{ext.lstrip('.').lower()}" for ext in selected_extensions if ext.strip()])
+            if ext_conditions: conditions.append(f"({' OR '.join(ext_conditions)})")
         
-        # MODIFICATION 2: Build the query with dynamic sorting direction
         sort_direction = "ASC" if sort_order == 'asc' else "DESC"
-        query = f"SELECT * FROM files WHERE {' AND '.join(conditions)} ORDER BY mtime {sort_direction}"
+        query = f"SELECT * FROM files WHERE {' AND '.join(conditions)} ORDER BY {sort_by} {sort_direction}"
         
         all_files_raw = conn.execute(query, params).fetchall()
         
@@ -643,56 +674,27 @@ def gallery_view(folder_key):
                            selected_extensions=request.args.getlist('extension'), 
                            selected_prefixes=request.args.getlist('prefix'),
                            show_favorites=request.args.get('favorites', 'false').lower() == 'true', 
-                           # MODIFICATION 3: Pass the current sort order to the template
-                           current_sort_order=sort_order,
                            protected_folder_keys=list(PROTECTED_FOLDER_KEYS))
 
-# --- START: NEW UPLOAD ROUTE ---
 @app.route('/galleryout/upload', methods=['POST'])
 def upload_files():
-    # Get the target folder key from the form data
     folder_key = request.form.get('folder_key')
-    if not folder_key:
-        return jsonify({'status': 'error', 'message': 'No destination folder provided.'}), 400
-
-    # Get the folder configuration and find the destination path
+    if not folder_key: return jsonify({'status': 'error', 'message': 'No destination folder provided.'}), 400
     folders = get_dynamic_folder_config()
-    if folder_key not in folders:
-        return jsonify({'status': 'error', 'message': 'Destination folder not found.'}), 404
-    
+    if folder_key not in folders: return jsonify({'status': 'error', 'message': 'Destination folder not found.'}), 404
     destination_path = folders[folder_key]['path']
-
-    # Check if any files were uploaded
-    if 'files' not in request.files:
-        return jsonify({'status': 'error', 'message': 'No files were uploaded.'}), 400
-
-    uploaded_files = request.files.getlist('files')
-    errors = {}
-    success_count = 0
-
+    if 'files' not in request.files: return jsonify({'status': 'error', 'message': 'No files were uploaded.'}), 400
+    uploaded_files, errors, success_count = request.files.getlist('files'), {}, 0
     for file in uploaded_files:
         if file and file.filename:
-            # Sanitize the filename to prevent security risks like directory traversal
             filename = secure_filename(file.filename)
             try:
-                # Construct the full path and save the file
                 file.save(os.path.join(destination_path, filename))
                 success_count += 1
-            except Exception as e:
-                errors[filename] = str(e)
-    
-    # After saving, trigger a sync for the folder to update the database
-    if success_count > 0:
-        sync_folder_on_demand(destination_path)
-
-    if errors:
-        return jsonify({
-            'status': 'partial_success',
-            'message': f'Successfully uploaded {success_count} files. The following files failed: {", ".join(errors.keys())}'
-        }), 207
-
+            except Exception as e: errors[filename] = str(e)
+    if success_count > 0: sync_folder_on_demand(destination_path)
+    if errors: return jsonify({'status': 'partial_success', 'message': f'Successfully uploaded {success_count} files. The following files failed: {", ".join(errors.keys())}'}), 207
     return jsonify({'status': 'success', 'message': f'Successfully uploaded {success_count} files.'})
-# --- END: NEW UPLOAD ROUTE ---
                            
 @app.route('/galleryout/create_folder', methods=['POST'])
 def create_folder():
@@ -764,22 +766,14 @@ def get_file_info_from_db(file_id, column='*'):
     if not row: abort(404)
     return dict(row) if column == '*' else row[0]
 
-# --- START: MODIFIED SECTION ---
 def _get_unique_filepath(destination_folder, filename):
-    """
-    Generates a unique file path in the destination folder.
-    If a file with the same name exists, it appends a progressive number in parentheses.
-    e.g., file.jpg -> file(1).jpg -> file(2).jpg
-    """
     base, ext = os.path.splitext(filename)
     counter = 1
     new_filepath = os.path.join(destination_folder, filename)
-    
     while os.path.exists(new_filepath):
         new_filename = f"{base}({counter}){ext}"
         new_filepath = os.path.join(destination_folder, new_filename)
         counter += 1
-        
     return new_filepath
 
 @app.route('/galleryout/move_batch', methods=['POST'])
@@ -787,97 +781,64 @@ def move_batch():
     data = request.json
     file_ids, dest_key = data.get('file_ids', []), data.get('destination_folder')
     folders = get_dynamic_folder_config()
-    
     if not all([file_ids, dest_key, dest_key in folders]):
         return jsonify({'status': 'error', 'message': 'Invalid data provided.'}), 400
-
-    moved_count = 0
-    renamed_count = 0
-    failed_files = []
-    dest_path_folder = folders[dest_key]['path']
-
+    moved_count, renamed_count, failed_files, dest_path_folder = 0, 0, [], folders[dest_key]['path']
     with get_db_connection() as conn:
         for file_id in file_ids:
-            source_path = None # Initialize for robust error handling
+            source_path = None
             try:
-                # 1. Get current file info from the database
                 file_info = conn.execute("SELECT path, name FROM files WHERE id = ?", (file_id,)).fetchone()
                 if not file_info:
                     failed_files.append(f"ID {file_id} not found in DB")
                     continue
-                
-                source_path = file_info['path']
-                source_filename = file_info['name']
-
-                # 2. Verify that the source file exists on disk before attempting to move
+                source_path, source_filename = file_info['path'], file_info['name']
                 if not os.path.exists(source_path):
                     failed_files.append(f"{source_filename} (not found on disk)")
-                    # Optional: Clean up the stale database entry
                     conn.execute("DELETE FROM files WHERE id = ?", (file_id,))
                     continue
-
-                # 3. Determine the final, unique destination path using the helper function
                 final_dest_path = _get_unique_filepath(dest_path_folder, source_filename)
                 final_filename = os.path.basename(final_dest_path)
-                
-                # 4. Check if the file had to be renamed
-                if final_filename != source_filename:
-                    renamed_count += 1
-                
-                # 5. Perform the actual file move operation
+                if final_filename != source_filename: renamed_count += 1
                 shutil.move(source_path, final_dest_path)
-                
-                # 6. Update the database record to reflect the move and potential rename
                 new_id = hashlib.md5(final_dest_path.encode()).hexdigest()
-                conn.execute(
-                    "UPDATE files SET id = ?, path = ?, name = ? WHERE id = ?",
-                    (new_id, final_dest_path, final_filename, file_id)
-                )
+                conn.execute("UPDATE files SET id = ?, path = ?, name = ? WHERE id = ?", (new_id, final_dest_path, final_filename, file_id))
                 moved_count += 1
-
             except Exception as e:
-                # If an error occurs for one file, record it and continue with the next
                 filename_for_error = os.path.basename(source_path) if source_path else f"ID {file_id}"
                 failed_files.append(filename_for_error)
-                print(f"ERROR: Failed to move file {filename_for_error}. Reason: {e}") # Server-side log
+                print(f"ERROR: Failed to move file {filename_for_error}. Reason: {e}")
                 continue
-        
-        conn.commit() # Commit all the successful changes at the end of the loop
-
-    # 7. Construct a clear and informative response message for the user
-    if moved_count > 0:
-        message = f"Successfully moved {moved_count} file(s)."
-        if renamed_count > 0:
-            message += f" {renamed_count} of them were renamed to avoid conflicts."
-        if failed_files:
-            message += f" Failed to move {len(failed_files)} file(s)."
-        return jsonify({'status': 'partial_success' if failed_files else 'success', 'message': message})
-    else:
-        message = f"Operation failed. Could not move any files. Errors occurred with: {', '.join(failed_files)}"
-        return jsonify({'status': 'error', 'message': message})
-
-# --- END: MODIFIED SECTION ---
+        conn.commit()
+    message = f"Successfully moved {moved_count} file(s)."
+    if renamed_count > 0: message += f" {renamed_count} were renamed to avoid conflicts."
+    if failed_files: message += f" Failed to move {len(failed_files)} file(s)."
+    return jsonify({'status': 'partial_success' if failed_files else 'success', 'message': message})
 
 @app.route('/galleryout/delete_batch', methods=['POST'])
 def delete_batch():
     file_ids = request.json.get('file_ids', [])
     if not file_ids: return jsonify({'status': 'error', 'message': 'No files selected.'}), 400
-    deleted_count = 0
+    deleted_count, failed_files = 0, []
     with get_db_connection() as conn:
         placeholders = ','.join('?' * len(file_ids))
         files_to_delete = conn.execute(f"SELECT id, path FROM files WHERE id IN ({placeholders})", file_ids).fetchall()
         ids_to_remove_from_db = []
         for row in files_to_delete:
             try:
-                os.remove(row['path'])
+                if os.path.exists(row['path']): os.remove(row['path'])
                 ids_to_remove_from_db.append(row['id'])
                 deleted_count += 1
-            except Exception: continue
+            except Exception as e: 
+                failed_files.append(os.path.basename(row['path']))
+                print(f"ERROR: Could not delete {row['path']}: {e}")
         if ids_to_remove_from_db:
             db_placeholders = ','.join('?' * len(ids_to_remove_from_db))
             conn.execute(f"DELETE FROM files WHERE id IN ({db_placeholders})", ids_to_remove_from_db)
             conn.commit()
-    return jsonify({'status': 'success', 'message': f'Successfully deleted {deleted_count} files.'})
+    message = f'Successfully deleted {deleted_count} files.'
+    if failed_files: message += f" Failed to delete {len(failed_files)} files."
+    return jsonify({'status': 'partial_success' if failed_files else 'success', 'message': message})
 
 @app.route('/galleryout/favorite_batch', methods=['POST'])
 def favorite_batch():
@@ -888,7 +849,7 @@ def favorite_batch():
         placeholders = ','.join('?' * len(file_ids))
         conn.execute(f"UPDATE files SET is_favorite = ? WHERE id IN ({placeholders})", [1 if status else 0] + file_ids)
         conn.commit()
-    return jsonify({'status': 'success'})
+    return jsonify({'status': 'success', 'message': f"Updated favorites for {len(file_ids)} files."})
 
 @app.route('/galleryout/toggle_favorite/<string:file_id>', methods=['POST'])
 def toggle_favorite(file_id):
@@ -900,6 +861,30 @@ def toggle_favorite(file_id):
         conn.commit()
         return jsonify({'status': 'success', 'is_favorite': bool(new_status)})
 
+# --- FIX: ROBUST DELETE ROUTE ---
+@app.route('/galleryout/delete/<string:file_id>', methods=['POST'])
+def delete_file(file_id):
+    with get_db_connection() as conn:
+        file_info = conn.execute("SELECT path FROM files WHERE id = ?", (file_id,)).fetchone()
+        if not file_info:
+            return jsonify({'status': 'success', 'message': 'File already deleted from database.'})
+        
+        filepath = file_info['path']
+        
+        try:
+            if os.path.exists(filepath):
+                os.remove(filepath)
+            # If file doesn't exist on disk, we still proceed to remove the DB entry, which is the desired state.
+        except OSError as e:
+            # A real OS error occurred (e.g., permissions).
+            print(f"ERROR: Could not delete file {filepath} from disk: {e}")
+            return jsonify({'status': 'error', 'message': f'Could not delete file from disk: {e}'}), 500
+
+        # Whether the file was deleted now or was already gone, we clean up the DB.
+        conn.execute("DELETE FROM files WHERE id = ?", (file_id,))
+        conn.commit()
+        return jsonify({'status': 'success', 'message': 'File deleted successfully.'})
+
 @app.route('/galleryout/file/<string:file_id>')
 def serve_file(file_id):
     filepath = get_file_info_from_db(file_id, 'path')
@@ -909,44 +894,32 @@ def serve_file(file_id):
 @app.route('/galleryout/download/<string:file_id>')
 def download_file(file_id):
     filepath = get_file_info_from_db(file_id, 'path')
-    return send_from_directory(os.path.dirname(filepath), os.path.basename(filepath), as_attachment=True)
+    return send_file(filepath, as_attachment=True)
 
 @app.route('/galleryout/workflow/<string:file_id>')
 def download_workflow(file_id):
-    filepath = get_file_info_from_db(file_id, 'path')
+    info = get_file_info_from_db(file_id)
+    filepath = info['path']
+    original_filename = info['name']
     workflow_json = extract_workflow(filepath)
-    if workflow_json: return Response(workflow_json, mimetype='application/json', headers={'Content-Disposition': 'attachment;filename=workflow.json'})
+    if workflow_json:
+        base_name, _ = os.path.splitext(original_filename)
+        new_filename = f"{base_name}.json"
+        headers = {'Content-Disposition': f'attachment;filename="{new_filename}"'}
+        return Response(workflow_json, mimetype='application/json', headers=headers)
     abort(404)
-
-@app.route('/galleryout/delete/<string:file_id>', methods=['POST'])
-def delete_file(file_id):
-    try:
-        filepath = get_file_info_from_db(file_id, 'path')
-        os.remove(filepath)
-        with get_db_connection() as conn:
-            conn.execute("DELETE FROM files WHERE id = ?", (file_id,))
-            conn.commit()
-        return jsonify({'status': 'success'})
-    except Exception:
-        with get_db_connection() as conn: conn.execute("DELETE FROM files WHERE id = ?", (file_id,)); conn.commit()
-        return jsonify({'status': 'error', 'message': 'File not on disk, but removed from DB.'})
 
 @app.route('/galleryout/node_summary/<string:file_id>')
 def get_node_summary(file_id):
     try:
         filepath = get_file_info_from_db(file_id, 'path')
         workflow_json = extract_workflow(filepath)
-
         if not workflow_json:
             return jsonify({'status': 'error', 'message': 'Workflow not found for this file.'}), 404
-
         summary_data = generate_node_summary(workflow_json)
-        
         if summary_data is None:
             return jsonify({'status': 'error', 'message': 'Failed to parse workflow JSON.'}), 400
-            
         return jsonify({'status': 'success', 'summary': summary_data})
-
     except Exception as e:
         print(f"ERROR generating node summary for {file_id}: {e}")
         return jsonify({'status': 'error', 'message': f'An internal error occurred: {e}'}), 500

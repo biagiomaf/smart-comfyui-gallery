@@ -1,5 +1,5 @@
 # SmartGallery for ComfyUI ✨
-### Your Visual Hub with Universal Workflow Recall, Upload Magic & Node Summary
+### Your Visual Hub with Universal Workflow Recall, Upload Magic & Intelligent Organization
 
 <p align="center">
   <img src="assets/gallery_from_pc_screen.png" alt="SmartGallery Interface" width="800">
@@ -28,6 +28,16 @@
 
 ---
 
+## 🆕 What's New in Version 1.30?
+
+- 🔍 **Smart Folder Navigation**: Expandable sidebar with real-time search and bi-directional sorting (A-Z, Z-A, newest, oldest)
+- 🖼️ **Enhanced Gallery Sorting**: Toggle thumbnail sorting by date or name with visual indicators
+- 🔎 **Advanced Lightbox**: Zoom with mouse wheel, persistent zoom levels, percentage display, and quick delete
+- ⚡ **Real-time Sync**: Silent background checks with visual progress overlay when new files are detected
+- 📝 **Smart Workflow Names**: Downloaded workflows now match your image filenames
+
+---
+
 ## 🚀 The Problem Every ComfyUI User Faces
 
 You've just created the most stunning AI image or video of your life. It's perfect. Absolutely perfect.
@@ -51,27 +61,23 @@ SmartGallery isn't just another image viewer. It's a **time machine for your cre
 - 🏃‍♂️ **Blazing Fast**: SQLite database + smart caching = instant loading even with thousands of files
 - 📱 **Mobile Perfect**: Gorgeous interface that works flawlessly on any device
 - 🔍 **Node Summary Magic**: See model, seed, and key parameters at a glance
-- 📁 **Total Organization**: Create, rename, delete folders; mark favorites; powerful search & filters
+- 📁 **Smart Organization** 🆕: Expandable sidebar with real-time search, bi-directional sorting (name/date), and intuitive folder management
+- 🖼️ **Enhanced Gallery View** 🆕: Sort thumbnails by date or name with instant toggle between ascending/descending order
+- 🔎 **Advanced Lightbox** 🆕: Zoom with mouse wheel, persistent zoom levels across images, and quick delete functionality
+- 🆕 **Universal Upload Magic**: Upload ANY ComfyUI-generated image/video from your PC or phone and instantly discover its workflow!
+- 🔄 **Real-time Sync** 🆕: Silent background checks with visual progress overlay when new files are detected
 - 🔧 **Standalone Power**: Works independently—manage your gallery even when ComfyUI is off
 - ⚡ **2-File Installation**: Just two files to transform your entire workflow
-- 🆕 **🎉 NEW: Universal Upload Magic**: Upload ANY ComfyUI-generated image/video from your PC or phone and instantly discover its workflow!
 
-### 🔥 NEW: Upload & Discover Feature
+### 🔥 Upload & Discover Feature
 
-**Game-changing addition!** Now you can upload images and videos from anywhere:
+**Game-changing addition!** You can upload images and videos from anywhere:
 
 - 📤 **Drag & Drop Upload**: From your PC, phone, or any device
 - 🔍 **Instant Workflow Detection**: Automatically extracts and displays the original ComfyUI workflow (if available)
 - 🌍 **Community Sharing**: Someone shared an amazing creation? Upload it and see exactly how they made it!
 - 💾 **Expand Your Collection**: Add AI art from other sources to your organized gallery
 - 🔄 **Cross-Platform Sync**: Upload from mobile, manage from desktop—seamlessly
-
-**Use Cases:**
-- 🎨 Add AI art you found online (with embedded workflows)
-- 📱 Upload creations from your phone to your main gallery
-- 👥 Analyze workflows from community shares
-- 🔄 Transfer work between different ComfyUI setups
-- 📚 Build a comprehensive reference library
 
 <div align="center">
   <img src="assets/gallery_from_mobile_screen.png" alt="Mobile View" width="300"">
@@ -106,7 +112,6 @@ pip install -r requirements.txt
 ### Step 3: Configure Your Paths
 
 Open `smartgallery.py` and find the **User Configuration** section. Just update these paths to match your setup:
-
 ```python
 # 🎯 Point to your ComfyUI folders
 BASE_OUTPUT_PATH = 'C:/your/path/to/ComfyUI/output'
@@ -120,6 +125,8 @@ SERVER_PORT = 8189
 ```
 
 > **💡 Pro Tip**: Use forward slashes (`/`) even on Windows for best compatibility!
+
+> **📹 Note**: FFmpeg installation is recommended for complete workflow discovery from MP4 files. Download from [ffmpeg.org](https://ffmpeg.org/) if needed.
 
 ### Step 4: Launch & Enjoy
 ```bash
@@ -164,8 +171,6 @@ Want to customize your experience? Here are the key settings you can tweak:
 | `WEBP_ANIMATED_FPS` | Frame rate for WebP animations | `16.0` |
 | `SPECIAL_FOLDERS` | Custom folder names in menu | `['video', 'audio']` |
 | `MAX_UPLOAD_SIZE` | Maximum file size for uploads | `100MB` |
-
-**FFmpeg Recommendation**: While optional, having FFmpeg installed unlocks full video workflow extraction capabilities. Download it from [ffmpeg.org](https://ffmpeg.org/) for the complete experience.
 
 ---
 
