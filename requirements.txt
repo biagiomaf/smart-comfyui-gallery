@@ -1,3 +1,4 @@
 Flask
 Pillow
 opencv-python
+tqdm
