@@ -1,0 +1,6 @@
+{
+    "base_output_path": "",
+    "base_input_path": "",
+    "server_port": 8008,
+    "ffprobe_manual_path": ""
+}

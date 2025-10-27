@@ -42,3 +42,8 @@ thumbnails/
 # OS
 .DS_Store
 Thumbs.db
+
+.docs/
+smart-comfyui-gallery.xml
+.github/copilot-instructions.md
+.gitignore

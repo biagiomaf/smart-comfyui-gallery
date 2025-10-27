@@ -1,6 +1,30 @@
 
 # Changelog
 
+## [1.31] - 2025-10-27
+
+### Changed
+
+#### `__init__.py`
+- **Robust Path Detection**: Refactored automatic path detection to use ComfyUI's official `folder_paths` API instead of relative directory navigation
+- **Universal Compatibility**: Path detection now works correctly with ALL ComfyUI configurations including:
+  - Custom node paths set via `--custom-nodes-path` CLI argument
+  - Alternative paths configured in `extra_model_paths.yaml`
+  - Symlinked or network-mounted custom_nodes directories
+  - Docker containers and multi-instance production setups
+- **Future-Proof Design**: Automatically adapts to any ComfyUI directory structure changes
+
+### Fixed
+- Fixed path detection failures in advanced ComfyUI configurations with non-standard custom node locations
+- Fixed initialization order bug where derived paths were calculated before command-line arguments were parsed
+- Resolved "TypeError: expected str, bytes or os.PathLike object, not NoneType" crash on startup
+
+### Technical Improvements
+- Replaced brittle `os.path.join(__file__, "..", "..")` logic with `folder_paths.get_output_directory()` and `folder_paths.get_input_directory()`
+- Moved derived path calculations from global scope into `initialize_gallery()` function
+- Added comprehensive error logging and diagnostic capabilities
+- Implemented proper subprocess lifecycle management with `atexit` cleanup handlers
+
 ## [1.30] - 2025-10-26
 
 ### Added

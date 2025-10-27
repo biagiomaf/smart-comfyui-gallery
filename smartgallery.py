@@ -34,44 +34,15 @@ from werkzeug.utils import secure_filename
 
 # - It is strongly recommended to have ffmpeg installed, since some features depend on it.
 
-# Path to the ComfyUI 'output' folder.
-BASE_OUTPUT_PATH = 'C:/sm/Data/Packages/ComfyUI/output'
-
-# Path to the ComfyUI 'input' folder (used for locating .json workflows).
-BASE_INPUT_PATH = 'C:/sm/Data/Packages/ComfyUI/input'
-
-# Path to the ffmpeg utility "ffprobe.exe" (Windows). 
-# On Linux, adjust the filename accordingly. 
-# This is required for extracting workflows from .mp4 files.  
-# NOTE: Having a full ffmpeg installation is highly recommended.
-FFPROBE_MANUAL_PATH = "C:/omgp10/ffmpeg2/bin/ffprobe.exe"
-# - Even on Windows, always use forward slashes ( / ) in paths, 
-#   not backslashes ( \ ), to ensure compatibility.
-
-
-# Port on which the gallery web server will run. 
-# Must be different from the ComfyUI port.  
-# Note: the gallery does not require ComfyUI to be running; it works independently.
-SERVER_PORT = 8189
-
-# Width (in pixels) of the generated thumbnails.
+# --- CONFIGURATION (Set via command-line arguments) ---
+BASE_OUTPUT_PATH = None
+BASE_INPUT_PATH = None
+FFPROBE_MANUAL_PATH = ""
+SERVER_PORT = 8008
 THUMBNAIL_WIDTH = 300
-
-# Assumed frame rate for animated WebP files.  
-# Many tools, including ComfyUI, generate WebP animations at ~16 FPS.  
-# Adjust this value if your WebPs use a different frame rate,  
-# so that animation durations are calculated correctly.
 WEBP_ANIMATED_FPS = 16.0
-
-# Maximum number of files to load initially before showing a "Load more" button.  
-# Use a very large number (e.g., 9999999) for "infinite" loading.
-PAGE_SIZE = 100 
-
-# Names of special folders (e.g., 'video', 'audio').  
-# These folders will appear in the menu only if they exist inside BASE_OUTPUT_PATH.  
-# Leave as-is if unsure.
+PAGE_SIZE = 100
 SPECIAL_FOLDERS = ['video', 'audio']
-
 # ------- END OF USER CONFIGURATION -------
 
 
@@ -94,13 +65,7 @@ def key_to_path(key):
     except Exception: return None
 
 # --- DERIVED SETTINGS ---
-DB_SCHEMA_VERSION = 21
-BASE_INPUT_PATH_WORKFLOW = os.path.join(BASE_INPUT_PATH, WORKFLOW_FOLDER_NAME)
-THUMBNAIL_CACHE_DIR = os.path.join(BASE_OUTPUT_PATH, THUMBNAIL_CACHE_FOLDER_NAME)
-SQLITE_CACHE_DIR = os.path.join(BASE_OUTPUT_PATH, SQLITE_CACHE_FOLDER_NAME)
-DATABASE_FILE = os.path.join(SQLITE_CACHE_DIR, DATABASE_FILENAME)
-PROTECTED_FOLDER_KEYS = {path_to_key(f) for f in SPECIAL_FOLDERS}
-PROTECTED_FOLDER_KEYS.add('_root_')
+DB_SCHEMA_VERSION = 21 # Schema version is static and can remain global
 
 # --- FLASK APP INITIALIZATION ---
 app = Flask(__name__)
@@ -570,8 +535,20 @@ def scan_folder_and_extract_options(folder_path):
     return None, sorted(list(extensions)), sorted(list(prefixes))
 
 def initialize_gallery():
+    # These are now global so other functions can access the calculated paths
+    global BASE_INPUT_PATH_WORKFLOW, THUMBNAIL_CACHE_DIR, SQLITE_CACHE_DIR, DATABASE_FILE, PROTECTED_FOLDER_KEYS, FFPROBE_EXECUTABLE_PATH
+
+    # --- DERIVED SETTINGS (MOVED HERE) ---
+    # Now that BASE_OUTPUT_PATH and BASE_INPUT_PATH are set, we can derive the rest.
+    BASE_INPUT_PATH_WORKFLOW = os.path.join(BASE_INPUT_PATH, WORKFLOW_FOLDER_NAME)
+    THUMBNAIL_CACHE_DIR = os.path.join(BASE_OUTPUT_PATH, THUMBNAIL_CACHE_FOLDER_NAME)
+    SQLITE_CACHE_DIR = os.path.join(BASE_OUTPUT_PATH, SQLITE_CACHE_FOLDER_NAME)
+    DATABASE_FILE = os.path.join(SQLITE_CACHE_DIR, DATABASE_FILENAME)
+    PROTECTED_FOLDER_KEYS = {path_to_key(f) for f in SPECIAL_FOLDERS}
+    PROTECTED_FOLDER_KEYS.add('_root_')
+    # ------------------------------------
+
     print("INFO: Initializing gallery...")
-    global FFPROBE_EXECUTABLE_PATH
     FFPROBE_EXECUTABLE_PATH = find_ffprobe_path()
     os.makedirs(THUMBNAIL_CACHE_DIR, exist_ok=True)
     os.makedirs(SQLITE_CACHE_DIR, exist_ok=True)
@@ -937,6 +914,26 @@ def serve_thumbnail(file_id):
     return "Thumbnail generation failed", 404
 
 if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Smart Gallery for ComfyUI")
+    parser.add_argument("--output-path", type=str, required=True, help="Path to ComfyUI's output directory.")
+    parser.add_argument("--input-path", type=str, required=True, help="Path to ComfyUI's input directory.")
+    parser.add_argument("--port", type=int, default=8008, help="Port for the gallery web server.")
+    parser.add_argument("--ffprobe-path", type=str, default="", help="Manual path to the ffprobe executable.")
+
+    args = parser.parse_args()
+
+    # Assign global configuration variables from the parsed arguments
+    BASE_OUTPUT_PATH = args.output_path
+    BASE_INPUT_PATH = args.input_path
+    SERVER_PORT = args.port
+    FFPROBE_MANUAL_PATH = args.ffprobe_path
+
+    if not os.path.isdir(BASE_OUTPUT_PATH) or not os.path.isdir(BASE_INPUT_PATH):
+        print(f"ERROR: One or more paths are invalid. Please check your configuration.\nOutput: {BASE_OUTPUT_PATH}\nInput: {BASE_INPUT_PATH}")
+        sys.exit(1)
+
     initialize_gallery()
-    print(f"Gallery started! Open: http://127.0.0.1:{SERVER_PORT}/galleryout/")
+    print(f"SmartGallery started! Open: http://127.0.0.1:{SERVER_PORT}/galleryout/")
     app.run(host='0.0.0.0', port=SERVER_PORT, debug=False)

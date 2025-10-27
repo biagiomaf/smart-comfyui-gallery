@@ -28,8 +28,14 @@
 
 ---
 
-## 🆕 What's New in Version 1.30?
+## 🆕 What's New in Version 1.31?
 
+- 🔧 **Bulletproof Path Detection**: Now uses ComfyUI's official `folder_paths` API for 100% reliable auto-detection
+- ⚙️ **Universal Compatibility**: Works with ALL ComfyUI setups including custom node paths, Docker, network storage, and advanced configurations
+- 🚀 **Zero Configuration**: Automatically adapts to any ComfyUI installation method or directory structure
+- 🐛 **Critical Fixes**: Resolved startup crashes and path detection failures in non-standard installations
+
+### Previous Updates (v1.30)
 - 🔍 **Smart Folder Navigation**: Expandable sidebar with real-time search and bi-directional sorting (A-Z, Z-A, newest, oldest)
 - 🖼️ **Enhanced Gallery Sorting**: Toggle thumbnail sorting by date or name with visual indicators
 - 🔎 **Advanced Lightbox**: Zoom with mouse wheel, persistent zoom levels, percentage display, and quick delete
@@ -88,54 +94,36 @@ SmartGallery isn't just another image viewer. It's a **time machine for your cre
 
 ---
 
-## 🎮 Installation: Ridiculously Simple
+## 🎮 Installation
 
-### Step 1: Get the Code
+### Method 1: Using ComfyUI Manager (Recommended)
+1.  Open ComfyUI Manager.
+2.  Click `Install Custom Nodes`.
+3.  Search for `SmartGallery`.
+4.  Click `Install`, and restart ComfyUI.
+
+The gallery will start automatically in the background with ComfyUI.
+
+### Method 2: Manual Installation
+
+1.  Navigate to your ComfyUI `custom_nodes` directory:
+    ```bash
+    cd /path/to/your/ComfyUI/custom_nodes/
+    ```
+2.  Clone this repository:
 ```bash
 git clone https://github.com/biagiomaf/smart-comfyui-gallery
-cd smart-comfyui-gallery
 ```
-
-### Step 2: Quick Setup
+3.  Install the required dependencies into your ComfyUI environment:
 ```bash
-# Create virtual environment (recommended)
-python -m venv venv
-
-# Activate it
-# Windows: venv\Scripts\activate
-# Mac/Linux: source venv/bin/activate
-
+# Navigate into the new folder
+cd smart-comfyui-gallery
 # Install dependencies
 pip install -r requirements.txt
 ```
+4.  **Restart ComfyUI.**
 
-### Step 3: Configure Your Paths
-
-Open `smartgallery.py` and find the **User Configuration** section. Just update these paths to match your setup:
-```python
-# 🎯 Point to your ComfyUI folders
-BASE_OUTPUT_PATH = 'C:/your/path/to/ComfyUI/output'
-BASE_INPUT_PATH = 'C:/your/path/to/ComfyUI/input'
-
-# 🔧 Optional: FFmpeg path (for video workflow extraction)
-FFPROBE_MANUAL_PATH = "C:/path/to/ffprobe.exe"
-
-# 🌐 Choose your port (different from ComfyUI)
-SERVER_PORT = 8189
-```
-
-> **💡 Pro Tip**: Use forward slashes (`/`) even on Windows for best compatibility!
-
-> **📹 Note**: FFmpeg installation is recommended for complete workflow discovery from MP4 files. Download from [ffmpeg.org](https://ffmpeg.org/) if needed.
-
-### Step 4: Launch & Enjoy
-```bash
-python smartgallery.py
-```
-
-Visit **`http://127.0.0.1:8189/galleryout`** and watch the magic happen!
-
-> **⏱️ First Run**: The initial launch takes a few minutes as SmartGallery builds your database and generates thumbnails. After that? Lightning fast!
+The gallery will start automatically in the background. You can access it at **`http://127.0.0.1:8008/galleryout/`** (or your configured port).
 
 ---
 
@@ -160,17 +148,18 @@ Visit **`http://127.0.0.1:8189/galleryout`** and watch the magic happen!
 
 ---
 
-## 🛠️ Advanced Configuration
+## 🛠️ Configuration
 
-Want to customize your experience? Here are the key settings you can tweak:
+After installation, you can customize the gallery's settings directly within ComfyUI:
+1. Click the **Settings** icon (⚙️) in the ComfyUI menu.
+2. Find the **[SmartGallery]** section.
+3. Adjust the paths and port as needed.
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| `THUMBNAIL_WIDTH` | Thumbnail size in pixels | `300` |
-| `PAGE_SIZE` | Files to load initially | `100` |
-| `WEBP_ANIMATED_FPS` | Frame rate for WebP animations | `16.0` |
-| `SPECIAL_FOLDERS` | Custom folder names in menu | `['video', 'audio']` |
-| `MAX_UPLOAD_SIZE` | Maximum file size for uploads | `100MB` |
+**Important:** You must **restart ComfyUI** for any configuration changes to take effect.
+
+> **💡 Note**: By default, SmartGallery auto-detects your ComfyUI paths. You only need to adjust settings if you have a custom setup.
+
+> **📹 FFmpeg Note**: For complete workflow discovery from MP4 files, ensure FFmpeg is installed. Download from [ffmpeg.org](https://ffmpeg.org/) if needed.
 
 ---
 
