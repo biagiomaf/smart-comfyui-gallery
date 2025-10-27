@@ -37,37 +37,38 @@ from tqdm import tqdm
 # - It is strongly recommended to have ffmpeg installed, since some features depend on it.
 
 # Path to the ComfyUI 'output' folder.
-BASE_OUTPUT_PATH = 'C:/sm/Data/Packages/ComfyUI/output'
+BASE_OUTPUT_PATH = os.environ.get('BASE_OUTPUT_PATH', 'C:/sm/Data/Packages/ComfyUI/output')
 
 # Path to the ComfyUI 'input' folder (used for locating .json workflows).
-BASE_INPUT_PATH = 'C:/sm/Data/Packages/ComfyUI/input'
+BASE_INPUT_PATH = os.environ.get('BASE_INPUT_PATH', 'C:/sm/Data/Packages/ComfyUI/input')
+
+BASE_SMARTGALLERY_PATH = os.environ.get('BASE_SMARTGALLERY_PATH', 'C:/Temp/SmartGallery')
 
 # Path to the ffmpeg utility "ffprobe.exe" (Windows). 
 # On Linux, adjust the filename accordingly. 
 # This is required for extracting workflows from .mp4 files.  
 # NOTE: Having a full ffmpeg installation is highly recommended.
-FFPROBE_MANUAL_PATH = "C:/omgp10/ffmpeg2/bin/ffprobe.exe"
+FFPROBE_MANUAL_PATH = os.environ.get('FFPROBE_MANUAL_PATH', "C:/omgp10/ffmpeg2/bin/ffprobe.exe")
 # - Even on Windows, always use forward slashes ( / ) in paths, 
 #   not backslashes ( \ ), to ensure compatibility.
-
 
 # Port on which the gallery web server will run. 
 # Must be different from the ComfyUI port.  
 # Note: the gallery does not require ComfyUI to be running; it works independently.
-SERVER_PORT = 8189
+SERVER_PORT = os.environ.get('SERVER_PORT', 8189)
 
 # Width (in pixels) of the generated thumbnails.
-THUMBNAIL_WIDTH = 300
+THUMBNAIL_WIDTH = os.environ.get('THUMBNAIL_WIDTH', 300)
 
 # Assumed frame rate for animated WebP files.  
 # Many tools, including ComfyUI, generate WebP animations at ~16 FPS.  
 # Adjust this value if your WebPs use a different frame rate,  
 # so that animation durations are calculated correctly.
-WEBP_ANIMATED_FPS = 16.0
+WEBP_ANIMATED_FPS = os.environ.get('WEBP_ANIMATED_FPS', 16.0)
 
 # Maximum number of files to load initially before showing a "Load more" button.  
 # Use a very large number (e.g., 9999999) for "infinite" loading.
-PAGE_SIZE = 100 
+PAGE_SIZE = os.environ.get('PAGE_SIZE', 100)
 
 # Names of special folders (e.g., 'video', 'audio').  
 # These folders will appear in the menu only if they exist inside BASE_OUTPUT_PATH.  
@@ -76,13 +77,13 @@ SPECIAL_FOLDERS = ['video', 'audio']
 
 # Number of files to process at once during database sync. 
 # Higher values use more memory but may be faster. Lower this if you run out of memory.
-BATCH_SIZE = 500
+BATCH_SIZE = os.environ.get('BATCH_SIZE', 500)
 
 # Number of parallel processes to use for thumbnail and metadata generation.
 # - Set to None to use all available CPU cores (fastest, but uses more CPU).
 # - Set to 1 to disable parallel processing (slowest, like in the previous versions).
 # - Set to a specific number of cores (e.g., 4) to limit CPU usage on a multi-core machine.
-MAX_PARALLEL_WORKERS = None
+MAX_PARALLEL_WORKERS = os.environ.get('MAX_PARALLEL_WORKERS', None)
 
 # ------- END OF USER CONFIGURATION -------
 
@@ -106,12 +107,31 @@ def key_to_path(key):
 
 # --- DERIVED SETTINGS ---
 DB_SCHEMA_VERSION = 21
-BASE_INPUT_PATH_WORKFLOW = os.path.join(BASE_INPUT_PATH, WORKFLOW_FOLDER_NAME)
-THUMBNAIL_CACHE_DIR = os.path.join(BASE_OUTPUT_PATH, THUMBNAIL_CACHE_FOLDER_NAME)
-SQLITE_CACHE_DIR = os.path.join(BASE_OUTPUT_PATH, SQLITE_CACHE_FOLDER_NAME)
+BASE_INPUT_PATH_WORKFLOW = os.path.join(BASE_SMARTGALLERY_PATH, WORKFLOW_FOLDER_NAME)
+THUMBNAIL_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, THUMBNAIL_CACHE_FOLDER_NAME)
+SQLITE_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, SQLITE_CACHE_FOLDER_NAME)
 DATABASE_FILE = os.path.join(SQLITE_CACHE_DIR, DATABASE_FILENAME)
 PROTECTED_FOLDER_KEYS = {path_to_key(f) for f in SPECIAL_FOLDERS}
 PROTECTED_FOLDER_KEYS.add('_root_')
+
+
+# ---- Set variables ----
+print("BASE_OUTPUT_PATH: ", BASE_OUTPUT_PATH)
+print("BASE_INPUT_PATH: ", BASE_INPUT_PATH)
+print("BASE_SMARTGALLERY_PATH: ", BASE_SMARTGALLERY_PATH)
+print("THUMBNAIL_WIDTH: ", THUMBNAIL_WIDTH)
+print("WEBP_ANIMATED_FPS: ", WEBP_ANIMATED_FPS)
+print("PAGE_SIZE: ", PAGE_SIZE)
+print("BATCH_SIZE: ", BATCH_SIZE)
+print("MAX_PARALLEL_WORKERS: ", MAX_PARALLEL_WORKERS)
+print("FFPROBE_MANUAL_PATH: ", FFPROBE_MANUAL_PATH)
+print("SERVER_PORT: ", SERVER_PORT)
+print("BASE_INPUT_PATH_WORKFLOW: ", BASE_INPUT_PATH_WORKFLOW)
+print("THUMBNAIL_CACHE_DIR: ", THUMBNAIL_CACHE_DIR)
+print("SQLITE_CACHE_DIR: ", SQLITE_CACHE_DIR)
+print("DATABASE_FILE: ", DATABASE_FILE)
+print("PROTECTED_FOLDER_KEYS: ", PROTECTED_FOLDER_KEYS)
+
 
 # --- FLASK APP INITIALIZATION ---
 app = Flask(__name__)
