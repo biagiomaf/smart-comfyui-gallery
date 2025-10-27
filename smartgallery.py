@@ -1,7 +1,7 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025 — MIT License (free to use and modify)
 #
-# Version: 1.30 - October 26, 2025
+# Version: 1.31 - October 27, 2025
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -23,6 +23,8 @@ from flask import Flask, render_template, send_from_directory, abort, send_file,
 from PIL import Image, ImageSequence
 import colorsys
 from werkzeug.utils import secure_filename
+import concurrent.futures
+from tqdm import tqdm
 
 
 # --- USER CONFIGURATION ---
@@ -72,8 +74,17 @@ PAGE_SIZE = 100
 # Leave as-is if unsure.
 SPECIAL_FOLDERS = ['video', 'audio']
 
-# ------- END OF USER CONFIGURATION -------
+# Number of files to process at once during database sync. 
+# Higher values use more memory but may be faster. Lower this if you run out of memory.
+BATCH_SIZE = 500
 
+# Number of parallel processes to use for thumbnail and metadata generation.
+# - Set to None to use all available CPU cores (fastest, but uses more CPU).
+# - Set to 1 to disable parallel processing (slowest, like in the previous versions).
+# - Set to a specific number of cores (e.g., 4) to limit CPU usage on a multi-core machine.
+MAX_PARALLEL_WORKERS = None
+
+# ------- END OF USER CONFIGURATION -------
 
 
 # --- CACHE AND FOLDER NAMES ---
@@ -109,7 +120,7 @@ folder_config_cache = None
 FFPROBE_EXECUTABLE_PATH = None
 
 
-# Strutture dati per la categorizzazione e l'analisi dei nodi
+# Data structures for node categorization and analysis
 NODE_CATEGORIES_ORDER = ["input", "model", "processing", "output", "others"]
 NODE_CATEGORIES = {
     "Load Checkpoint": "input", "CheckpointLoaderSimple": "input", "Empty Latent Image": "input",
@@ -131,20 +142,20 @@ NODE_PARAM_NAMES = {
     "ModelMerger": ["ckpt_name1", "ckpt_name2", "ratio"],
 }
 
-# Cache per i colori dei nodi
+# Cache for node colors
 _node_colors_cache = {}
 
 def get_node_color(node_type):
-    """Genera un colore univoco e consistente per un tipo di nodo."""
+    """Generates a unique and consistent color for a node type."""
     if node_type not in _node_colors_cache:
-        # Usa un hash per ottenere un colore consistente per lo stesso tipo di nodo
+        # Use a hash to get a consistent color for the same node type
         hue = (hash(node_type + "a_salt_string") % 360) / 360.0
         rgb = [int(c * 255) for c in colorsys.hsv_to_rgb(hue, 0.7, 0.85)]
         _node_colors_cache[node_type] = f"#{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"
     return _node_colors_cache[node_type]
 
 def filter_enabled_nodes(workflow_data):
-    """Filtra e restituisce solo i nodi e i link attivi (mode=0) da un workflow."""
+    """Filters and returns only active nodes and links (mode=0) from a workflow."""
     if not isinstance(workflow_data, dict): return {'nodes': [], 'links': []}
     
     active_nodes = [n for n in workflow_data.get("nodes", []) if n.get("mode", 0) == 0]
@@ -158,20 +169,20 @@ def filter_enabled_nodes(workflow_data):
 
 def generate_node_summary(workflow_json_string):
     """
-    Analizza un workflow JSON, estrae i dettagli dei nodi attivi e li restituisce
-    in un formato strutturato (lista di dizionari).
+    Analyzes a workflow JSON, extracts details of active nodes, and returns them
+    in a structured format (list of dictionaries).
     """
     try:
         workflow_data = json.loads(workflow_json_string)
     except json.JSONDecodeError:
-        return None # Errore di parsing
+        return None # Parsing error
 
     active_workflow = filter_enabled_nodes(workflow_data)
     nodes = active_workflow.get('nodes', [])
     if not nodes:
         return []
 
-    # Ordina i nodi per categoria logica e poi per ID
+    # Sort nodes by logical category and then by ID
     sorted_nodes = sorted(nodes, key=lambda n: (
         NODE_CATEGORIES_ORDER.index(NODE_CATEGORIES.get(n.get('type'), 'others')),
         n.get('id', 0)
@@ -181,7 +192,7 @@ def generate_node_summary(workflow_json_string):
     for node in sorted_nodes:
         node_type = node.get('type', 'Unknown')
         
-        # Estrai i parametri
+        # Extract parameters
         params_list = []
         widgets_values = node.get('widgets_values', [])
         param_names_list = NODE_PARAM_NAMES.get(node_type, [])
@@ -374,6 +385,29 @@ def create_thumbnail(filepath, file_hash, file_type):
         except Exception as e: print(f"ERROR (OpenCV): Could not create thumbnail for {os.path.basename(filepath)}: {e}")
     return None
 
+def process_single_file(filepath):
+    """
+    Worker function to perform all heavy processing for a single file.
+    Designed to be run in a parallel process pool.
+    """
+    try:
+        mtime = os.path.getmtime(filepath)
+        metadata = analyze_file_metadata(filepath)
+        file_hash_for_thumbnail = hashlib.md5((filepath + str(mtime)).encode()).hexdigest()
+        
+        if not glob.glob(os.path.join(THUMBNAIL_CACHE_DIR, f"{file_hash_for_thumbnail}.*")):
+            create_thumbnail(filepath, file_hash_for_thumbnail, metadata['type'])
+        
+        file_id = hashlib.md5(filepath.encode()).hexdigest()
+        
+        return (
+            file_id, filepath, mtime, os.path.basename(filepath),
+            metadata['type'], metadata['duration'], metadata['dimensions'], metadata['has_workflow']
+        )
+    except Exception as e:
+        print(f"ERROR: Failed to process file {os.path.basename(filepath)} in worker: {e}")
+        return None
+
 def get_db_connection():
     conn = sqlite3.connect(DATABASE_FILE)
     conn.row_factory = sqlite3.Row
@@ -464,45 +498,76 @@ def get_dynamic_folder_config(force_refresh=False):
     
 def full_sync_database(conn):
     print("INFO: Starting full file scan...")
-    all_folders = get_dynamic_folder_config(force_refresh=True)
     start_time = time.time()
+
+    all_folders = get_dynamic_folder_config(force_refresh=True)
     db_files = {row['path']: row['mtime'] for row in conn.execute('SELECT path, mtime FROM files').fetchall()}
+    
     disk_files = {}
+    print("INFO: Scanning directories on disk...")
     for folder_data in all_folders.values():
         folder_path = folder_data['path']
         if not os.path.isdir(folder_path): continue
-        for name in os.listdir(folder_path):
-            filepath = os.path.join(folder_path, name)
-            if os.path.isfile(filepath) and os.path.splitext(name)[1].lower() not in ['.json', '.sqlite']:
-                disk_files[filepath] = os.path.getmtime(filepath)
-    to_add = set(disk_files) - set(db_files)
-    to_delete = set(db_files) - set(disk_files)
-    to_check = set(disk_files) & set(db_files)
-    to_update = {path for path in to_check if disk_files.get(path, 0) > db_files.get(path, 0)}
-    files_to_process = to_add.union(to_update)
+        try:
+            for name in os.listdir(folder_path):
+                filepath = os.path.join(folder_path, name)
+                if os.path.isfile(filepath) and os.path.splitext(name)[1].lower() not in ['.json', '.sqlite']:
+                    disk_files[filepath] = os.path.getmtime(filepath)
+        except OSError as e:
+            print(f"WARNING: Could not access folder {folder_path}: {e}")
+            
+    db_paths = set(db_files.keys())
+    disk_paths = set(disk_files.keys())
+    
+    to_delete = db_paths - disk_paths
+    to_add = disk_paths - db_paths
+    to_check = disk_paths & db_paths
+    to_update = {path for path in to_check if int(disk_files.get(path, 0)) > int(db_files.get(path, 0))}
+    
+    files_to_process = list(to_add.union(to_update))
+    
     if files_to_process:
-        print(f"INFO: Analyzing {len(files_to_process)} new or modified files...")
-        data_to_upsert = []
-        for p in files_to_process:
-            metadata = analyze_file_metadata(p)
-            file_hash = hashlib.md5((p + str(disk_files[p])).encode()).hexdigest()
-            if not glob.glob(os.path.join(THUMBNAIL_CACHE_DIR, f"{file_hash}.*")):
-                create_thumbnail(p, file_hash, metadata['type'])
-            data_to_upsert.append((hashlib.md5(p.encode()).hexdigest(), p, disk_files[p], os.path.basename(p), *metadata.values()))
-        if data_to_upsert: conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", data_to_upsert)
-    if to_delete:
-        print(f"INFO: Removing {len(to_delete)} obsolete files...")
-        conn.executemany("DELETE FROM files WHERE path = ?", [(p,) for p in to_delete])
-    conn.commit()
-    print(f"INFO: Full scan completed in {time.time() - start_time:.2f} seconds.")
+        print(f"INFO: Processing {len(files_to_process)} files in parallel using up to {MAX_PARALLEL_WORKERS or 'all'} CPU cores...")
+        
+        results = []
+        # --- CORRECT BLOCK FOR PROGRESS BAR ---
+        with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_PARALLEL_WORKERS) as executor:
+            # Submit all jobs to the pool and get future objects
+            futures = {executor.submit(process_single_file, path): path for path in files_to_process}
+            
+            # Create the progress bar with the correct total
+            with tqdm(total=len(files_to_process), desc="Processing files") as pbar:
+                # Iterate over the jobs as they are COMPLETED
+                for future in concurrent.futures.as_completed(futures):
+                    result = future.result()
+                    if result:
+                        results.append(result)
+                    # Update the bar by 1 step for each completed job
+                    pbar.update(1)
 
+        if results:
+            print(f"INFO: Inserting {len(results)} processed records into the database...")
+            for i in range(0, len(results), BATCH_SIZE):
+                batch = results[i:i + BATCH_SIZE]
+                conn.executemany(
+                    "INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    batch
+                )
+                conn.commit()
+
+    if to_delete:
+        print(f"INFO: Removing {len(to_delete)} obsolete file entries from the database...")
+        conn.executemany("DELETE FROM files WHERE path = ?", [(p,) for p in to_delete])
+        conn.commit()
+
+    print(f"INFO: Full scan completed in {time.time() - start_time:.2f} seconds.")
+    
 def sync_folder_on_demand(folder_path):
     yield f"data: {json.dumps({'message': 'Checking folder for changes...', 'current': 0, 'total': 1})}\n\n"
     
     try:
         with get_db_connection() as conn:
             disk_files, valid_extensions = {}, {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.mp4', '.mkv', '.webm', '.mov', '.avi', '.mp3', '.wav', '.ogg', '.flac'}
-            
             if os.path.isdir(folder_path):
                 for name in os.listdir(folder_path):
                     filepath = os.path.join(folder_path, name)
@@ -513,50 +578,54 @@ def sync_folder_on_demand(folder_path):
             db_files = {row['path']: row['mtime'] for row in db_files_query if os.path.normpath(os.path.dirname(row['path'])) == os.path.normpath(folder_path)}
             
             disk_filepaths, db_filepaths = set(disk_files.keys()), set(db_files.keys())
-            
             files_to_add = disk_filepaths - db_filepaths
             files_to_delete = db_filepaths - disk_filepaths
-            files_to_update = {path for path in (disk_filepaths & db_filepaths) if disk_files[path] > db_files[path]}
+            files_to_update = {path for path in (disk_filepaths & db_filepaths) if int(disk_files[path]) > int(db_files[path])}
             
             if not files_to_add and not files_to_update and not files_to_delete:
                 yield f"data: {json.dumps({'message': 'Folder is up-to-date.', 'status': 'no_changes', 'current': 1, 'total': 1})}\n\n"
                 return
 
             files_to_process = list(files_to_add.union(files_to_update))
-            total_files_to_process = len(files_to_process)
+            total_files = len(files_to_process)
             
-            if total_files_to_process > 0:
-                yield f"data: {json.dumps({'message': f'Found {total_files_to_process} new/modified files...', 'current': 0, 'total': total_files_to_process})}\n\n"
-                time.sleep(1)
-
-                data_to_upsert = []
-                for i, path in enumerate(files_to_process):
-                    progress_data = {'message': f'Processing: {os.path.basename(path)}', 'current': i + 1, 'total': total_files_to_process }
-                    yield f"data: {json.dumps(progress_data)}\n\n"
-                    
-                    metadata = analyze_file_metadata(path)
-                    file_hash = hashlib.md5((path + str(disk_files[path])).encode()).hexdigest()
-                    if not glob.glob(os.path.join(THUMBNAIL_CACHE_DIR, f"{file_hash}.*")): 
-                        create_thumbnail(path, file_hash, metadata['type'])
-                    
-                    data_to_upsert.append((hashlib.md5(path.encode()).hexdigest(), path, disk_files[path], os.path.basename(path), *metadata.values()))
+            if total_files > 0:
+                yield f"data: {json.dumps({'message': f'Found {total_files} new/modified files. Processing...', 'current': 0, 'total': total_files})}\n\n"
                 
+                data_to_upsert = []
+                processed_count = 0
+
+                with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_PARALLEL_WORKERS) as executor:
+                    futures = {executor.submit(process_single_file, path): path for path in files_to_process}
+                    
+                    for future in concurrent.futures.as_completed(futures):
+                        result = future.result()
+                        if result:
+                            data_to_upsert.append(result)
+                        
+                        processed_count += 1
+                        path = futures[future]
+                        progress_data = {
+                            'message': f'Processing: {os.path.basename(path)}',
+                            'current': processed_count,
+                            'total': total_files
+                        }
+                        yield f"data: {json.dumps(progress_data)}\n\n"
+
                 if data_to_upsert: 
                     conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", data_to_upsert)
 
             if files_to_delete:
-                paths_to_delete_list = list(files_to_delete)
-                placeholders = ','.join('?' * len(paths_to_delete_list))
-                conn.execute(f"DELETE FROM files WHERE path IN ({placeholders})", paths_to_delete_list)
+                conn.executemany("DELETE FROM files WHERE path IN (?)", [(p,) for p in files_to_delete])
 
             conn.commit()
-            yield f"data: {json.dumps({'message': 'Sync complete. Reloading...', 'status': 'reloading', 'current': total_files_to_process, 'total': total_files_to_process})}\n\n"
+            yield f"data: {json.dumps({'message': 'Sync complete. Reloading...', 'status': 'reloading', 'current': total_files, 'total': total_files})}\n\n"
 
     except Exception as e:
         error_message = f"Error during sync: {e}"
         print(f"ERROR: {error_message}")
         yield f"data: {json.dumps({'message': error_message, 'current': 1, 'total': 1, 'error': True})}\n\n"
-
+        
 def scan_folder_and_extract_options(folder_path):
     extensions, prefixes = set(), set()
     try:
@@ -884,6 +953,64 @@ def delete_file(file_id):
         conn.execute("DELETE FROM files WHERE id = ?", (file_id,))
         conn.commit()
         return jsonify({'status': 'success', 'message': 'File deleted successfully.'})
+
+# --- NEW FEATURE: RENAME FILE ---
+@app.route('/galleryout/rename_file/<string:file_id>', methods=['POST'])
+def rename_file(file_id):
+    data = request.json
+    new_name = data.get('new_name', '').strip()
+
+    # Basic validation for the new name
+    if not new_name or len(new_name) > 250:
+        return jsonify({'status': 'error', 'message': 'The provided filename is invalid or too long.'}), 400
+    if re.search(r'[\\/:"*?<>|]', new_name):
+        return jsonify({'status': 'error', 'message': 'Filename contains invalid characters.'}), 400
+
+    try:
+        with get_db_connection() as conn:
+            file_info = conn.execute("SELECT path, name FROM files WHERE id = ?", (file_id,)).fetchone()
+            if not file_info:
+                return jsonify({'status': 'error', 'message': 'File not found in the database.'}), 404
+
+            old_path = file_info['path']
+            old_name = file_info['name']
+            
+            # Preserve the original extension
+            _, old_ext = os.path.splitext(old_name)
+            new_name_base, new_ext = os.path.splitext(new_name)
+            if not new_ext: # If user didn't provide an extension, use the old one
+                final_new_name = new_name + old_ext
+            else:
+                final_new_name = new_name
+
+            if final_new_name == old_name:
+                return jsonify({'status': 'error', 'message': 'The new name is the same as the old one.'}), 400
+
+            file_dir = os.path.dirname(old_path)
+            new_path = os.path.join(file_dir, final_new_name)
+
+            if os.path.exists(new_path):
+                return jsonify({'status': 'error', 'message': f'A file named "{final_new_name}" already exists in this folder.'}), 409
+
+            # Perform the rename and database update
+            os.rename(old_path, new_path)
+            new_id = hashlib.md5(new_path.encode()).hexdigest()
+            conn.execute("UPDATE files SET id = ?, path = ?, name = ? WHERE id = ?", (new_id, new_path, final_new_name, file_id))
+            conn.commit()
+
+            return jsonify({
+                'status': 'success',
+                'message': 'File renamed successfully.',
+                'new_name': final_new_name,
+                'new_id': new_id
+            })
+
+    except OSError as e:
+        print(f"ERROR: OS error during file rename for {file_id}: {e}")
+        return jsonify({'status': 'error', 'message': f'A system error occurred during rename: {e}'}), 500
+    except Exception as e:
+        print(f"ERROR: Generic error during file rename for {file_id}: {e}")
+        return jsonify({'status': 'error', 'message': f'An unexpected error occurred: {e}'}), 500
 
 @app.route('/galleryout/file/<string:file_id>')
 def serve_file(file_id):

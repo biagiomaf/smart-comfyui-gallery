@@ -28,11 +28,12 @@
 
 ---
 
-## 🆕 What's New in Version 1.30?
+## 🆕 What's New in Version 1.31?
 
+- ⚡ Parallel processing: Initial scan now 10-20x faster (minutes → seconds)
 - 🔍 **Smart Folder Navigation**: Expandable sidebar with real-time search and bi-directional sorting (A-Z, Z-A, newest, oldest)
 - 🖼️ **Enhanced Gallery Sorting**: Toggle thumbnail sorting by date or name with visual indicators
-- 🔎 **Advanced Lightbox**: Zoom with mouse wheel, persistent zoom levels, percentage display, and quick delete
+- 🔎 **Advanced Lightbox**: Zoom with mouse wheel, persistent zoom levels, percentage display, rename and quick delete
 - ⚡ **Real-time Sync**: Silent background checks with visual progress overlay when new files are detected
 - 📝 **Smart Workflow Names**: Downloaded workflows now match your image filenames
 

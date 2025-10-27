@@ -1,5 +1,21 @@
-
 # Changelog
+
+## [1.31] - 2025-10-27
+
+### Performance
+- **Massive Performance Boost with Parallel Processing**: Thumbnail generation and metadata analysis have been completely parallelized for both the initial database build and on-demand folder syncing. This drastically reduces waiting times (from many minutes to mere seconds or a few minutes, depending on hardware) by leveraging all available CPU cores.
+- **Configurable CPU Usage**: A new `MAX_PARALLEL_WORKERS` setting has been added to allow users to specify the number of parallel processes to use. Set to `None` for maximum speed (using all cores) or to a specific number to limit CPU usage.
+
+### Added
+- **File Renaming from Lightbox**: Users can now rename files directly from the lightbox view using a new pencil icon in the toolbar. The new name is immediately reflected in the gallery view and all associated links without requiring a page reload. Includes validation to prevent conflicts with existing files.
+- **Persistent Folder Sort**: Folder sort preferences (by name or date) are now saved to the browser's `localStorage`. The chosen sort order now persists across page reloads and navigation to other folders.
+- **Console Progress Bar for Initial Scan**: During the initial database build (the offline process), a detailed progress bar (`tqdm`) is now displayed in the console. It provides real-time feedback on completion percentage, processing speed, and estimated time remaining.
+
+### Fixed
+- **Critical 'Out of Memory' Error**: Fixed a critical 'out of memory' error that occurred during the initial scan of tens of thousands of files. The issue was resolved by implementing batch processing (`BATCH_SIZE`) for database writes.
+
+### Changed
+- **Code Refactoring**: File processing logic was centralized into a `process_single_file` worker function to improve code maintainability and support parallel execution.
 
 ## [1.30] - 2025-10-26
 
