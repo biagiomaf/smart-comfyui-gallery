@@ -191,7 +191,7 @@ A `Dockerfile` is provided and will perform a simple build using a `python:3.12-
 The `Makefile` contains a `build`, `run` and `kill` targets to ease the process of building and running the container.
 Adapt the variables in the `Makefile` to match your setup before performing a `make run`.
 
-Those environment variables are also compatible with a `compose.yaml` usage.
+Those environment variables are also compatible with a `compose.yaml` usage as can be seen in the example file.
 
 ---
 
