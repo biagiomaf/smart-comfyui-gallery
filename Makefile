@@ -17,7 +17,7 @@ THUMBNAIL_WIDTH=300
 WEBP_ANIMATED_FPS=16.0
 PAGE_SIZE=100
 BATCH_SIZE=500
-MAX_PARALLEL_WORKERS=None
+# see MAX_PARALLEL_WORKERS in smartgallery.py, if not set, will use "None" (ie use all available CPU cores)
 
 all: build
 
