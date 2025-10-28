@@ -296,6 +296,20 @@
                     <div class="filter-group"><label for="extension-select">📄 Extensions</label><select name="extension" id="extension-select" multiple>{% for ext in available_extensions %}<option value="{{ ext }}" {% if ext in selected_extensions %}selected{% endif %}>{{ ext }}</option>{% endfor %}</select></div>
                     <div class="filter-group"><label for="prefix-select">🏷️ Prefixes</label><select name="prefix" id="prefix-select" multiple>{% for pfx in available_prefixes %}{% if pfx != '.gallery ' %}<option value="{{ pfx }}" {% if pfx in selected_prefixes %}selected{% endif %}>{{ pfx }}</option>{% endif %}{% endfor %}</select></div>
                     <div class="filter-group"><div class="filter-group-inline"><input type="checkbox" name="favorites" id="favorites-check" value="true" {% if show_favorites %}checked{% endif %}><label for="favorites-check">⭐ Favorites Only</label></div></div>
+                    
+                    <!-- Workflow Metadata Filters -->
+                    <div class="filter-group"><label for="model-select">🤖 Model</label><select name="filter_model" id="model-select"><option value="">All Models</option></select></div>
+                    <div class="filter-group"><label for="sampler-select">🎲 Sampler</label><select name="filter_sampler" id="sampler-select"><option value="">All Samplers</option></select></div>
+                    <div class="filter-group"><label for="scheduler-select">📅 Scheduler</label><select name="filter_scheduler" id="scheduler-select"><option value="">All Schedulers</option></select></div>
+                    <div class="filter-group"><label for="cfg-min-input">⚙️ CFG Min</label><input type="number" name="filter_cfg_min" id="cfg-min-input" placeholder="Min CFG" step="0.1" value="{{ request.args.get('filter_cfg_min', '') }}"></div>
+                    <div class="filter-group"><label for="cfg-max-input">⚙️ CFG Max</label><input type="number" name="filter_cfg_max" id="cfg-max-input" placeholder="Max CFG" step="0.1" value="{{ request.args.get('filter_cfg_max', '') }}"></div>
+                    <div class="filter-group"><label for="steps-min-input">🔢 Steps Min</label><input type="number" name="filter_steps_min" id="steps-min-input" placeholder="Min Steps" step="1" value="{{ request.args.get('filter_steps_min', '') }}"></div>
+                    <div class="filter-group"><label for="steps-max-input">🔢 Steps Max</label><input type="number" name="filter_steps_max" id="steps-max-input" placeholder="Max Steps" step="1" value="{{ request.args.get('filter_steps_max', '') }}"></div>
+                    <div class="filter-group"><label for="width-min-input">📏 Width Min</label><input type="number" name="filter_width_min" id="width-min-input" placeholder="Min Width" step="64" value="{{ request.args.get('filter_width_min', '') }}"></div>
+                    <div class="filter-group"><label for="width-max-input">📏 Width Max</label><input type="number" name="filter_width_max" id="width-max-input" placeholder="Max Width" step="64" value="{{ request.args.get('filter_width_max', '') }}"></div>
+                    <div class="filter-group"><label for="height-min-input">📐 Height Min</label><input type="number" name="filter_height_min" id="height-min-input" placeholder="Min Height" step="64" value="{{ request.args.get('filter_height_min', '') }}"></div>
+                    <div class="filter-group"><label for="height-max-input">📐 Height Max</label><input type="number" name="filter_height_max" id="height-max-input" placeholder="Max Height" step="64" value="{{ request.args.get('filter_height_max', '') }}"></div>
+                    
                     <div class="filter-group mobile-actions-only"><label>Actions</label><div class="mobile-actions-row"><button type="submit">🔍 Filter</button><a href="{{ url_for('gallery_view', folder_key=current_folder_key) }}">🔄 Reset</a></div></div>
                 </div>
                 <div class="filter-actions-row">
@@ -398,6 +412,74 @@
             try {
                 localStorage.setItem('gallerySortPreference', JSON.stringify(currentSort));
             } catch (e) { console.warn('Could not save sort preference:', e); }
+        }
+        
+        // Populate workflow metadata filter dropdowns
+        async function populateWorkflowFilters() {
+            try {
+                const response = await fetch('/galleryout/filter_options');
+                if (!response.ok) throw new Error('Failed to fetch filter options');
+                
+                const data = await response.json();
+                if (data.status !== 'success') throw new Error('Invalid response from server');
+                
+                const options = data.options;
+                
+                // Populate model dropdown
+                const modelSelect = document.getElementById('model-select');
+                const currentModel = '{{ request.args.get("filter_model", "") }}';
+                options.models.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model;
+                    option.textContent = model;
+                    if (model === currentModel) option.selected = true;
+                    modelSelect.appendChild(option);
+                });
+                
+                // Populate sampler dropdown
+                const samplerSelect = document.getElementById('sampler-select');
+                const currentSampler = '{{ request.args.get("filter_sampler", "") }}';
+                options.samplers.forEach(sampler => {
+                    const option = document.createElement('option');
+                    option.value = sampler;
+                    option.textContent = sampler;
+                    if (sampler === currentSampler) option.selected = true;
+                    samplerSelect.appendChild(option);
+                });
+                
+                // Populate scheduler dropdown
+                const schedulerSelect = document.getElementById('scheduler-select');
+                const currentScheduler = '{{ request.args.get("filter_scheduler", "") }}';
+                options.schedulers.forEach(scheduler => {
+                    const option = document.createElement('option');
+                    option.value = scheduler;
+                    option.textContent = scheduler;
+                    if (scheduler === currentScheduler) option.selected = true;
+                    schedulerSelect.appendChild(option);
+                });
+                
+                // Set placeholder values for range inputs
+                const cfgMinInput = document.getElementById('cfg-min-input');
+                const cfgMaxInput = document.getElementById('cfg-max-input');
+                const stepsMinInput = document.getElementById('steps-min-input');
+                const stepsMaxInput = document.getElementById('steps-max-input');
+                const widthMinInput = document.getElementById('width-min-input');
+                const widthMaxInput = document.getElementById('width-max-input');
+                const heightMinInput = document.getElementById('height-min-input');
+                const heightMaxInput = document.getElementById('height-max-input');
+                
+                cfgMinInput.placeholder = `Min: ${options.cfg_range.min}`;
+                cfgMaxInput.placeholder = `Max: ${options.cfg_range.max}`;
+                stepsMinInput.placeholder = `Min: ${options.steps_range.min}`;
+                stepsMaxInput.placeholder = `Max: ${options.steps_range.max}`;
+                widthMinInput.placeholder = `Min: ${options.width_range.min}`;
+                widthMaxInput.placeholder = `Max: ${options.width_range.max}`;
+                heightMinInput.placeholder = `Min: ${options.height_range.min}`;
+                heightMaxInput.placeholder = `Max: ${options.height_range.max}`;
+                
+            } catch (error) {
+                console.warn('Could not load workflow filter options:', error);
+            }
         }
         
         function showNotification(message, type = 'info') { const container = document.getElementById('notification-container'); if (!container) return; const notification = document.createElement('div'); notification.className = `notification ${type}`; notification.textContent = message; container.appendChild(notification); setTimeout(() => { notification.classList.add('show'); }, 10); setTimeout(() => { notification.classList.remove('show'); notification.addEventListener('transitionend', () => notification.remove()); }, 3000); }
@@ -660,6 +742,10 @@
             appendFiles(initialFiles);
             new TomSelect('#extension-select', { plugins: ['checkbox_options', 'clear_button'], placeholder: '📄 Select extensions...' });
             new TomSelect('#prefix-select', { plugins: ['checkbox_options', 'clear_button'], placeholder: '🏷️ Select prefixes...' });
+            
+            // Initialize workflow filter options
+            populateWorkflowFilters();
+            
             const sidebar = document.querySelector('.sidebar');
             const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
             const sidebarToggleText = document.getElementById('sidebar-toggle-text');

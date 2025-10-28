@@ -1,7 +1,7 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025 — MIT License (free to use and modify)
 #
-# Version: 1.36.1 - October 28, 2025 (Robust Deep-Linking with Pagination)
+# Version: 1.37.1 - October 29, 2025 (Workflow Metadata Extraction Robustness)
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -342,6 +342,174 @@ def extract_workflow(filepath):
                 
     return None
 
+def extract_workflow_metadata(workflow_json_string):
+    """
+    Extracts searchable metadata from a ComfyUI workflow JSON string using link tracing.
+    This robust implementation handles diverse workflow structures by tracing node connections.
+    Returns a dict with: model_name, sampler_name, scheduler, cfg, steps, positive_prompt, negative_prompt, width, height
+    """
+    try:
+        workflow_data = json.loads(workflow_json_string)
+        metadata = {
+            'model_name': None,
+            'sampler_name': None,
+            'scheduler': None,
+            'cfg': None,
+            'steps': None,
+            'positive_prompt': None,
+            'negative_prompt': None,
+            'width': None,
+            'height': None
+        }
+        
+        nodes_list = workflow_data.get('nodes', [])
+        links = workflow_data.get('links', [])
+        
+        # Build node lookup dictionary for fast access by ID
+        nodes_by_id = {node.get('id'): node for node in nodes_list if 'id' in node}
+        
+        # Build link lookup: link_id -> (origin_id, origin_slot, target_id, target_slot, type)
+        links_by_id = {}
+        links_by_target = {}  # target_node_id -> [(link_id, target_slot, origin_id, origin_slot), ...]
+        
+        for link in links:
+            if len(link) >= 5:
+                link_id, origin_id, origin_slot, target_id, target_slot = link[0], link[1], link[2], link[3], link[4]
+                links_by_id[link_id] = link
+                if target_id not in links_by_target:
+                    links_by_target[target_id] = []
+                links_by_target[target_id].append((link_id, target_slot, origin_id, origin_slot))
+        
+        # Known sampler node types (extensible list)
+        SAMPLER_NODE_TYPES = ['KSampler', 'KSamplerAdvanced', 'SamplerCustom', 'KSamplerSelect']
+        
+        # Step 1: Find the primary sampler node
+        sampler_node = None
+        sampler_node_id = None
+        for node in nodes_list:
+            if node.get('type', '') in SAMPLER_NODE_TYPES:
+                sampler_node = node
+                sampler_node_id = node.get('id')
+                break
+        
+        if sampler_node:
+            node_type = sampler_node.get('type', '')
+            widgets_values = sampler_node.get('widgets_values', [])
+            
+            # Extract sampler parameters based on node type
+            if node_type == 'KSampler' and len(widgets_values) >= 6:
+                # KSampler: [seed, steps, cfg, sampler_name, scheduler, denoise]
+                metadata['steps'] = widgets_values[1]
+                metadata['cfg'] = widgets_values[2]
+                metadata['sampler_name'] = widgets_values[3]
+                metadata['scheduler'] = widgets_values[4]
+            elif node_type == 'KSamplerAdvanced' and len(widgets_values) >= 6:
+                # KSamplerAdvanced: [add_noise, noise_seed, steps, cfg, sampler_name, scheduler, ...]
+                metadata['steps'] = widgets_values[2]
+                metadata['cfg'] = widgets_values[3]
+                metadata['sampler_name'] = widgets_values[4]
+                metadata['scheduler'] = widgets_values[5]
+            elif node_type == 'SamplerCustom' and len(widgets_values) >= 1:
+                # SamplerCustom may have different structure, extract what's available
+                # Typically: [steps, cfg, ...]
+                if len(widgets_values) >= 1:
+                    metadata['steps'] = widgets_values[0]
+                if len(widgets_values) >= 2:
+                    metadata['cfg'] = widgets_values[1]
+            
+            # Step 2: Trace model input link from sampler
+            # Look for 'model' input on the sampler node
+            sampler_inputs = sampler_node.get('inputs', [])
+            model_link_id = None
+            for inp in sampler_inputs:
+                if inp.get('name') == 'model' and 'link' in inp:
+                    model_link_id = inp['link']
+                    break
+            
+            # If model link found, trace back to the model loader node
+            if model_link_id and model_link_id in links_by_id:
+                link = links_by_id[model_link_id]
+                loader_node_id = link[1]  # origin_id
+                loader_node = nodes_by_id.get(loader_node_id)
+                
+                if loader_node and 'widgets_values' in loader_node:
+                    loader_widgets = loader_node['widgets_values']
+                    # Heuristic: Model name is typically the first widget value in loader nodes
+                    if loader_widgets and len(loader_widgets) > 0:
+                        metadata['model_name'] = loader_widgets[0]
+            
+            # Step 3: Trace positive and negative prompt links
+            positive_link_id = None
+            negative_link_id = None
+            
+            for inp in sampler_inputs:
+                inp_name = inp.get('name', '').lower()
+                if 'positive' in inp_name and 'link' in inp:
+                    positive_link_id = inp['link']
+                elif 'negative' in inp_name and 'link' in inp:
+                    negative_link_id = inp['link']
+            
+            # Trace positive prompt
+            if positive_link_id and positive_link_id in links_by_id:
+                link = links_by_id[positive_link_id]
+                prompt_node_id = link[1]  # origin_id
+                prompt_node = nodes_by_id.get(prompt_node_id)
+                
+                if prompt_node and prompt_node.get('type') == 'CLIPTextEncode':
+                    prompt_widgets = prompt_node.get('widgets_values', [])
+                    if prompt_widgets and len(prompt_widgets) > 0:
+                        metadata['positive_prompt'] = prompt_widgets[0]
+            
+            # Trace negative prompt
+            if negative_link_id and negative_link_id in links_by_id:
+                link = links_by_id[negative_link_id]
+                prompt_node_id = link[1]  # origin_id
+                prompt_node = nodes_by_id.get(prompt_node_id)
+                
+                if prompt_node and prompt_node.get('type') == 'CLIPTextEncode':
+                    prompt_widgets = prompt_node.get('widgets_values', [])
+                    if prompt_widgets and len(prompt_widgets) > 0:
+                        metadata['negative_prompt'] = prompt_widgets[0]
+            
+            # Step 4: Trace latent input to find EmptyLatentImage for dimensions
+            latent_link_id = None
+            for inp in sampler_inputs:
+                inp_name = inp.get('name', '').lower()
+                if 'latent' in inp_name and 'link' in inp:
+                    latent_link_id = inp['link']
+                    break
+            
+            if latent_link_id and latent_link_id in links_by_id:
+                link = links_by_id[latent_link_id]
+                latent_node_id = link[1]  # origin_id
+                latent_node = nodes_by_id.get(latent_node_id)
+                
+                if latent_node and latent_node.get('type') == 'EmptyLatentImage':
+                    latent_widgets = latent_node.get('widgets_values', [])
+                    # EmptyLatentImage: [width, height, batch_size]
+                    if len(latent_widgets) >= 2:
+                        metadata['width'] = latent_widgets[0]
+                        metadata['height'] = latent_widgets[1]
+        
+        # Fallback: If no sampler found, try to extract prompts from any CLIPTextEncode nodes
+        if not sampler_node:
+            for node in nodes_list:
+                if node.get('type') == 'CLIPTextEncode':
+                    widgets_values = node.get('widgets_values', [])
+                    if len(widgets_values) > 0:
+                        prompt_text = widgets_values[0]
+                        if metadata['positive_prompt'] is None:
+                            metadata['positive_prompt'] = prompt_text
+                        elif metadata['negative_prompt'] is None:
+                            metadata['negative_prompt'] = prompt_text
+        
+        return metadata
+    except Exception as e:
+        print(f"DEBUG: Error extracting workflow metadata: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
 def is_webp_animated(filepath):
     try:
         with Image.open(filepath) as img: return getattr(img, 'is_animated', False)
@@ -576,9 +744,20 @@ def process_single_file(filepath, thumbnail_cache_dir, thumbnail_width, video_ex
         
         file_id = hashlib.md5(filepath.encode()).hexdigest()
         
+        # Extract workflow metadata if workflow is present
+        workflow_metadata = None
+        if details['has_workflow']:
+            try:
+                workflow_json = extract_workflow(filepath)
+                if workflow_json:
+                    workflow_metadata = extract_workflow_metadata(workflow_json)
+            except Exception as e:
+                print(f"DEBUG: Error extracting workflow metadata in worker: {e}")
+        
         return (
             file_id, filepath, mtime, os.path.basename(filepath),
-            details['type'], details['duration'], details['dimensions'], details['has_workflow']
+            details['type'], details['duration'], details['dimensions'], details['has_workflow'],
+            workflow_metadata  # New: return metadata as 9th element
         )
     except Exception as e:
         print(f"ERROR: Failed to process file {os.path.basename(filepath)} in worker: {e}")
@@ -628,6 +807,29 @@ def init_db(conn=None):
             has_workflow INTEGER, is_favorite INTEGER DEFAULT 0
         )
     ''')
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS workflow_metadata (
+            file_id TEXT PRIMARY KEY,
+            model_name TEXT,
+            sampler_name TEXT,
+            scheduler TEXT,
+            cfg REAL,
+            steps INTEGER,
+            positive_prompt TEXT,
+            negative_prompt TEXT,
+            width INTEGER,
+            height INTEGER,
+            FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
+        )
+    ''')
+    # Create indices for efficient filtering
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_model_name ON workflow_metadata(model_name)')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_sampler_name ON workflow_metadata(sampler_name)')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_scheduler ON workflow_metadata(scheduler)')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_cfg ON workflow_metadata(cfg)')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_steps ON workflow_metadata(steps)')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_width ON workflow_metadata(width)')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_height ON workflow_metadata(height)')
     conn.commit()
     if close_conn: conn.close()
     
@@ -787,13 +989,48 @@ def full_sync_database(conn):
 
         if results:
             print(f"INFO: Inserting {len(results)} processed records into the database...")
-            for i in range(0, len(results), BATCH_SIZE):
-                batch = results[i:i + BATCH_SIZE]
+            files_data = []
+            metadata_data = []
+            
+            for result in results:
+                # result now has 9 elements: (id, path, mtime, name, type, duration, dimensions, has_workflow, workflow_metadata)
+                file_id = result[0]
+                file_tuple = result[:8]  # First 8 elements for files table
+                workflow_metadata = result[8]  # 9th element is metadata dict or None
+                
+                files_data.append(file_tuple)
+                
+                if workflow_metadata:
+                    metadata_data.append((
+                        file_id,
+                        workflow_metadata.get('model_name'),
+                        workflow_metadata.get('sampler_name'),
+                        workflow_metadata.get('scheduler'),
+                        workflow_metadata.get('cfg'),
+                        workflow_metadata.get('steps'),
+                        workflow_metadata.get('positive_prompt'),
+                        workflow_metadata.get('negative_prompt'),
+                        workflow_metadata.get('width'),
+                        workflow_metadata.get('height')
+                    ))
+            
+            for i in range(0, len(files_data), BATCH_SIZE):
+                batch = files_data[i:i + BATCH_SIZE]
                 conn.executemany(
                     "INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                     batch
                 )
                 conn.commit()
+            
+            if metadata_data:
+                print(f"INFO: Inserting {len(metadata_data)} workflow metadata records...")
+                for i in range(0, len(metadata_data), BATCH_SIZE):
+                    batch = metadata_data[i:i + BATCH_SIZE]
+                    conn.executemany(
+                        "INSERT OR REPLACE INTO workflow_metadata (file_id, model_name, sampler_name, scheduler, cfg, steps, positive_prompt, negative_prompt, width, height) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        batch
+                    )
+                    conn.commit()
 
     if to_delete:
         print(f"INFO: Removing {len(to_delete)} obsolete file entries from the database...")
@@ -831,16 +1068,44 @@ def sync_folder_internal(folder_path):
             
         if files_to_process:
             data_to_upsert = []
+            metadata_to_upsert = []
+            
             for path in files_to_process:
                 metadata = analyze_file_metadata(path)
                 file_hash = hashlib.md5((path + str(disk_files[path])).encode()).hexdigest()
                 if not glob.glob(os.path.join(app.config['THUMBNAIL_CACHE_DIR'], f"{file_hash}.*")): 
                     create_thumbnail(path, file_hash, metadata['type'])
-                    
-                data_to_upsert.append((hashlib.md5(path.encode()).hexdigest(), path, disk_files[path], os.path.basename(path), *metadata.values()))
+                
+                file_id = hashlib.md5(path.encode()).hexdigest()
+                data_to_upsert.append((file_id, path, disk_files[path], os.path.basename(path), *metadata.values()))
+                
+                # Extract workflow metadata if present
+                if metadata['has_workflow']:
+                    try:
+                        workflow_json = extract_workflow(path)
+                        if workflow_json:
+                            workflow_meta = extract_workflow_metadata(workflow_json)
+                            if workflow_meta:
+                                metadata_to_upsert.append((
+                                    file_id,
+                                    workflow_meta.get('model_name'),
+                                    workflow_meta.get('sampler_name'),
+                                    workflow_meta.get('scheduler'),
+                                    workflow_meta.get('cfg'),
+                                    workflow_meta.get('steps'),
+                                    workflow_meta.get('positive_prompt'),
+                                    workflow_meta.get('negative_prompt'),
+                                    workflow_meta.get('width'),
+                                    workflow_meta.get('height')
+                                ))
+                    except Exception as e:
+                        print(f"DEBUG: Error extracting workflow metadata for {os.path.basename(path)}: {e}")
                 
             if data_to_upsert: 
                 conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", data_to_upsert)
+            
+            if metadata_to_upsert:
+                conn.executemany("INSERT OR REPLACE INTO workflow_metadata (file_id, model_name, sampler_name, scheduler, cfg, steps, positive_prompt, negative_prompt, width, height) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", metadata_to_upsert)
 
         if files_to_delete:
             paths_to_delete_list = list(files_to_delete)
@@ -921,8 +1186,36 @@ def sync_folder_on_demand(folder_path):
                     }
                     yield f"data: {json.dumps(progress_data)}\n\n"
 
-            if data_to_upsert: 
-                conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", data_to_upsert)
+            if data_to_upsert:
+                files_data = []
+                metadata_data = []
+                
+                for result in data_to_upsert:
+                    # result now has 9 elements: (id, path, mtime, name, type, duration, dimensions, has_workflow, workflow_metadata)
+                    file_id = result[0]
+                    file_tuple = result[:8]  # First 8 elements for files table
+                    workflow_metadata = result[8]  # 9th element is metadata dict or None
+                    
+                    files_data.append(file_tuple)
+                    
+                    if workflow_metadata:
+                        metadata_data.append((
+                            file_id,
+                            workflow_metadata.get('model_name'),
+                            workflow_metadata.get('sampler_name'),
+                            workflow_metadata.get('scheduler'),
+                            workflow_metadata.get('cfg'),
+                            workflow_metadata.get('steps'),
+                            workflow_metadata.get('positive_prompt'),
+                            workflow_metadata.get('negative_prompt'),
+                            workflow_metadata.get('width'),
+                            workflow_metadata.get('height')
+                        ))
+                
+                conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", files_data)
+                
+                if metadata_data:
+                    conn.executemany("INSERT OR REPLACE INTO workflow_metadata (file_id, model_name, sampler_name, scheduler, cfg, steps, positive_prompt, negative_prompt, width, height) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", metadata_data)
 
         if files_to_delete:
             conn.executemany("DELETE FROM files WHERE path IN (?)", [(p,) for p in files_to_delete])
@@ -1039,35 +1332,104 @@ def gallery_view(folder_key):
     
     conn = get_db()
     conditions, params = [], []
-    conditions.append("path LIKE ?")
+    conditions.append("f.path LIKE ?")  # Changed to use alias 'f'
     params.append(folder_path + os.sep + '%')
+    
+    # Check if we need to join with workflow_metadata table
+    use_metadata_join = False
+    filter_model = request.args.get('filter_model', '').strip()
+    filter_sampler = request.args.get('filter_sampler', '').strip()
+    filter_scheduler = request.args.get('filter_scheduler', '').strip()
+    filter_cfg_min = request.args.get('filter_cfg_min', type=float)
+    filter_cfg_max = request.args.get('filter_cfg_max', type=float)
+    filter_steps_min = request.args.get('filter_steps_min', type=int)
+    filter_steps_max = request.args.get('filter_steps_max', type=int)
+    filter_width_min = request.args.get('filter_width_min', type=int)
+    filter_width_max = request.args.get('filter_width_max', type=int)
+    filter_height_min = request.args.get('filter_height_min', type=int)
+    filter_height_max = request.args.get('filter_height_max', type=int)
+    
+    # Add workflow metadata filters if specified
+    if filter_model:
+        use_metadata_join = True
+        conditions.append("wm.model_name = ?")
+        params.append(filter_model)
+    if filter_sampler:
+        use_metadata_join = True
+        conditions.append("wm.sampler_name = ?")
+        params.append(filter_sampler)
+    if filter_scheduler:
+        use_metadata_join = True
+        conditions.append("wm.scheduler = ?")
+        params.append(filter_scheduler)
+    if filter_cfg_min is not None:
+        use_metadata_join = True
+        conditions.append("wm.cfg >= ?")
+        params.append(filter_cfg_min)
+    if filter_cfg_max is not None:
+        use_metadata_join = True
+        conditions.append("wm.cfg <= ?")
+        params.append(filter_cfg_max)
+    if filter_steps_min is not None:
+        use_metadata_join = True
+        conditions.append("wm.steps >= ?")
+        params.append(filter_steps_min)
+    if filter_steps_max is not None:
+        use_metadata_join = True
+        conditions.append("wm.steps <= ?")
+        params.append(filter_steps_max)
+    if filter_width_min is not None:
+        use_metadata_join = True
+        conditions.append("wm.width >= ?")
+        params.append(filter_width_min)
+    if filter_width_max is not None:
+        use_metadata_join = True
+        conditions.append("wm.width <= ?")
+        params.append(filter_width_max)
+    if filter_height_min is not None:
+        use_metadata_join = True
+        conditions.append("wm.height >= ?")
+        params.append(filter_height_min)
+    if filter_height_max is not None:
+        use_metadata_join = True
+        conditions.append("wm.height <= ?")
+        params.append(filter_height_max)
         
     sort_by = 'name' if request.args.get('sort_by') == 'name' else 'mtime'
     sort_order = 'asc' if request.args.get('sort_order', 'desc').lower() == 'asc' else 'desc'
 
     search_term = request.args.get('search', '').strip()
     if search_term:
-        conditions.append("name LIKE ?")
+        conditions.append("f.name LIKE ?")  # Changed to use alias 'f'
         params.append(f"%{search_term}%")
     if request.args.get('favorites', 'false').lower() == 'true':
-        conditions.append("is_favorite = 1")
+        conditions.append("f.is_favorite = 1")  # Changed to use alias 'f'
 
     selected_prefixes = request.args.getlist('prefix')
     if selected_prefixes:
-        prefix_conditions = [f"name LIKE ?" for p in selected_prefixes if p.strip()]
+        prefix_conditions = [f"f.name LIKE ?" for p in selected_prefixes if p.strip()]  # Changed to use alias 'f'
         params.extend([f"{p.strip()}_%" for p in selected_prefixes if p.strip()])
         if prefix_conditions: conditions.append(f"({' OR '.join(prefix_conditions)})")
 
     selected_extensions = request.args.getlist('extension')
     if selected_extensions:
-        ext_conditions = [f"name LIKE ?" for ext in selected_extensions if ext.strip()]
+        ext_conditions = [f"f.name LIKE ?" for ext in selected_extensions if ext.strip()]  # Changed to use alias 'f'
         params.extend([f"%.{ext.lstrip('.').lower()}" for ext in selected_extensions if ext.strip()])
         if ext_conditions: conditions.append(f"({' OR '.join(ext_conditions)})")
         
     sort_direction = "ASC" if sort_order == 'asc' else "DESC"
     
-    # First get all files for cache (used by load_more)
-    query_all = f"SELECT * FROM files WHERE {' AND '.join(conditions)} ORDER BY {sort_by} {sort_direction}"
+    # Build query with optional LEFT JOIN for workflow metadata
+    if use_metadata_join:
+        query_all = f"""
+            SELECT f.* FROM files f
+            LEFT JOIN workflow_metadata wm ON f.id = wm.file_id
+            WHERE {' AND '.join(conditions)}
+            ORDER BY f.{sort_by} {sort_direction}
+        """
+    else:
+        query_all = f"SELECT * FROM files f WHERE {' AND '.join(conditions)} ORDER BY f.{sort_by} {sort_direction}"
+    
     all_files_raw = conn.execute(query_all, params).fetchall()
     
     folder_path_norm = os.path.normpath(folder_path)
@@ -1208,6 +1570,54 @@ def delete_folder(folder_key):
         return jsonify({'status': 'success', 'message': 'Folder deleted.'})
     except Exception as e: return jsonify({'status': 'error', 'message': f'Error: {e}'}), 500
 
+@app.route('/galleryout/filter_options')
+@require_initialization
+def filter_options():
+    """
+    Returns all unique values for filterable workflow metadata fields.
+    Used to populate filter dropdowns in the frontend.
+    """
+    try:
+        conn = get_db()
+        
+        # Get all unique values for each filterable field
+        models = conn.execute("SELECT DISTINCT model_name FROM workflow_metadata WHERE model_name IS NOT NULL ORDER BY model_name").fetchall()
+        samplers = conn.execute("SELECT DISTINCT sampler_name FROM workflow_metadata WHERE sampler_name IS NOT NULL ORDER BY sampler_name").fetchall()
+        schedulers = conn.execute("SELECT DISTINCT scheduler FROM workflow_metadata WHERE scheduler IS NOT NULL ORDER BY scheduler").fetchall()
+        
+        # Get min/max ranges for numeric fields
+        cfg_range = conn.execute("SELECT MIN(cfg) as min_cfg, MAX(cfg) as max_cfg FROM workflow_metadata WHERE cfg IS NOT NULL").fetchone()
+        steps_range = conn.execute("SELECT MIN(steps) as min_steps, MAX(steps) as max_steps FROM workflow_metadata WHERE steps IS NOT NULL").fetchone()
+        dimensions_range = conn.execute("SELECT MIN(width) as min_width, MAX(width) as max_width, MIN(height) as min_height, MAX(height) as max_height FROM workflow_metadata WHERE width IS NOT NULL AND height IS NOT NULL").fetchone()
+        
+        return jsonify({
+            'status': 'success',
+            'options': {
+                'models': [row['model_name'] for row in models],
+                'samplers': [row['sampler_name'] for row in samplers],
+                'schedulers': [row['scheduler'] for row in schedulers],
+                'cfg_range': {
+                    'min': cfg_range['min_cfg'] if cfg_range['min_cfg'] is not None else 0,
+                    'max': cfg_range['max_cfg'] if cfg_range['max_cfg'] is not None else 30
+                },
+                'steps_range': {
+                    'min': steps_range['min_steps'] if steps_range['min_steps'] is not None else 1,
+                    'max': steps_range['max_steps'] if steps_range['max_steps'] is not None else 150
+                },
+                'width_range': {
+                    'min': dimensions_range['min_width'] if dimensions_range['min_width'] is not None else 512,
+                    'max': dimensions_range['max_width'] if dimensions_range['max_width'] is not None else 2048
+                },
+                'height_range': {
+                    'min': dimensions_range['min_height'] if dimensions_range['min_height'] is not None else 512,
+                    'max': dimensions_range['max_height'] if dimensions_range['max_height'] is not None else 2048
+                }
+            }
+        })
+    except Exception as e:
+        print(f"ERROR: filter_options failed: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
 @app.route('/galleryout/load_more')
 @require_initialization
 def load_more():
@@ -1270,30 +1680,99 @@ def file_location(file_id):
     
     sort_direction = "ASC" if sort_order == 'asc' else "DESC"
     
-    conditions = ["path LIKE ?"]
+    conditions = ["f.path LIKE ?"]  # Changed to use alias 'f'
     params = [file_dir + os.sep + '%']
     
+    # Check if we need to join with workflow_metadata table
+    use_metadata_join = False
+    filter_model = request.args.get('filter_model', '').strip()
+    filter_sampler = request.args.get('filter_sampler', '').strip()
+    filter_scheduler = request.args.get('filter_scheduler', '').strip()
+    filter_cfg_min = request.args.get('filter_cfg_min', type=float)
+    filter_cfg_max = request.args.get('filter_cfg_max', type=float)
+    filter_steps_min = request.args.get('filter_steps_min', type=int)
+    filter_steps_max = request.args.get('filter_steps_max', type=int)
+    filter_width_min = request.args.get('filter_width_min', type=int)
+    filter_width_max = request.args.get('filter_width_max', type=int)
+    filter_height_min = request.args.get('filter_height_min', type=int)
+    filter_height_max = request.args.get('filter_height_max', type=int)
+    
+    # Add workflow metadata filters if specified
+    if filter_model:
+        use_metadata_join = True
+        conditions.append("wm.model_name = ?")
+        params.append(filter_model)
+    if filter_sampler:
+        use_metadata_join = True
+        conditions.append("wm.sampler_name = ?")
+        params.append(filter_sampler)
+    if filter_scheduler:
+        use_metadata_join = True
+        conditions.append("wm.scheduler = ?")
+        params.append(filter_scheduler)
+    if filter_cfg_min is not None:
+        use_metadata_join = True
+        conditions.append("wm.cfg >= ?")
+        params.append(filter_cfg_min)
+    if filter_cfg_max is not None:
+        use_metadata_join = True
+        conditions.append("wm.cfg <= ?")
+        params.append(filter_cfg_max)
+    if filter_steps_min is not None:
+        use_metadata_join = True
+        conditions.append("wm.steps >= ?")
+        params.append(filter_steps_min)
+    if filter_steps_max is not None:
+        use_metadata_join = True
+        conditions.append("wm.steps <= ?")
+        params.append(filter_steps_max)
+    if filter_width_min is not None:
+        use_metadata_join = True
+        conditions.append("wm.width >= ?")
+        params.append(filter_width_min)
+    if filter_width_max is not None:
+        use_metadata_join = True
+        conditions.append("wm.width <= ?")
+        params.append(filter_width_max)
+    if filter_height_min is not None:
+        use_metadata_join = True
+        conditions.append("wm.height >= ?")
+        params.append(filter_height_min)
+    if filter_height_max is not None:
+        use_metadata_join = True
+        conditions.append("wm.height <= ?")
+        params.append(filter_height_max)
+    
     if search_term:
-        conditions.append("name LIKE ?")
+        conditions.append("f.name LIKE ?")  # Changed to use alias 'f'
         params.append(f"%{search_term}%")
     
     if show_favorites:
-        conditions.append("is_favorite = 1")
+        conditions.append("f.is_favorite = 1")  # Changed to use alias 'f'
     
     if selected_prefixes:
-        prefix_conditions = [f"name LIKE ?" for p in selected_prefixes if p.strip()]
+        prefix_conditions = [f"f.name LIKE ?" for p in selected_prefixes if p.strip()]  # Changed to use alias 'f'
         params.extend([f"{p.strip()}_%" for p in selected_prefixes if p.strip()])
         if prefix_conditions:
             conditions.append(f"({' OR '.join(prefix_conditions)})")
     
     if selected_extensions:
-        ext_conditions = [f"name LIKE ?" for ext in selected_extensions if ext.strip()]
+        ext_conditions = [f"f.name LIKE ?" for ext in selected_extensions if ext.strip()]  # Changed to use alias 'f'
         params.extend([f"%.{ext.lstrip('.').lower()}" for ext in selected_extensions if ext.strip()])
         if ext_conditions:
             conditions.append(f"({' OR '.join(ext_conditions)})")
     
     # Get all file IDs in the folder, with filters and sorting applied
-    query = f"SELECT id FROM files WHERE {' AND '.join(conditions)} ORDER BY {sort_by} {sort_direction}"
+    if use_metadata_join:
+        query = f"""
+            SELECT f.id FROM files f
+            LEFT JOIN workflow_metadata wm ON f.id = wm.file_id
+            WHERE {' AND '.join(conditions)}
+            ORDER BY f.{sort_by} {sort_direction}
+        """
+    else:
+        query = f"SELECT id FROM files f WHERE {' AND '.join(conditions)} ORDER BY f.{sort_by} {sort_direction}"
+    
     all_files_in_view = conn.execute(query, params).fetchall()
     
     all_ids_in_view = [row['id'] for row in all_files_in_view]

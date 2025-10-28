@@ -1,6 +1,10 @@
 {
+    "auto_detect_paths": true,
     "base_output_path": "C:\\.ai\\ComfyUI\\output",
     "base_input_path": "C:\\.ai\\ComfyUI\\input",
     "server_port": 8008,
-    "ffprobe_manual_path": ""
+    "enable_upload": true,
+    "max_upload_size_mb": 100,
+    "thumbnail_quality": 85,
+    "ffprobe_manual_path": "C:\\Program Files\\WinGet\\Links\\ffprobe.exe"
 }
