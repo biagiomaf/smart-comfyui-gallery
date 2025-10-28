@@ -79,8 +79,11 @@
         .filter-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; align-items: end; }
         .filter-group { display: flex; flex-direction: column; }
         .filter-bar label { font-weight: 600; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
-        .filter-bar select, .filter-bar input[type="text"], .filter-bar button, .filter-bar a { background: var(--glass-bg); color: var(--text-color); border: 1px solid var(--glass-border); border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.9rem; transition: all 0.3s; backdrop-filter: blur(10px); }
-        .filter-bar input[type="text"]:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1); }
+        .filter-bar select, .filter-bar input[type="text"], .filter-bar input[type="number"], .filter-bar button, .filter-bar a { background: var(--glass-bg); color: var(--text-color); border: 1px solid var(--glass-border); border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.9rem; transition: all 0.3s; backdrop-filter: blur(10px); }
+        .filter-bar input[type="text"]:focus, .filter-bar input[type="number"]:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1); }
+        .filter-bar input[type="number"] { font-variant-numeric: tabular-nums; }
+        .filter-bar input[type="number"]::-webkit-inner-spin-button, .filter-bar input[type="number"]::-webkit-outer-spin-button { opacity: 0.6; }
+        .filter-bar input[type="number"]:hover::-webkit-inner-spin-button, .filter-bar input[type="number"]:hover::-webkit-outer-spin-button { opacity: 1; }
         .filter-bar button { background: var(--primary-color); cursor: pointer; font-weight: 600; color: white; border: 1px solid var(--primary-color); }
         .filter-bar button:hover { background: var(--primary-hover); transform: translateY(-1px); }
         .filter-bar button.refresh-btn { background: var(--workflow-color); border-color: var(--workflow-color); }
@@ -88,6 +91,24 @@
         .filter-bar a:hover { background: var(--surface-hover); color: var(--text-color); }
         .filter-group-inline { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
         .filter-group-inline input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary-color); }
+        
+        /* Workflow Metadata Section */
+        .workflow-filters-section { grid-column: 1 / -1; display: contents; }
+        .workflow-section-header { grid-column: 1 / -1; margin-top: 1rem; margin-bottom: 0.5rem; padding: 0.75rem 1rem; background: linear-gradient(90deg, rgba(40, 167, 69, 0.1) 0%, rgba(40, 167, 69, 0.05) 50%, transparent 100%); border-left: 3px solid var(--workflow-color); border-radius: 6px; }
+        .workflow-section-header h3 { margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--workflow-color); text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 0.5rem; }
+        
+        /* Range Filter Pairs */
+        .filter-range-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; grid-column: span 2; }
+        .filter-range-pair .filter-group { position: relative; }
+        .filter-range-pair .filter-group:first-child::after { content: '↔'; position: absolute; right: -0.5rem; top: 50%; transform: translateY(-50%) translateY(0.5rem); color: var(--text-muted); font-size: 1rem; font-weight: 700; opacity: 0.5; z-index: 1; pointer-events: none; }
+        .filter-range-pair .filter-group label { color: var(--text-muted); }
+        .filter-range-pair .filter-group:first-child label { color: var(--success-color); }
+        .filter-range-pair .filter-group:last-child label { color: var(--danger-color); }
+        
+        /* Dimension Filters Special Styling */
+        .dimension-filters { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; padding: 1rem; background: rgba(0, 123, 255, 0.03); border: 1px solid rgba(0, 123, 255, 0.1); border-radius: 8px; margin-top: 0.5rem; }
+        .dimension-filters .filter-group label { font-size: 0.8rem; display: flex; align-items: center; gap: 0.4rem; }
+        .dimension-filters .filter-group input { background: var(--surface-color); border-color: rgba(0, 123, 255, 0.2); }
         .filter-actions-row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
         .filter-actions-row > a, .filter-actions-row > button { display: inline-flex; align-items: center; justify-content: center; }
         .filter-actions-row button[type="submit"] { padding-left: 0.8rem; padding-right: 0.8rem; }
@@ -216,6 +237,11 @@
             #mobile-filter-toggle { display: block; margin-bottom: 1rem;}
             .filter-form-grid { display: none; }
             .filter-form-grid.visible { display: grid; grid-template-columns: 1fr; }
+            .filter-range-pair { grid-template-columns: 1fr; gap: 1rem; grid-column: span 1; }
+            .filter-range-pair .filter-group:first-child::after { display: none; }
+            .dimension-filters { grid-template-columns: 1fr; gap: 1rem; }
+            .workflow-section-header { margin-top: 0.5rem; padding: 0.5rem 0.75rem; }
+            .workflow-section-header h3 { font-size: 0.85rem; }
             .desktop-actions-only { display: none; }
             .mobile-actions-only { display: flex; flex-direction: column; gap: 0.75rem; }
             .gallery-container { grid-template-columns: 1fr; padding: 1rem; }
@@ -292,23 +318,40 @@
                 <input type="hidden" name="sort_order" value="{{ request.args.get('sort_order', 'desc') }}">
                 <button type="button" id="mobile-filter-toggle">⚙️ Filters & Options</button>
                 <div class="filter-form-grid" id="filter-form-grid">
+                    <!-- Basic Filters -->
                     <div class="filter-group"><label for="search-input">🔍 Search by Name</label><input type="text" name="search" id="search-input" placeholder="Search files..." value="{{ request.args.get('search', '') }}"></div>
                     <div class="filter-group"><label for="extension-select">📄 Extensions</label><select name="extension" id="extension-select" multiple>{% for ext in available_extensions %}<option value="{{ ext }}" {% if ext in selected_extensions %}selected{% endif %}>{{ ext }}</option>{% endfor %}</select></div>
                     <div class="filter-group"><label for="prefix-select">🏷️ Prefixes</label><select name="prefix" id="prefix-select" multiple>{% for pfx in available_prefixes %}{% if pfx != '.gallery ' %}<option value="{{ pfx }}" {% if pfx in selected_prefixes %}selected{% endif %}>{{ pfx }}</option>{% endif %}{% endfor %}</select></div>
                     <div class="filter-group"><div class="filter-group-inline"><input type="checkbox" name="favorites" id="favorites-check" value="true" {% if show_favorites %}checked{% endif %}><label for="favorites-check">⭐ Favorites Only</label></div></div>
                     
-                    <!-- Workflow Metadata Filters -->
+                    <!-- Workflow Metadata Section -->
+                    <div class="workflow-section-header">
+                        <h3>🎨 Workflow Parameters</h3>
+                    </div>
+                    
                     <div class="filter-group"><label for="model-select">🤖 Model</label><select name="filter_model" id="model-select"><option value="">All Models</option></select></div>
                     <div class="filter-group"><label for="sampler-select">🎲 Sampler</label><select name="filter_sampler" id="sampler-select"><option value="">All Samplers</option></select></div>
                     <div class="filter-group"><label for="scheduler-select">📅 Scheduler</label><select name="filter_scheduler" id="scheduler-select"><option value="">All Schedulers</option></select></div>
-                    <div class="filter-group"><label for="cfg-min-input">⚙️ CFG Min</label><input type="number" name="filter_cfg_min" id="cfg-min-input" placeholder="Min CFG" step="0.1" value="{{ request.args.get('filter_cfg_min', '') }}"></div>
-                    <div class="filter-group"><label for="cfg-max-input">⚙️ CFG Max</label><input type="number" name="filter_cfg_max" id="cfg-max-input" placeholder="Max CFG" step="0.1" value="{{ request.args.get('filter_cfg_max', '') }}"></div>
-                    <div class="filter-group"><label for="steps-min-input">🔢 Steps Min</label><input type="number" name="filter_steps_min" id="steps-min-input" placeholder="Min Steps" step="1" value="{{ request.args.get('filter_steps_min', '') }}"></div>
-                    <div class="filter-group"><label for="steps-max-input">🔢 Steps Max</label><input type="number" name="filter_steps_max" id="steps-max-input" placeholder="Max Steps" step="1" value="{{ request.args.get('filter_steps_max', '') }}"></div>
-                    <div class="filter-group"><label for="width-min-input">📏 Width Min</label><input type="number" name="filter_width_min" id="width-min-input" placeholder="Min Width" step="64" value="{{ request.args.get('filter_width_min', '') }}"></div>
-                    <div class="filter-group"><label for="width-max-input">📏 Width Max</label><input type="number" name="filter_width_max" id="width-max-input" placeholder="Max Width" step="64" value="{{ request.args.get('filter_width_max', '') }}"></div>
-                    <div class="filter-group"><label for="height-min-input">📐 Height Min</label><input type="number" name="filter_height_min" id="height-min-input" placeholder="Min Height" step="64" value="{{ request.args.get('filter_height_min', '') }}"></div>
-                    <div class="filter-group"><label for="height-max-input">📐 Height Max</label><input type="number" name="filter_height_max" id="height-max-input" placeholder="Max Height" step="64" value="{{ request.args.get('filter_height_max', '') }}"></div>
+                    
+                    <!-- CFG Range Pair -->
+                    <div class="filter-range-pair">
+                        <div class="filter-group"><label for="cfg-min-input">⚙️ CFG Min</label><input type="number" name="filter_cfg_min" id="cfg-min-input" placeholder="Min CFG" step="0.1" value="{{ request.args.get('filter_cfg_min', '') }}"></div>
+                        <div class="filter-group"><label for="cfg-max-input">⚙️ CFG Max</label><input type="number" name="filter_cfg_max" id="cfg-max-input" placeholder="Max CFG" step="0.1" value="{{ request.args.get('filter_cfg_max', '') }}"></div>
+                    </div>
+                    
+                    <!-- Steps Range Pair -->
+                    <div class="filter-range-pair">
+                        <div class="filter-group"><label for="steps-min-input">🔢 Steps Min</label><input type="number" name="filter_steps_min" id="steps-min-input" placeholder="Min Steps" step="1" value="{{ request.args.get('filter_steps_min', '') }}"></div>
+                        <div class="filter-group"><label for="steps-max-input">🔢 Steps Max</label><input type="number" name="filter_steps_max" id="steps-max-input" placeholder="Max Steps" step="1" value="{{ request.args.get('filter_steps_max', '') }}"></div>
+                    </div>
+                    
+                    <!-- Dimension Filters -->
+                    <div class="dimension-filters">
+                        <div class="filter-group"><label for="width-min-input">📏 Width Min</label><input type="number" name="filter_width_min" id="width-min-input" placeholder="Min Width" step="64" value="{{ request.args.get('filter_width_min', '') }}"></div>
+                        <div class="filter-group"><label for="width-max-input">📏 Width Max</label><input type="number" name="filter_width_max" id="width-max-input" placeholder="Max Width" step="64" value="{{ request.args.get('filter_width_max', '') }}"></div>
+                        <div class="filter-group"><label for="height-min-input">📐 Height Min</label><input type="number" name="filter_height_min" id="height-min-input" placeholder="Min Height" step="64" value="{{ request.args.get('filter_height_min', '') }}"></div>
+                        <div class="filter-group"><label for="height-max-input">📐 Height Max</label><input type="number" name="filter_height_max" id="height-max-input" placeholder="Max Height" step="64" value="{{ request.args.get('filter_height_max', '') }}"></div>
+                    </div>
                     
                     <div class="filter-group mobile-actions-only"><label>Actions</label><div class="mobile-actions-row"><button type="submit">🔍 Filter</button><a href="{{ url_for('gallery_view', folder_key=current_folder_key) }}">🔄 Reset</a></div></div>
                 </div>
