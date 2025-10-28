@@ -1,7 +1,7 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025 — MIT License (free to use and modify)
 #
-# Version: 1.38.0 - October 28, 2025 (Critical Metadata Extraction Fixes)
+# Version: 1.38.1 - October 28, 2025 (Critical Metadata Extraction Fixes)
 # - Fixed PNG metadata case sensitivity (Prompt/Workflow vs prompt/workflow)
 # - Enhanced _validate_and_get_workflow to handle both API and Workflow formats
 # - Added type safety and validation for extracted metadata values
@@ -264,57 +264,39 @@ def find_ffprobe_path():
 def _validate_and_get_workflow(json_string):
     """
     Validates and extracts workflow data from JSON string.
-    Handles both:
-    1. Workflow format: {"nodes": [...], "links": [...]}
-    2. Prompt/API format: {"node_id": {...}, "node_id2": {...}}
+    Handles both Workflow and Prompt/API formats by returning whichever is valid.
     """
     try:
         data = json.loads(json_string)
         
         # Try to get workflow data from nested structure first
-        workflow_data = data.get('workflow', data.get('prompt', data))
+        # Check for 'workflow' key (capitalized or lowercase)
+        workflow_data = data.get('workflow') or data.get('Workflow') or data.get('prompt') or data.get('Prompt')
+        
+        # If we got nested data, use that, otherwise use root
+        if workflow_data is None:
+            workflow_data = data
         
         # Check if it's workflow format (has 'nodes' array)
-        if isinstance(workflow_data, dict) and 'nodes' in workflow_data:
+        if isinstance(workflow_data, dict) and 'nodes' in workflow_data and isinstance(workflow_data['nodes'], list):
+            # Valid workflow format - return as-is
             return json.dumps(workflow_data)
         
-        # Check if it's Prompt/API format (flat dict with numeric string keys)
-        # API format: {"12": {...}, "13": {...}} where keys are node IDs
+        # For API/Prompt format, return the data as-is without conversion
+        # The metadata extraction will handle it differently
         if isinstance(workflow_data, dict) and workflow_data:
-            # Check if it looks like API format (has numeric string keys)
-            keys = list(workflow_data.keys())
-            if keys and any(str(k).isdigit() for k in keys):
-                # Convert API format to workflow format for compatibility
-                nodes = []
-                for node_id, node_data in workflow_data.items():
-                    if isinstance(node_data, dict):
-                        node = {
-                            'id': int(node_id) if str(node_id).isdigit() else node_id,
-                            'type': node_data.get('class_type', ''),
-                            'widgets_values': node_data.get('inputs', {}),
-                            'inputs': []
-                        }
-                        # Extract input connections if present
-                        if 'inputs' in node_data and isinstance(node_data['inputs'], dict):
-                            for input_name, input_value in node_data['inputs'].items():
-                                if isinstance(input_value, list) and len(input_value) >= 2:
-                                    # This is a link: [source_node_id, source_output_index]
-                                    node['inputs'].append({
-                                        'name': input_name,
-                                        'link': f"{input_value[0]}_{input_value[1]}"
-                                    })
-                        nodes.append(node)
-                
-                # Create minimal workflow structure
-                converted = {
-                    'nodes': nodes,
-                    'links': []  # Links reconstruction would be complex, skip for now
-                }
-                return json.dumps(converted)
+            # Check if it looks like API format (has dict with node data)
+            # Just validate it's not empty and return it
+            return json.dumps(data)
         
+        return None
+    except json.JSONDecodeError as e:
+        print(f"DEBUG: Invalid JSON in workflow: {e}")
         return None
     except Exception as e:
         print(f"DEBUG: Failed to validate workflow JSON: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 def _scan_bytes_for_workflow(content_bytes):
@@ -398,14 +380,126 @@ def extract_workflow(filepath):
                 
     return None
 
+def extract_workflow_metadata_from_api_format(api_data):
+    """
+    Extracts metadata from ComfyUI API/Prompt format.
+    API format: {"node_id": {"inputs": {...}, "class_type": "NodeType"}}
+    This is a best-effort extraction that doesn't rely on link tracing.
+    """
+    try:
+        metadata = {
+            'model_name': None,
+            'sampler_name': None,
+            'scheduler': None,
+            'cfg': None,
+            'steps': None,
+            'positive_prompt': None,
+            'negative_prompt': None,
+            'width': None,
+            'height': None
+        }
+        
+        # Helper functions for type safety
+        def safe_int(value):
+            try:
+                if value is None: return None
+                return int(float(value))
+            except (ValueError, TypeError):
+                return None
+        
+        def safe_float(value):
+            try:
+                if value is None: return None
+                return float(value)
+            except (ValueError, TypeError):
+                return None
+        
+        # Iterate through nodes looking for relevant types
+        for node_id, node_data in api_data.items():
+            if not isinstance(node_data, dict):
+                continue
+                
+            class_type = node_data.get('class_type', '')
+            inputs = node_data.get('inputs', {})
+            
+            if not isinstance(inputs, dict):
+                continue
+            
+            # Extract from KSampler nodes
+            if class_type in ['KSampler', 'KSamplerAdvanced', 'KSamplerEulerAncestral', 'KSamplerDPMPP_2M', 'KSamplerDPMPP_SDE']:
+                if 'steps' in inputs:
+                    metadata['steps'] = safe_int(inputs['steps'])
+                if 'cfg' in inputs:
+                    metadata['cfg'] = safe_float(inputs['cfg'])
+                if 'sampler_name' in inputs:
+                    metadata['sampler_name'] = str(inputs['sampler_name']) if inputs['sampler_name'] else None
+                if 'scheduler' in inputs:
+                    metadata['scheduler'] = str(inputs['scheduler']) if inputs['scheduler'] else None
+            
+            # Extract from checkpoint loader nodes
+            if any(loader in class_type for loader in ['CheckpointLoader', 'LoraLoader', 'UNETLoader']):
+                if 'ckpt_name' in inputs:
+                    model_name = str(inputs['ckpt_name'])
+                    # Remove file extension
+                    if model_name.endswith(('.safetensors', '.ckpt', '.pt', '.pth')):
+                        model_name = os.path.splitext(model_name)[0]
+                    metadata['model_name'] = model_name
+                elif 'model_name' in inputs:
+                    model_name = str(inputs['model_name'])
+                    if model_name.endswith(('.safetensors', '.ckpt', '.pt', '.pth')):
+                        model_name = os.path.splitext(model_name)[0]
+                    metadata['model_name'] = model_name
+            
+            # Extract from CLIPTextEncode (prompt) nodes
+            if class_type == 'CLIPTextEncode' and 'text' in inputs:
+                prompt_text = str(inputs['text']) if inputs['text'] else None
+                if prompt_text:
+                    if metadata['positive_prompt'] is None:
+                        metadata['positive_prompt'] = prompt_text
+                    elif metadata['negative_prompt'] is None:
+                        metadata['negative_prompt'] = prompt_text
+            
+            # Extract from EmptyLatentImage
+            if class_type == 'EmptyLatentImage':
+                if 'width' in inputs:
+                    metadata['width'] = safe_int(inputs['width'])
+                if 'height' in inputs:
+                    metadata['height'] = safe_int(inputs['height'])
+            
+            # Extract from LoadImage or ImageScale
+            if class_type in ['LoadImage', 'ImageScale', 'ImageResize']:
+                if 'width' in inputs and metadata['width'] is None:
+                    metadata['width'] = safe_int(inputs['width'])
+                if 'height' in inputs and metadata['height'] is None:
+                    metadata['height'] = safe_int(inputs['height'])
+        
+        return metadata
+    except Exception as e:
+        print(f"DEBUG: Error extracting metadata from API format: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
 def extract_workflow_metadata(workflow_json_string):
     """
-    Extracts searchable metadata from a ComfyUI workflow JSON string using link tracing.
-    This robust implementation handles diverse workflow structures by tracing node connections.
+    Extracts searchable metadata from a ComfyUI workflow JSON string.
+    Handles both Workflow format (with nodes array) and API/Prompt format (flat dict).
     Returns a dict with: model_name, sampler_name, scheduler, cfg, steps, positive_prompt, negative_prompt, width, height
     """
     try:
         workflow_data = json.loads(workflow_json_string)
+        
+        # Check if this is API/Prompt format (no 'nodes' key but has numeric/string keys with node data)
+        if 'nodes' not in workflow_data:
+            # Try API format extraction
+            # First check if it's wrapped in a 'prompt' or 'Prompt' key
+            api_data = workflow_data.get('prompt') or workflow_data.get('Prompt') or workflow_data
+            if isinstance(api_data, dict):
+                result = extract_workflow_metadata_from_api_format(api_data)
+                if result:
+                    return result
+        
+        # Continue with Workflow format extraction (link tracing)
         metadata = {
             'model_name': None,
             'sampler_name': None,
@@ -860,11 +954,20 @@ def process_single_file(filepath, thumbnail_cache_dir, thumbnail_width, video_ex
         workflow_metadata = None
         if details['has_workflow']:
             try:
+                print(f"DEBUG: Extracting workflow metadata for {os.path.basename(filepath)}")
                 workflow_json = extract_workflow(filepath)
                 if workflow_json:
                     workflow_metadata = extract_workflow_metadata(workflow_json)
+                    if workflow_metadata:
+                        print(f"DEBUG: Extracted metadata: model={workflow_metadata.get('model_name')}, sampler={workflow_metadata.get('sampler_name')}, scheduler={workflow_metadata.get('scheduler')}")
+                    else:
+                        print(f"DEBUG: extract_workflow_metadata returned None for {os.path.basename(filepath)}")
+                else:
+                    print(f"DEBUG: extract_workflow returned None for {os.path.basename(filepath)}")
             except Exception as e:
                 print(f"DEBUG: Error extracting workflow metadata in worker: {e}")
+                import traceback
+                traceback.print_exc()
         
         return (
             file_id, filepath, mtime, os.path.basename(filepath),
@@ -1690,53 +1793,162 @@ def filter_options():
     Returns all unique values for filterable workflow metadata fields.
     Used to populate filter dropdowns in the frontend.
     """
+    import sys
+    sys.stdout.flush()
+    print("=" * 80, flush=True)
+    print("DEBUG: filter_options ROUTE CALLED!", flush=True)
+    print("=" * 80, flush=True)
+    sys.stdout.flush()
+    
     try:
+        print("DEBUG: filter_options endpoint called")
         conn = get_db()
         
-        # Get all unique values for each filterable field with normalization
-        models_raw = conn.execute("SELECT DISTINCT model_name FROM workflow_metadata WHERE model_name IS NOT NULL ORDER BY model_name").fetchall()
-        samplers_raw = conn.execute("SELECT DISTINCT sampler_name FROM workflow_metadata WHERE sampler_name IS NOT NULL ORDER BY sampler_name").fetchall()
-        schedulers_raw = conn.execute("SELECT DISTINCT scheduler FROM workflow_metadata WHERE scheduler IS NOT NULL ORDER BY scheduler").fetchall()
+        # First check if workflow_metadata table has any data
+        try:
+            count = conn.execute("SELECT COUNT(*) as count FROM workflow_metadata").fetchone()
+            print(f"DEBUG: workflow_metadata table has {count['count']} rows")
+        except Exception as e:
+            print(f"ERROR: Failed to count workflow_metadata rows: {e}")
         
-        # Normalize and deduplicate values (trim whitespace, remove duplicates)
-        models = sorted(set(row['model_name'].strip() for row in models_raw if row['model_name']))
-        samplers = sorted(set(row['sampler_name'].strip() for row in samplers_raw if row['sampler_name']))
-        schedulers = sorted(set(row['scheduler'].strip() for row in schedulers_raw if row['scheduler']))
+        # Get all unique values for each filterable field
+        print("DEBUG: Querying models...")
+        models_raw = conn.execute("SELECT DISTINCT model_name FROM workflow_metadata WHERE model_name IS NOT NULL AND model_name != '' ORDER BY model_name").fetchall()
+        print(f"DEBUG: Found {len(models_raw)} model entries")
         
-        # Get min/max ranges for numeric fields
-        cfg_range = conn.execute("SELECT MIN(cfg) as min_cfg, MAX(cfg) as max_cfg FROM workflow_metadata WHERE cfg IS NOT NULL").fetchone()
-        steps_range = conn.execute("SELECT MIN(steps) as min_steps, MAX(steps) as max_steps FROM workflow_metadata WHERE steps IS NOT NULL").fetchone()
-        dimensions_range = conn.execute("SELECT MIN(width) as min_width, MAX(width) as max_width, MIN(height) as min_height, MAX(height) as max_height FROM workflow_metadata WHERE width IS NOT NULL AND height IS NOT NULL").fetchone()
+        print("DEBUG: Querying samplers...")
+        samplers_raw = conn.execute("SELECT DISTINCT sampler_name FROM workflow_metadata WHERE sampler_name IS NOT NULL AND sampler_name != '' ORDER BY sampler_name").fetchall()
+        print(f"DEBUG: Found {len(samplers_raw)} sampler entries")
         
-        return jsonify({
+        print("DEBUG: Querying schedulers...")
+        schedulers_raw = conn.execute("SELECT DISTINCT scheduler FROM workflow_metadata WHERE scheduler IS NOT NULL AND scheduler != '' ORDER BY scheduler").fetchall()
+        print(f"DEBUG: Found {len(schedulers_raw)} scheduler entries")
+        
+        # Safely extract and normalize values
+        models = []
+        samplers = []
+        schedulers = []
+        
+        try:
+            # Use set for deduplication, then convert to sorted list
+            models_set = set()
+            for row in models_raw:
+                try:
+                    val = row['model_name']
+                    if val and isinstance(val, str):
+                        val_clean = val.strip()
+                        if val_clean:
+                            models_set.add(val_clean)
+                except (KeyError, TypeError, AttributeError) as e:
+                    print(f"DEBUG: Skipping invalid model row: {e}")
+                    continue
+            models = sorted(list(models_set))
+        except Exception as e:
+            print(f"ERROR: Failed to process models: {e}")
+            models = []
+        
+        try:
+            samplers_set = set()
+            for row in samplers_raw:
+                try:
+                    val = row['sampler_name']
+                    if val and isinstance(val, str):
+                        val_clean = val.strip()
+                        if val_clean:
+                            samplers_set.add(val_clean)
+                except (KeyError, TypeError, AttributeError) as e:
+                    print(f"DEBUG: Skipping invalid sampler row: {e}")
+                    continue
+            samplers = sorted(list(samplers_set))
+        except Exception as e:
+            print(f"ERROR: Failed to process samplers: {e}")
+            samplers = []
+        
+        try:
+            schedulers_set = set()
+            for row in schedulers_raw:
+                try:
+                    val = row['scheduler']
+                    if val and isinstance(val, str):
+                        val_clean = val.strip()
+                        if val_clean:
+                            schedulers_set.add(val_clean)
+                except (KeyError, TypeError, AttributeError) as e:
+                    print(f"DEBUG: Skipping invalid scheduler row: {e}")
+                    continue
+            schedulers = sorted(list(schedulers_set))
+        except Exception as e:
+            print(f"ERROR: Failed to process schedulers: {e}")
+            schedulers = []
+        
+        # Get min/max ranges for numeric fields with safe defaults
+        try:
+            cfg_range = conn.execute("SELECT MIN(CAST(cfg AS REAL)) as min_cfg, MAX(CAST(cfg AS REAL)) as max_cfg FROM workflow_metadata WHERE cfg IS NOT NULL").fetchone()
+        except Exception as e:
+            print(f"DEBUG: Failed to get cfg range: {e}")
+            cfg_range = None
+        
+        try:
+            steps_range = conn.execute("SELECT MIN(CAST(steps AS INTEGER)) as min_steps, MAX(CAST(steps AS INTEGER)) as max_steps FROM workflow_metadata WHERE steps IS NOT NULL").fetchone()
+        except Exception as e:
+            print(f"DEBUG: Failed to get steps range: {e}")
+            steps_range = None
+        
+        try:
+            dimensions_range = conn.execute("SELECT MIN(CAST(width AS INTEGER)) as min_width, MAX(CAST(width AS INTEGER)) as max_width, MIN(CAST(height AS INTEGER)) as min_height, MAX(CAST(height AS INTEGER)) as max_height FROM workflow_metadata WHERE width IS NOT NULL AND height IS NOT NULL").fetchone()
+        except Exception as e:
+            print(f"DEBUG: Failed to get dimensions range: {e}")
+            dimensions_range = None
+        
+        # Build response with safe defaults
+        response_data = {
             'status': 'success',
             'options': {
                 'models': models,
                 'samplers': samplers,
                 'schedulers': schedulers,
                 'cfg_range': {
-                    'min': cfg_range['min_cfg'] if cfg_range['min_cfg'] is not None else 0,
-                    'max': cfg_range['max_cfg'] if cfg_range['max_cfg'] is not None else 30
+                    'min': float(cfg_range['min_cfg']) if cfg_range and cfg_range['min_cfg'] is not None else 1.0,
+                    'max': float(cfg_range['max_cfg']) if cfg_range and cfg_range['max_cfg'] is not None else 30.0
                 },
                 'steps_range': {
-                    'min': steps_range['min_steps'] if steps_range['min_steps'] is not None else 1,
-                    'max': steps_range['max_steps'] if steps_range['max_steps'] is not None else 150
+                    'min': int(steps_range['min_steps']) if steps_range and steps_range['min_steps'] is not None else 1,
+                    'max': int(steps_range['max_steps']) if steps_range and steps_range['max_steps'] is not None else 150
                 },
                 'width_range': {
-                    'min': dimensions_range['min_width'] if dimensions_range['min_width'] is not None else 512,
-                    'max': dimensions_range['max_width'] if dimensions_range['max_width'] is not None else 2048
+                    'min': int(dimensions_range['min_width']) if dimensions_range and dimensions_range['min_width'] is not None else 512,
+                    'max': int(dimensions_range['max_width']) if dimensions_range and dimensions_range['max_width'] is not None else 2048
                 },
                 'height_range': {
-                    'min': dimensions_range['min_height'] if dimensions_range['min_height'] is not None else 512,
-                    'max': dimensions_range['max_height'] if dimensions_range['max_height'] is not None else 2048
+                    'min': int(dimensions_range['min_height']) if dimensions_range and dimensions_range['min_height'] is not None else 512,
+                    'max': int(dimensions_range['max_height']) if dimensions_range and dimensions_range['max_height'] is not None else 2048
                 }
             }
-        })
+        }
+        
+        print(f"INFO: filter_options returning {len(models)} models, {len(samplers)} samplers, {len(schedulers)} schedulers")
+        return jsonify(response_data)
+        
     except Exception as e:
-        print(f"ERROR: filter_options failed: {e}")
+        print(f"ERROR: filter_options failed with exception: {e}")
+        print(f"ERROR: Exception type: {type(e).__name__}")
         import traceback
+        print("ERROR: Full traceback:")
         traceback.print_exc()
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        # Return error but with empty arrays so frontend doesn't break
+        return jsonify({
+            'status': 'error',
+            'message': str(e),
+            'options': {
+                'models': [],
+                'samplers': [],
+                'schedulers': [],
+                'cfg_range': {'min': 1.0, 'max': 30.0},
+                'steps_range': {'min': 1, 'max': 150},
+                'width_range': {'min': 512, 'max': 2048},
+                'height_range': {'min': 512, 'max': 2048}
+            }
+        }), 500
 
 @app.route('/galleryout/load_more')
 @require_initialization
