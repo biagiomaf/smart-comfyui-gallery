@@ -1,6 +1,55 @@
 
 # Changelog
 
+## [1.35.1] - 2025-10-28
+
+### Performance
+
+#### Parallel Processing (`smartgallery.py`)
+- **10-20x Speedup**: Implemented parallel file processing using `ProcessPoolExecutor` with all available CPU cores
+- **Progress Feedback**: Added `tqdm` console progress bar for real-time sync status during database operations
+- **Batch Database Writes**: Implemented BATCH_SIZE=500 to prevent out-of-memory errors on large galleries (10,000+ files)
+- **Worker Function**: Created `process_single_file()` multiprocessing-compatible worker that accepts config parameters instead of accessing Flask app context
+- **Smart Defaults**: `MAX_PARALLEL_WORKERS=None` uses all CPU cores; set to 1 for sequential processing if needed
+
+#### Affected Functions
+- `full_sync_database()`: Refactored with ProcessPoolExecutor and batch writes
+- `sync_folder_on_demand()`: Parallel processing with SSE (Server-Sent Events) maintained for browser updates
+
+### Added
+
+#### File Rename Feature (`smartgallery.py`, `templates/index.html`)
+- **Backend Route**: New `/galleryout/rename_file/<file_id>` POST endpoint with comprehensive validation
+- **Validation**: Filename length ≤250 characters, invalid character blocking, duplicate detection
+- **Database Updates**: Automatic new file ID generation (MD5 hash) when path changes
+- **Lightbox UI**: Added ✏️ rename button to lightbox toolbar with prompt-based interface
+- **JavaScript Function**: `renameFileFromLightbox()` updates DOM, data structures, and refreshes display without page reload
+- **UX Enhancement**: Added title tooltips to all 9 lightbox toolbar buttons for better accessibility
+
+#### localStorage Persistence (`templates/index.html`)
+- **Folder Expansion State**: Remembers which folders you expanded/collapsed between sessions
+- **Sort Preferences**: Persists folder tree sort order (name/date, ascending/descending) for both nav and move panels
+- **Sidebar State**: Remembers sidebar expansion state across page loads
+- **Auto-Save**: All states saved immediately on user interactions (toggle folder, change sort, expand sidebar)
+
+### Fixed
+
+#### Timestamp Handling (`smartgallery.py`)
+- **Issue**: Sync comparison used floating-point timestamps causing precision errors
+- **Solution**: Added `int()` conversion in `sync_folder_on_demand()` for reliable file modification time comparisons
+
+### Changed
+
+#### Folder Tree Refactoring (`templates/index.html`)
+- **Immutable Data**: Refactored `sortChildren()` to return sorted array instead of mutating `foldersData` in place
+- **On-the-Fly Sorting**: Sorting now happens during tree rendering in `buildFolderTreeHTML()` 
+- **Detailed Comments**: Added comprehensive inline documentation for localStorage and sorting logic
+- **Cleaner Code**: Eliminated side effects from sorting operations
+
+#### UI Improvements (`templates/index.html`)
+- **Desktop Move Panel**: Widened to 650px (was 400px) on screens >1024px for better visibility
+- **Responsive Design**: Used `max-width: 90vw` to maintain mobile compatibility
+
 ## [1.34.2] - 2025-10-28
 
 ### Changed

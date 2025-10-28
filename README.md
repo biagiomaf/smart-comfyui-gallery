@@ -28,14 +28,25 @@
 
 ---
 
-## 🆕 What's New in Version 1.31?
+## 🆕 What's New in Version 1.35?
 
+- ⚡ **10-20x Faster Sync**: Parallel processing with all CPU cores for blazing fast database updates on large galleries
+- ✏️ **File Rename**: Rename files directly from the lightbox with validation and automatic database updates
+- 💾 **Persistent UI State**: Folder expansion, sort preferences, and sidebar state remembered across sessions
+- 🔧 **Batch Processing**: Prevents out-of-memory errors on 10,000+ file galleries with smart batch writes
+- 📊 **Progress Feedback**: Real-time console progress bar (tqdm) shows sync status with file counts
+
+### Previous Updates (v1.34)
+- 🎯 **Dashboard Improvements**: Clickable recent files, prominent "Open Gallery" button, clean 3-column quick actions layout
+- 🌐 **CORS Support**: Fixed cross-origin API calls between ComfyUI (port 8000) and Gallery server (port 8008)
+- 🔒 **Enhanced Logging**: Daily log rotation with timestamps for troubleshooting
+
+### v1.31 Updates
 - 🔧 **Bulletproof Path Detection**: Now uses ComfyUI's official `folder_paths` API for 100% reliable auto-detection
 - ⚙️ **Universal Compatibility**: Works with ALL ComfyUI setups including custom node paths, Docker, network storage, and advanced configurations
 - 🚀 **Zero Configuration**: Automatically adapts to any ComfyUI installation method or directory structure
-- 🐛 **Critical Fixes**: Resolved startup crashes and path detection failures in non-standard installations
 
-### Previous Updates (v1.30)
+### v1.30 Updates
 - 🔍 **Smart Folder Navigation**: Expandable sidebar with real-time search and bi-directional sorting (A-Z, Z-A, newest, oldest)
 - 🖼️ **Enhanced Gallery Sorting**: Toggle thumbnail sorting by date or name with visual indicators
 - 🔎 **Advanced Lightbox**: Zoom with mouse wheel, persistent zoom levels, percentage display, and quick delete

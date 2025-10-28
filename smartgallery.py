@@ -1,7 +1,7 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025 — MIT License (free to use and modify)
 #
-# Version: 1.34.2 - October 28, 2025 (UI Improvements)
+# Version: 1.35.1 - October 28, 2025 (Parallel Processing & File Rename)
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -27,6 +27,8 @@ from flask_cors import CORS
 from PIL import Image, ImageSequence
 import colorsys
 from werkzeug.utils import secure_filename
+import concurrent.futures
+from tqdm import tqdm
 
 
 # --- USER CONFIGURATION ---
@@ -37,6 +39,16 @@ from werkzeug.utils import secure_filename
 #   not backslashes ( \ ), to ensure compatibility.
 
 # - It is strongly recommended to have ffmpeg installed, since some features depend on it.
+
+# Number of files to process at once during database sync. 
+# Higher values use more memory but may be faster. Lower this if you run out of memory.
+BATCH_SIZE = 500
+
+# Number of parallel processes to use for thumbnail and metadata generation.
+# - Set to None to use all available CPU cores (fastest, but uses more CPU).
+# - Set to 1 to disable parallel processing (slowest, like in previous versions).
+# - Set to a specific number of cores (e.g., 4) to limit CPU usage on a multi-core machine.
+MAX_PARALLEL_WORKERS = None
 
 # --- CACHE AND FOLDER NAMES ---
 # Constants are now defined and loaded into app.config in the main block.
@@ -424,6 +436,150 @@ def create_thumbnail(filepath, file_hash, file_type):
         except Exception as e: print(f"ERROR (OpenCV): Could not create thumbnail for {os.path.basename(filepath)}: {e}")
     return None
 
+def process_single_file(filepath, thumbnail_cache_dir, thumbnail_width, video_exts, image_exts, animated_exts, audio_exts, webp_animated_fps, base_input_path_workflow):
+    """
+    Worker function to perform all heavy processing for a single file.
+    Designed to be run in a parallel process pool.
+    
+    This function is adapted to work with multiprocessing by accepting all necessary
+    configuration values as parameters instead of relying on app.config.
+    """
+    try:
+        mtime = os.path.getmtime(filepath)
+        
+        # Analyze metadata (inline version to avoid app.config dependency)
+        details = {'type': 'unknown', 'duration': '', 'dimensions': '', 'has_workflow': 0}
+        ext_lower = os.path.splitext(filepath)[1].lower()
+        
+        if ext_lower in image_exts:
+            details['type'] = 'image'
+        elif ext_lower in animated_exts:
+            details['type'] = 'animated_image'
+        elif ext_lower in video_exts:
+            details['type'] = 'video'
+        elif ext_lower in audio_exts:
+            details['type'] = 'audio'
+        
+        # Special handling for WebP
+        if details['type'] == 'animated_image' and ext_lower == '.webp':
+            try:
+                with Image.open(filepath) as img:
+                    details['type'] = 'animated_image' if getattr(img, 'is_animated', False) else 'image'
+            except:
+                pass
+        
+        # Get dimensions
+        if 'image' in details['type']:
+            try:
+                with Image.open(filepath) as img:
+                    details['dimensions'] = f"{img.width}x{img.height}"
+            except:
+                pass
+        
+        # Check for workflow (simplified version)
+        # Note: We do a simple check here. Full extraction is expensive and done later if needed.
+        workflow_found = False
+        try:
+            if ext_lower not in video_exts:
+                with Image.open(filepath) as img:
+                    if img.info.get('workflow') or img.info.get('prompt'):
+                        workflow_found = True
+        except:
+            pass
+        
+        if not workflow_found:
+            # Check for workflow log file
+            try:
+                base_filename = os.path.basename(filepath)
+                search_pattern = os.path.join(base_input_path_workflow, f"{base_filename}*.json")
+                if glob.glob(search_pattern):
+                    workflow_found = True
+            except:
+                pass
+        
+        details['has_workflow'] = 1 if workflow_found else 0
+        
+        # Get duration for video/animated
+        total_duration_sec = 0
+        if details['type'] == 'video':
+            try:
+                cap = cv2.VideoCapture(filepath)
+                if cap.isOpened():
+                    fps = cap.get(cv2.CAP_PROP_FPS)
+                    count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+                    if fps > 0 and count > 0:
+                        total_duration_sec = count / fps
+                    details['dimensions'] = f"{int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))}x{int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))}"
+                    cap.release()
+            except:
+                pass
+        elif details['type'] == 'animated_image':
+            try:
+                with Image.open(filepath) as img:
+                    if getattr(img, 'is_animated', False):
+                        if ext_lower == '.gif':
+                            total_duration_sec = sum(frame.info.get('duration', 100) for frame in ImageSequence.Iterator(img)) / 1000
+                        elif ext_lower == '.webp':
+                            total_duration_sec = getattr(img, 'n_frames', 1) / webp_animated_fps
+            except:
+                pass
+        
+        if total_duration_sec > 0:
+            m, s = divmod(int(total_duration_sec), 60)
+            h, m = divmod(m, 60)
+            details['duration'] = f"{h}:{m:02d}:{s:02d}" if h > 0 else f"{m:02d}:{s:02d}"
+        
+        # Create thumbnail
+        file_hash_for_thumbnail = hashlib.md5((filepath + str(mtime)).encode()).hexdigest()
+        
+        if not glob.glob(os.path.join(thumbnail_cache_dir, f"{file_hash_for_thumbnail}.*")):
+            # Inline thumbnail creation
+            file_type = details['type']
+            if file_type in ['image', 'animated_image']:
+                try:
+                    with Image.open(filepath) as img:
+                        fmt = 'gif' if img.format == 'GIF' else 'webp' if img.format == 'WEBP' else 'jpeg'
+                        cache_path = os.path.join(thumbnail_cache_dir, f"{file_hash_for_thumbnail}.{fmt}")
+                        if file_type == 'animated_image' and getattr(img, 'is_animated', False):
+                            frames = [fr.copy() for fr in ImageSequence.Iterator(img)]
+                            if frames:
+                                for frame in frames:
+                                    frame.thumbnail((thumbnail_width, thumbnail_width * 2), Image.Resampling.LANCZOS)
+                                processed_frames = [frame.convert('RGBA').convert('RGB') for frame in frames]
+                                if processed_frames:
+                                    processed_frames[0].save(cache_path, save_all=True, append_images=processed_frames[1:], 
+                                                           duration=img.info.get('duration', 100), loop=img.info.get('loop', 0), optimize=True)
+                        else:
+                            img.thumbnail((thumbnail_width, thumbnail_width * 2), Image.Resampling.LANCZOS)
+                            if img.mode != 'RGB':
+                                img = img.convert('RGB')
+                            img.save(cache_path, 'JPEG', quality=85)
+                except:
+                    pass
+            elif file_type == 'video':
+                try:
+                    cap = cv2.VideoCapture(filepath)
+                    success, frame = cap.read()
+                    cap.release()
+                    if success:
+                        cache_path = os.path.join(thumbnail_cache_dir, f"{file_hash_for_thumbnail}.jpeg")
+                        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                        img = Image.fromarray(frame_rgb)
+                        img.thumbnail((thumbnail_width, thumbnail_width * 2), Image.Resampling.LANCZOS)
+                        img.save(cache_path, 'JPEG', quality=80)
+                except:
+                    pass
+        
+        file_id = hashlib.md5(filepath.encode()).hexdigest()
+        
+        return (
+            file_id, filepath, mtime, os.path.basename(filepath),
+            details['type'], details['duration'], details['dimensions'], details['has_workflow']
+        )
+    except Exception as e:
+        print(f"ERROR: Failed to process file {os.path.basename(filepath)} in worker: {e}")
+        return None
+
 def get_db_connection():
     db_file = app.config.get('DATABASE_FILE', '')
     
@@ -554,36 +710,84 @@ def get_dynamic_folder_config(force_refresh=False):
     
 def full_sync_database(conn):
     print("INFO: Starting full file scan...")
-    all_folders = get_dynamic_folder_config(force_refresh=True)
     start_time = time.time()
+
+    all_folders = get_dynamic_folder_config(force_refresh=True)
     db_files = {row['path']: row['mtime'] for row in conn.execute('SELECT path, mtime FROM files').fetchall()}
+    
     disk_files = {}
+    print("INFO: Scanning directories on disk...")
     for folder_data in all_folders.values():
         folder_path = folder_data['path']
-        if not os.path.isdir(folder_path): continue
-        for name in os.listdir(folder_path):
-            filepath = os.path.join(folder_path, name)
-            if os.path.isfile(filepath) and os.path.splitext(name)[1].lower() not in ['.json', '.sqlite']:
-                disk_files[filepath] = os.path.getmtime(filepath)
-    to_add = set(disk_files) - set(db_files)
-    to_delete = set(db_files) - set(disk_files)
-    to_check = set(disk_files) & set(db_files)
-    to_update = {path for path in to_check if disk_files.get(path, 0) > db_files.get(path, 0)}
-    files_to_process = to_add.union(to_update)
+        if not os.path.isdir(folder_path): 
+            continue
+        try:
+            for name in os.listdir(folder_path):
+                filepath = os.path.join(folder_path, name)
+                if os.path.isfile(filepath) and os.path.splitext(name)[1].lower() not in ['.json', '.sqlite']:
+                    disk_files[filepath] = os.path.getmtime(filepath)
+        except OSError as e:
+            print(f"WARNING: Could not access folder {folder_path}: {e}")
+            
+    db_paths = set(db_files.keys())
+    disk_paths = set(disk_files.keys())
+    
+    to_delete = db_paths - disk_paths
+    to_add = disk_paths - db_paths
+    to_check = disk_paths & db_paths
+    to_update = {path for path in to_check if int(disk_files.get(path, 0)) > int(db_files.get(path, 0))}
+    
+    files_to_process = list(to_add.union(to_update))
+    
     if files_to_process:
-        print(f"INFO: Analyzing {len(files_to_process)} new or modified files...")
-        data_to_upsert = []
-        for p in files_to_process:
-            metadata = analyze_file_metadata(p)
-            file_hash = hashlib.md5((p + str(disk_files[p])).encode()).hexdigest()
-            if not glob.glob(os.path.join(app.config['THUMBNAIL_CACHE_DIR'], f"{file_hash}.*")):
-                create_thumbnail(p, file_hash, metadata['type'])
-            data_to_upsert.append((hashlib.md5(p.encode()).hexdigest(), p, disk_files[p], os.path.basename(p), *metadata.values()))
-        if data_to_upsert: conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", data_to_upsert)
+        print(f"INFO: Processing {len(files_to_process)} files in parallel using up to {MAX_PARALLEL_WORKERS or 'all'} CPU cores...")
+        
+        # Gather config values for worker processes
+        thumbnail_cache_dir = app.config['THUMBNAIL_CACHE_DIR']
+        thumbnail_width = app.config['THUMBNAIL_WIDTH']
+        video_exts = app.config['VIDEO_EXTENSIONS']
+        image_exts = app.config['IMAGE_EXTENSIONS']
+        animated_exts = app.config['ANIMATED_IMAGE_EXTENSIONS']
+        audio_exts = app.config['AUDIO_EXTENSIONS']
+        webp_animated_fps = app.config['WEBP_ANIMATED_FPS']
+        base_input_path_workflow = app.config['BASE_INPUT_PATH_WORKFLOW']
+        
+        results = []
+        with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_PARALLEL_WORKERS) as executor:
+            # Submit all jobs to the pool
+            futures = {
+                executor.submit(
+                    process_single_file, path, thumbnail_cache_dir, thumbnail_width,
+                    video_exts, image_exts, animated_exts, audio_exts, webp_animated_fps,
+                    base_input_path_workflow
+                ): path for path in files_to_process
+            }
+            
+            # Create the progress bar with the correct total
+            with tqdm(total=len(files_to_process), desc="Processing files", unit="file") as pbar:
+                # Iterate over the jobs as they are COMPLETED
+                for future in concurrent.futures.as_completed(futures):
+                    result = future.result()
+                    if result:
+                        results.append(result)
+                    # Update the bar by 1 step for each completed job
+                    pbar.update(1)
+
+        if results:
+            print(f"INFO: Inserting {len(results)} processed records into the database...")
+            for i in range(0, len(results), BATCH_SIZE):
+                batch = results[i:i + BATCH_SIZE]
+                conn.executemany(
+                    "INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    batch
+                )
+                conn.commit()
+
     if to_delete:
-        print(f"INFO: Removing {len(to_delete)} obsolete files...")
+        print(f"INFO: Removing {len(to_delete)} obsolete file entries from the database...")
         conn.executemany("DELETE FROM files WHERE path = ?", [(p,) for p in to_delete])
-    conn.commit()
+        conn.commit()
+
     print(f"INFO: Full scan completed in {time.time() - start_time:.2f} seconds.")
 
 def sync_folder_internal(folder_path):
@@ -657,41 +861,62 @@ def sync_folder_on_demand(folder_path):
             
             files_to_add = disk_filepaths - db_filepaths
             files_to_delete = db_filepaths - disk_filepaths
-            files_to_update = {path for path in (disk_filepaths & db_filepaths) if disk_files[path] > db_files[path]}
+            files_to_update = {path for path in (disk_filepaths & db_filepaths) if int(disk_files[path]) > int(db_files[path])}
             
             if not files_to_add and not files_to_update and not files_to_delete:
                 yield f"data: {json.dumps({'message': 'Folder is up-to-date.', 'status': 'no_changes', 'current': 1, 'total': 1})}\n\n"
                 return
 
             files_to_process = list(files_to_add.union(files_to_update))
-            total_files_to_process = len(files_to_process)
+            total_files = len(files_to_process)
             
-            if total_files_to_process > 0:
-                yield f"data: {json.dumps({'message': f'Found {total_files_to_process} new/modified files...', 'current': 0, 'total': total_files_to_process})}\n\n"
-                time.sleep(1)
-
-                data_to_upsert = []
-                for i, path in enumerate(files_to_process):
-                    progress_data = {'message': f'Processing: {os.path.basename(path)}', 'current': i + 1, 'total': total_files_to_process }
-                    yield f"data: {json.dumps(progress_data)}\n\n"
-                    
-                    metadata = analyze_file_metadata(path)
-                    file_hash = hashlib.md5((path + str(disk_files[path])).encode()).hexdigest()
-                    if not glob.glob(os.path.join(app.config['THUMBNAIL_CACHE_DIR'], f"{file_hash}.*")): 
-                        create_thumbnail(path, file_hash, metadata['type'])
-                    
-                    data_to_upsert.append((hashlib.md5(path.encode()).hexdigest(), path, disk_files[path], os.path.basename(path), *metadata.values()))
+            if total_files > 0:
+                yield f"data: {json.dumps({'message': f'Found {total_files} new/modified files. Processing...', 'current': 0, 'total': total_files})}\n\n"
                 
+                # Gather config values for worker processes
+                thumbnail_cache_dir = app.config['THUMBNAIL_CACHE_DIR']
+                thumbnail_width = app.config['THUMBNAIL_WIDTH']
+                video_exts = app.config['VIDEO_EXTENSIONS']
+                image_exts = app.config['IMAGE_EXTENSIONS']
+                animated_exts = app.config['ANIMATED_IMAGE_EXTENSIONS']
+                audio_exts = app.config['AUDIO_EXTENSIONS']
+                webp_animated_fps = app.config['WEBP_ANIMATED_FPS']
+                base_input_path_workflow = app.config['BASE_INPUT_PATH_WORKFLOW']
+                
+                data_to_upsert = []
+                processed_count = 0
+
+                with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_PARALLEL_WORKERS) as executor:
+                    futures = {
+                        executor.submit(
+                            process_single_file, path, thumbnail_cache_dir, thumbnail_width,
+                            video_exts, image_exts, animated_exts, audio_exts, webp_animated_fps,
+                            base_input_path_workflow
+                        ): path for path in files_to_process
+                    }
+                    
+                    for future in concurrent.futures.as_completed(futures):
+                        result = future.result()
+                        if result:
+                            data_to_upsert.append(result)
+                        
+                        processed_count += 1
+                        path = futures[future]
+                        progress_data = {
+                            'message': f'Processing: {os.path.basename(path)}',
+                            'current': processed_count,
+                            'total': total_files
+                        }
+                        yield f"data: {json.dumps(progress_data)}\n\n"
+
                 if data_to_upsert: 
                     conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", data_to_upsert)
 
             if files_to_delete:
-                paths_to_delete_list = list(files_to_delete)
-                placeholders = ','.join('?' * len(paths_to_delete_list))
-                conn.execute(f"DELETE FROM files WHERE path IN ({placeholders})", paths_to_delete_list)
+                conn.executemany("DELETE FROM files WHERE path IN (?)", [(p,) for p in files_to_delete])
 
             conn.commit()
-            yield f"data: {json.dumps({'message': 'Sync complete. Reloading...', 'status': 'reloading', 'current': total_files_to_process, 'total': total_files_to_process})}\n\n"
+            yield f"data: {json.dumps({'message': 'Sync complete. Reloading...', 'status': 'reloading', 'current': total_files, 'total': total_files})}\n\n"
 
     except Exception as e:
         error_message = f"Error during sync: {e}"
@@ -1112,6 +1337,65 @@ def toggle_favorite(file_id):
         conn.execute("UPDATE files SET is_favorite = ? WHERE id = ?", (new_status, file_id))
         conn.commit()
         return jsonify({'status': 'success', 'is_favorite': bool(new_status)})
+
+# --- NEW FEATURE: RENAME FILE ---
+@app.route('/galleryout/rename_file/<string:file_id>', methods=['POST'])
+@require_initialization
+def rename_file(file_id):
+    data = request.json
+    new_name = data.get('new_name', '').strip()
+
+    # Basic validation for the new name
+    if not new_name or len(new_name) > 250:
+        return jsonify({'status': 'error', 'message': 'The provided filename is invalid or too long.'}), 400
+    if re.search(r'[\\/:"*?<>|]', new_name):
+        return jsonify({'status': 'error', 'message': 'Filename contains invalid characters.'}), 400
+
+    try:
+        with get_db_connection() as conn:
+            file_info = conn.execute("SELECT path, name FROM files WHERE id = ?", (file_id,)).fetchone()
+            if not file_info:
+                return jsonify({'status': 'error', 'message': 'File not found in the database.'}), 404
+
+            old_path = file_info['path']
+            old_name = file_info['name']
+            
+            # Preserve the original extension
+            _, old_ext = os.path.splitext(old_name)
+            new_name_base, new_ext = os.path.splitext(new_name)
+            if not new_ext:  # If user didn't provide an extension, use the old one
+                final_new_name = new_name + old_ext
+            else:
+                final_new_name = new_name
+
+            if final_new_name == old_name:
+                return jsonify({'status': 'error', 'message': 'The new name is the same as the old one.'}), 400
+
+            file_dir = os.path.dirname(old_path)
+            new_path = os.path.join(file_dir, final_new_name)
+
+            if os.path.exists(new_path):
+                return jsonify({'status': 'error', 'message': f'A file named "{final_new_name}" already exists in this folder.'}), 409
+
+            # Perform the rename and database update
+            os.rename(old_path, new_path)
+            new_id = hashlib.md5(new_path.encode()).hexdigest()
+            conn.execute("UPDATE files SET id = ?, path = ?, name = ? WHERE id = ?", (new_id, new_path, final_new_name, file_id))
+            conn.commit()
+
+            return jsonify({
+                'status': 'success',
+                'message': 'File renamed successfully.',
+                'new_name': final_new_name,
+                'new_id': new_id
+            })
+
+    except OSError as e:
+        print(f"ERROR: OS error during file rename for {file_id}: {e}")
+        return jsonify({'status': 'error', 'message': f'A system error occurred during rename: {e}'}), 500
+    except Exception as e:
+        print(f"ERROR: Generic error during file rename for {file_id}: {e}")
+        return jsonify({'status': 'error', 'message': f'An unexpected error occurred: {e}'}), 500
 
 # --- FIX: ROBUST DELETE ROUTE ---
 @app.route('/galleryout/delete/<string:file_id>', methods=['POST'])

@@ -230,6 +230,9 @@
             .node-summary-panel { width: 95vw; max-height: 90vh; }
             .summary-node-params li { font-size: 0.9rem; }
         }
+        @media (min-width: 1025px) {
+            #drop-zone-panel { width: 650px; max-width: 90vw; }
+        }
     </style>
 </head>
 <body>
@@ -322,7 +325,17 @@
     <div id="lightbox-overlay">
         <div id="lightbox-header">
             <div id="lightbox-title"></div>
-            <div id="lightbox-toolbar"><button id="lightbox-zoom-out">-</button><button id="lightbox-zoom-in">+</button><a id="lightbox-download" href="#">💾</a><button id="lightbox-summary-btn">📝</button><a id="lightbox-workflow" href="#" class="workflow-btn">⚙️</a><button id="lightbox-delete-btn">🗑️</button><a id="lightbox-new-tab" href="#" target="_blank">↗️</a><button class="close-btn" onclick="closeLightbox()">×</button></div>
+            <div id="lightbox-toolbar">
+                <button id="lightbox-zoom-out" title="Zoom Out">-</button>
+                <button id="lightbox-zoom-in" title="Zoom In">+</button>
+                <a id="lightbox-download" href="#" title="Download File">💾</a>
+                <button id="lightbox-rename-btn" title="Rename File">✏️</button>
+                <button id="lightbox-summary-btn" title="Node Summary">📝</button>
+                <a id="lightbox-workflow" href="#" class="workflow-btn" title="Download Workflow">⚙️</a>
+                <button id="lightbox-delete-btn" title="Delete File">🗑️</button>
+                <a id="lightbox-new-tab" href="#" target="_blank" title="Open in New Tab">↗️</a>
+                <button class="close-btn" onclick="closeLightbox()" title="Close">×</button>
+            </div>
         </div>
         <div id="lightbox-content"><div id="lightbox-media"></div></div>
         <button id="lightbox-prev" class="lightbox-nav">‹</button><button id="lightbox-next" class="lightbox-nav">›</button>
@@ -352,16 +365,94 @@
         let lastSelectedItem = null;
         let currentSort = { nav: { key: 'name', dir: 'asc' }, move: { key: 'name', dir: 'asc' } };
         let currentSearch = { nav: '', move: '' };
+        
+        // --- UI STATE PERSISTENCE MANAGEMENT ---
+        // Load saved sort preference
+        try {
+            const savedSort = localStorage.getItem('gallerySortPreference');
+            if (savedSort) {
+                const parsed = JSON.parse(savedSort);
+                if (parsed.nav) currentSort.nav = parsed.nav;
+                if (parsed.move) currentSort.move = parsed.move;
+            }
+        } catch (e) { console.warn('Could not load sort preferences:', e); }
+        
+        // Load saved folder expansion state (use consistent name: galleryFolderState)
+        let expandedFolderKeys = new Set();
+        try {
+            const savedFolderState = localStorage.getItem('galleryFolderState');
+            if (savedFolderState) {
+                expandedFolderKeys = new Set(JSON.parse(savedFolderState));
+            }
+        } catch (e) { console.warn('Could not load folder state:', e); }
+        
+        function saveExpandedFolderKeys() {
+            try {
+                localStorage.setItem('galleryFolderState', JSON.stringify([...expandedFolderKeys]));
+            } catch (e) { console.warn('Could not save folder state:', e); }
+        }
+        
+        function saveSortPreference() {
+            try {
+                localStorage.setItem('gallerySortPreference', JSON.stringify(currentSort));
+            } catch (e) { console.warn('Could not save sort preference:', e); }
+        }
+        
         function showNotification(message, type = 'info') { const container = document.getElementById('notification-container'); if (!container) return; const notification = document.createElement('div'); notification.className = `notification ${type}`; notification.textContent = message; container.appendChild(notification); setTimeout(() => { notification.classList.add('show'); }, 10); setTimeout(() => { notification.classList.remove('show'); notification.addEventListener('transitionend', () => notification.remove()); }, 3000); }
         function handleError(error) { console.error('API Error:', error); showNotification(error.message || 'An unexpected network error occurred.', 'error'); }
         function handleGenericResponse(response) { return response.json().then(data => { if (!response.ok) { throw new Error(data.message || `HTTP error! status: ${response.status}`); } if (data.status === 'success' || data.status === 'partial_success') { showNotification(data.message || 'Action completed successfully!', 'success'); setTimeout(() => window.location.reload(), 1200); } else { throw new Error(data.message || 'An unspecified error occurred.'); } }).catch(handleError); }
-        function sortChildren(folder, sortKey, direction) { if (!folder.children || folder.children.length === 0) return; const dirMultiplier = direction === 'asc' ? 1 : -1; folder.children.sort((keyA, keyB) => { const folderA = foldersData[keyA]; const folderB = foldersData[keyB]; if (!folderA || !folderB) return 0; let comparison = 0; if (sortKey === 'mtime') { comparison = (folderA.mtime || 0) - (folderB.mtime || 0); } else { const nameA = folderA.display_name || ''; const nameB = folderB.display_name || ''; comparison = nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' }); } return comparison * dirMultiplier; }); folder.children.forEach(childKey => sortChildren(foldersData[childKey], sortKey, direction)); }
-        function buildFolderTreeHTML(folderKey, isMovePanel = false) { const folder = foldersData[folderKey]; if (!folder) return ''; const hasChildren = folder.children && folder.children.length > 0; const isCollapsed = !ancestorKeys.includes(folderKey) && folderKey !== '_root_'; const isActive = !isMovePanel && folderKey === currentFolderKey; let childrenHTML = ''; if (hasChildren) { childrenHTML = folder.children.map(childKey => buildFolderTreeHTML(childKey, isMovePanel)).join(''); } const folderDisplayName = folder.display_name; const folderIcon = '📁'; let itemHTML; if (isMovePanel) { itemHTML = ` <div class="folder-item"> <span class="toggle-btn ${!hasChildren ? 'empty' : ''}"></span> <span class="folder-link" title="${folderDisplayName}">${folderIcon} ${folderDisplayName}</span> <button class="move-here-btn" data-folder-key="${folderKey}" title="Move here" ${folderKey === currentFolderKey ? 'disabled' : ''}>➜</button> </div>`; } else { itemHTML = ` <div class="folder-item ${isActive ? 'active' : ''}"> <span class="toggle-btn ${!hasChildren ? 'empty' : ''}"></span> <span class="folder-link navigation-link" data-folder-url="/galleryout/view/${folderKey}" title="${folderDisplayName}">${folderIcon} ${folderDisplayName}</span> ${ (folderKey !== '_root_' && !protectedFolderKeys.includes(folderKey)) ? `<div class="folder-actions"> <button class="folder-action-btn" title="Rename" data-action="rename" data-name="${folderDisplayName}">✏️</button> <button class="folder-action-btn" title="Delete" data-action="delete" data-name="${folderDisplayName}">🗑️</button> </div>` : '' } </div>`; } return `<li data-folder-key="${folderKey}" data-folder-name="${folderDisplayName.toLowerCase()}" class="${isCollapsed ? 'collapsed' : ''} ${!hasChildren ? 'no-children' : ''}">${itemHTML}${hasChildren ? `<ul>${childrenHTML}</ul>` : ''}</li>`; }
-        function renderAllTrees() { Object.values(foldersData).forEach(folder => sortChildren(folder, currentSort.nav.key, currentSort.nav.dir)); document.getElementById('folder-tree-nav').innerHTML = buildFolderTreeHTML('_root_', false); filterTree('folder-tree-nav', currentSearch.nav); Object.values(foldersData).forEach(folder => sortChildren(folder, currentSort.move.key, currentSort.move.dir)); document.getElementById('move-folder-tree').innerHTML = buildFolderTreeHTML('_root_', true); filterTree('move-folder-tree', currentSearch.move); }
-        function filterTree(treeId, searchTerm) { const term = searchTerm.toLowerCase().trim(); const tree = document.getElementById(treeId); if (!tree) return; const allItems = Array.from(tree.getElementsByTagName('li')); if (!term) { allItems.forEach(li => li.classList.remove('is-hidden')); return; } allItems.forEach(li => li.classList.add('is-hidden')); allItems.forEach(li => { if (li.dataset.folderName.includes(term)) { li.classList.remove('is-hidden'); let parent = li.parentElement.closest('li'); while (parent) { parent.classList.remove('is-hidden'); parent.classList.remove('collapsed'); parent = parent.parentElement.closest('li'); } } }); }
-        function setupFolderControls(navId, treeId) { document.getElementById(`folder-search-${navId}`).addEventListener('input', (e) => { currentSearch[navId] = e.target.value; filterTree(treeId, currentSearch[navId]); }); const sortContainer = document.getElementById(`folder-sort-${navId}`); sortContainer.addEventListener('click', (e) => { const button = e.target.closest('button'); if (!button) return; const newSortKey = button.dataset.sort; if (currentSort[navId].key === newSortKey) { currentSort[navId].dir = currentSort[navId].dir === 'asc' ? 'desc' : 'asc'; } else { currentSort[navId].key = newSortKey; currentSort[navId].dir = newSortKey === 'name' ? 'asc' : 'desc'; } updateSortButtonsUI(navId); renderAllTrees(); }); updateSortButtonsUI(navId); }
+        // sortChildren: Returns a sorted copy of folder children keys without mutating original data
+        function sortChildren(children, sortKey, direction) { 
+            if (!children || children.length === 0) return []; 
+            const dirMultiplier = direction === 'asc' ? 1 : -1; 
+            return [...children].sort((keyA, keyB) => { 
+                const folderA = foldersData[keyA]; 
+                const folderB = foldersData[keyB]; 
+                if (!folderA || !folderB) return 0; 
+                let comparison = 0; 
+                if (sortKey === 'mtime') { 
+                    comparison = (folderA.mtime || 0) - (folderB.mtime || 0); 
+                } else { 
+                    const nameA = folderA.display_name || ''; 
+                    const nameB = folderB.display_name || ''; 
+                    comparison = nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' }); 
+                } 
+                return comparison * dirMultiplier; 
+            }); 
+        }
+        function buildFolderTreeHTML(folderKey, sortKey, direction, isMovePanel = false) { 
+            const folder = foldersData[folderKey]; 
+            if (!folder) return ''; 
+            const hasChildren = folder.children && folder.children.length > 0; 
+            const isManuallyExpanded = expandedFolderKeys.has(folderKey); 
+            const isAncestor = ancestorKeys.includes(folderKey); 
+            const isCollapsed = !isAncestor && !isManuallyExpanded && folderKey !== '_root_'; 
+            const isActive = !isMovePanel && folderKey === currentFolderKey; 
+            let childrenHTML = ''; 
+            if (hasChildren) { 
+                const sortedChildren = sortChildren(folder.children, sortKey, direction); 
+                childrenHTML = sortedChildren.map(childKey => buildFolderTreeHTML(childKey, sortKey, direction, isMovePanel)).join(''); 
+            } 
+            const folderDisplayName = folder.display_name; 
+            const folderIcon = '📁'; 
+            let itemHTML; 
+            if (isMovePanel) { 
+                itemHTML = ` <div class="folder-item"> <span class="toggle-btn ${!hasChildren ? 'empty' : ''}"></span> <span class="folder-link" title="${folderDisplayName}">${folderIcon} ${folderDisplayName}</span> <button class="move-here-btn" data-folder-key="${folderKey}" title="Move here" ${folderKey === currentFolderKey ? 'disabled' : ''}>➜</button> </div>`; 
+            } else { 
+                itemHTML = ` <div class="folder-item ${isActive ? 'active' : ''}"> <span class="toggle-btn ${!hasChildren ? 'empty' : ''}"></span> <span class="folder-link navigation-link" data-folder-url="/galleryout/view/${folderKey}" title="${folderDisplayName}">${folderIcon} ${folderDisplayName}</span> ${ (folderKey !== '_root_' && !protectedFolderKeys.includes(folderKey)) ? `<div class="folder-actions"> <button class="folder-action-btn" title="Rename" data-action="rename" data-name="${folderDisplayName}">✏️</button> <button class="folder-action-btn" title="Delete" data-action="delete" data-name="${folderDisplayName}">🗑️</button> </div>` : '' } </div>`; 
+            } 
+            return `<li data-folder-key="${folderKey}" data-folder-name="${folderDisplayName.toLowerCase()}" class="${isCollapsed ? 'collapsed' : ''} ${!hasChildren ? 'no-children' : ''}">${itemHTML}${hasChildren ? `<ul>${childrenHTML}</ul>` : ''}</li>`; 
+        }
+        function renderAllTrees() { 
+            document.getElementById('folder-tree-nav').innerHTML = buildFolderTreeHTML('_root_', currentSort.nav.key, currentSort.nav.dir, false); 
+            filterTree('folder-tree-nav', currentSearch.nav); 
+            document.getElementById('move-folder-tree').innerHTML = buildFolderTreeHTML('_root_', currentSort.move.key, currentSort.move.dir, true); 
+            filterTree('move-folder-tree', currentSearch.move); 
+        }
+        function filterTree(treeId, searchTerm) { const term = searchTerm.toLowerCase().trim(); const tree = document.getElementById(treeId); if (!tree) return; const allItems = Array.from(tree.getElementsByTagName('li')); if (!term) { allItems.forEach(li => li.classList.remove('is-hidden')); return; } allItems.forEach(li => li.classList.add('is-hidden')); allItems.forEach(li => { if (li.dataset.folderName.includes(term)) { li.classList.remove('is-hidden'); let parent = li.parentElement.closest('li'); while (parent) { parent.classList.remove('is-hidden'); if (parent.classList.contains('collapsed')) { parent.classList.remove('collapsed'); const folderKey = parent.dataset.folderKey; if (folderKey) expandedFolderKeys.add(folderKey); } parent = parent.parentElement.closest('li'); } } }); if (term) saveExpandedFolderKeys(); }
+        function setupFolderControls(navId, treeId) { document.getElementById(`folder-search-${navId}`).addEventListener('input', (e) => { currentSearch[navId] = e.target.value; filterTree(treeId, currentSearch[navId]); }); const sortContainer = document.getElementById(`folder-sort-${navId}`); sortContainer.addEventListener('click', (e) => { const button = e.target.closest('button'); if (!button) return; const newSortKey = button.dataset.sort; if (currentSort[navId].key === newSortKey) { currentSort[navId].dir = currentSort[navId].dir === 'asc' ? 'desc' : 'asc'; } else { currentSort[navId].key = newSortKey; currentSort[navId].dir = newSortKey === 'name' ? 'asc' : 'desc'; } updateSortButtonsUI(navId); saveSortPreference(); renderAllTrees(); }); updateSortButtonsUI(navId); }
         function updateSortButtonsUI(navId) { const sortContainer = document.getElementById(`folder-sort-${navId}`); sortContainer.querySelectorAll('button').forEach(btn => { const sortType = btn.dataset.sort; let text = sortType === 'name' ? 'A-Z' : '🗓️'; btn.classList.remove('active'); if (sortType === currentSort[navId].key) { btn.classList.add('active'); const arrow = currentSort[navId].dir === 'asc' ? '↑' : '↓'; text += ` ${arrow}`; } btn.innerHTML = text; }); }
-        function setupSidebarExpansion() { const btn = document.getElementById('sidebar-expand-btn'); const textEl = document.getElementById('sidebar-expand-text'); btn.addEventListener('click', () => { document.body.classList.toggle('sidebar-expanded'); if (document.body.classList.contains('sidebar-expanded')) { btn.querySelector('span:first-child').innerHTML = '⬅️'; textEl.textContent = 'Collapse'; btn.title = 'Collapse Sidebar'; } else { btn.querySelector('span:first-child').innerHTML = '↔️'; textEl.textContent = 'Expand'; btn.title = 'Expand Sidebar'; } }); }
+        function setupSidebarExpansion() { const btn = document.getElementById('sidebar-expand-btn'); const textEl = document.getElementById('sidebar-expand-text'); try { const savedState = localStorage.getItem('sidebarExpandedState'); if (savedState === 'true') { document.body.classList.add('sidebar-expanded'); btn.querySelector('span:first-child').innerHTML = '⬅️'; textEl.textContent = 'Collapse'; btn.title = 'Collapse Sidebar'; } } catch (e) { console.warn('Could not load sidebar expansion state:', e); } btn.addEventListener('click', () => { document.body.classList.toggle('sidebar-expanded'); const isExpanded = document.body.classList.contains('sidebar-expanded'); if (isExpanded) { btn.querySelector('span:first-child').innerHTML = '⬅️'; textEl.textContent = 'Collapse'; btn.title = 'Collapse Sidebar'; } else { btn.querySelector('span:first-child').innerHTML = '↔️'; textEl.textContent = 'Expand'; btn.title = 'Expand Sidebar'; } try { localStorage.setItem('sidebarExpandedState', isExpanded ? 'true' : 'false'); } catch (e) { console.warn('Could not save sidebar expansion state:', e); } }); }
         function startSyncProcess(isManualRefresh = false) { const syncOverlay = document.getElementById('sync-overlay'); const syncMessage = document.getElementById('sync-message'); const syncProgressFill = document.getElementById('sync-progress-fill'); const eventSource = new EventSource(`/galleryout/sync_status/${currentFolderKey}`); let hasChanges = false; if (isManualRefresh) { syncOverlay.style.display = 'flex'; syncMessage.textContent = 'Checking for changes...'; syncProgressFill.style.width = '0%'; syncProgressFill.style.backgroundColor = 'var(--primary-color)'; } const cleanupAndClose = (shouldReload = false) => { eventSource.close(); if (shouldReload) { setTimeout(() => window.location.reload(), 1200); } else { setTimeout(() => { syncOverlay.style.display = 'none'; }, isManualRefresh ? 1200 : 0); } }; eventSource.onmessage = function(event) { try { const data = JSON.parse(event.data); if (!hasChanges && data.status !== 'no_changes') { syncOverlay.style.display = 'flex'; hasChanges = true; } if (syncOverlay.style.display === 'flex') { syncMessage.textContent = data.message; if (data.total > 0) { syncProgressFill.style.width = `${(data.current / data.total) * 100}%`; } } if (data.status === 'no_changes') { if (isManualRefresh) { syncProgressFill.style.width = '100%'; showNotification("Folder is up to date.", "info"); } cleanupAndClose(false); } else if (data.status === 'reloading') { cleanupAndClose(true); } else if (data.error) { syncProgressFill.style.backgroundColor = 'var(--danger-color)'; cleanupAndClose(false); } } catch(e) { console.error("Error parsing SSE data:", e); cleanupAndClose(false); } }; eventSource.onerror = function() { eventSource.close(); }; }
         function appendFiles(files) { if (!files || files.length === 0) { if (currentItemCount === 0) showEmptyState(); updateLoadMoreVisibility(); return; } const fragment = document.createDocumentFragment(); const newLazyElements = []; files.forEach(file => { allFilesData.push(file); const item = createGalleryItem(file); fragment.appendChild(item); galleryItems.push(item); const lazyEl = item.querySelector('.lazy'); if (lazyEl) newLazyElements.push(lazyEl); }); galleryContainer.appendChild(fragment); initializeLazyLoading(newLazyElements); currentItemCount += files.length; updateLoadMoreVisibility(); }
         function createGalleryItem(file) { const item = document.createElement('div'); item.className = 'gallery-item'; item.dataset.fileId = file.id; item.dataset.fileType = file.type; item.setAttribute('draggable', 'true'); item.addEventListener('dragstart', (event) => dragStart(event, file.id)); let mediaHTML = ''; if (file.type === 'audio') { mediaHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:4rem;color:#1ed760;">🎵</div>`; } else if (['image', 'animated_image'].includes(file.type)) { mediaHTML = `<img class="lazy" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E" data-src="/galleryout/thumbnail/${file.id}" alt="${file.name}" loading="lazy">`; } else if (file.type === 'video') { mediaHTML = `<video autoplay muted loop playsinline class="lazy" data-src="/galleryout/file/${file.id}" poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E"></video>`; } else { mediaHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:3rem;color:var(--text-muted);">📄</div>`; } const summaryButtonHTML = file.has_workflow ? `<button title="Node Summary" onclick="showNodeSummary(event, '${file.id}')">📝</button>` : ''; let metadataHTML = ''; if (file.dimensions || file.mtime) { const date = new Date(file.mtime * 1000); const formattedDate = date.toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }); const dimensionsPart = file.dimensions ? `<span>📐 ${file.dimensions}</span>` : ''; const datePart = file.mtime ? `<span>📅 ${formattedDate}</span>` : ''; metadataHTML = `<div class="file-metadata">${dimensionsPart}${datePart}</div>`; } item.innerHTML = `<div class="selection-checkmark" onclick="toggleSelection(event, '${file.id}', this.closest('.gallery-item'))">✓</div><div class="thumbnail-link" onclick="openLightbox(event, '${file.id}'); event.stopPropagation();" draggable="false"><div class="thumbnail-wrapper">${mediaHTML}${file.has_workflow ? `<a href="/galleryout/workflow/${file.id}" class="workflow-badge" onclick="event.stopPropagation()">⚙️ Workflow</a>` : ''}${file.duration ? `<span class="duration-overlay">⏱️ ${file.duration}</span>` : ''}</div></div><div class="item-info"><div><p title="${file.name}"><strong>${file.name}</strong></p>${metadataHTML}</div><div class="item-actions">${summaryButtonHTML}<button class="favorite-btn ${file.is_favorite ? 'favorited' : ''}" title="Favorite" onclick="toggleFavorite(event, '${file.id}', this)">${file.is_favorite ? '⭐' : '☆'}</button><a href="/galleryout/download/${file.id}" onclick="event.stopPropagation()" title="Download">💾</a><button class="delete-btn" onclick="deleteFile(event, '${file.id}', this)">🗑️</button></div></div>`; return item; }
@@ -393,7 +484,98 @@
         function navigateLightbox(direction) { if (galleryItems.length === 0) return; currentLightboxIndex = (currentLightboxIndex + direction + galleryItems.length) % galleryItems.length; showItemAtIndex(currentLightboxIndex); }
         function zoomLightbox(amount) { const mediaEl = lightboxMedia.querySelector('img, video'); if (!mediaEl) return; currentZoom = Math.max(0.5, Math.min(3, currentZoom + amount)); mediaEl.style.transform = `scale(${currentZoom})`; updateLightboxTitle(); }
         
-        // --- FIX: ROBUST LIGHTBOX DELETE ---
+        function renameFileFromLightbox() {
+            if (!currentLightboxFile) return;
+
+            const oldName = currentLightboxFile.name;
+            const lastDotIndex = oldName.lastIndexOf('.');
+            const baseName = lastDotIndex > -1 ? oldName.substring(0, lastDotIndex) : oldName;
+            const extension = lastDotIndex > -1 ? oldName.substring(lastDotIndex) : '';
+
+            const newBaseName = prompt("Enter the new file name (extension will be preserved):", baseName);
+
+            if (newBaseName === null || newBaseName.trim() === '' || newBaseName.trim() === baseName) {
+                return; // User cancelled or name is unchanged
+            }
+
+            const newName = newBaseName.trim() + extension;
+            const renameBtn = document.getElementById('lightbox-rename-btn');
+            if (renameBtn) renameBtn.disabled = true;
+
+            fetch(`/galleryout/rename_file/${currentLightboxFile.id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ new_name: newName })
+            })
+            .then(response => response.json().then(data => ({ ok: response.ok, data })))
+            .then(({ ok, data }) => {
+                if (ok && data.status === 'success') {
+                    showNotification(data.message || 'File renamed successfully!', 'success');
+                    
+                    const oldId = currentLightboxFile.id;
+                    const newId = data.new_id; // Correct variable name from backend
+
+                    // 1. Update the lightbox's current file object
+                    currentLightboxFile.name = data.new_name;
+                    currentLightboxFile.id = newId;
+                    updateLightboxTitle();
+                    
+                    // 2. Update the main data array
+                    const fileIndexInData = allFilesData.findIndex(f => f.id === oldId);
+                    if (fileIndexInData !== -1) {
+                        allFilesData[fileIndexInData].name = data.new_name;
+                        allFilesData[fileIndexInData].id = newId;
+                    }
+
+                    // 3. Update the gallery item in the DOM
+                    const galleryItem = galleryItems[currentLightboxIndex];
+                    if (galleryItem && galleryItem.dataset.fileId === oldId) {
+                        galleryItem.dataset.fileId = newId;
+                        const itemInfoP = galleryItem.querySelector('.item-info p');
+                        if (itemInfoP) {
+                            const strongTag = itemInfoP.querySelector('strong');
+                            if (strongTag) strongTag.textContent = data.new_name;
+                            itemInfoP.title = data.new_name;
+                        }
+
+                        // Update all handlers and links to use the new ID
+                        const thumbnailLink = galleryItem.querySelector('.thumbnail-link');
+                        if (thumbnailLink) thumbnailLink.setAttribute('onclick', `openLightbox(event, '${newId}'); event.stopPropagation();`);
+                        
+                        const checkmark = galleryItem.querySelector('.selection-checkmark');
+                        if (checkmark) checkmark.setAttribute('onclick', `toggleSelection(event, '${newId}', this.closest('.gallery-item'))`);
+                        
+                        const favoriteBtn = galleryItem.querySelector('.favorite-btn');
+                        if (favoriteBtn) favoriteBtn.setAttribute('onclick', `toggleFavorite(event, '${newId}', this)`);
+                        
+                        const deleteBtn = galleryItem.querySelector('.delete-btn');
+                        if (deleteBtn) deleteBtn.setAttribute('onclick', `deleteFile(event, '${newId}', this)`);
+                        
+                        const downloadLink = galleryItem.querySelector('a[title="Download"]');
+                        if (downloadLink) downloadLink.href = `/galleryout/download/${newId}`;
+                        
+                        const summaryBtn = galleryItem.querySelector('button[title="Node Summary"]');
+                        if (summaryBtn) summaryBtn.setAttribute('onclick', `showNodeSummary(event, '${newId}')`);
+                        
+                        const workflowBadge = galleryItem.querySelector('.workflow-badge');
+                        if (workflowBadge) workflowBadge.href = `/galleryout/workflow/${newId}`;
+                    }
+                    
+                    // 4. Update Lightbox links by re-running showItemAtIndex
+                    showItemAtIndex(currentLightboxIndex);
+
+                } else {
+                    throw new Error(data.message || 'Failed to rename file.');
+                }
+            })
+            .catch(error => {
+                handleError(error);
+            })
+            .finally(() => {
+                if (renameBtn) renameBtn.disabled = false;
+            });
+        }
+
         function deleteFromLightbox(noConfirm = false) {
             if (currentLightboxIndex < 0 || currentLightboxIndex >= galleryItems.length) return;
             
@@ -484,8 +666,8 @@
             const mobileFilterToggle = document.getElementById('mobile-filter-toggle');
             const filterFormGrid = document.getElementById('filter-form-grid');
             if (mobileFilterToggle) { mobileFilterToggle.addEventListener('click', () => { filterFormGrid.classList.toggle('visible'); mobileFilterToggle.textContent = filterFormGrid.classList.contains('visible') ? '✕  Hide Filters' : '⚙️ Filters & Options'; }); }
-            document.getElementById('folder-tree-nav').addEventListener('click', (e) => { const link = e.target.closest('.navigation-link'); const toggle = e.target.closest('.toggle-btn'); const actionBtn = e.target.closest('.folder-action-btn'); if (toggle) { toggle.closest('li').classList.toggle('collapsed'); } else if (actionBtn) { const li = actionBtn.closest('li'); const key = li.dataset.folderKey; const name = actionBtn.dataset.name; if (actionBtn.dataset.action === 'rename') renameFolder(e, key, name); if (actionBtn.dataset.action === 'delete') deleteFolder(e, key, name); } else if (link) { window.location.href = link.dataset.folderUrl; } });
-            document.getElementById('move-folder-tree').addEventListener('click', (e) => { const toggle = e.target.closest('.toggle-btn'); const moveBtn = e.target.closest('.move-here-btn'); if (toggle) toggle.closest('li').classList.toggle('collapsed'); if (moveBtn) confirmMoveToFolder(moveBtn.dataset.folderKey); });
+            document.getElementById('folder-tree-nav').addEventListener('click', (e) => { const link = e.target.closest('.navigation-link'); const toggle = e.target.closest('.toggle-btn'); const actionBtn = e.target.closest('.folder-action-btn'); if (toggle) { const li = toggle.closest('li'); li.classList.toggle('collapsed'); const folderKey = li.dataset.folderKey; if (li.classList.contains('collapsed')) { expandedFolderKeys.delete(folderKey); } else { expandedFolderKeys.add(folderKey); } saveExpandedFolderKeys(); } else if (actionBtn) { const li = actionBtn.closest('li'); const key = li.dataset.folderKey; const name = actionBtn.dataset.name; if (actionBtn.dataset.action === 'rename') renameFolder(e, key, name); if (actionBtn.dataset.action === 'delete') deleteFolder(e, key, name); } else if (link) { window.location.href = link.dataset.folderUrl; } });
+            document.getElementById('move-folder-tree').addEventListener('click', (e) => { const toggle = e.target.closest('.toggle-btn'); const moveBtn = e.target.closest('.move-here-btn'); if (toggle) { const li = toggle.closest('li'); li.classList.toggle('collapsed'); const folderKey = li.dataset.folderKey; if (li.classList.contains('collapsed')) { expandedFolderKeys.delete(folderKey); } else { expandedFolderKeys.add(folderKey); } saveExpandedFolderKeys(); } if (moveBtn) confirmMoveToFolder(moveBtn.dataset.folderKey); });
             document.getElementById('refresh-btn').addEventListener('click', (e) => { e.preventDefault(); startSyncProcess(true); });
             document.getElementById('create-folder-btn').addEventListener('click', createFolder);
             document.getElementById('cancel-drop-btn').addEventListener('click', hideDropZone);
@@ -500,6 +682,7 @@
             document.getElementById('lightbox-next').addEventListener('click', () => navigateLightbox(1));
             document.getElementById('lightbox-zoom-in').addEventListener('click', () => zoomLightbox(0.2));
             document.getElementById('lightbox-zoom-out').addEventListener('click', () => zoomLightbox(-0.2));
+            document.getElementById('lightbox-rename-btn').addEventListener('click', renameFileFromLightbox);
             document.getElementById('lightbox-delete-btn').addEventListener('click', () => deleteFromLightbox(false));
             document.getElementById('lightbox-content').addEventListener('wheel', (event) => { if (lightboxOverlay.classList.contains('visible')) { event.preventDefault(); zoomLightbox(event.deltaY < 0 ? 0.1 : -0.1); } });
             document.getElementById('close-summary-btn').addEventListener('click', closeNodeSummary);
