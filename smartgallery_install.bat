@@ -7,8 +7,8 @@ TIMEOUT /t 1 > null
 :: Move to current directory (cmd)
 cd /d "%~dp0"
 
-:: Clone smart-comfyUI-gallery from github
 echo *** Cloning project from GitHub ***
+:: Clone smart-comfyUI-gallery from github
 git clone https://github.com/biagiomaf/smart-comfyui-gallery > nul 2>&1
 
 :: Move to sub directory (cmd)
