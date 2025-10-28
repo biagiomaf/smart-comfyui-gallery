@@ -34,24 +34,8 @@ from werkzeug.utils import secure_filename
 
 # - It is strongly recommended to have ffmpeg installed, since some features depend on it.
 
-# --- CONFIGURATION (Set via command-line arguments) ---
-BASE_OUTPUT_PATH = None
-BASE_INPUT_PATH = None
-FFPROBE_MANUAL_PATH = ""
-SERVER_PORT = 8008
-THUMBNAIL_WIDTH = 300
-WEBP_ANIMATED_FPS = 16.0
-PAGE_SIZE = 100
-SPECIAL_FOLDERS = ['video', 'audio']
-# ------- END OF USER CONFIGURATION -------
-
-
-
 # --- CACHE AND FOLDER NAMES ---
-THUMBNAIL_CACHE_FOLDER_NAME = '.thumbnails_cache'
-SQLITE_CACHE_FOLDER_NAME = '.sqlite_cache'
-DATABASE_FILENAME = 'gallery_cache.sqlite'
-WORKFLOW_FOLDER_NAME = 'workflow_logs_success'
+# Constants are now defined and loaded into app.config in the main block.
 
 # --- HELPER FUNCTIONS (DEFINED FIRST) ---
 def path_to_key(relative_path):
@@ -65,13 +49,12 @@ def key_to_path(key):
     except Exception: return None
 
 # --- DERIVED SETTINGS ---
-DB_SCHEMA_VERSION = 21 # Schema version is static and can remain global
+DB_SCHEMA_VERSION = 21  # Schema version is static and can remain global
 
 # --- FLASK APP INITIALIZATION ---
 app = Flask(__name__)
 gallery_view_cache = []
 folder_config_cache = None
-FFPROBE_EXECUTABLE_PATH = None
 
 
 # Strutture dati per la categorizzazione e l'analisi dei nodi
@@ -169,11 +152,13 @@ def generate_node_summary(workflow_json_string):
 # --- ALL UTILITY AND HELPER FUNCTIONS ARE DEFINED HERE, BEFORE ANY ROUTES ---
 
 def find_ffprobe_path():
-    if FFPROBE_MANUAL_PATH and os.path.isfile(FFPROBE_MANUAL_PATH):
+    manual_path = app.config.get("FFPROBE_MANUAL_PATH", "")
+    if manual_path and os.path.isfile(manual_path):
         try:
-            subprocess.run([FFPROBE_MANUAL_PATH, "-version"], capture_output=True, check=True, creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
-            return FFPROBE_MANUAL_PATH
-        except Exception: pass
+            subprocess.run([manual_path, "-version"], capture_output=True, check=True, creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
+            return manual_path
+        except Exception:
+            pass
     base_name = "ffprobe.exe" if sys.platform == "win32" else "ffprobe"
     try:
         subprocess.run([base_name, "-version"], capture_output=True, check=True, creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
@@ -216,9 +201,10 @@ def extract_workflow(filepath):
     video_exts = ['.mp4', '.mkv', '.webm', '.mov', '.avi']
     
     if ext in video_exts:
-        if FFPROBE_EXECUTABLE_PATH:
+        ffprobe_path = app.config.get("FFPROBE_EXECUTABLE_PATH")
+        if ffprobe_path:
             try:
-                cmd = [FFPROBE_EXECUTABLE_PATH, '-v', 'quiet', '-print_format', 'json', '-show_format', filepath]
+                cmd = [ffprobe_path, '-v', 'quiet', '-print_format', 'json', '-show_format', filepath]
                 result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True, creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
                 data = json.loads(result.stdout)
                 if 'format' in data and 'tags' in data['format']:
@@ -253,7 +239,7 @@ def extract_workflow(filepath):
 
     try:
         base_filename = os.path.basename(filepath)
-        search_pattern = os.path.join(BASE_INPUT_PATH_WORKFLOW, f"{base_filename}*.json")
+        search_pattern = os.path.join(app.config['BASE_INPUT_PATH_WORKFLOW'], f"{base_filename}*.json")
         json_files = glob.glob(search_pattern)
         if json_files:
             latest = max(json_files, key=os.path.getmtime)
@@ -300,17 +286,18 @@ def analyze_file_metadata(filepath):
             with Image.open(filepath) as img:
                 if getattr(img, 'is_animated', False):
                     if ext_lower == '.gif': total_duration_sec = sum(frame.info.get('duration', 100) for frame in ImageSequence.Iterator(img)) / 1000
-                    elif ext_lower == '.webp': total_duration_sec = getattr(img, 'n_frames', 1) / WEBP_ANIMATED_FPS
+                    elif ext_lower == '.webp': total_duration_sec = getattr(img, 'n_frames', 1) / app.config['WEBP_ANIMATED_FPS']
         except Exception: pass
     if total_duration_sec > 0: details['duration'] = format_duration(total_duration_sec)
     return details
 
 def create_thumbnail(filepath, file_hash, file_type):
+    thumbnail_cache_dir = app.config['THUMBNAIL_CACHE_DIR']
     if file_type in ['image', 'animated_image']:
         try:
             with Image.open(filepath) as img:
                 fmt = 'gif' if img.format == 'GIF' else 'webp' if img.format == 'WEBP' else 'jpeg'
-                cache_path = os.path.join(THUMBNAIL_CACHE_DIR, f"{file_hash}.{fmt}")
+                cache_path = os.path.join(thumbnail_cache_dir, f"{file_hash}.{fmt}")
                 if file_type == 'animated_image' and getattr(img, 'is_animated', False):
                     frames = [fr.copy() for fr in ImageSequence.Iterator(img)]
                     if frames:
@@ -319,7 +306,7 @@ def create_thumbnail(filepath, file_hash, file_type):
                         if processed_frames:
                             processed_frames[0].save(cache_path, save_all=True, append_images=processed_frames[1:], duration=img.info.get('duration', 100), loop=img.info.get('loop', 0), optimize=True)
                 else:
-                    img.thumbnail((THUMBNAIL_WIDTH, THUMBNAIL_WIDTH * 2), Image.Resampling.LANCZOS)
+                    img.thumbnail((app.config['THUMBNAIL_WIDTH'], app.config['THUMBNAIL_WIDTH'] * 2), Image.Resampling.LANCZOS)
                     if img.mode != 'RGB': img = img.convert('RGB')
                     img.save(cache_path, 'JPEG', quality=85)
                 return cache_path
@@ -330,17 +317,17 @@ def create_thumbnail(filepath, file_hash, file_type):
             success, frame = cap.read()
             cap.release()
             if success:
-                cache_path = os.path.join(THUMBNAIL_CACHE_DIR, f"{file_hash}.jpeg")
+                cache_path = os.path.join(thumbnail_cache_dir, f"{file_hash}.jpeg")
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 img = Image.fromarray(frame_rgb)
-                img.thumbnail((THUMBNAIL_WIDTH, THUMBNAIL_WIDTH * 2), Image.Resampling.LANCZOS)
+                img.thumbnail((app.config['THUMBNAIL_WIDTH'], app.config['THUMBNAIL_WIDTH'] * 2), Image.Resampling.LANCZOS)
                 img.save(cache_path, 'JPEG', quality=80)
                 return cache_path
         except Exception as e: print(f"ERROR (OpenCV): Could not create thumbnail for {os.path.basename(filepath)}: {e}")
     return None
 
 def get_db_connection():
-    conn = sqlite3.connect(DATABASE_FILE)
+    conn = sqlite3.connect(app.config['DATABASE_FILE'])
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -366,10 +353,10 @@ def get_dynamic_folder_config(force_refresh=False):
 
     print("INFO: Refreshing folder configuration by scanning directory tree...")
 
-    base_path_normalized = os.path.normpath(BASE_OUTPUT_PATH).replace('\\', '/')
+    base_path_normalized = os.path.normpath(app.config['BASE_OUTPUT_PATH']).replace('\\', '/')
     
     try:
-        root_mtime = os.path.getmtime(BASE_OUTPUT_PATH)
+        root_mtime = os.path.getmtime(app.config['BASE_OUTPUT_PATH'])
     except OSError:
         root_mtime = time.time()
 
@@ -386,11 +373,11 @@ def get_dynamic_folder_config(force_refresh=False):
 
     try:
         all_folders = {}
-        for dirpath, dirnames, _ in os.walk(BASE_OUTPUT_PATH):
-            dirnames[:] = [d for d in dirnames if d not in [THUMBNAIL_CACHE_FOLDER_NAME, SQLITE_CACHE_FOLDER_NAME]]
+        for dirpath, dirnames, _ in os.walk(app.config['BASE_OUTPUT_PATH']):
+            dirnames[:] = [d for d in dirnames if d not in [app.config['THUMBNAIL_CACHE_FOLDER_NAME'], app.config['SQLITE_CACHE_FOLDER_NAME']]]
             for dirname in dirnames:
                 full_path = os.path.normpath(os.path.join(dirpath, dirname)).replace('\\', '/')
-                relative_path = os.path.relpath(full_path, BASE_OUTPUT_PATH).replace('\\', '/')
+                relative_path = os.path.relpath(full_path, app.config['BASE_OUTPUT_PATH']).replace('\\', '/')
                 try:
                     mtime = os.path.getmtime(full_path)
                 except OSError:
@@ -422,7 +409,7 @@ def get_dynamic_folder_config(force_refresh=False):
                 'mtime': folder_data['mtime']
             }
     except FileNotFoundError:
-        print(f"WARNING: The base directory '{BASE_OUTPUT_PATH}' was not found.")
+        print(f"WARNING: The base directory '{app.config['BASE_OUTPUT_PATH']}' was not found.")
     
     folder_config_cache = dynamic_config
     return dynamic_config
@@ -451,7 +438,7 @@ def full_sync_database(conn):
         for p in files_to_process:
             metadata = analyze_file_metadata(p)
             file_hash = hashlib.md5((p + str(disk_files[p])).encode()).hexdigest()
-            if not glob.glob(os.path.join(THUMBNAIL_CACHE_DIR, f"{file_hash}.*")):
+            if not glob.glob(os.path.join(app.config['THUMBNAIL_CACHE_DIR'], f"{file_hash}.*")):
                 create_thumbnail(p, file_hash, metadata['type'])
             data_to_upsert.append((hashlib.md5(p.encode()).hexdigest(), p, disk_files[p], os.path.basename(p), *metadata.values()))
         if data_to_upsert: conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", data_to_upsert)
@@ -501,7 +488,7 @@ def sync_folder_on_demand(folder_path):
                     
                     metadata = analyze_file_metadata(path)
                     file_hash = hashlib.md5((path + str(disk_files[path])).encode()).hexdigest()
-                    if not glob.glob(os.path.join(THUMBNAIL_CACHE_DIR, f"{file_hash}.*")): 
+                    if not glob.glob(os.path.join(app.config['THUMBNAIL_CACHE_DIR'], f"{file_hash}.*")): 
                         create_thumbnail(path, file_hash, metadata['type'])
                     
                     data_to_upsert.append((hashlib.md5(path.encode()).hexdigest(), path, disk_files[path], os.path.basename(path), *metadata.values()))
@@ -534,24 +521,22 @@ def scan_folder_and_extract_options(folder_path):
     except Exception as e: print(f"ERROR: Could not scan folder '{folder_path}': {e}")
     return None, sorted(list(extensions)), sorted(list(prefixes))
 
-def initialize_gallery():
-    # These are now global so other functions can access the calculated paths
-    global BASE_INPUT_PATH_WORKFLOW, THUMBNAIL_CACHE_DIR, SQLITE_CACHE_DIR, DATABASE_FILE, PROTECTED_FOLDER_KEYS, FFPROBE_EXECUTABLE_PATH
-
-    # --- DERIVED SETTINGS (MOVED HERE) ---
-    # Now that BASE_OUTPUT_PATH and BASE_INPUT_PATH are set, we can derive the rest.
-    BASE_INPUT_PATH_WORKFLOW = os.path.join(BASE_INPUT_PATH, WORKFLOW_FOLDER_NAME)
-    THUMBNAIL_CACHE_DIR = os.path.join(BASE_OUTPUT_PATH, THUMBNAIL_CACHE_FOLDER_NAME)
-    SQLITE_CACHE_DIR = os.path.join(BASE_OUTPUT_PATH, SQLITE_CACHE_FOLDER_NAME)
-    DATABASE_FILE = os.path.join(SQLITE_CACHE_DIR, DATABASE_FILENAME)
-    PROTECTED_FOLDER_KEYS = {path_to_key(f) for f in SPECIAL_FOLDERS}
-    PROTECTED_FOLDER_KEYS.add('_root_')
-    # ------------------------------------
+def initialize_gallery(flask_app):
+    """Initializes the gallery by setting up derived paths and the database."""
+    # Now that BASE_OUTPUT_PATH etc. are in app.config, we can derive the rest.
+    flask_app.config['BASE_INPUT_PATH_WORKFLOW'] = os.path.join(flask_app.config['BASE_INPUT_PATH'], flask_app.config['WORKFLOW_FOLDER_NAME'])
+    flask_app.config['THUMBNAIL_CACHE_DIR'] = os.path.join(flask_app.config['BASE_OUTPUT_PATH'], flask_app.config['THUMBNAIL_CACHE_FOLDER_NAME'])
+    flask_app.config['SQLITE_CACHE_DIR'] = os.path.join(flask_app.config['BASE_OUTPUT_PATH'], flask_app.config['SQLITE_CACHE_FOLDER_NAME'])
+    flask_app.config['DATABASE_FILE'] = os.path.join(flask_app.config['SQLITE_CACHE_DIR'], flask_app.config['DATABASE_FILENAME'])
+    
+    protected_keys = {path_to_key(f) for f in flask_app.config['SPECIAL_FOLDERS']}
+    protected_keys.add('_root_')
+    flask_app.config['PROTECTED_FOLDER_KEYS'] = protected_keys
 
     print("INFO: Initializing gallery...")
-    FFPROBE_EXECUTABLE_PATH = find_ffprobe_path()
-    os.makedirs(THUMBNAIL_CACHE_DIR, exist_ok=True)
-    os.makedirs(SQLITE_CACHE_DIR, exist_ok=True)
+    flask_app.config['FFPROBE_EXECUTABLE_PATH'] = find_ffprobe_path()
+    os.makedirs(flask_app.config['THUMBNAIL_CACHE_DIR'], exist_ok=True)
+    os.makedirs(flask_app.config['SQLITE_CACHE_DIR'], exist_ok=True)
     with get_db_connection() as conn:
         try:
             stored_version = conn.execute('PRAGMA user_version').fetchone()[0]
@@ -626,8 +611,8 @@ def gallery_view(folder_key):
         
     folder_path_norm = os.path.normpath(folder_path)
     all_files_filtered = [dict(row) for row in all_files_raw if os.path.normpath(os.path.dirname(row['path'])) == folder_path_norm]
-    gallery_view_cache = all_files_filtered
-    initial_files = gallery_view_cache[:PAGE_SIZE]
+    gallery_view_cache = all_files_filtered  # gallery_view_cache is a module-level global
+    initial_files = gallery_view_cache[:app.config['PAGE_SIZE']]
     _, extensions, prefixes = scan_folder_and_extract_options(folder_path)
     breadcrumbs, ancestor_keys = [], set()
     curr_key = folder_key
@@ -649,9 +634,9 @@ def gallery_view(folder_key):
                            available_extensions=extensions, 
                            available_prefixes=prefixes,
                            selected_extensions=request.args.getlist('extension'), 
-                           selected_prefixes=request.args.getlist('prefix'),
-                           show_favorites=request.args.get('favorites', 'false').lower() == 'true', 
-                           protected_folder_keys=list(PROTECTED_FOLDER_KEYS))
+                           selected_prefixes=request.args.getlist('prefix'), 
+                           show_favorites=request.args.get('favorites', 'false').lower() == 'true',
+                           protected_folder_keys=list(app.config['PROTECTED_FOLDER_KEYS']))
 
 @app.route('/galleryout/upload', methods=['POST'])
 def upload_files():
@@ -692,7 +677,7 @@ def create_folder():
 
 @app.route('/galleryout/rename_folder/<string:folder_key>', methods=['POST'])
 def rename_folder(folder_key):
-    if folder_key in PROTECTED_FOLDER_KEYS: return jsonify({'status': 'error', 'message': 'This folder cannot be renamed.'}), 403
+    if folder_key in app.config['PROTECTED_FOLDER_KEYS']: return jsonify({'status': 'error', 'message': 'This folder cannot be renamed.'}), 403
     new_name = re.sub(r'[^a-zA-Z0-9_-]', '', request.json.get('new_name', '')).strip()
     if not new_name: return jsonify({'status': 'error', 'message': 'Invalid name.'}), 400
     folders = get_dynamic_folder_config()
@@ -718,7 +703,7 @@ def rename_folder(folder_key):
 
 @app.route('/galleryout/delete_folder/<string:folder_key>', methods=['POST'])
 def delete_folder(folder_key):
-    if folder_key in PROTECTED_FOLDER_KEYS: return jsonify({'status': 'error', 'message': 'This folder cannot be deleted.'}), 403
+    if folder_key in app.config['PROTECTED_FOLDER_KEYS']: return jsonify({'status': 'error', 'message': 'This folder cannot be deleted.'}), 403
     folders = get_dynamic_folder_config()
     if folder_key not in folders: return jsonify({'status': 'error', 'message': 'Folder not found.'}), 404
     try:
@@ -735,7 +720,7 @@ def delete_folder(folder_key):
 def load_more():
     offset = request.args.get('offset', 0, type=int)
     if offset >= len(gallery_view_cache): return jsonify(files=[])
-    return jsonify(files=gallery_view_cache[offset:offset + PAGE_SIZE])
+    return jsonify(files=gallery_view_cache[offset:offset + app.config['PAGE_SIZE']])
 
 def get_file_info_from_db(file_id, column='*'):
     with get_db_connection() as conn:
@@ -906,7 +891,7 @@ def serve_thumbnail(file_id):
     info = get_file_info_from_db(file_id)
     filepath, mtime = info['path'], info['mtime']
     file_hash = hashlib.md5((filepath + str(mtime)).encode()).hexdigest()
-    existing_thumbnails = glob.glob(os.path.join(THUMBNAIL_CACHE_DIR, f"{file_hash}.*"))
+    existing_thumbnails = glob.glob(os.path.join(app.config['THUMBNAIL_CACHE_DIR'], f"{file_hash}.*"))
     if existing_thumbnails: return send_file(existing_thumbnails[0])
     print(f"WARN: Thumbnail not found for {os.path.basename(filepath)}, generating...")
     cache_path = create_thumbnail(filepath, file_hash, info['type'])
@@ -924,16 +909,30 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    # Assign global configuration variables from the parsed arguments
-    BASE_OUTPUT_PATH = args.output_path
-    BASE_INPUT_PATH = args.input_path
-    SERVER_PORT = args.port
-    FFPROBE_MANUAL_PATH = args.ffprobe_path
+    # --- Populate Flask app config from arguments ---
+    app.config['BASE_OUTPUT_PATH'] = args.output_path
+    app.config['BASE_INPUT_PATH'] = args.input_path
+    app.config['SERVER_PORT'] = args.port
+    app.config['FFPROBE_MANUAL_PATH'] = args.ffprobe_path
 
-    if not os.path.isdir(BASE_OUTPUT_PATH) or not os.path.isdir(BASE_INPUT_PATH):
-        print(f"ERROR: One or more paths are invalid. Please check your configuration.\nOutput: {BASE_OUTPUT_PATH}\nInput: {BASE_INPUT_PATH}")
+    # --- Set other static configuration values ---
+    app.config['THUMBNAIL_WIDTH'] = 300
+    app.config['WEBP_ANIMATED_FPS'] = 16.0
+    app.config['PAGE_SIZE'] = 100
+    app.config['SPECIAL_FOLDERS'] = ['video', 'audio']
+    
+    # --- Set constants for cache/folder names ---
+    app.config['THUMBNAIL_CACHE_FOLDER_NAME'] = '.thumbnails_cache'
+    app.config['SQLITE_CACHE_FOLDER_NAME'] = '.sqlite_cache'
+    app.config['DATABASE_FILENAME'] = 'gallery_cache.sqlite'
+    app.config['WORKFLOW_FOLDER_NAME'] = 'workflow_logs_success'
+
+    if not os.path.isdir(app.config['BASE_OUTPUT_PATH']) or not os.path.isdir(app.config['BASE_INPUT_PATH']):
+        print(f"ERROR: One or more paths are invalid. Please check your configuration.\nOutput: {app.config['BASE_OUTPUT_PATH']}\nInput: {app.config['BASE_INPUT_PATH']}")
         sys.exit(1)
 
-    initialize_gallery()
-    print(f"SmartGallery started! Open: http://127.0.0.1:{SERVER_PORT}/galleryout/")
-    app.run(host='0.0.0.0', port=SERVER_PORT, debug=False)
+    # Initialize derived paths and database
+    initialize_gallery(app)
+
+    print(f"SmartGallery started! Open: http://127.0.0.1:{app.config['SERVER_PORT']}/galleryout/")
+    app.run(host='0.0.0.0', port=app.config['SERVER_PORT'], debug=False)
