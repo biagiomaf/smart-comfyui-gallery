@@ -103,7 +103,9 @@ class GalleryConfigUI {
             const result = await response.json();
             if (result.success && result.data.length > 0) {
                 container.innerHTML = result.data.map(file => `
-                    <div class="recent-file-card" title="${file.name}">
+                    <div class="recent-file-card" 
+                         title="${file.name} - Click to open in gallery"
+                         onclick="window.galleryConfigInstance.openFileInGallery('${file.id}')">
                         <img src="http://localhost:${port}${file.thumbnail_url}" 
                              alt="${file.name}"
                              onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23333%22 width=%22100%22 height=%22100%22/%3E%3Ctext fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3E?%3C/text%3E%3C/svg%3E'">
@@ -257,6 +259,13 @@ class GalleryConfigUI {
         window.open(`http://localhost:${port}/galleryout/`, '_blank');
     }
     
+    openFileInGallery(fileId) {
+        const port = this.config.server_port || 8008;
+        // Open gallery and try to highlight/show the specific file
+        // The gallery will need to handle the file parameter
+        window.open(`http://localhost:${port}/galleryout/#file-${fileId}`, '_blank');
+    }
+    
     render() {
         const autoDetect = this.config.auto_detect_paths !== false;
         const hasDetectedPaths = this.detectedPaths.output_path && this.detectedPaths.input_path;
@@ -270,7 +279,13 @@ class GalleryConfigUI {
                 
                 <!-- Dashboard Section -->
                 <section class="config-section dashboard-section">
-                    <h3>📊 Gallery Dashboard</h3>
+                    <div class="dashboard-header">
+                        <h3>📊 Gallery Dashboard</h3>
+                        <button class="btn-open-gallery" onclick="window.galleryConfigInstance.openGallery()">
+                            🌐 Open Gallery
+                        </button>
+                    </div>
+                    
                     <div class="dashboard-grid">
                         <div class="stat-card">
                             <div class="stat-icon">📁</div>
@@ -331,9 +346,6 @@ class GalleryConfigUI {
                         </button>
                         <button class="btn-action" onclick="window.galleryConfigInstance.viewLogs()">
                             📋 View Logs
-                        </button>
-                        <button class="btn-action" onclick="window.galleryConfigInstance.openGallery()">
-                            🌐 Open Gallery
                         </button>
                     </div>
                 </section>

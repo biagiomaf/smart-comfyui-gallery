@@ -1,6 +1,23 @@
 
 # Changelog
 
+## [1.34.2] - 2025-10-28
+
+### Changed
+
+#### UI/UX Improvements (`galleryConfig.js`, `galleryConfig.css`)
+- **Prominent "Open Gallery" Button**: Moved from quick actions to top-right of dashboard header with primary action styling
+- **Dashboard Header Layout**: Added flex layout with title on left, Open Gallery button on right
+- **Quick Actions Reorganized**: Changed from 4-button auto-fit grid to clean 3-column layout (Sync, Clear Cache, View Logs)
+- **Recent Files Interactivity**: Made recent file thumbnails clickable - click opens file in gallery in new tab
+- **File Deep-Linking**: Added URL hash fragment (`#file-{id}`) for future deep-linking functionality
+- **Tooltip Enhancement**: Recent files now show "Click to open in gallery" on hover
+
+### Added
+
+#### New Method (`galleryConfig.js`)
+- `openFileInGallery(fileId)`: Opens gallery in new tab with file ID in URL hash for future deep-linking support
+
 ## [1.34.1] - 2025-10-28
 
 ### Fixed
