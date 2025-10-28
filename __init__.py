@@ -24,9 +24,6 @@ gallery_process = None # Global variable to hold the subprocess reference
 
 def load_config():
     """Loads user settings from config.json, with robust defaults from ComfyUI itself."""
-    
-    # Get paths directly from ComfyUI's path manager
-    # This is the correct, robust way to do it - respects all ComfyUI configurations
     default_output_path = folder_paths.get_output_directory()
     default_input_path = folder_paths.get_input_directory()
 
@@ -41,10 +38,9 @@ def load_config():
         try:
             with open(CONFIG_FILE, 'r') as f:
                 user_config = json.load(f)
-                # Smartly update the config, ignoring empty path values from the user
                 for key, value in user_config.items():
                     if "path" in key and not value:
-                        continue # User left path blank, so we keep the auto-detected default
+                        continue
                     config[key] = value
         except Exception as e:
             print(f"!! SmartGallery: Error loading config.json, using defaults. Error: {e}")
@@ -54,10 +50,11 @@ def load_config():
 def launch_gallery():
     """Launches the smartgallery.py script and stores its process reference."""
     global gallery_process
-    if gallery_process is not None:
+    if gallery_process is not None and gallery_process.poll() is None:
+        print("## SmartGallery: Server already running.")
         return
 
-    time.sleep(2) # Delay to let ComfyUI start first
+    time.sleep(2) 
 
     current_dir = os.path.dirname(__file__)
     script_path = os.path.join(current_dir, 'smartgallery.py')
@@ -67,10 +64,8 @@ def launch_gallery():
         print("!! SmartGallery: could not find smartgallery.py, skipping auto-launch.")
         return
 
-    # Load configuration
     config = load_config()
 
-    # Build the command-line arguments to pass to the gallery server
     cmd = [
         python_executable, script_path,
         "--output-path", config["base_output_path"],
@@ -82,13 +77,16 @@ def launch_gallery():
     print("## SmartGallery: Starting server...")
     
     try:
-        # Store the process object in our global variable
+        # --- DEBUG CHANGE: MAKE OUTPUT VISIBLE ---
+        # We are removing stdout=subprocess.DEVNULL to see any errors from the Flask app.
         gallery_process = subprocess.Popen(
             cmd,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.STDOUT,
-            cwd=current_dir # Set the correct working directory
+            # stdout=subprocess.DEVNULL, # Temporarily disabled for debugging
+            # stderr=subprocess.STDOUT,  # Temporarily disabled for debugging
+            cwd=current_dir
         )
+        # -----------------------------------------
+        
         print("## SmartGallery: Server launched in the background.")
         print(f"## SmartGallery: URL: http://127.0.0.1:{config['server_port']}/galleryout/")
     except Exception as e:
@@ -100,31 +98,26 @@ def cleanup_gallery_process():
     if gallery_process is not None:
         print("## SmartGallery: Shutting down server...")
         try:
-            gallery_process.terminate() # Send a termination signal
-            gallery_process.wait(timeout=5) # Wait for up to 5 seconds
+            gallery_process.terminate()
+            gallery_process.wait(timeout=5)
             print("## SmartGallery: Server shut down successfully.")
         except subprocess.TimeoutExpired:
             print("!! SmartGallery: Server did not respond to terminate, forcing shutdown.")
-            gallery_process.kill() # Force kill if it doesn't close gracefully
+            gallery_process.kill()
         except Exception as e:
             print(f"!! SmartGallery: Error during shutdown: {e}")
         gallery_process = None
 
-# --- Register the cleanup function to be called on exit ---
 atexit.register(cleanup_gallery_process)
-
-# --- ComfyUI API Routes for Settings Panel ---
 
 print("## SmartGallery: Registering API routes...")
 @server_instance.routes.get("/smartgallery/get_config")
 async def get_gallery_config(request):
-    """API endpoint for the JS settings panel to fetch current settings."""
     config = load_config()
     return web.json_response(config)
 
 @server_instance.routes.post("/smartgallery/save_config")
 async def save_gallery_config(request):
-    """API endpoint for the JS settings panel to save new settings."""
     try:
         data = await request.json()
         with open(CONFIG_FILE, 'w') as f:
@@ -137,26 +130,23 @@ async def save_gallery_config(request):
 
 print("## SmartGallery: API routes registered.")
 
-# --- ComfyUI V3 Registration ---
-
 class SmartGalleryExtension(ComfyExtension):
     def __init__(self):
-        # Call the parent class's constructor
         super().__init__()
-        # Set the web_directory as an instance attribute for ComfyUI to discover
         self.web_directory = "js"
 
     def on_load(self):
         """Called by ComfyUI when the extension is loaded."""
-        # This is the modern, clean way to handle startup logic.
         gallery_thread = threading.Thread(target=launch_gallery, daemon=True)
         gallery_thread.start()
 
+    # --- FIX: ADDED MISSING ABSTRACT METHOD ---
+    # This method is required by the ComfyExtension abstract base class.
+    # Since this extension provides no nodes, we return an empty list.
     async def get_node_list(self) -> list[type[io.ComfyNode]]:
-        """This extension registers no nodes."""
         return []
+    # ------------------------------------------
 
 async def comfy_entrypoint() -> SmartGalleryExtension:
     """The function ComfyUI looks for to register the extension."""
-    # Instantiate the extension class without arguments
     return SmartGalleryExtension()
