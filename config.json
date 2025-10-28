@@ -1,0 +1,6 @@
+{
+    "base_output_path": "C:\\.ai\\ComfyUI\\output",
+    "base_input_path": "C:\\.ai\\ComfyUI\\input",
+    "server_port": 8008,
+    "ffprobe_manual_path": ""
+}

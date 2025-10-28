@@ -57,11 +57,59 @@ DB_SCHEMA_VERSION = 21  # Schema version is static and can remain global
 # --- FLASK APP INITIALIZATION ---
 app = Flask(__name__)
 
+# Set default configuration values (will be overridden by CLI args in __main__)
+# These MUST be set before any routes are accessed
+app.config.setdefault('PAGE_SIZE', 100)
+app.config.setdefault('THUMBNAIL_WIDTH', 300)
+app.config.setdefault('WEBP_ANIMATED_FPS', 16.0)
+app.config.setdefault('THUMBNAIL_CACHE_FOLDER_NAME', '.thumbnails_cache')
+app.config.setdefault('SQLITE_CACHE_FOLDER_NAME', '.sqlite_cache')
+app.config.setdefault('DATABASE_FILENAME', 'gallery_cache.sqlite')
+app.config.setdefault('WORKFLOW_FOLDER_NAME', 'workflow_logs_success')
+app.config.setdefault('VIDEO_EXTENSIONS', ['.mp4', '.mkv', '.webm', '.mov', '.avi'])
+app.config.setdefault('IMAGE_EXTENSIONS', ['.png', '.jpg', '.jpeg'])
+app.config.setdefault('ANIMATED_IMAGE_EXTENSIONS', ['.gif', '.webp'])
+app.config.setdefault('AUDIO_EXTENSIONS', ['.mp3', '.wav', '.ogg', '.flac'])
+app.config.setdefault('SPECIAL_FOLDERS', ['video', 'audio'])
+
+# Set placeholder paths (will be properly set in initialize_gallery)
+app.config.setdefault('BASE_OUTPUT_PATH', '')
+app.config.setdefault('BASE_INPUT_PATH', '')
+app.config.setdefault('DATABASE_FILE', '')
+app.config.setdefault('THUMBNAIL_CACHE_DIR', '')
+app.config.setdefault('SQLITE_CACHE_DIR', '')
+app.config.setdefault('BASE_INPUT_PATH_WORKFLOW', '')
+app.config.setdefault('PROTECTED_FOLDER_KEYS', set())
+
+app.config['ALL_MEDIA_EXTENSIONS'] = (
+    app.config.get('VIDEO_EXTENSIONS', []) + 
+    app.config.get('IMAGE_EXTENSIONS', []) + 
+    app.config.get('ANIMATED_IMAGE_EXTENSIONS', []) + 
+    app.config.get('AUDIO_EXTENSIONS', [])
+)
+
 # Thread-safe caches with locks for concurrent access
 gallery_view_cache = []
 gallery_view_cache_lock = threading.Lock()
 folder_config_cache = None
 folder_config_cache_lock = threading.Lock()
+
+# --- INITIALIZATION GUARD DECORATOR (Issue #5) ---
+from functools import wraps
+
+def require_initialization(f):
+    """Decorator to ensure initialize_gallery() was called before accessing route."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Check if DATABASE_FILE is properly initialized (not empty placeholder)
+        db_file = app.config.get('DATABASE_FILE', '')
+        if not db_file or db_file.strip() == '':
+            return jsonify({
+                'error': 'Gallery not initialized',
+                'message': 'initialize_gallery() must be called before accessing routes'
+            }), 503  # Service Unavailable
+        return f(*args, **kwargs)
+    return decorated_function
 
 
 # Data structures for node categorization and analysis
@@ -362,7 +410,26 @@ def create_thumbnail(filepath, file_hash, file_type):
     return None
 
 def get_db_connection():
-    conn = sqlite3.connect(app.config['DATABASE_FILE'])
+    db_file = app.config.get('DATABASE_FILE', '')
+    
+    # Enhanced validation (Issue #4)
+    if not db_file or db_file.strip() == '':
+        raise RuntimeError("Gallery not initialized - DATABASE_FILE not configured. Call initialize_gallery() first.")
+    
+    # Verify it's an absolute path
+    if not os.path.isabs(db_file):
+        raise RuntimeError(f"DATABASE_FILE must be an absolute path, got: {db_file}")
+    
+    # Ensure parent directory exists
+    db_dir = os.path.dirname(db_file)
+    if not os.path.exists(db_dir):
+        try:
+            os.makedirs(db_dir, exist_ok=True)
+            print(f"INFO: Created database directory: {db_dir}")
+        except (OSError, PermissionError) as e:
+            raise RuntimeError(f"Cannot create database directory {db_dir}: {e}")
+    
+    conn = sqlite3.connect(db_file)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -385,69 +452,88 @@ def get_dynamic_folder_config(force_refresh=False):
     global folder_config_cache
     
     with folder_config_cache_lock:
+        # Check cache first
         if folder_config_cache is not None and not force_refresh:
             return folder_config_cache
 
         print("INFO: Refreshing folder configuration by scanning directory tree...")
-
-    base_path_normalized = os.path.normpath(app.config['BASE_OUTPUT_PATH']).replace('\\', '/')
-    
-    try:
-        root_mtime = os.path.getmtime(app.config['BASE_OUTPUT_PATH'])
-    except OSError:
-        root_mtime = time.time()
-
-    dynamic_config = {
-        '_root_': {
-            'display_name': 'Main',
-            'path': base_path_normalized,
-            'relative_path': '',
-            'parent': None,
-            'children': [],
-            'mtime': root_mtime 
-        }
-    }
-
-    try:
-        all_folders = {}
-        for dirpath, dirnames, _ in os.walk(app.config['BASE_OUTPUT_PATH']):
-            dirnames[:] = [d for d in dirnames if d not in [app.config['THUMBNAIL_CACHE_FOLDER_NAME'], app.config['SQLITE_CACHE_FOLDER_NAME']]]
-            for dirname in dirnames:
-                full_path = os.path.normpath(os.path.join(dirpath, dirname)).replace('\\', '/')
-                relative_path = os.path.relpath(full_path, app.config['BASE_OUTPUT_PATH']).replace('\\', '/')
-                try:
-                    mtime = os.path.getmtime(full_path)
-                except OSError:
-                    mtime = time.time()
-                
-                all_folders[relative_path] = {
-                    'full_path': full_path,
-                    'display_name': dirname,
-                    'mtime': mtime
-                }
-
-        sorted_paths = sorted(all_folders.keys(), key=lambda x: x.count('/'))
-
-        for rel_path in sorted_paths:
-            folder_data = all_folders[rel_path]
-            key = path_to_key(rel_path)
-            parent_rel_path = os.path.dirname(rel_path).replace('\\', '/')
-            parent_key = '_root_' if parent_rel_path == '.' or parent_rel_path == '' else path_to_key(parent_rel_path)
-
-            if parent_key in dynamic_config:
-                dynamic_config[parent_key]['children'].append(key)
-
-            dynamic_config[key] = {
-                'display_name': folder_data['display_name'],
-                'path': folder_data['full_path'],
-                'relative_path': rel_path,
-                'parent': parent_key,
+        
+        # CRITICAL: All folder scanning must happen inside the lock to prevent race conditions
+        base_path = app.config['BASE_OUTPUT_PATH']
+        
+        # Validation: Ensure BASE_OUTPUT_PATH is initialized (fixes Issue #2)
+        if not base_path or base_path.strip() == '':
+            print("ERROR: BASE_OUTPUT_PATH is not initialized. Call initialize_gallery() first.")
+            return {'_root_': {
+                'display_name': 'Main',
+                'path': '',
+                'relative_path': '',
+                'parent': None,
                 'children': [],
-                'mtime': folder_data['mtime']
+                'mtime': time.time()
+            }}
+        
+        base_path_normalized = os.path.normpath(base_path).replace('\\', '/')
+        
+        try:
+            root_mtime = os.path.getmtime(base_path)
+        except (OSError, PermissionError) as e:
+            print(f"WARNING: Could not get mtime for base path: {e}")
+            root_mtime = time.time()
+
+        dynamic_config = {
+            '_root_': {
+                'display_name': 'Main',
+                'path': base_path_normalized,
+                'relative_path': '',
+                'parent': None,
+                'children': [],
+                'mtime': root_mtime 
             }
-    except FileNotFoundError:
-        print(f"WARNING: The base directory '{app.config['BASE_OUTPUT_PATH']}' was not found.")
-    
+        }
+
+        try:
+            all_folders = {}
+            for dirpath, dirnames, _ in os.walk(base_path):
+                dirnames[:] = [d for d in dirnames if d not in [app.config['THUMBNAIL_CACHE_FOLDER_NAME'], app.config['SQLITE_CACHE_FOLDER_NAME']]]
+                for dirname in dirnames:
+                    full_path = os.path.normpath(os.path.join(dirpath, dirname)).replace('\\', '/')
+                    relative_path = os.path.relpath(full_path, base_path).replace('\\', '/')
+                    try:
+                        mtime = os.path.getmtime(full_path)
+                    except (OSError, PermissionError) as e:
+                        print(f"WARNING: Could not get mtime for {full_path}: {e}")
+                        mtime = time.time()
+                    
+                    all_folders[relative_path] = {
+                        'full_path': full_path,
+                        'display_name': dirname,
+                        'mtime': mtime
+                    }
+
+            sorted_paths = sorted(all_folders.keys(), key=lambda x: x.count('/'))
+
+            for rel_path in sorted_paths:
+                folder_data = all_folders[rel_path]
+                key = path_to_key(rel_path)
+                parent_rel_path = os.path.dirname(rel_path).replace('\\', '/')
+                parent_key = '_root_' if parent_rel_path == '.' or parent_rel_path == '' else path_to_key(parent_rel_path)
+
+                if parent_key in dynamic_config:
+                    dynamic_config[parent_key]['children'].append(key)
+
+                dynamic_config[key] = {
+                    'display_name': folder_data['display_name'],
+                    'path': folder_data['full_path'],
+                    'relative_path': rel_path,
+                    'parent': parent_key,
+                    'children': [],
+                    'mtime': folder_data['mtime']
+                }
+        except (FileNotFoundError, OSError, PermissionError) as e:
+            print(f"WARNING: Error scanning directory '{base_path}': {e}")
+        
+        # Update cache atomically before releasing lock
         folder_config_cache = dynamic_config
         return dynamic_config
     
@@ -484,6 +570,55 @@ def full_sync_database(conn):
         conn.executemany("DELETE FROM files WHERE path = ?", [(p,) for p in to_delete])
     conn.commit()
     print(f"INFO: Full scan completed in {time.time() - start_time:.2f} seconds.")
+
+def sync_folder_internal(folder_path):
+    """Non-generator version for internal synchronization (Issue #8 fix)."""
+    try:
+        with get_db_connection() as conn:
+            valid_extensions = set(app.config.get('ALL_MEDIA_EXTENSIONS', []))
+            disk_files = {}
+            
+            if os.path.isdir(folder_path):
+                for name in os.listdir(folder_path):
+                    filepath = os.path.join(folder_path, name)
+                    if os.path.isfile(filepath) and os.path.splitext(name)[1].lower() in valid_extensions:
+                        disk_files[filepath] = os.path.getmtime(filepath)
+            
+            db_files_query = conn.execute("SELECT path, mtime FROM files WHERE path LIKE ?", (folder_path + os.sep + '%',)).fetchall()
+            db_files = {row['path']: row['mtime'] for row in db_files_query if os.path.normpath(os.path.dirname(row['path'])) == os.path.normpath(folder_path)}
+            
+            disk_filepaths, db_filepaths = set(disk_files.keys()), set(db_files.keys())
+            
+            files_to_add = disk_filepaths - db_filepaths
+            files_to_delete = db_filepaths - disk_filepaths
+            files_to_update = {path for path in (disk_filepaths & db_filepaths) if disk_files[path] > db_files[path]}
+            
+            if not files_to_add and not files_to_update and not files_to_delete:
+                return  # Nothing to do
+            
+            files_to_process = list(files_to_add.union(files_to_update))
+            
+            if files_to_process:
+                data_to_upsert = []
+                for path in files_to_process:
+                    metadata = analyze_file_metadata(path)
+                    file_hash = hashlib.md5((path + str(disk_files[path])).encode()).hexdigest()
+                    if not glob.glob(os.path.join(app.config['THUMBNAIL_CACHE_DIR'], f"{file_hash}.*")): 
+                        create_thumbnail(path, file_hash, metadata['type'])
+                    
+                    data_to_upsert.append((hashlib.md5(path.encode()).hexdigest(), path, disk_files[path], os.path.basename(path), *metadata.values()))
+                
+                if data_to_upsert: 
+                    conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", data_to_upsert)
+
+            if files_to_delete:
+                paths_to_delete_list = list(files_to_delete)
+                placeholders = ','.join('?' * len(paths_to_delete_list))
+                conn.execute(f"DELETE FROM files WHERE path IN ({placeholders})", paths_to_delete_list)
+
+            conn.commit()
+    except Exception as e:
+        print(f"ERROR: sync_folder_internal failed for {folder_path}: {e}")
 
 def sync_folder_on_demand(folder_path):
     yield f"data: {json.dumps({'message': 'Checking folder for changes...', 'current': 0, 'total': 1})}\n\n"
@@ -599,6 +734,7 @@ def gallery_redirect_base():
     return redirect(url_for('gallery_view', folder_key='_root_'))
 
 @app.route('/galleryout/sync_status/<string:folder_key>')
+@require_initialization
 def sync_status(folder_key):
     folders = get_dynamic_folder_config()
     if folder_key not in folders:
@@ -607,6 +743,7 @@ def sync_status(folder_key):
     return Response(sync_folder_on_demand(folder_path), mimetype='text/event-stream')
 
 @app.route('/galleryout/view/<string:folder_key>')
+@require_initialization
 def gallery_view(folder_key):
     global gallery_view_cache  # Module-level cache shared across requests (thread-safe via lock)
     folders = get_dynamic_folder_config(force_refresh=True)
@@ -683,6 +820,7 @@ def gallery_view(folder_key):
                            protected_folder_keys=list(app.config['PROTECTED_FOLDER_KEYS']))
 
 @app.route('/galleryout/upload', methods=['POST'])
+@require_initialization
 def upload_files():
     folder_key = request.form.get('folder_key')
     if not folder_key: return jsonify({'status': 'error', 'message': 'No destination folder provided.'}), 400
@@ -698,11 +836,13 @@ def upload_files():
                 file.save(os.path.join(destination_path, filename))
                 success_count += 1
             except Exception as e: errors[filename] = str(e)
-    if success_count > 0: sync_folder_on_demand(destination_path)
+    # Issue #8 fix: Use non-generator sync function for internal use
+    if success_count > 0: sync_folder_internal(destination_path)
     if errors: return jsonify({'status': 'partial_success', 'message': f'Successfully uploaded {success_count} files. The following files failed: {", ".join(errors.keys())}'}), 207
     return jsonify({'status': 'success', 'message': f'Successfully uploaded {success_count} files.'})
                            
 @app.route('/galleryout/create_folder', methods=['POST'])
+@require_initialization
 def create_folder():
     data = request.json
     parent_key = data.get('parent_key', '_root_')
@@ -720,6 +860,7 @@ def create_folder():
     except Exception as e: return jsonify({'status': 'error', 'message': f'Error creating folder: {e}'}), 500
 
 @app.route('/galleryout/rename_folder/<string:folder_key>', methods=['POST'])
+@require_initialization
 def rename_folder(folder_key):
     if folder_key in app.config['PROTECTED_FOLDER_KEYS']: return jsonify({'status': 'error', 'message': 'This folder cannot be renamed.'}), 403
     new_name = re.sub(r'[^a-zA-Z0-9_-]', '', request.json.get('new_name', '')).strip()
@@ -730,6 +871,11 @@ def rename_folder(folder_key):
     new_path = os.path.join(os.path.dirname(old_path), new_name)
     if os.path.exists(new_path): return jsonify({'status': 'error', 'message': 'A folder with this name already exists.'}), 400
     try:
+        # Issue #9 fix: Perform filesystem operation BEFORE database transaction
+        # This ensures DB is only updated if the rename succeeds
+        os.rename(old_path, new_path)
+        
+        # Now update the database to reflect the new paths
         with get_db_connection() as conn:
             old_path_like = old_path + os.sep + '%'
             files_to_update = conn.execute("SELECT id, path FROM files WHERE path LIKE ?", (old_path_like,)).fetchall()
@@ -738,14 +884,28 @@ def rename_folder(folder_key):
                 new_file_path = row['path'].replace(old_path, new_path, 1)
                 new_id = hashlib.md5(new_file_path.encode()).hexdigest()
                 update_data.append((new_id, new_file_path, row['id']))
-            os.rename(old_path, new_path)
-            if update_data: conn.executemany("UPDATE files SET id = ?, path = ? WHERE id = ?", update_data)
+            
+            if update_data: 
+                conn.executemany("UPDATE files SET id = ?, path = ? WHERE id = ?", update_data)
             conn.commit()
+        
         get_dynamic_folder_config(force_refresh=True)
         return jsonify({'status': 'success', 'message': 'Folder renamed.'})
-    except Exception as e: return jsonify({'status': 'error', 'message': f'Error: {e}'}), 500
+    except (OSError, PermissionError) as e:
+        # If rename failed, database was never updated - no rollback needed
+        return jsonify({'status': 'error', 'message': f'Error renaming folder: {e}'}), 500
+    except Exception as e:
+        # If DB update failed after successful rename, try to rollback the rename
+        try:
+            if os.path.exists(new_path):
+                os.rename(new_path, old_path)  # Attempt to undo the rename
+                return jsonify({'status': 'error', 'message': f'Database update failed, rename reverted: {e}'}), 500
+        except Exception as rollback_error:
+            return jsonify({'status': 'error', 'message': f'Critical: Folder renamed but DB update failed and rollback failed: {e}. Manual intervention required.'}), 500
+        return jsonify({'status': 'error', 'message': f'Error: {e}'}), 500
 
 @app.route('/galleryout/delete_folder/<string:folder_key>', methods=['POST'])
+@require_initialization
 def delete_folder(folder_key):
     if folder_key in app.config['PROTECTED_FOLDER_KEYS']: return jsonify({'status': 'error', 'message': 'This folder cannot be deleted.'}), 403
     folders = get_dynamic_folder_config()
@@ -761,6 +921,7 @@ def delete_folder(folder_key):
     except Exception as e: return jsonify({'status': 'error', 'message': f'Error: {e}'}), 500
 
 @app.route('/galleryout/load_more')
+@require_initialization
 def load_more():
     offset = request.args.get('offset', 0, type=int)
     
@@ -795,6 +956,7 @@ def _get_unique_filepath(destination_folder, filename):
     return new_filepath
 
 @app.route('/galleryout/move_batch', methods=['POST'])
+@require_initialization
 def move_batch():
     data = request.json
     file_ids, dest_key = data.get('file_ids', []), data.get('destination_folder')
@@ -802,38 +964,62 @@ def move_batch():
     if not all([file_ids, dest_key, dest_key in folders]):
         return jsonify({'status': 'error', 'message': 'Invalid data provided.'}), 400
     moved_count, renamed_count, failed_files, dest_path_folder = 0, 0, [], folders[dest_key]['path']
+    
     with get_db_connection() as conn:
         for file_id in file_ids:
             source_path = None
+            savepoint = None
             try:
+                # Create a savepoint for atomic rollback (Issue #6)
+                savepoint = f"move_{file_id}"
+                conn.execute(f"SAVEPOINT {savepoint}")
+                
                 file_info = conn.execute("SELECT path, name FROM files WHERE id = ?", (file_id,)).fetchone()
                 if not file_info:
                     failed_files.append(f"ID {file_id} not found in DB")
+                    conn.execute(f"RELEASE SAVEPOINT {savepoint}")
                     continue
                 source_path, source_filename = file_info['path'], file_info['name']
                 if not os.path.exists(source_path):
                     failed_files.append(f"{source_filename} (not found on disk)")
                     conn.execute("DELETE FROM files WHERE id = ?", (file_id,))
+                    conn.execute(f"RELEASE SAVEPOINT {savepoint}")
                     continue
+                
                 final_dest_path = _get_unique_filepath(dest_path_folder, source_filename)
                 final_filename = os.path.basename(final_dest_path)
                 if final_filename != source_filename: renamed_count += 1
+                
+                # CRITICAL: Perform file operation BEFORE DB commit
                 shutil.move(source_path, final_dest_path)
+                
+                # Only update DB after successful file move
                 new_id = hashlib.md5(final_dest_path.encode()).hexdigest()
                 conn.execute("UPDATE files SET id = ?, path = ?, name = ? WHERE id = ?", (new_id, final_dest_path, final_filename, file_id))
+                conn.execute(f"RELEASE SAVEPOINT {savepoint}")
                 moved_count += 1
             except Exception as e:
+                # Rollback database changes if file operation failed
+                if savepoint:
+                    try:
+                        conn.execute(f"ROLLBACK TO SAVEPOINT {savepoint}")
+                        conn.execute(f"RELEASE SAVEPOINT {savepoint}")
+                    except Exception as rb_error:
+                        print(f"ERROR: Failed to rollback savepoint: {rb_error}")
+                
                 filename_for_error = os.path.basename(source_path) if source_path else f"ID {file_id}"
                 failed_files.append(filename_for_error)
                 print(f"ERROR: Failed to move file {filename_for_error}. Reason: {e}")
                 continue
         conn.commit()
+    
     message = f"Successfully moved {moved_count} file(s)."
     if renamed_count > 0: message += f" {renamed_count} were renamed to avoid conflicts."
     if failed_files: message += f" Failed to move {len(failed_files)} file(s)."
     return jsonify({'status': 'partial_success' if failed_files else 'success', 'message': message})
 
 @app.route('/galleryout/delete_batch', methods=['POST'])
+@require_initialization
 def delete_batch():
     file_ids = request.json.get('file_ids', [])
     if not file_ids: return jsonify({'status': 'error', 'message': 'No files selected.'}), 400
@@ -870,6 +1056,7 @@ def delete_batch():
     return jsonify({'status': 'partial_success' if failed_files else 'success', 'message': message})
 
 @app.route('/galleryout/favorite_batch', methods=['POST'])
+@require_initialization
 def favorite_batch():
     data = request.json
     file_ids, status = data.get('file_ids', []), data.get('status', False)
@@ -881,6 +1068,7 @@ def favorite_batch():
     return jsonify({'status': 'success', 'message': f"Updated favorites for {len(file_ids)} files."})
 
 @app.route('/galleryout/toggle_favorite/<string:file_id>', methods=['POST'])
+@require_initialization
 def toggle_favorite(file_id):
     with get_db_connection() as conn:
         current = conn.execute("SELECT is_favorite FROM files WHERE id = ?", (file_id,)).fetchone()
@@ -892,6 +1080,7 @@ def toggle_favorite(file_id):
 
 # --- FIX: ROBUST DELETE ROUTE ---
 @app.route('/galleryout/delete/<string:file_id>', methods=['POST'])
+@require_initialization
 def delete_file(file_id):
     with get_db_connection() as conn:
         file_info = conn.execute("SELECT path, mtime FROM files WHERE id = ?", (file_id,)).fetchone()
@@ -905,8 +1094,8 @@ def delete_file(file_id):
             if os.path.exists(filepath):
                 os.remove(filepath)
             # If file doesn't exist on disk, we still proceed to remove the DB entry, which is the desired state.
-        except OSError as e:
-            # A real OS error occurred (e.g., permissions).
+        except (OSError, PermissionError) as e:
+            # A real OS error occurred (e.g., permissions). Issue #7: Catch both OSError and PermissionError
             print(f"ERROR: Could not delete file {filepath} from disk: {e}")
             return jsonify({'status': 'error', 'message': f'Could not delete file from disk: {e}'}), 500
 
@@ -926,17 +1115,20 @@ def delete_file(file_id):
         return jsonify({'status': 'success', 'message': 'File deleted successfully.'})
 
 @app.route('/galleryout/file/<string:file_id>')
+@require_initialization
 def serve_file(file_id):
     filepath = get_file_info_from_db(file_id, 'path')
     if filepath.lower().endswith('.webp'): return send_file(filepath, mimetype='image/webp')
     return send_file(filepath)
 
 @app.route('/galleryout/download/<string:file_id>')
+@require_initialization
 def download_file(file_id):
     filepath = get_file_info_from_db(file_id, 'path')
     return send_file(filepath, as_attachment=True)
 
 @app.route('/galleryout/workflow/<string:file_id>')
+@require_initialization
 def download_workflow(file_id):
     info = get_file_info_from_db(file_id)
     filepath = info['path']
@@ -950,6 +1142,7 @@ def download_workflow(file_id):
     abort(404)
 
 @app.route('/galleryout/node_summary/<string:file_id>')
+@require_initialization
 def get_node_summary(file_id):
     try:
         filepath = get_file_info_from_db(file_id, 'path')
@@ -965,6 +1158,7 @@ def get_node_summary(file_id):
         return jsonify({'status': 'error', 'message': f'An internal error occurred: {e}'}), 500
 
 @app.route('/galleryout/thumbnail/<string:file_id>')
+@require_initialization
 def serve_thumbnail(file_id):
     info = get_file_info_from_db(file_id)
     filepath, mtime = info['path'], info['mtime']
@@ -987,35 +1181,19 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    # --- Populate Flask app config from arguments ---
+    # --- Populate Flask app config from arguments (overriding defaults) ---
     app.config['BASE_OUTPUT_PATH'] = args.output_path
     app.config['BASE_INPUT_PATH'] = args.input_path
     app.config['SERVER_PORT'] = args.port
     app.config['FFPROBE_MANUAL_PATH'] = args.ffprobe_path
-
-    # --- Set other static configuration values ---
-    app.config['THUMBNAIL_WIDTH'] = 300
-    app.config['WEBP_ANIMATED_FPS'] = 16.0
-    app.config['PAGE_SIZE'] = 100
-    app.config['SPECIAL_FOLDERS'] = ['video', 'audio']
     
-    # --- Define valid file extensions (centralized) ---
-    app.config['VIDEO_EXTENSIONS'] = ['.mp4', '.mkv', '.webm', '.mov', '.avi']
-    app.config['IMAGE_EXTENSIONS'] = ['.png', '.jpg', '.jpeg']
-    app.config['ANIMATED_IMAGE_EXTENSIONS'] = ['.gif', '.webp']
-    app.config['AUDIO_EXTENSIONS'] = ['.mp3', '.wav', '.ogg', '.flac']
+    # Update ALL_MEDIA_EXTENSIONS after potential config updates
     app.config['ALL_MEDIA_EXTENSIONS'] = (
         app.config['VIDEO_EXTENSIONS'] + 
         app.config['IMAGE_EXTENSIONS'] + 
         app.config['ANIMATED_IMAGE_EXTENSIONS'] + 
         app.config['AUDIO_EXTENSIONS']
     )
-    
-    # --- Set constants for cache/folder names ---
-    app.config['THUMBNAIL_CACHE_FOLDER_NAME'] = '.thumbnails_cache'
-    app.config['SQLITE_CACHE_FOLDER_NAME'] = '.sqlite_cache'
-    app.config['DATABASE_FILENAME'] = 'gallery_cache.sqlite'
-    app.config['WORKFLOW_FOLDER_NAME'] = 'workflow_logs_success'
 
     if not os.path.isdir(app.config['BASE_OUTPUT_PATH']) or not os.path.isdir(app.config['BASE_INPUT_PATH']):
         print(f"ERROR: One or more paths are invalid. Please check your configuration.\nOutput: {app.config['BASE_OUTPUT_PATH']}\nInput: {app.config['BASE_INPUT_PATH']}")

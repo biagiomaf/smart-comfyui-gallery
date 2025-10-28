@@ -77,11 +77,11 @@ def launch_gallery():
     print("## SmartGallery: Starting server...")
     
     try:
-        # We will keep the output visible for one more run to ensure there are no other errors.
+        # Keep output visible for debugging this final attempt.
         gallery_process = subprocess.Popen(
             cmd,
-            # stdout=subprocess.DEVNULL, # Temporarily disabled for debugging
-            # stderr=subprocess.STDOUT,  # Temporarily disabled for debugging
+            # stdout=subprocess.DEVNULL, # Will be uncommented once it works
+            # stderr=subprocess.STDOUT,  # Will be uncommented once it works
             cwd=current_dir
         )
         
@@ -128,22 +128,26 @@ async def save_gallery_config(request):
 
 print("## SmartGallery: API routes registered.")
 
+# --- Start the server launch in a background thread at the module level ---
+# This is the most reliable point of execution.
+print("## SmartGallery: Scheduling server launch.")
+gallery_thread = threading.Thread(target=launch_gallery, daemon=True)
+gallery_thread.start()
+# -------------------------------------------------------------------------
+
 class SmartGalleryExtension(ComfyExtension):
     def __init__(self):
         super().__init__()
         self.web_directory = "js"
 
+    # on_load is kept for ideal-world compatibility, but we don't rely on it.
     def on_load(self):
-        """Called by ComfyUI when the extension is loaded successfully."""
-        print("## SmartGallery: on_load hook triggered.")
-        gallery_thread = threading.Thread(target=launch_gallery, daemon=True)
-        gallery_thread.start()
+        print("## SmartGallery: on_load hook triggered (redundant launch check).")
+        # The launch function will check if the server is already running.
+        launch_gallery()
 
-    # --- FIX: This method is required by the ComfyExtension abstract base class. ---
     async def get_node_list(self) -> list[type[io.ComfyNode]]:
-        """Since this extension provides no nodes, we return an empty list."""
         return []
 
 async def comfy_entrypoint() -> SmartGalleryExtension:
-    """The function ComfyUI looks for to register the extension."""
     return SmartGalleryExtension()
