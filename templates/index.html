@@ -76,7 +76,26 @@
         .gallery-sort-controls .sort-btn.active { background: var(--primary-color); color: white; border-color: var(--primary-color);}
         .filter-bar { padding: 1.5rem 2rem; }
         .filter-bar form { display: flex; flex-direction: column; gap: 1.5rem; }
-        .filter-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; align-items: end; }
+        
+        /* Modern Filter Panel Styles */
+        #filter-panel { position: fixed; top: 0; right: 0; width: 450px; height: 100vh; background: var(--surface-color); border-left: 1px solid var(--border-color); transform: translateX(100%); transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 2000; display: flex; flex-direction: column; box-shadow: -4px 0 24px rgba(0, 0, 0, 0.5); }
+        #filter-panel.open { transform: translateX(0); }
+        #filter-backdrop { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1999; }
+        #filter-backdrop.visible { opacity: 1; pointer-events: auto; }
+        
+        .filter-panel-header { padding: 1.5rem; border-bottom: 1px solid var(--border-color); background: var(--gradient-primary); color: white; flex-shrink: 0; position: sticky; top: 0; z-index: 10; }
+        .filter-panel-header h2 { margin: 0; font-size: 1.3rem; font-weight: 700; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+        .filter-panel-header h2 .filter-count-badge { background: rgba(255, 255, 255, 0.2); padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; min-width: 24px; text-align: center; }
+        #filter-close-btn { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: white; padding: 0.5rem; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: all 0.3s; }
+        #filter-close-btn:hover { background: rgba(255, 255, 255, 0.2); transform: rotate(90deg); }
+        
+        .filter-panel-content { flex: 1; overflow-y: auto; padding: 1.5rem; }
+        .filter-panel-content::-webkit-scrollbar { width: 8px; }
+        .filter-panel-content::-webkit-scrollbar-track { background: var(--surface-hover); border-radius: 4px; }
+        .filter-panel-content::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+        .filter-panel-content::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+        
+        .filter-form-grid { display: flex; flex-direction: column; gap: 1.5rem; }
         .filter-group { display: flex; flex-direction: column; }
         .filter-bar label { font-weight: 600; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
         .filter-bar select, .filter-bar input[type="text"], .filter-bar input[type="number"], .filter-bar button, .filter-bar a { background: var(--glass-bg); color: var(--text-color); border: 1px solid var(--glass-border); border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.9rem; transition: all 0.3s; backdrop-filter: blur(10px); }
@@ -92,13 +111,30 @@
         .filter-group-inline { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
         .filter-group-inline input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary-color); }
         
+        /* Filter Toggle Button in Header */
+        #filter-toggle-btn { position: relative; background: var(--gradient-primary); color: white; border: none; padding: 0.65rem 1.25rem; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; transition: all 0.3s; box-shadow: var(--shadow-sm); }
+        #filter-toggle-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        #filter-toggle-btn .filter-icon { font-size: 1.1rem; transition: transform 0.3s; }
+        #filter-toggle-btn.active .filter-icon { transform: rotate(180deg); }
+        #filter-toggle-btn .active-count-badge { position: absolute; top: -6px; right: -6px; background: var(--danger-color); color: white; border-radius: 50%; min-width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; padding: 0 6px; box-shadow: 0 2px 8px rgba(220, 53, 69, 0.4); animation: pulse-badge 2s infinite; }
+        @keyframes pulse-badge { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+        
+        /* Active Filter Pills */
+        .active-filters-container { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0.75rem 1rem; background: rgba(0, 123, 255, 0.05); border-radius: 8px; margin-bottom: 1.5rem; }
+        .active-filters-container:empty { display: none; }
+        .active-filter-pill { display: inline-flex; align-items: center; gap: 0.5rem; background: var(--primary-color); color: white; padding: 0.4rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .active-filter-pill:hover { background: var(--primary-hover); transform: scale(1.05); }
+        .active-filter-pill .remove-icon { font-size: 1rem; font-weight: 700; }
+        #clear-all-filters-btn { background: var(--danger-color); color: white; border: none; padding: 0.4rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+        #clear-all-filters-btn:hover { background: var(--danger-hover); }
+        
         /* Workflow Metadata Section */
-        .workflow-filters-section { grid-column: 1 / -1; display: contents; }
-        .workflow-section-header { grid-column: 1 / -1; margin-top: 1rem; margin-bottom: 0.5rem; padding: 0.75rem 1rem; background: linear-gradient(90deg, rgba(40, 167, 69, 0.1) 0%, rgba(40, 167, 69, 0.05) 50%, transparent 100%); border-left: 3px solid var(--workflow-color); border-radius: 6px; }
+        .workflow-filters-section { display: contents; }
+        .workflow-section-header { margin-top: 1.5rem; margin-bottom: 1rem; padding: 0.75rem 1rem; background: linear-gradient(90deg, rgba(40, 167, 69, 0.1) 0%, rgba(40, 167, 69, 0.05) 50%, transparent 100%); border-left: 3px solid var(--workflow-color); border-radius: 6px; }
         .workflow-section-header h3 { margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--workflow-color); text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 0.5rem; }
         
         /* Range Filter Pairs */
-        .filter-range-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; grid-column: span 2; }
+        .filter-range-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
         .filter-range-pair .filter-group { position: relative; }
         .filter-range-pair .filter-group:first-child::after { content: '↔'; position: absolute; right: -0.5rem; top: 50%; transform: translateY(-50%) translateY(0.5rem); color: var(--text-muted); font-size: 1rem; font-weight: 700; opacity: 0.5; z-index: 1; pointer-events: none; }
         .filter-range-pair .filter-group label { color: var(--text-muted); }
@@ -106,9 +142,13 @@
         .filter-range-pair .filter-group:last-child label { color: var(--danger-color); }
         
         /* Dimension Filters Special Styling */
-        .dimension-filters { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; padding: 1rem; background: rgba(0, 123, 255, 0.03); border: 1px solid rgba(0, 123, 255, 0.1); border-radius: 8px; margin-top: 0.5rem; }
+        .dimension-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1rem; background: rgba(0, 123, 255, 0.03); border: 1px solid rgba(0, 123, 255, 0.1); border-radius: 8px; margin-top: 0.5rem; }
         .dimension-filters .filter-group label { font-size: 0.8rem; display: flex; align-items: center; gap: 0.4rem; }
         .dimension-filters .filter-group input { background: var(--surface-color); border-color: rgba(0, 123, 255, 0.2); }
+        
+        /* Panel Footer Actions */
+        .filter-panel-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); background: var(--surface-hover); display: flex; gap: 0.75rem; flex-shrink: 0; }
+        .filter-panel-footer button { flex: 1; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; font-size: 0.95rem; }
         .filter-actions-row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
         .filter-actions-row > a, .filter-actions-row > button { display: inline-flex; align-items: center; justify-content: center; }
         .filter-actions-row button[type="submit"] { padding-left: 0.8rem; padding-right: 0.8rem; }
@@ -234,10 +274,14 @@
             .breadcrumbs { flex-direction: column; align-items: stretch; }
             .gallery-sort-controls { justify-content: space-around; width: 100%; }
             .filter-bar form { grid-template-columns: 1fr; }
-            #mobile-filter-toggle { display: block; margin-bottom: 1rem;}
-            .filter-form-grid { display: none; }
-            .filter-form-grid.visible { display: grid; grid-template-columns: 1fr; }
-            .filter-range-pair { grid-template-columns: 1fr; gap: 1rem; grid-column: span 1; }
+            
+            /* Mobile: Bottom Sheet Style */
+            #filter-panel { width: 100%; height: 75vh; top: auto; bottom: 0; transform: translateY(100%); border-left: none; border-top: 1px solid var(--border-color); border-radius: 20px 20px 0 0; }
+            #filter-panel.open { transform: translateY(0); }
+            .filter-panel-header { border-radius: 20px 20px 0 0; position: relative; }
+            .filter-panel-header::before { content: ''; position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 40px; height: 4px; background: rgba(255, 255, 255, 0.3); border-radius: 2px; }
+            
+            .filter-range-pair { grid-template-columns: 1fr; gap: 1rem; }
             .filter-range-pair .filter-group:first-child::after { display: none; }
             .dimension-filters { grid-template-columns: 1fr; gap: 1rem; }
             .workflow-section-header { margin-top: 0.5rem; padding: 0.5rem 0.75rem; }
@@ -310,14 +354,37 @@
                 <a href="{{ url_for('gallery_view', folder_key=current_folder_key, **name_query_params) }}" class="sort-btn {{ 'active' if name_is_active else '' }}">
                     Sort by Name {% if name_is_active %}{{ '↑' if current_sort_order == 'asc' else '↓' }}{% endif %}
                 </a>
+                <button type="button" id="filter-toggle-btn">
+                    <span class="filter-icon">🎛️</span>
+                    <span>Filters</span>
+                    <span class="active-count-badge" id="active-filter-count" style="display: none;">0</span>
+                </button>
+                <button type="button" id="show-upload-modal-btn">☁️ Upload</button>
+                <button type="button" id="refresh-btn" class="refresh-btn">♻️ Refresh</button>
             </div>
         </header>
-        <div class="filter-bar">
-             <form method="GET" action="{{ url_for('gallery_view', folder_key=current_folder_key) }}">
-                <input type="hidden" name="sort_by" value="{{ request.args.get('sort_by', 'date') }}">
-                <input type="hidden" name="sort_order" value="{{ request.args.get('sort_order', 'desc') }}">
-                <button type="button" id="mobile-filter-toggle">⚙️ Filters & Options</button>
-                <div class="filter-form-grid" id="filter-form-grid">
+        
+        <!-- Filter Panel (Slide-out) -->
+        <div id="filter-backdrop"></div>
+        <div id="filter-panel">
+            <div class="filter-panel-header">
+                <h2>
+                    <span>🎛️ Filters & Options</span>
+                    <span>
+                        <span class="filter-count-badge" id="filter-count-display">0 Active</span>
+                        <button type="button" id="filter-close-btn">✕</button>
+                    </span>
+                </h2>
+            </div>
+            <div class="filter-panel-content">
+                <form method="GET" action="{{ url_for('gallery_view', folder_key=current_folder_key) }}" id="filter-form">
+                    <input type="hidden" name="sort_by" value="{{ request.args.get('sort_by', 'date') }}">
+                    <input type="hidden" name="sort_order" value="{{ request.args.get('sort_order', 'desc') }}">
+                    
+                    <!-- Active Filters Display -->
+                    <div class="active-filters-container" id="active-filters-display"></div>
+                    
+                    <div class="filter-form-grid" id="filter-form-grid">
                     <!-- Basic Filters -->
                     <div class="filter-group"><label for="search-input">🔍 Search by Name</label><input type="text" name="search" id="search-input" placeholder="Search files..." value="{{ request.args.get('search', '') }}"></div>
                     <div class="filter-group"><label for="extension-select">📄 Extensions</label><select name="extension" id="extension-select" multiple>{% for ext in available_extensions %}<option value="{{ ext }}" {% if ext in selected_extensions %}selected{% endif %}>{{ ext }}</option>{% endfor %}</select></div>
@@ -352,14 +419,13 @@
                         <div class="filter-group"><label for="height-min-input">📐 Height Min</label><input type="number" name="filter_height_min" id="height-min-input" placeholder="Min Height" step="64" value="{{ request.args.get('filter_height_min', '') }}"></div>
                         <div class="filter-group"><label for="height-max-input">📐 Height Max</label><input type="number" name="filter_height_max" id="height-max-input" placeholder="Max Height" step="64" value="{{ request.args.get('filter_height_max', '') }}"></div>
                     </div>
-                    
-                    <div class="filter-group mobile-actions-only"><label>Actions</label><div class="mobile-actions-row"><button type="submit">🔍 Filter</button><a href="{{ url_for('gallery_view', folder_key=current_folder_key) }}">🔄 Reset</a></div></div>
-                </div>
-                <div class="filter-actions-row">
-                    <div class="filter-actions-row desktop-actions-only"><button type="submit">🔍 Filter</button><a href="{{ url_for('gallery_view', folder_key=current_folder_key) }}">🔄 Reset</a></div>
-                    <button type="button" id="show-upload-modal-btn">☁️ Upload</button><button type="button" id="refresh-btn" class="refresh-btn">♻️ Refresh</button>
-                </div>
-            </form>
+                    </div>
+                </form>
+            </div>
+            <div class="filter-panel-footer">
+                <button type="submit" form="filter-form">🔍 Apply Filters</button>
+                <a href="{{ url_for('gallery_view', folder_key=current_folder_key) }}" style="flex: 0.5; background: var(--surface-hover); color: var(--text-muted); text-decoration: none; padding: 0.75rem 1.5rem; border-radius: 8px; text-align: center; font-weight: 600;">🔄 Reset</a>
+            </div>
         </div>
         <div id="gallery-anchor"></div>
         <main class="gallery-container" id="gallery-container"></main>
@@ -806,9 +872,106 @@
                 setTimeout(() => galleryAnchor.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
                 sessionStorage.removeItem('galleryMobileNav');
             }
+            
+            // Modern Filter Panel Management
+            const filterPanel = document.getElementById('filter-panel');
+            const filterBackdrop = document.getElementById('filter-backdrop');
+            const filterToggleBtn = document.getElementById('filter-toggle-btn');
+            const filterCloseBtn = document.getElementById('filter-close-btn');
+            const activeFilterCount = document.getElementById('active-filter-count');
+            const filterCountDisplay = document.getElementById('filter-count-display');
+            const activeFiltersDisplay = document.getElementById('active-filters-display');
+            
+            function openFilterPanel() {
+                filterPanel.classList.add('open');
+                filterBackdrop.classList.add('visible');
+                filterToggleBtn.classList.add('active');
+                document.body.style.overflow = 'hidden';
+                updateActiveFilters();
+            }
+            
+            function closeFilterPanel() {
+                filterPanel.classList.remove('open');
+                filterBackdrop.classList.remove('visible');
+                filterToggleBtn.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+            
+            function updateActiveFilters() {
+                const formData = new FormData(document.getElementById('filter-form'));
+                const filters = [];
+                
+                // Check each filter
+                if (formData.get('search')) filters.push({name: 'Search', value: formData.get('search'), field: 'search'});
+                const extensions = formData.getAll('extension').filter(e => e);
+                if (extensions.length) filters.push({name: 'Extensions', value: extensions.join(', '), field: 'extension'});
+                const prefixes = formData.getAll('prefix').filter(p => p);
+                if (prefixes.length) filters.push({name: 'Prefixes', value: prefixes.join(', '), field: 'prefix'});
+                if (formData.get('favorites')) filters.push({name: 'Favorites Only', value: '⭐', field: 'favorites'});
+                if (formData.get('filter_model')) filters.push({name: 'Model', value: formData.get('filter_model'), field: 'filter_model'});
+                if (formData.get('filter_sampler')) filters.push({name: 'Sampler', value: formData.get('filter_sampler'), field: 'filter_sampler'});
+                if (formData.get('filter_scheduler')) filters.push({name: 'Scheduler', value: formData.get('filter_scheduler'), field: 'filter_scheduler'});
+                if (formData.get('filter_cfg_min')) filters.push({name: 'CFG Min', value: formData.get('filter_cfg_min'), field: 'filter_cfg_min'});
+                if (formData.get('filter_cfg_max')) filters.push({name: 'CFG Max', value: formData.get('filter_cfg_max'), field: 'filter_cfg_max'});
+                if (formData.get('filter_steps_min')) filters.push({name: 'Steps Min', value: formData.get('filter_steps_min'), field: 'filter_steps_min'});
+                if (formData.get('filter_steps_max')) filters.push({name: 'Steps Max', value: formData.get('filter_steps_max'), field: 'filter_steps_max'});
+                if (formData.get('filter_width_min')) filters.push({name: 'Width Min', value: formData.get('filter_width_min'), field: 'filter_width_min'});
+                if (formData.get('filter_width_max')) filters.push({name: 'Width Max', value: formData.get('filter_width_max'), field: 'filter_width_max'});
+                if (formData.get('filter_height_min')) filters.push({name: 'Height Min', value: formData.get('filter_height_min'), field: 'filter_height_min'});
+                if (formData.get('filter_height_max')) filters.push({name: 'Height Max', value: formData.get('filter_height_max'), field: 'filter_height_max'});
+                
+                // Update badge count
+                if (filters.length > 0) {
+                    activeFilterCount.textContent = filters.length;
+                    activeFilterCount.style.display = 'flex';
+                    filterCountDisplay.textContent = `${filters.length} Active`;
+                } else {
+                    activeFilterCount.style.display = 'none';
+                    filterCountDisplay.textContent = '0 Active';
+                }
+                
+                // Render active filter pills
+                activeFiltersDisplay.innerHTML = '';
+                if (filters.length > 0) {
+                    filters.forEach(filter => {
+                        const pill = document.createElement('div');
+                        pill.className = 'active-filter-pill';
+                        pill.innerHTML = `<span>${filter.name}: ${filter.value}</span><span class="remove-icon">×</span>`;
+                        pill.addEventListener('click', () => {
+                            const input = document.querySelector(`[name="${filter.field}"]`);
+                            if (input) {
+                                if (input.type === 'checkbox') input.checked = false;
+                                else if (input.multiple) { Array.from(input.options).forEach(opt => opt.selected = false); }
+                                else input.value = '';
+                            }
+                            updateActiveFilters();
+                        });
+                        activeFiltersDisplay.appendChild(pill);
+                    });
+                    
+                    // Add clear all button
+                    const clearBtn = document.createElement('button');
+                    clearBtn.id = 'clear-all-filters-btn';
+                    clearBtn.textContent = 'Clear All';
+                    clearBtn.addEventListener('click', () => {
+                        window.location.href = "{{ url_for('gallery_view', folder_key=current_folder_key) }}";
+                    });
+                    activeFiltersDisplay.appendChild(clearBtn);
+                }
+            }
+            
+            filterToggleBtn.addEventListener('click', openFilterPanel);
+            filterCloseBtn.addEventListener('click', closeFilterPanel);
+            filterBackdrop.addEventListener('click', closeFilterPanel);
+            
+            // Update active filters on page load
+            updateActiveFilters();
+            
+            // Legacy mobile filter toggle removal
             const mobileFilterToggle = document.getElementById('mobile-filter-toggle');
             const filterFormGrid = document.getElementById('filter-form-grid');
             if (mobileFilterToggle) { mobileFilterToggle.addEventListener('click', () => { filterFormGrid.classList.toggle('visible'); mobileFilterToggle.textContent = filterFormGrid.classList.contains('visible') ? '✕  Hide Filters' : '⚙️ Filters & Options'; }); }
+            
             document.getElementById('folder-tree-nav').addEventListener('click', (e) => { const link = e.target.closest('.navigation-link'); const toggle = e.target.closest('.toggle-btn'); const actionBtn = e.target.closest('.folder-action-btn'); if (toggle) { const li = toggle.closest('li'); li.classList.toggle('collapsed'); const folderKey = li.dataset.folderKey; if (li.classList.contains('collapsed')) { expandedFolderKeys.delete(folderKey); } else { expandedFolderKeys.add(folderKey); } saveExpandedFolderKeys(); } else if (actionBtn) { const li = actionBtn.closest('li'); const key = li.dataset.folderKey; const name = actionBtn.dataset.name; if (actionBtn.dataset.action === 'rename') renameFolder(e, key, name); if (actionBtn.dataset.action === 'delete') deleteFolder(e, key, name); } else if (link) { window.location.href = link.dataset.folderUrl; } });
             document.getElementById('move-folder-tree').addEventListener('click', (e) => { const toggle = e.target.closest('.toggle-btn'); const moveBtn = e.target.closest('.move-here-btn'); if (toggle) { const li = toggle.closest('li'); li.classList.toggle('collapsed'); const folderKey = li.dataset.folderKey; if (li.classList.contains('collapsed')) { expandedFolderKeys.delete(folderKey); } else { expandedFolderKeys.add(folderKey); } saveExpandedFolderKeys(); } if (moveBtn) confirmMoveToFolder(moveBtn.dataset.folderKey); });
             document.getElementById('refresh-btn').addEventListener('click', (e) => { e.preventDefault(); startSyncProcess(true); });

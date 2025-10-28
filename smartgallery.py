@@ -1,7 +1,7 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025 — MIT License (free to use and modify)
 #
-# Version: 1.37.2 - October 29, 2025 (Workflow Metadata Extraction Robustness)
+# Version: 1.37.3 - October 29, 2025 (Workflow Metadata Extraction Robustness)
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
