@@ -22,10 +22,11 @@ import base64
 import threading
 import logging
 from datetime import datetime
-from flask import Flask, render_template, send_from_directory, abort, send_file, url_for, redirect, request, jsonify, Response
+from flask import g, Flask, render_template, send_from_directory, abort, send_file, url_for, redirect, request, jsonify, Response
 from flask_cors import CORS
 from PIL import Image, ImageSequence
 import colorsys
+from werkzeug.exceptions import HTTPException
 from werkzeug.utils import secure_filename
 import concurrent.futures
 from tqdm import tqdm
@@ -580,34 +581,42 @@ def process_single_file(filepath, thumbnail_cache_dir, thumbnail_width, video_ex
         print(f"ERROR: Failed to process file {os.path.basename(filepath)} in worker: {e}")
         return None
 
-def get_db_connection():
-    db_file = app.config.get('DATABASE_FILE', '')
-    
-    # Enhanced validation (Issue #4)
-    if not db_file or db_file.strip() == '':
-        raise RuntimeError("Gallery not initialized - DATABASE_FILE not configured. Call initialize_gallery() first.")
-    
-    # Verify it's an absolute path
-    if not os.path.isabs(db_file):
-        raise RuntimeError(f"DATABASE_FILE must be an absolute path, got: {db_file}")
-    
-    # Ensure parent directory exists
-    db_dir = os.path.dirname(db_file)
-    if not os.path.exists(db_dir):
-        try:
-            os.makedirs(db_dir, exist_ok=True)
-            print(f"INFO: Created database directory: {db_dir}")
-        except (OSError, PermissionError) as e:
-            raise RuntimeError(f"Cannot create database directory {db_dir}: {e}")
-    
-    conn = sqlite3.connect(db_file)
-    conn.row_factory = sqlite3.Row
-    return conn
+def get_db():
+    """Opens a new database connection if there is none yet for the current application context."""
+    if 'db' not in g:
+        db_file = app.config.get('DATABASE_FILE', '')
+        
+        # Enhanced validation (Issue #4)
+        if not db_file or db_file.strip() == '':
+            raise RuntimeError("Gallery not initialized - DATABASE_FILE not configured. Call initialize_gallery() first.")
+        
+        # Verify it's an absolute path
+        if not os.path.isabs(db_file):
+            raise RuntimeError(f"DATABASE_FILE must be an absolute path, got: {db_file}")
+        
+        # Ensure parent directory exists
+        db_dir = os.path.dirname(db_file)
+        if not os.path.exists(db_dir):
+            try:
+                os.makedirs(db_dir, exist_ok=True)
+                print(f"INFO: Created database directory: {db_dir}")
+            except (OSError, PermissionError) as e:
+                raise RuntimeError(f"Cannot create database directory {db_dir}: {e}")
+        
+        g.db = sqlite3.connect(db_file, detect_types=sqlite3.PARSE_DECLTYPES)
+        g.db.row_factory = sqlite3.Row
+    return g.db
+
+def close_db(e=None):
+    """Closes the database connection at the end of the request."""
+    db = g.pop('db', None)
+    if db is not None:
+        db.close()
 
 def init_db(conn=None):
     close_conn = False
     if conn is None:
-        conn = get_db_connection()
+        conn = get_db()
         close_conn = True
     conn.execute('''
         CREATE TABLE IF NOT EXISTS files (
@@ -793,49 +802,49 @@ def full_sync_database(conn):
 def sync_folder_internal(folder_path):
     """Non-generator version for internal synchronization (Issue #8 fix)."""
     try:
-        with get_db_connection() as conn:
-            valid_extensions = set(app.config.get('ALL_MEDIA_EXTENSIONS', []))
-            disk_files = {}
+        conn = get_db()
+        valid_extensions = set(app.config.get('ALL_MEDIA_EXTENSIONS', []))
+        disk_files = {}
             
-            if os.path.isdir(folder_path):
-                for name in os.listdir(folder_path):
-                    filepath = os.path.join(folder_path, name)
-                    if os.path.isfile(filepath) and os.path.splitext(name)[1].lower() in valid_extensions:
-                        disk_files[filepath] = os.path.getmtime(filepath)
+        if os.path.isdir(folder_path):
+            for name in os.listdir(folder_path):
+                filepath = os.path.join(folder_path, name)
+                if os.path.isfile(filepath) and os.path.splitext(name)[1].lower() in valid_extensions:
+                    disk_files[filepath] = os.path.getmtime(filepath)
             
-            db_files_query = conn.execute("SELECT path, mtime FROM files WHERE path LIKE ?", (folder_path + os.sep + '%',)).fetchall()
-            db_files = {row['path']: row['mtime'] for row in db_files_query if os.path.normpath(os.path.dirname(row['path'])) == os.path.normpath(folder_path)}
+        db_files_query = conn.execute("SELECT path, mtime FROM files WHERE path LIKE ?", (folder_path + os.sep + '%',)).fetchall()
+        db_files = {row['path']: row['mtime'] for row in db_files_query if os.path.normpath(os.path.dirname(row['path'])) == os.path.normpath(folder_path)}
             
-            disk_filepaths, db_filepaths = set(disk_files.keys()), set(db_files.keys())
+        disk_filepaths, db_filepaths = set(disk_files.keys()), set(db_files.keys())
             
-            files_to_add = disk_filepaths - db_filepaths
-            files_to_delete = db_filepaths - disk_filepaths
-            files_to_update = {path for path in (disk_filepaths & db_filepaths) if disk_files[path] > db_files[path]}
+        files_to_add = disk_filepaths - db_filepaths
+        files_to_delete = db_filepaths - disk_filepaths
+        files_to_update = {path for path in (disk_filepaths & db_filepaths) if disk_files[path] > db_files[path]}
             
-            if not files_to_add and not files_to_update and not files_to_delete:
-                return  # Nothing to do
+        if not files_to_add and not files_to_update and not files_to_delete:
+            return  # Nothing to do
             
-            files_to_process = list(files_to_add.union(files_to_update))
+        files_to_process = list(files_to_add.union(files_to_update))
             
-            if files_to_process:
-                data_to_upsert = []
-                for path in files_to_process:
-                    metadata = analyze_file_metadata(path)
-                    file_hash = hashlib.md5((path + str(disk_files[path])).encode()).hexdigest()
-                    if not glob.glob(os.path.join(app.config['THUMBNAIL_CACHE_DIR'], f"{file_hash}.*")): 
-                        create_thumbnail(path, file_hash, metadata['type'])
+        if files_to_process:
+            data_to_upsert = []
+            for path in files_to_process:
+                metadata = analyze_file_metadata(path)
+                file_hash = hashlib.md5((path + str(disk_files[path])).encode()).hexdigest()
+                if not glob.glob(os.path.join(app.config['THUMBNAIL_CACHE_DIR'], f"{file_hash}.*")): 
+                    create_thumbnail(path, file_hash, metadata['type'])
                     
-                    data_to_upsert.append((hashlib.md5(path.encode()).hexdigest(), path, disk_files[path], os.path.basename(path), *metadata.values()))
+                data_to_upsert.append((hashlib.md5(path.encode()).hexdigest(), path, disk_files[path], os.path.basename(path), *metadata.values()))
                 
-                if data_to_upsert: 
-                    conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", data_to_upsert)
+            if data_to_upsert: 
+                conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", data_to_upsert)
 
-            if files_to_delete:
-                paths_to_delete_list = list(files_to_delete)
-                placeholders = ','.join('?' * len(paths_to_delete_list))
-                conn.execute(f"DELETE FROM files WHERE path IN ({placeholders})", paths_to_delete_list)
+        if files_to_delete:
+            paths_to_delete_list = list(files_to_delete)
+            placeholders = ','.join('?' * len(paths_to_delete_list))
+            conn.execute(f"DELETE FROM files WHERE path IN ({placeholders})", paths_to_delete_list)
 
-            conn.commit()
+        conn.commit()
     except Exception as e:
         print(f"ERROR: sync_folder_internal failed for {folder_path}: {e}")
 
@@ -843,80 +852,80 @@ def sync_folder_on_demand(folder_path):
     yield f"data: {json.dumps({'message': 'Checking folder for changes...', 'current': 0, 'total': 1})}\n\n"
     
     try:
-        with get_db_connection() as conn:
-            # Use centralized extension configuration
-            valid_extensions = set(app.config.get('ALL_MEDIA_EXTENSIONS', []))
-            disk_files = {}
+        conn = get_db()
+        # Use centralized extension configuration
+        valid_extensions = set(app.config.get('ALL_MEDIA_EXTENSIONS', []))
+        disk_files = {}
             
-            if os.path.isdir(folder_path):
-                for name in os.listdir(folder_path):
-                    filepath = os.path.join(folder_path, name)
-                    if os.path.isfile(filepath) and os.path.splitext(name)[1].lower() in valid_extensions:
-                        disk_files[filepath] = os.path.getmtime(filepath)
+        if os.path.isdir(folder_path):
+            for name in os.listdir(folder_path):
+                filepath = os.path.join(folder_path, name)
+                if os.path.isfile(filepath) and os.path.splitext(name)[1].lower() in valid_extensions:
+                    disk_files[filepath] = os.path.getmtime(filepath)
             
-            db_files_query = conn.execute("SELECT path, mtime FROM files WHERE path LIKE ?", (folder_path + os.sep + '%',)).fetchall()
-            db_files = {row['path']: row['mtime'] for row in db_files_query if os.path.normpath(os.path.dirname(row['path'])) == os.path.normpath(folder_path)}
+        db_files_query = conn.execute("SELECT path, mtime FROM files WHERE path LIKE ?", (folder_path + os.sep + '%',)).fetchall()
+        db_files = {row['path']: row['mtime'] for row in db_files_query if os.path.normpath(os.path.dirname(row['path'])) == os.path.normpath(folder_path)}
             
-            disk_filepaths, db_filepaths = set(disk_files.keys()), set(db_files.keys())
+        disk_filepaths, db_filepaths = set(disk_files.keys()), set(db_files.keys())
             
-            files_to_add = disk_filepaths - db_filepaths
-            files_to_delete = db_filepaths - disk_filepaths
-            files_to_update = {path for path in (disk_filepaths & db_filepaths) if int(disk_files[path]) > int(db_files[path])}
+        files_to_add = disk_filepaths - db_filepaths
+        files_to_delete = db_filepaths - disk_filepaths
+        files_to_update = {path for path in (disk_filepaths & db_filepaths) if int(disk_files[path]) > int(db_files[path])}
             
-            if not files_to_add and not files_to_update and not files_to_delete:
-                yield f"data: {json.dumps({'message': 'Folder is up-to-date.', 'status': 'no_changes', 'current': 1, 'total': 1})}\n\n"
-                return
+        if not files_to_add and not files_to_update and not files_to_delete:
+            yield f"data: {json.dumps({'message': 'Folder is up-to-date.', 'status': 'no_changes', 'current': 1, 'total': 1})}\n\n"
+            return
 
-            files_to_process = list(files_to_add.union(files_to_update))
-            total_files = len(files_to_process)
+        files_to_process = list(files_to_add.union(files_to_update))
+        total_files = len(files_to_process)
             
-            if total_files > 0:
-                yield f"data: {json.dumps({'message': f'Found {total_files} new/modified files. Processing...', 'current': 0, 'total': total_files})}\n\n"
+        if total_files > 0:
+            yield f"data: {json.dumps({'message': f'Found {total_files} new/modified files. Processing...', 'current': 0, 'total': total_files})}\n\n"
                 
-                # Gather config values for worker processes
-                thumbnail_cache_dir = app.config['THUMBNAIL_CACHE_DIR']
-                thumbnail_width = app.config['THUMBNAIL_WIDTH']
-                video_exts = app.config['VIDEO_EXTENSIONS']
-                image_exts = app.config['IMAGE_EXTENSIONS']
-                animated_exts = app.config['ANIMATED_IMAGE_EXTENSIONS']
-                audio_exts = app.config['AUDIO_EXTENSIONS']
-                webp_animated_fps = app.config['WEBP_ANIMATED_FPS']
-                base_input_path_workflow = app.config['BASE_INPUT_PATH_WORKFLOW']
+            # Gather config values for worker processes
+            thumbnail_cache_dir = app.config['THUMBNAIL_CACHE_DIR']
+            thumbnail_width = app.config['THUMBNAIL_WIDTH']
+            video_exts = app.config['VIDEO_EXTENSIONS']
+            image_exts = app.config['IMAGE_EXTENSIONS']
+            animated_exts = app.config['ANIMATED_IMAGE_EXTENSIONS']
+            audio_exts = app.config['AUDIO_EXTENSIONS']
+            webp_animated_fps = app.config['WEBP_ANIMATED_FPS']
+            base_input_path_workflow = app.config['BASE_INPUT_PATH_WORKFLOW']
                 
-                data_to_upsert = []
-                processed_count = 0
+            data_to_upsert = []
+            processed_count = 0
 
-                with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_PARALLEL_WORKERS) as executor:
-                    futures = {
-                        executor.submit(
-                            process_single_file, path, thumbnail_cache_dir, thumbnail_width,
-                            video_exts, image_exts, animated_exts, audio_exts, webp_animated_fps,
-                            base_input_path_workflow
-                        ): path for path in files_to_process
-                    }
+            with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_PARALLEL_WORKERS) as executor:
+                futures = {
+                    executor.submit(
+                        process_single_file, path, thumbnail_cache_dir, thumbnail_width,
+                        video_exts, image_exts, animated_exts, audio_exts, webp_animated_fps,
+                        base_input_path_workflow
+                    ): path for path in files_to_process
+                }
                     
-                    for future in concurrent.futures.as_completed(futures):
-                        result = future.result()
-                        if result:
-                            data_to_upsert.append(result)
+                for future in concurrent.futures.as_completed(futures):
+                    result = future.result()
+                    if result:
+                        data_to_upsert.append(result)
                         
-                        processed_count += 1
-                        path = futures[future]
-                        progress_data = {
-                            'message': f'Processing: {os.path.basename(path)}',
-                            'current': processed_count,
-                            'total': total_files
-                        }
-                        yield f"data: {json.dumps(progress_data)}\n\n"
+                    processed_count += 1
+                    path = futures[future]
+                    progress_data = {
+                        'message': f'Processing: {os.path.basename(path)}',
+                        'current': processed_count,
+                        'total': total_files
+                    }
+                    yield f"data: {json.dumps(progress_data)}\n\n"
 
-                if data_to_upsert: 
-                    conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", data_to_upsert)
+            if data_to_upsert: 
+                conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", data_to_upsert)
 
-            if files_to_delete:
-                conn.executemany("DELETE FROM files WHERE path IN (?)", [(p,) for p in files_to_delete])
+        if files_to_delete:
+            conn.executemany("DELETE FROM files WHERE path IN (?)", [(p,) for p in files_to_delete])
 
-            conn.commit()
-            yield f"data: {json.dumps({'message': 'Sync complete. Reloading...', 'status': 'reloading', 'current': total_files, 'total': total_files})}\n\n"
+        conn.commit()
+        yield f"data: {json.dumps({'message': 'Sync complete. Reloading...', 'status': 'reloading', 'current': total_files, 'total': total_files})}\n\n"
 
     except Exception as e:
         error_message = f"Error during sync: {e}"
@@ -968,7 +977,13 @@ def initialize_gallery(flask_app):
     flask_app.config['FFPROBE_EXECUTABLE_PATH'] = find_ffprobe_path()
     os.makedirs(flask_app.config['THUMBNAIL_CACHE_DIR'], exist_ok=True)
     os.makedirs(flask_app.config['SQLITE_CACHE_DIR'], exist_ok=True)
-    with get_db_connection() as conn:
+    
+    # Register teardown handler for database connections
+    flask_app.teardown_appcontext(close_db)
+    
+    # Wrap database initialization in app context (required for g object access during startup)
+    with flask_app.app_context():
+        conn = get_db()
         try:
             stored_version = conn.execute('PRAGMA user_version').fetchone()[0]
         except sqlite3.DatabaseError: stored_version = 0
@@ -1013,37 +1028,37 @@ def gallery_view(folder_key):
     current_folder_info = folders[folder_key]
     folder_path = current_folder_info['path']
     
-    with get_db_connection() as conn:
-        conditions, params = [], []
-        conditions.append("path LIKE ?")
-        params.append(folder_path + os.sep + '%')
+    conn = get_db()
+    conditions, params = [], []
+    conditions.append("path LIKE ?")
+    params.append(folder_path + os.sep + '%')
         
-        sort_by = 'name' if request.args.get('sort_by') == 'name' else 'mtime'
-        sort_order = 'asc' if request.args.get('sort_order', 'desc').lower() == 'asc' else 'desc'
+    sort_by = 'name' if request.args.get('sort_by') == 'name' else 'mtime'
+    sort_order = 'asc' if request.args.get('sort_order', 'desc').lower() == 'asc' else 'desc'
 
-        search_term = request.args.get('search', '').strip()
-        if search_term:
-            conditions.append("name LIKE ?")
-            params.append(f"%{search_term}%")
-        if request.args.get('favorites', 'false').lower() == 'true':
-            conditions.append("is_favorite = 1")
+    search_term = request.args.get('search', '').strip()
+    if search_term:
+        conditions.append("name LIKE ?")
+        params.append(f"%{search_term}%")
+    if request.args.get('favorites', 'false').lower() == 'true':
+        conditions.append("is_favorite = 1")
 
-        selected_prefixes = request.args.getlist('prefix')
-        if selected_prefixes:
-            prefix_conditions = [f"name LIKE ?" for p in selected_prefixes if p.strip()]
-            params.extend([f"{p.strip()}_%" for p in selected_prefixes if p.strip()])
-            if prefix_conditions: conditions.append(f"({' OR '.join(prefix_conditions)})")
+    selected_prefixes = request.args.getlist('prefix')
+    if selected_prefixes:
+        prefix_conditions = [f"name LIKE ?" for p in selected_prefixes if p.strip()]
+        params.extend([f"{p.strip()}_%" for p in selected_prefixes if p.strip()])
+        if prefix_conditions: conditions.append(f"({' OR '.join(prefix_conditions)})")
 
-        selected_extensions = request.args.getlist('extension')
-        if selected_extensions:
-            ext_conditions = [f"name LIKE ?" for ext in selected_extensions if ext.strip()]
-            params.extend([f"%.{ext.lstrip('.').lower()}" for ext in selected_extensions if ext.strip()])
-            if ext_conditions: conditions.append(f"({' OR '.join(ext_conditions)})")
+    selected_extensions = request.args.getlist('extension')
+    if selected_extensions:
+        ext_conditions = [f"name LIKE ?" for ext in selected_extensions if ext.strip()]
+        params.extend([f"%.{ext.lstrip('.').lower()}" for ext in selected_extensions if ext.strip()])
+        if ext_conditions: conditions.append(f"({' OR '.join(ext_conditions)})")
         
-        sort_direction = "ASC" if sort_order == 'asc' else "DESC"
-        query = f"SELECT * FROM files WHERE {' AND '.join(conditions)} ORDER BY {sort_by} {sort_direction}"
+    sort_direction = "ASC" if sort_order == 'asc' else "DESC"
+    query = f"SELECT * FROM files WHERE {' AND '.join(conditions)} ORDER BY {sort_by} {sort_direction}"
         
-        all_files_raw = conn.execute(query, params).fetchall()
+    all_files_raw = conn.execute(query, params).fetchall()
         
     folder_path_norm = os.path.normpath(folder_path)
     all_files_filtered = [dict(row) for row in all_files_raw if os.path.normpath(os.path.dirname(row['path'])) == folder_path_norm]
@@ -1136,18 +1151,18 @@ def rename_folder(folder_key):
         os.rename(old_path, new_path)
         
         # Now update the database to reflect the new paths
-        with get_db_connection() as conn:
-            old_path_like = old_path + os.sep + '%'
-            files_to_update = conn.execute("SELECT id, path FROM files WHERE path LIKE ?", (old_path_like,)).fetchall()
-            update_data = []
-            for row in files_to_update:
-                new_file_path = row['path'].replace(old_path, new_path, 1)
-                new_id = hashlib.md5(new_file_path.encode()).hexdigest()
-                update_data.append((new_id, new_file_path, row['id']))
+        conn = get_db()
+        old_path_like = old_path + os.sep + '%'
+        files_to_update = conn.execute("SELECT id, path FROM files WHERE path LIKE ?", (old_path_like,)).fetchall()
+        update_data = []
+        for row in files_to_update:
+            new_file_path = row['path'].replace(old_path, new_path, 1)
+            new_id = hashlib.md5(new_file_path.encode()).hexdigest()
+            update_data.append((new_id, new_file_path, row['id']))
             
-            if update_data: 
-                conn.executemany("UPDATE files SET id = ?, path = ? WHERE id = ?", update_data)
-            conn.commit()
+        if update_data: 
+            conn.executemany("UPDATE files SET id = ?, path = ? WHERE id = ?", update_data)
+        conn.commit()
         
         get_dynamic_folder_config(force_refresh=True)
         return jsonify({'status': 'success', 'message': 'Folder renamed.'})
@@ -1172,9 +1187,9 @@ def delete_folder(folder_key):
     if folder_key not in folders: return jsonify({'status': 'error', 'message': 'Folder not found.'}), 404
     try:
         folder_path = folders[folder_key]['path']
-        with get_db_connection() as conn:
-            conn.execute("DELETE FROM files WHERE path LIKE ?", (folder_path + os.sep + '%',))
-            conn.commit()
+        conn = get_db()
+        conn.execute("DELETE FROM files WHERE path LIKE ?", (folder_path + os.sep + '%',))
+        conn.commit()
         shutil.rmtree(folder_path)
         get_dynamic_folder_config(force_refresh=True)
         return jsonify({'status': 'success', 'message': 'Folder deleted.'})
@@ -1197,8 +1212,8 @@ def load_more():
 
 def get_file_info_from_db(file_id, column='*'):
     try:
-        with get_db_connection() as conn:
-            row = conn.execute(f"SELECT {column} FROM files WHERE id = ?", (file_id,)).fetchone()
+        conn = get_db()
+        row = conn.execute(f"SELECT {column} FROM files WHERE id = ?", (file_id,)).fetchone()
         if not row: abort(404)
         return dict(row) if column == '*' else row[0]
     except sqlite3.Error as e:
@@ -1225,53 +1240,53 @@ def move_batch():
         return jsonify({'status': 'error', 'message': 'Invalid data provided.'}), 400
     moved_count, renamed_count, failed_files, dest_path_folder = 0, 0, [], folders[dest_key]['path']
     
-    with get_db_connection() as conn:
-        for file_id in file_ids:
-            source_path = None
-            savepoint = None
-            try:
-                # Create a savepoint for atomic rollback (Issue #6)
-                savepoint = f"move_{file_id}"
-                conn.execute(f"SAVEPOINT {savepoint}")
+    conn = get_db()
+    for file_id in file_ids:
+        source_path = None
+        savepoint = None
+        try:
+            # Create a savepoint for atomic rollback (Issue #6)
+            savepoint = f"move_{file_id}"
+            conn.execute(f"SAVEPOINT {savepoint}")
                 
-                file_info = conn.execute("SELECT path, name FROM files WHERE id = ?", (file_id,)).fetchone()
-                if not file_info:
-                    failed_files.append(f"ID {file_id} not found in DB")
-                    conn.execute(f"RELEASE SAVEPOINT {savepoint}")
-                    continue
-                source_path, source_filename = file_info['path'], file_info['name']
-                if not os.path.exists(source_path):
-                    failed_files.append(f"{source_filename} (not found on disk)")
-                    conn.execute("DELETE FROM files WHERE id = ?", (file_id,))
-                    conn.execute(f"RELEASE SAVEPOINT {savepoint}")
-                    continue
-                
-                final_dest_path = _get_unique_filepath(dest_path_folder, source_filename)
-                final_filename = os.path.basename(final_dest_path)
-                if final_filename != source_filename: renamed_count += 1
-                
-                # CRITICAL: Perform file operation BEFORE DB commit
-                shutil.move(source_path, final_dest_path)
-                
-                # Only update DB after successful file move
-                new_id = hashlib.md5(final_dest_path.encode()).hexdigest()
-                conn.execute("UPDATE files SET id = ?, path = ?, name = ? WHERE id = ?", (new_id, final_dest_path, final_filename, file_id))
+            file_info = conn.execute("SELECT path, name FROM files WHERE id = ?", (file_id,)).fetchone()
+            if not file_info:
+                failed_files.append(f"ID {file_id} not found in DB")
                 conn.execute(f"RELEASE SAVEPOINT {savepoint}")
-                moved_count += 1
-            except Exception as e:
-                # Rollback database changes if file operation failed
-                if savepoint:
-                    try:
-                        conn.execute(f"ROLLBACK TO SAVEPOINT {savepoint}")
-                        conn.execute(f"RELEASE SAVEPOINT {savepoint}")
-                    except Exception as rb_error:
-                        print(f"ERROR: Failed to rollback savepoint: {rb_error}")
-                
-                filename_for_error = os.path.basename(source_path) if source_path else f"ID {file_id}"
-                failed_files.append(filename_for_error)
-                print(f"ERROR: Failed to move file {filename_for_error}. Reason: {e}")
                 continue
-        conn.commit()
+            source_path, source_filename = file_info['path'], file_info['name']
+            if not os.path.exists(source_path):
+                failed_files.append(f"{source_filename} (not found on disk)")
+                conn.execute("DELETE FROM files WHERE id = ?", (file_id,))
+                conn.execute(f"RELEASE SAVEPOINT {savepoint}")
+                continue
+                
+            final_dest_path = _get_unique_filepath(dest_path_folder, source_filename)
+            final_filename = os.path.basename(final_dest_path)
+            if final_filename != source_filename: renamed_count += 1
+                
+            # CRITICAL: Perform file operation BEFORE DB commit
+            shutil.move(source_path, final_dest_path)
+                
+            # Only update DB after successful file move
+            new_id = hashlib.md5(final_dest_path.encode()).hexdigest()
+            conn.execute("UPDATE files SET id = ?, path = ?, name = ? WHERE id = ?", (new_id, final_dest_path, final_filename, file_id))
+            conn.execute(f"RELEASE SAVEPOINT {savepoint}")
+            moved_count += 1
+        except Exception as e:
+            # Rollback database changes if file operation failed
+            if savepoint:
+                try:
+                    conn.execute(f"ROLLBACK TO SAVEPOINT {savepoint}")
+                    conn.execute(f"RELEASE SAVEPOINT {savepoint}")
+                except Exception as rb_error:
+                    print(f"ERROR: Failed to rollback savepoint: {rb_error}")
+                
+            filename_for_error = os.path.basename(source_path) if source_path else f"ID {file_id}"
+            failed_files.append(filename_for_error)
+            print(f"ERROR: Failed to move file {filename_for_error}. Reason: {e}")
+            continue
+    conn.commit()
     
     message = f"Successfully moved {moved_count} file(s)."
     if renamed_count > 0: message += f" {renamed_count} were renamed to avoid conflicts."
@@ -1284,33 +1299,33 @@ def delete_batch():
     file_ids = request.json.get('file_ids', [])
     if not file_ids: return jsonify({'status': 'error', 'message': 'No files selected.'}), 400
     deleted_count, failed_files = 0, []
-    with get_db_connection() as conn:
-        placeholders = ','.join('?' * len(file_ids))
-        files_to_delete = conn.execute(f"SELECT id, path, mtime FROM files WHERE id IN ({placeholders})", file_ids).fetchall()
-        ids_to_remove_from_db = []
-        for row in files_to_delete:
-            try:
-                if os.path.exists(row['path']): 
-                    os.remove(row['path'])
+    conn = get_db()
+    placeholders = ','.join('?' * len(file_ids))
+    files_to_delete = conn.execute(f"SELECT id, path, mtime FROM files WHERE id IN ({placeholders})", file_ids).fetchall()
+    ids_to_remove_from_db = []
+    for row in files_to_delete:
+        try:
+            if os.path.exists(row['path']): 
+                os.remove(row['path'])
                 
-                # Clean up orphaned thumbnail
-                file_hash = hashlib.md5((row['path'] + str(row['mtime'])).encode()).hexdigest()
-                thumbnail_pattern = os.path.join(app.config['THUMBNAIL_CACHE_DIR'], f"{file_hash}.*")
-                for thumbnail_path in glob.glob(thumbnail_pattern):
-                    try:
-                        os.remove(thumbnail_path)
-                    except Exception as e:
-                        print(f"WARNING: Could not remove thumbnail {thumbnail_path}: {e}")
+            # Clean up orphaned thumbnail
+            file_hash = hashlib.md5((row['path'] + str(row['mtime'])).encode()).hexdigest()
+            thumbnail_pattern = os.path.join(app.config['THUMBNAIL_CACHE_DIR'], f"{file_hash}.*")
+            for thumbnail_path in glob.glob(thumbnail_pattern):
+                try:
+                    os.remove(thumbnail_path)
+                except Exception as e:
+                    print(f"WARNING: Could not remove thumbnail {thumbnail_path}: {e}")
                 
-                ids_to_remove_from_db.append(row['id'])
-                deleted_count += 1
-            except Exception as e: 
-                failed_files.append(os.path.basename(row['path']))
-                print(f"ERROR: Could not delete {row['path']}: {e}")
-        if ids_to_remove_from_db:
-            db_placeholders = ','.join('?' * len(ids_to_remove_from_db))
-            conn.execute(f"DELETE FROM files WHERE id IN ({db_placeholders})", ids_to_remove_from_db)
-            conn.commit()
+            ids_to_remove_from_db.append(row['id'])
+            deleted_count += 1
+        except Exception as e: 
+            failed_files.append(os.path.basename(row['path']))
+            print(f"ERROR: Could not delete {row['path']}: {e}")
+    if ids_to_remove_from_db:
+        db_placeholders = ','.join('?' * len(ids_to_remove_from_db))
+        conn.execute(f"DELETE FROM files WHERE id IN ({db_placeholders})", ids_to_remove_from_db)
+        conn.commit()
     message = f'Successfully deleted {deleted_count} files.'
     if failed_files: message += f" Failed to delete {len(failed_files)} files."
     return jsonify({'status': 'partial_success' if failed_files else 'success', 'message': message})
@@ -1321,22 +1336,22 @@ def favorite_batch():
     data = request.json
     file_ids, status = data.get('file_ids', []), data.get('status', False)
     if not file_ids: return jsonify({'status': 'error', 'message': 'No files selected'}), 400
-    with get_db_connection() as conn:
-        placeholders = ','.join('?' * len(file_ids))
-        conn.execute(f"UPDATE files SET is_favorite = ? WHERE id IN ({placeholders})", [1 if status else 0] + file_ids)
-        conn.commit()
+    conn = get_db()
+    placeholders = ','.join('?' * len(file_ids))
+    conn.execute(f"UPDATE files SET is_favorite = ? WHERE id IN ({placeholders})", [1 if status else 0] + file_ids)
+    conn.commit()
     return jsonify({'status': 'success', 'message': f"Updated favorites for {len(file_ids)} files."})
 
 @app.route('/galleryout/toggle_favorite/<string:file_id>', methods=['POST'])
 @require_initialization
 def toggle_favorite(file_id):
-    with get_db_connection() as conn:
-        current = conn.execute("SELECT is_favorite FROM files WHERE id = ?", (file_id,)).fetchone()
-        if not current: abort(404)
-        new_status = 1 - current['is_favorite']
-        conn.execute("UPDATE files SET is_favorite = ? WHERE id = ?", (new_status, file_id))
-        conn.commit()
-        return jsonify({'status': 'success', 'is_favorite': bool(new_status)})
+    conn = get_db()
+    current = conn.execute("SELECT is_favorite FROM files WHERE id = ?", (file_id,)).fetchone()
+    if not current: abort(404)
+    new_status = 1 - current['is_favorite']
+    conn.execute("UPDATE files SET is_favorite = ? WHERE id = ?", (new_status, file_id))
+    conn.commit()
+    return jsonify({'status': 'success', 'is_favorite': bool(new_status)})
 
 # --- NEW FEATURE: RENAME FILE ---
 @app.route('/galleryout/rename_file/<string:file_id>', methods=['POST'])
@@ -1352,43 +1367,43 @@ def rename_file(file_id):
         return jsonify({'status': 'error', 'message': 'Filename contains invalid characters.'}), 400
 
     try:
-        with get_db_connection() as conn:
-            file_info = conn.execute("SELECT path, name FROM files WHERE id = ?", (file_id,)).fetchone()
-            if not file_info:
-                return jsonify({'status': 'error', 'message': 'File not found in the database.'}), 404
+        conn = get_db()
+        file_info = conn.execute("SELECT path, name FROM files WHERE id = ?", (file_id,)).fetchone()
+        if not file_info:
+            return jsonify({'status': 'error', 'message': 'File not found in the database.'}), 404
 
-            old_path = file_info['path']
-            old_name = file_info['name']
+        old_path = file_info['path']
+        old_name = file_info['name']
             
-            # Preserve the original extension
-            _, old_ext = os.path.splitext(old_name)
-            new_name_base, new_ext = os.path.splitext(new_name)
-            if not new_ext:  # If user didn't provide an extension, use the old one
-                final_new_name = new_name + old_ext
-            else:
-                final_new_name = new_name
+        # Preserve the original extension
+        _, old_ext = os.path.splitext(old_name)
+        new_name_base, new_ext = os.path.splitext(new_name)
+        if not new_ext:  # If user didn't provide an extension, use the old one
+            final_new_name = new_name + old_ext
+        else:
+            final_new_name = new_name
 
-            if final_new_name == old_name:
-                return jsonify({'status': 'error', 'message': 'The new name is the same as the old one.'}), 400
+        if final_new_name == old_name:
+            return jsonify({'status': 'error', 'message': 'The new name is the same as the old one.'}), 400
 
-            file_dir = os.path.dirname(old_path)
-            new_path = os.path.join(file_dir, final_new_name)
+        file_dir = os.path.dirname(old_path)
+        new_path = os.path.join(file_dir, final_new_name)
 
-            if os.path.exists(new_path):
-                return jsonify({'status': 'error', 'message': f'A file named "{final_new_name}" already exists in this folder.'}), 409
+        if os.path.exists(new_path):
+            return jsonify({'status': 'error', 'message': f'A file named "{final_new_name}" already exists in this folder.'}), 409
 
-            # Perform the rename and database update
-            os.rename(old_path, new_path)
-            new_id = hashlib.md5(new_path.encode()).hexdigest()
-            conn.execute("UPDATE files SET id = ?, path = ?, name = ? WHERE id = ?", (new_id, new_path, final_new_name, file_id))
-            conn.commit()
+        # Perform the rename and database update
+        os.rename(old_path, new_path)
+        new_id = hashlib.md5(new_path.encode()).hexdigest()
+        conn.execute("UPDATE files SET id = ?, path = ?, name = ? WHERE id = ?", (new_id, new_path, final_new_name, file_id))
+        conn.commit()
 
-            return jsonify({
-                'status': 'success',
-                'message': 'File renamed successfully.',
-                'new_name': final_new_name,
-                'new_id': new_id
-            })
+        return jsonify({
+            'status': 'success',
+            'message': 'File renamed successfully.',
+            'new_name': final_new_name,
+            'new_id': new_id
+        })
 
     except OSError as e:
         print(f"ERROR: OS error during file rename for {file_id}: {e}")
@@ -1401,37 +1416,37 @@ def rename_file(file_id):
 @app.route('/galleryout/delete/<string:file_id>', methods=['POST'])
 @require_initialization
 def delete_file(file_id):
-    with get_db_connection() as conn:
-        file_info = conn.execute("SELECT path, mtime FROM files WHERE id = ?", (file_id,)).fetchone()
-        if not file_info:
-            return jsonify({'status': 'success', 'message': 'File already deleted from database.'})
+    conn = get_db()
+    file_info = conn.execute("SELECT path, mtime FROM files WHERE id = ?", (file_id,)).fetchone()
+    if not file_info:
+        return jsonify({'status': 'success', 'message': 'File already deleted from database.'})
         
-        filepath = file_info['path']
-        mtime = file_info['mtime']
+    filepath = file_info['path']
+    mtime = file_info['mtime']
         
-        try:
-            if os.path.exists(filepath):
-                os.remove(filepath)
-            # If file doesn't exist on disk, we still proceed to remove the DB entry, which is the desired state.
-        except (OSError, PermissionError) as e:
-            # A real OS error occurred (e.g., permissions). Issue #7: Catch both OSError and PermissionError
-            print(f"ERROR: Could not delete file {filepath} from disk: {e}")
-            return jsonify({'status': 'error', 'message': f'Could not delete file from disk: {e}'}), 500
+    try:
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        # If file doesn't exist on disk, we still proceed to remove the DB entry, which is the desired state.
+    except (OSError, PermissionError) as e:
+        # A real OS error occurred (e.g., permissions). Issue #7: Catch both OSError and PermissionError
+        print(f"ERROR: Could not delete file {filepath} from disk: {e}")
+        return jsonify({'status': 'error', 'message': f'Could not delete file from disk: {e}'}), 500
 
-        # Clean up orphaned thumbnail
-        file_hash = hashlib.md5((filepath + str(mtime)).encode()).hexdigest()
-        try:
-            thumbnail_pattern = os.path.join(app.config['THUMBNAIL_CACHE_DIR'], f"{file_hash}.*")
-            for thumbnail_path in glob.glob(thumbnail_pattern):
-                os.remove(thumbnail_path)
-                print(f"INFO: Removed orphaned thumbnail: {os.path.basename(thumbnail_path)}")
-        except Exception as e:
-            print(f"WARNING: Could not remove thumbnail for {filepath}: {e}")
+    # Clean up orphaned thumbnail
+    file_hash = hashlib.md5((filepath + str(mtime)).encode()).hexdigest()
+    try:
+        thumbnail_pattern = os.path.join(app.config['THUMBNAIL_CACHE_DIR'], f"{file_hash}.*")
+        for thumbnail_path in glob.glob(thumbnail_pattern):
+            os.remove(thumbnail_path)
+            print(f"INFO: Removed orphaned thumbnail: {os.path.basename(thumbnail_path)}")
+    except Exception as e:
+        print(f"WARNING: Could not remove thumbnail for {filepath}: {e}")
 
-        # Whether the file was deleted now or was already gone, we clean up the DB.
-        conn.execute("DELETE FROM files WHERE id = ?", (file_id,))
-        conn.commit()
-        return jsonify({'status': 'success', 'message': 'File deleted successfully.'})
+    # Whether the file was deleted now or was already gone, we clean up the DB.
+    conn.execute("DELETE FROM files WHERE id = ?", (file_id,))
+    conn.commit()
+    return jsonify({'status': 'success', 'message': 'File deleted successfully.'})
 
 @app.route('/galleryout/file/<string:file_id>')
 @require_initialization
@@ -1498,53 +1513,53 @@ def serve_thumbnail(file_id):
 def get_stats():
     """Returns gallery statistics for sidebar dashboard"""
     try:
-        with get_db_connection() as conn:
-            # Total files
-            total_files = conn.execute("SELECT COUNT(*) FROM files").fetchone()[0]
+        conn = get_db()
+        # Total files
+        total_files = conn.execute("SELECT COUNT(*) FROM files").fetchone()[0]
             
-            # Files by type
-            images = conn.execute("SELECT COUNT(*) FROM files WHERE type = 'image'").fetchone()[0]
-            videos = conn.execute("SELECT COUNT(*) FROM files WHERE type = 'video'").fetchone()[0]
-            animated = conn.execute("SELECT COUNT(*) FROM files WHERE type = 'animated_image'").fetchone()[0]
-            audio = conn.execute("SELECT COUNT(*) FROM files WHERE type = 'audio'").fetchone()[0]
+        # Files by type
+        images = conn.execute("SELECT COUNT(*) FROM files WHERE type = 'image'").fetchone()[0]
+        videos = conn.execute("SELECT COUNT(*) FROM files WHERE type = 'video'").fetchone()[0]
+        animated = conn.execute("SELECT COUNT(*) FROM files WHERE type = 'animated_image'").fetchone()[0]
+        audio = conn.execute("SELECT COUNT(*) FROM files WHERE type = 'audio'").fetchone()[0]
             
-            # Files with workflows
-            with_workflow = conn.execute("SELECT COUNT(*) FROM files WHERE has_workflow = 1").fetchone()[0]
+        # Files with workflows
+        with_workflow = conn.execute("SELECT COUNT(*) FROM files WHERE has_workflow = 1").fetchone()[0]
             
-            # Favorites
-            favorites = conn.execute("SELECT COUNT(*) FROM files WHERE is_favorite = 1").fetchone()[0]
+        # Favorites
+        favorites = conn.execute("SELECT COUNT(*) FROM files WHERE is_favorite = 1").fetchone()[0]
             
-            # Cache sizes
-            thumb_cache_size = sum(
-                os.path.getsize(os.path.join(app.config['THUMBNAIL_CACHE_DIR'], f))
-                for f in os.listdir(app.config['THUMBNAIL_CACHE_DIR'])
-                if os.path.isfile(os.path.join(app.config['THUMBNAIL_CACHE_DIR'], f))
-            ) if os.path.exists(app.config['THUMBNAIL_CACHE_DIR']) else 0
+        # Cache sizes
+        thumb_cache_size = sum(
+            os.path.getsize(os.path.join(app.config['THUMBNAIL_CACHE_DIR'], f))
+            for f in os.listdir(app.config['THUMBNAIL_CACHE_DIR'])
+            if os.path.isfile(os.path.join(app.config['THUMBNAIL_CACHE_DIR'], f))
+        ) if os.path.exists(app.config['THUMBNAIL_CACHE_DIR']) else 0
             
-            db_size = os.path.getsize(app.config['DATABASE_FILE']) if os.path.exists(app.config['DATABASE_FILE']) else 0
+        db_size = os.path.getsize(app.config['DATABASE_FILE']) if os.path.exists(app.config['DATABASE_FILE']) else 0
             
-            # Request count
-            with request_counter['lock']:
-                requests = request_counter['count']
+        # Request count
+        with request_counter['lock']:
+            requests = request_counter['count']
             
-            return jsonify({
-                'success': True,
-                'data': {
-                    'total_files': total_files,
-                    'by_type': {
-                        'images': images,
-                        'videos': videos,
-                        'animated': animated,
-                        'audio': audio
-                    },
-                    'with_workflow': with_workflow,
-                    'favorites': favorites,
-                    'cache_size_mb': round((thumb_cache_size + db_size) / (1024 * 1024), 2),
-                    'thumbnail_cache_mb': round(thumb_cache_size / (1024 * 1024), 2),
-                    'db_size_mb': round(db_size / (1024 * 1024), 2),
-                    'requests': requests
-                }
-            })
+        return jsonify({
+            'success': True,
+            'data': {
+                'total_files': total_files,
+                'by_type': {
+                    'images': images,
+                    'videos': videos,
+                    'animated': animated,
+                    'audio': audio
+                },
+                'with_workflow': with_workflow,
+                'favorites': favorites,
+                'cache_size_mb': round((thumb_cache_size + db_size) / (1024 * 1024), 2),
+                'thumbnail_cache_mb': round(thumb_cache_size / (1024 * 1024), 2),
+                'db_size_mb': round(db_size / (1024 * 1024), 2),
+                'requests': requests
+            }
+        })
     except Exception as e:
         logging.error(f"Failed to get stats: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -1556,22 +1571,22 @@ def get_recent_files():
     """Returns recently added files for sidebar dashboard"""
     try:
         limit = request.args.get('limit', 6, type=int)
-        with get_db_connection() as conn:
-            rows = conn.execute(
-                "SELECT id, name, type, dimensions, has_workflow FROM files ORDER BY mtime DESC LIMIT ?",
-                (limit,)
-            ).fetchall()
+        conn = get_db()
+        rows = conn.execute(
+            "SELECT id, name, type, dimensions, has_workflow FROM files ORDER BY mtime DESC LIMIT ?",
+            (limit,)
+        ).fetchall()
             
-            files = [{
-                'id': row[0],
-                'name': row[1],
-                'type': row[2],
-                'dimensions': row[3],
-                'has_workflow': bool(row[4]),
-                'thumbnail_url': f'/galleryout/thumbnail/{row[0]}'
-            } for row in rows]
+        files = [{
+            'id': row[0],
+            'name': row[1],
+            'type': row[2],
+            'dimensions': row[3],
+            'has_workflow': bool(row[4]),
+            'thumbnail_url': f'/galleryout/thumbnail/{row[0]}'
+        } for row in rows]
             
-            return jsonify({'success': True, 'data': files})
+        return jsonify({'success': True, 'data': files})
     except Exception as e:
         logging.error(f"Failed to get recent files: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -1583,8 +1598,8 @@ def sync_all_folders():
     """Triggers a full sync of all folders"""
     try:
         logging.info("Full sync initiated from sidebar")
-        with get_db_connection() as conn:
-            full_sync_database(conn)
+        conn = get_db()
+        full_sync_database(conn)
         
         # Clear caches
         global gallery_view_cache, folder_config_cache
@@ -1675,6 +1690,36 @@ def count_request():
     """Increment request counter for stats"""
     with request_counter['lock']:
         request_counter['count'] += 1
+
+
+# --- Error Handlers (Flask Best Practices) ---
+@app.errorhandler(HTTPException)
+def handle_http_exception(e):
+    """Convert HTTP exceptions to JSON responses for API endpoints."""
+    response = {
+        "status": "error",
+        "code": e.code,
+        "name": e.name,
+        "message": e.description
+    }
+    return jsonify(response), e.code
+
+
+@app.errorhandler(Exception)
+def handle_generic_exception(e):
+    """Catch unexpected errors, log full traceback, and return safe JSON response."""
+    import traceback
+    # Log the full traceback for debugging
+    app.logger.error(f"Unhandled exception: {str(e)}\n{traceback.format_exc()}")
+    
+    # Return generic error to client (don't expose internal details)
+    response = {
+        "status": "error",
+        "code": 500,
+        "name": "Internal Server Error",
+        "message": "An unexpected error occurred. Check server logs for details."
+    }
+    return jsonify(response), 500
 
 
 if __name__ == '__main__':

@@ -478,7 +478,19 @@
         function performBatchAction(url, body) { fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(handleGenericResponse).catch(handleError); }
         const lightboxOverlay = document.getElementById('lightbox-overlay'); const lightboxMedia = document.getElementById('lightbox-media'); const lightboxTitle = document.getElementById('lightbox-title'); const lightboxDownload = document.getElementById('lightbox-download'); const lightboxWorkflow = document.getElementById('lightbox-workflow'); const lightboxNewTab = document.getElementById('lightbox-new-tab'); let currentLightboxIndex = -1; let currentLightboxFile = null; let currentZoom = 1;
         function updateLightboxTitle() { if (!currentLightboxFile) return; const zoomPercentage = Math.round(currentZoom * 100); lightboxTitle.textContent = `${currentLightboxFile.name} (${zoomPercentage}%)`; }
-        function openLightbox(event, fileId) { if (event.target.closest('a, button')) return; event.stopPropagation(); currentLightboxIndex = galleryItems.findIndex(item => item.dataset.fileId === fileId); if (currentLightboxIndex === -1) return; currentZoom = 1; document.body.classList.add('lightbox-open'); lightboxOverlay.classList.add('visible'); showItemAtIndex(currentLightboxIndex); }
+        function openLightbox(event, fileId) { 
+            // Allow programmatic calls (e.g., from URL hash) where event is null
+            if (event) {
+                if (event.target.closest('a, button')) return; 
+                event.stopPropagation(); 
+            }
+            currentLightboxIndex = galleryItems.findIndex(item => item.dataset.fileId === fileId); 
+            if (currentLightboxIndex === -1) return; 
+            currentZoom = 1; 
+            document.body.classList.add('lightbox-open'); 
+            lightboxOverlay.classList.add('visible'); 
+            showItemAtIndex(currentLightboxIndex); 
+        }
         function closeLightbox() { const mediaElement = lightboxMedia.querySelector('video, audio'); if (mediaElement) mediaElement.pause(); document.body.classList.remove('lightbox-open'); lightboxOverlay.classList.remove('visible'); lightboxMedia.innerHTML = ''; currentLightboxIndex = -1; currentLightboxFile = null; }
         function showItemAtIndex(index) { const item = galleryItems[index]; if (!item) return; const file = allFilesData.find(f => f.id === item.dataset.fileId); if (!file) return; currentLightboxFile = file; updateLightboxTitle(); lightboxMedia.innerHTML = ''; let mediaEl; if (file.type === 'audio') { mediaEl = document.createElement('audio'); mediaEl.src = `/galleryout/file/${file.id}`; mediaEl.controls = true; mediaEl.autoplay = true; } else if (['image', 'animated_image'].includes(file.type)) { mediaEl = document.createElement('img'); mediaEl.src = `/galleryout/file/${file.id}`; mediaEl.alt = file.name; } else if (file.type === 'video') { mediaEl = document.createElement('video'); mediaEl.src = `/galleryout/file/${file.id}`; mediaEl.controls = true; mediaEl.autoplay = true; mediaEl.loop = true; } if (mediaEl) { if (mediaEl.style) { mediaEl.style.transform = `scale(${currentZoom})`; } lightboxMedia.appendChild(mediaEl); } else { lightboxMedia.innerHTML = `<div style="color:white;font-size:1.2rem;text-align:center;">📄<br>Preview not available</div>`; } lightboxDownload.href = `/galleryout/download/${file.id}`; lightboxNewTab.href = `/galleryout/file/${file.id}`; const summaryBtn = document.getElementById('lightbox-summary-btn'); if (file.has_workflow) { lightboxWorkflow.href = `/galleryout/workflow/${file.id}`; lightboxWorkflow.style.display = 'flex'; summaryBtn.style.display = 'flex'; summaryBtn.onclick = (event) => { event.stopPropagation(); showNodeSummary(event, file.id); }; } else { lightboxWorkflow.style.display = 'none'; summaryBtn.style.display = 'none'; summaryBtn.onclick = null; } }
         function navigateLightbox(direction) { if (galleryItems.length === 0) return; currentLightboxIndex = (currentLightboxIndex + direction + galleryItems.length) % galleryItems.length; showItemAtIndex(currentLightboxIndex); }
@@ -701,6 +713,23 @@
             document.addEventListener('keydown', (event) => { if ((event.ctrlKey || event.metaKey) && event.key === 'a') { event.preventDefault(); selectAll(); } if (event.key === 'Escape') { if (uploadOverlay.classList.contains('visible')) closeUploadModal(); else if (summaryOverlay.classList.contains('visible')) closeNodeSummary(); else if (lightboxOverlay.classList.contains('visible')) closeLightbox(); else if (selectedFiles.size > 0) deselectAll(); hideDropZone(); } if (lightboxOverlay.classList.contains('visible')) { if (event.key === 'ArrowLeft') navigateLightbox(-1); if (event.key === 'ArrowRight') navigateLightbox(1); if (event.key === 'Delete') { event.preventDefault(); deleteFromLightbox(true); } } });
             window.onscroll = () => { if (backToTopBtn) { backToTopBtn.style.display = (window.scrollY > 300) ? 'block' : 'none'; } };
             startSyncProcess(false);
+            
+            // Handle deep-linking via URL hash (e.g., #file-abc123...)
+            // This allows clicking "recent files" in ComfyUI sidebar to open the image directly
+            setTimeout(() => {
+                const hash = window.location.hash;
+                if (hash && hash.startsWith('#file-')) {
+                    const fileId = hash.substring(6); // Remove '#file-' prefix
+                    const itemElement = galleryItems.find(item => item.dataset.fileId === fileId);
+                    
+                    if (itemElement) {
+                        console.log(`Deep link: Opening lightbox for file ${fileId}`);
+                        openLightbox(null, fileId); // Call with null event for programmatic open
+                    } else {
+                        console.warn(`Deep link: File ${fileId} not found on initial page load (may be on subsequent page)`);
+                    }
+                }
+            }, 150); // Small delay to ensure gallery items are rendered
         });
     </script>
 </body>
