@@ -140,6 +140,16 @@ Visit **`http://127.0.0.1:8189/galleryout`** and watch the magic happen!
 
 ---
 
+## 🔄 Updates Are Just a Reinstall
+
+### Step 1: Delete Your Old Install
+SmartGallery is self-contained; delete or archive your old versions without worry.
+
+### Step 2: Reinstall Fresh!
+Download the newest version, complete your fresh installation, and enjoy!
+
+---
+
 ## 🆕 How to Use the Upload Feature
 
 ### 🖱️ Desktop Upload
