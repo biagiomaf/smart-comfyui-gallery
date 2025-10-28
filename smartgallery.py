@@ -1,7 +1,7 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025 — MIT License (free to use and modify)
 #
-# Version: 1.33 - October 28, 2025
+# Version: 1.34.1 - October 28, 2025 (CORS Fix)
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -20,7 +20,10 @@ import sys
 import subprocess
 import base64
 import threading
+import logging
+from datetime import datetime
 from flask import Flask, render_template, send_from_directory, abort, send_file, url_for, redirect, request, jsonify, Response
+from flask_cors import CORS
 from PIL import Image, ImageSequence
 import colorsys
 from werkzeug.utils import secure_filename
@@ -56,6 +59,15 @@ DB_SCHEMA_VERSION = 21  # Schema version is static and can remain global
 
 # --- FLASK APP INITIALIZATION ---
 app = Flask(__name__)
+
+# Enable CORS for sidebar dashboard (ComfyUI on port 8000, gallery on port 8008)
+CORS(app, resources={
+    r"/smartgallery/*": {
+        "origins": ["http://127.0.0.1:8000", "http://localhost:8000"],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type"]
+    }
+})
 
 # Set default configuration values (will be overridden by CLI args in __main__)
 # These MUST be set before any routes are accessed
@@ -93,6 +105,9 @@ gallery_view_cache = []
 gallery_view_cache_lock = threading.Lock()
 folder_config_cache = None
 folder_config_cache_lock = threading.Lock()
+
+# Request counter for stats
+request_counter = {'count': 0, 'lock': threading.Lock()}
 
 # --- INITIALIZATION GUARD DECORATOR (Issue #5) ---
 from functools import wraps
@@ -707,7 +722,24 @@ def initialize_gallery(flask_app):
     protected_keys.add('_root_')
     flask_app.config['PROTECTED_FOLDER_KEYS'] = protected_keys
 
+    # Setup logging
+    log_dir = os.path.join(flask_app.config['BASE_OUTPUT_PATH'], 'smartgallery_logs')
+    os.makedirs(log_dir, exist_ok=True)
+    log_file = os.path.join(log_dir, f'gallery_{datetime.now().strftime("%Y%m%d")}.log')
+    
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s [%(levelname)s] %(message)s',
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler()
+        ]
+    )
+    flask_app.logger.setLevel(logging.INFO)
+    flask_app.config['LOG_FILE'] = log_file
+
     print("INFO: Initializing gallery...")
+    logging.info("SmartGallery initialization started")
     flask_app.config['FFPROBE_EXECUTABLE_PATH'] = find_ffprobe_path()
     os.makedirs(flask_app.config['THUMBNAIL_CACHE_DIR'], exist_ok=True)
     os.makedirs(flask_app.config['SQLITE_CACHE_DIR'], exist_ok=True)
@@ -717,14 +749,17 @@ def initialize_gallery(flask_app):
         except sqlite3.DatabaseError: stored_version = 0
         if stored_version < DB_SCHEMA_VERSION:
             print(f"INFO: DB version outdated ({stored_version} < {DB_SCHEMA_VERSION}). Rebuilding database...")
+            logging.info(f"DB version outdated ({stored_version} < {DB_SCHEMA_VERSION}). Rebuilding database...")
             conn.execute('DROP TABLE IF EXISTS files')
             init_db(conn)
             full_sync_database(conn)
             conn.execute(f'PRAGMA user_version = {DB_SCHEMA_VERSION}')
             conn.commit()
             print("INFO: Rebuild complete.")
+            logging.info("Database rebuild complete")
         else:
             print(f"INFO: DB version ({stored_version}) is up to date. Starting normally.")
+            logging.info(f"DB version ({stored_version}) is up to date")
 
 
 # --- FLASK ROUTES ---
@@ -1169,6 +1204,194 @@ def serve_thumbnail(file_id):
     cache_path = create_thumbnail(filepath, file_hash, info['type'])
     if cache_path and os.path.exists(cache_path): return send_file(cache_path)
     return "Thumbnail generation failed", 404
+
+
+# --- SMARTGALLERY SIDEBAR API ROUTES ---
+# These routes provide dashboard functionality for the ComfyUI sidebar
+
+@app.route('/smartgallery/stats')
+@require_initialization
+def get_stats():
+    """Returns gallery statistics for sidebar dashboard"""
+    try:
+        with get_db_connection() as conn:
+            # Total files
+            total_files = conn.execute("SELECT COUNT(*) FROM files").fetchone()[0]
+            
+            # Files by type
+            images = conn.execute("SELECT COUNT(*) FROM files WHERE type = 'image'").fetchone()[0]
+            videos = conn.execute("SELECT COUNT(*) FROM files WHERE type = 'video'").fetchone()[0]
+            animated = conn.execute("SELECT COUNT(*) FROM files WHERE type = 'animated_image'").fetchone()[0]
+            audio = conn.execute("SELECT COUNT(*) FROM files WHERE type = 'audio'").fetchone()[0]
+            
+            # Files with workflows
+            with_workflow = conn.execute("SELECT COUNT(*) FROM files WHERE has_workflow = 1").fetchone()[0]
+            
+            # Favorites
+            favorites = conn.execute("SELECT COUNT(*) FROM files WHERE is_favorite = 1").fetchone()[0]
+            
+            # Cache sizes
+            thumb_cache_size = sum(
+                os.path.getsize(os.path.join(app.config['THUMBNAIL_CACHE_DIR'], f))
+                for f in os.listdir(app.config['THUMBNAIL_CACHE_DIR'])
+                if os.path.isfile(os.path.join(app.config['THUMBNAIL_CACHE_DIR'], f))
+            ) if os.path.exists(app.config['THUMBNAIL_CACHE_DIR']) else 0
+            
+            db_size = os.path.getsize(app.config['DATABASE_FILE']) if os.path.exists(app.config['DATABASE_FILE']) else 0
+            
+            # Request count
+            with request_counter['lock']:
+                requests = request_counter['count']
+            
+            return jsonify({
+                'success': True,
+                'data': {
+                    'total_files': total_files,
+                    'by_type': {
+                        'images': images,
+                        'videos': videos,
+                        'animated': animated,
+                        'audio': audio
+                    },
+                    'with_workflow': with_workflow,
+                    'favorites': favorites,
+                    'cache_size_mb': round((thumb_cache_size + db_size) / (1024 * 1024), 2),
+                    'thumbnail_cache_mb': round(thumb_cache_size / (1024 * 1024), 2),
+                    'db_size_mb': round(db_size / (1024 * 1024), 2),
+                    'requests': requests
+                }
+            })
+    except Exception as e:
+        logging.error(f"Failed to get stats: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/smartgallery/recent')
+@require_initialization
+def get_recent_files():
+    """Returns recently added files for sidebar dashboard"""
+    try:
+        limit = request.args.get('limit', 6, type=int)
+        with get_db_connection() as conn:
+            rows = conn.execute(
+                "SELECT id, name, type, dimensions, has_workflow FROM files ORDER BY mtime DESC LIMIT ?",
+                (limit,)
+            ).fetchall()
+            
+            files = [{
+                'id': row[0],
+                'name': row[1],
+                'type': row[2],
+                'dimensions': row[3],
+                'has_workflow': bool(row[4]),
+                'thumbnail_url': f'/galleryout/thumbnail/{row[0]}'
+            } for row in rows]
+            
+            return jsonify({'success': True, 'data': files})
+    except Exception as e:
+        logging.error(f"Failed to get recent files: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/smartgallery/sync_all', methods=['POST'])
+@require_initialization
+def sync_all_folders():
+    """Triggers a full sync of all folders"""
+    try:
+        logging.info("Full sync initiated from sidebar")
+        with get_db_connection() as conn:
+            full_sync_database(conn)
+        
+        # Clear caches
+        global gallery_view_cache, folder_config_cache
+        with gallery_view_cache_lock:
+            gallery_view_cache = []
+        with folder_config_cache_lock:
+            folder_config_cache = None
+        
+        logging.info("Full sync completed successfully")
+        return jsonify({'success': True, 'message': 'All folders synced successfully'})
+    except Exception as e:
+        logging.error(f"Full sync failed: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/smartgallery/clear_cache', methods=['POST'])
+@require_initialization
+def clear_all_caches():
+    """Clears thumbnail cache and memory caches"""
+    try:
+        cache_type = request.json.get('type', 'all')  # 'thumbnails', 'memory', or 'all'
+        cleared = []
+        
+        if cache_type in ['thumbnails', 'all']:
+            # Clear thumbnail cache
+            thumb_dir = app.config['THUMBNAIL_CACHE_DIR']
+            if os.path.exists(thumb_dir):
+                count = 0
+                for filename in os.listdir(thumb_dir):
+                    filepath = os.path.join(thumb_dir, filename)
+                    if os.path.isfile(filepath):
+                        os.remove(filepath)
+                        count += 1
+                cleared.append(f'{count} thumbnails')
+                logging.info(f"Cleared {count} thumbnails from cache")
+        
+        if cache_type in ['memory', 'all']:
+            # Clear memory caches
+            global gallery_view_cache, folder_config_cache
+            with gallery_view_cache_lock:
+                gallery_view_cache = []
+            with folder_config_cache_lock:
+                folder_config_cache = None
+            cleared.append('memory caches')
+            logging.info("Cleared memory caches")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Cleared: {", ".join(cleared)}'
+        })
+    except Exception as e:
+        logging.error(f"Cache clearing failed: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/smartgallery/logs')
+@require_initialization
+def get_logs():
+    """Returns recent log entries"""
+    try:
+        lines = request.args.get('lines', 100, type=int)
+        log_file = app.config.get('LOG_FILE')
+        
+        if not log_file or not os.path.exists(log_file):
+            return jsonify({'success': False, 'error': 'Log file not found'}), 404
+        
+        # Read last N lines efficiently
+        with open(log_file, 'r', encoding='utf-8') as f:
+            all_lines = f.readlines()
+            recent_lines = all_lines[-lines:] if len(all_lines) > lines else all_lines
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'lines': [line.strip() for line in recent_lines],
+                'total': len(recent_lines),
+                'file': os.path.basename(log_file)
+            }
+        })
+    except Exception as e:
+        logging.error(f"Failed to read logs: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# Request counter middleware
+@app.before_request
+def count_request():
+    """Increment request counter for stats"""
+    with request_counter['lock']:
+        request_counter['count'] += 1
+
 
 if __name__ == '__main__':
     import argparse

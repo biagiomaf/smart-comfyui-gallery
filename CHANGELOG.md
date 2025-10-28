@@ -1,6 +1,92 @@
 
 # Changelog
 
+## [1.34.1] - 2025-10-28
+
+### Fixed
+
+#### CORS Support for Dashboard (`smartgallery.py`)
+- **Critical Fix**: Added CORS (Cross-Origin Resource Sharing) support using `flask-cors` package
+- **Issue**: Dashboard API calls from ComfyUI (port 8000) to Gallery server (port 8008) were blocked by browser CORS policy
+- **Solution**: Configured CORS to allow requests from `http://127.0.0.1:8000` and `http://localhost:8000`
+- **Affected Endpoints**: All `/smartgallery/*` routes (stats, recent, sync_all, clear_cache, logs)
+- **Error Fixed**: `"Access to fetch at 'http://localhost:8008/smartgallery/stats' from origin 'http://127.0.0.1:8000' has been blocked by CORS policy"`
+
+### Changed
+
+#### Dependencies (`pyproject.toml`)
+- Added `flask-cors` package to dependencies list
+- Required for cross-origin requests between ComfyUI and gallery servers
+
+## [1.34] - 2025-10-28
+
+### Added
+
+#### ComfyUI Sidebar Dashboard (`galleryConfig.js`, `galleryConfig.css`, `smartgallery.py`)
+- **Gallery Statistics Dashboard**: Added real-time stats panel showing:
+  - Total files count
+  - Breakdown by type (images, videos, animated images, audio)
+  - Files with workflows count
+  - Favorites count
+  - Cache size metrics (thumbnails + database)
+  - Request counter for server activity monitoring
+- **Recent Files Preview**: Display 6 most recently added files with thumbnails directly in the sidebar
+- **Quick Actions Panel**: One-click buttons for:
+  - 🔄 **Sync All Folders**: Triggers full gallery synchronization
+  - 🗑️ **Clear Cache**: Removes thumbnail cache and memory caches
+  - 📋 **View Logs**: Opens modal dialog displaying latest 100 log entries
+  - 🌐 **Open Gallery**: Quick link to open gallery in new browser tab
+- **Auto-refresh**: Dashboard stats and recent files automatically update every 30 seconds
+- **Logs Viewer Modal**: Full-featured modal with:
+  - Scrollable log content
+  - File name and line count display
+  - Keyboard/mouse close functionality
+  - Monospace font for readability
+
+#### Backend API Endpoints (`smartgallery.py`)
+- **GET /smartgallery/stats**: Returns gallery statistics (file counts, cache sizes, request count)
+- **GET /smartgallery/recent**: Returns N most recent files with thumbnail URLs
+- **POST /smartgallery/sync_all**: Triggers full folder synchronization and cache clearing
+- **POST /smartgallery/clear_cache**: Clears thumbnail cache and/or memory caches (supports partial clearing)
+- **GET /smartgallery/logs**: Returns recent log entries from daily log files
+- **Request Counter Middleware**: Tracks all incoming requests for stats dashboard
+
+#### Logging System (`smartgallery.py`)
+- **Structured Logging**: Added Python logging module with daily rotating log files
+- **Log Directory**: Logs stored in `{output_path}/smartgallery_logs/gallery_YYYYMMDD.log`
+- **Console + File Output**: All log messages written to both console and file
+- **Initialization Logging**: Key events logged (startup, DB rebuilds, sync operations)
+
+### Changed
+
+#### Version Numbers
+- Updated `smartgallery.py` header to v1.34
+- Updated `pyproject.toml` version to 1.34.0
+
+#### Dependencies
+- Added `logging` and `datetime` imports to `smartgallery.py`
+
+### Technical Details
+
+#### Architecture
+- Dashboard communicates directly with Flask server on configured port (default 8008)
+- Uses `fetch()` for direct Flask calls (CORS-compatible)
+- Stats and recent files loaded on sidebar tab activation
+- Timer-based auto-refresh with proper cleanup on tab close
+
+#### UI/UX
+- Dashboard section appears at top of Gallery Config sidebar tab
+- Stats displayed in responsive grid layout (2-3 columns depending on screen width)
+- Recent files shown as 6-item thumbnail grid with workflow badges
+- Quick actions as 4-button responsive grid
+- Modern Aura design system styling with hover effects and animations
+
+#### Performance
+- Stats queries optimized with single DB connection
+- Thumbnail cache size calculated lazily (only when stats requested)
+- Memory caches cleared efficiently with thread-safe locks
+- Auto-refresh debounced to prevent excessive API calls
+
 ## [1.31] - 2025-10-27
 
 ### Changed

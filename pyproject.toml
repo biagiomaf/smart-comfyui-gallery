@@ -4,13 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "smart-comfyui-gallery"
-version = "1.33.0"
+version = "1.34.1"
 description = "A visual hub for ComfyUI with universal workflow recall, upload magic, and intelligent organization."
 license = "MIT"
 license-files = ["LICENSE"]
 
 dependencies = [
     "Flask",
+    "flask-cors",
     "Pillow",
     "opencv-python"
 ]

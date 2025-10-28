@@ -44,10 +44,217 @@ class GalleryConfigUI {
             // Render UI
             this.render();
             
+            // Load dashboard data
+            this.loadStats();
+            this.loadRecentFiles();
+            
+            // Auto-refresh stats every 30 seconds
+            if (this.refreshTimer) clearInterval(this.refreshTimer);
+            this.refreshTimer = setInterval(() => {
+                this.loadStats();
+                this.loadRecentFiles();
+            }, 30000);
+            
         } catch (error) {
             console.error("[SmartGallery] Failed to load configuration:", error);
             this.showError(`Failed to load configuration: ${error.message}`);
         }
+    }
+    
+    async loadStats() {
+        const port = this.config.server_port || 8008;
+        try {
+            const response = await fetch(`http://localhost:${port}/smartgallery/stats`, {
+                method: 'GET',
+                cache: 'no-cache'
+            });
+            
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
+            const result = await response.json();
+            if (result.success) {
+                const data = result.data;
+                document.getElementById('stat-total').textContent = data.total_files.toLocaleString();
+                document.getElementById('stat-images').textContent = data.by_type.images.toLocaleString();
+                document.getElementById('stat-videos').textContent = data.by_type.videos.toLocaleString();
+                document.getElementById('stat-workflows').textContent = data.with_workflow.toLocaleString();
+                document.getElementById('stat-favorites').textContent = data.favorites.toLocaleString();
+                document.getElementById('stat-cache').textContent = `${data.cache_size_mb} MB`;
+            }
+        } catch (error) {
+            console.error('[SmartGallery] Failed to load stats:', error);
+            // Silently fail - don't show error to user for auto-refresh
+        }
+    }
+    
+    async loadRecentFiles() {
+        const port = this.config.server_port || 8008;
+        const container = document.getElementById('recent-files');
+        if (!container) return;
+        
+        try {
+            const response = await fetch(`http://localhost:${port}/smartgallery/recent?limit=6`, {
+                method: 'GET',
+                cache: 'no-cache'
+            });
+            
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
+            const result = await response.json();
+            if (result.success && result.data.length > 0) {
+                container.innerHTML = result.data.map(file => `
+                    <div class="recent-file-card" title="${file.name}">
+                        <img src="http://localhost:${port}${file.thumbnail_url}" 
+                             alt="${file.name}"
+                             onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23333%22 width=%22100%22 height=%22100%22/%3E%3Ctext fill=%22%23666%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dominant-baseline=%22middle%22%3E?%3C/text%3E%3C/svg%3E'">
+                        <div class="recent-file-info">
+                            <div class="recent-file-name">${file.name.length > 20 ? file.name.substring(0, 20) + '...' : file.name}</div>
+                            ${file.has_workflow ? '<span class="workflow-badge">⚡</span>' : ''}
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                container.innerHTML = '<div class="empty-state">No recent files</div>';
+            }
+        } catch (error) {
+            console.error('[SmartGallery] Failed to load recent files:', error);
+            container.innerHTML = '<div class="error-state">Failed to load recent files</div>';
+        }
+    }
+    
+    async syncGallery() {
+        const port = this.config.server_port || 8008;
+        const statusDiv = document.getElementById('status-message');
+        
+        if (statusDiv) {
+            statusDiv.innerHTML = '<div class="loading-box">🔄 Syncing all folders...</div>';
+        }
+        
+        try {
+            const response = await fetch(`http://localhost:${port}/smartgallery/sync_all`, {
+                method: 'POST',
+                cache: 'no-cache'
+            });
+            
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
+            const result = await response.json();
+            if (result.success) {
+                if (statusDiv) {
+                    statusDiv.innerHTML = '<div class="success-box">✅ All folders synced successfully</div>';
+                    setTimeout(() => { if (statusDiv) statusDiv.innerHTML = ''; }, 5000);
+                }
+                // Refresh stats after sync
+                this.loadStats();
+                this.loadRecentFiles();
+            } else {
+                throw new Error(result.error || 'Sync failed');
+            }
+        } catch (error) {
+            console.error('[SmartGallery] Sync failed:', error);
+            if (statusDiv) {
+                statusDiv.innerHTML = `<div class="error-box">❌ Sync failed: ${error.message}</div>`;
+            }
+        }
+    }
+    
+    async clearCache() {
+        const port = this.config.server_port || 8008;
+        const statusDiv = document.getElementById('status-message');
+        
+        if (!confirm('Clear thumbnail cache? Thumbnails will be regenerated on demand.')) {
+            return;
+        }
+        
+        if (statusDiv) {
+            statusDiv.innerHTML = '<div class="loading-box">🗑️ Clearing cache...</div>';
+        }
+        
+        try {
+            const response = await fetch(`http://localhost:${port}/smartgallery/clear_cache`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: 'all' }),
+                cache: 'no-cache'
+            });
+            
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
+            const result = await response.json();
+            if (result.success) {
+                if (statusDiv) {
+                    statusDiv.innerHTML = `<div class="success-box">✅ ${result.message}</div>`;
+                    setTimeout(() => { if (statusDiv) statusDiv.innerHTML = ''; }, 5000);
+                }
+                // Refresh stats after clearing cache
+                this.loadStats();
+            } else {
+                throw new Error(result.error || 'Clear failed');
+            }
+        } catch (error) {
+            console.error('[SmartGallery] Clear cache failed:', error);
+            if (statusDiv) {
+                statusDiv.innerHTML = `<div class="error-box">❌ Clear failed: ${error.message}</div>`;
+            }
+        }
+    }
+    
+    async viewLogs() {
+        const port = this.config.server_port || 8008;
+        
+        try {
+            const response = await fetch(`http://localhost:${port}/smartgallery/logs?lines=100`, {
+                method: 'GET',
+                cache: 'no-cache'
+            });
+            
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
+            const result = await response.json();
+            if (result.success) {
+                this.showLogsModal(result.data);
+            } else {
+                throw new Error(result.error || 'Failed to load logs');
+            }
+        } catch (error) {
+            console.error('[SmartGallery] Failed to load logs:', error);
+            alert(`Failed to load logs: ${error.message}`);
+        }
+    }
+    
+    showLogsModal(data) {
+        // Create modal overlay
+        const modal = document.createElement('div');
+        modal.className = 'logs-modal-overlay';
+        modal.innerHTML = `
+            <div class="logs-modal">
+                <div class="logs-modal-header">
+                    <h3>📋 Gallery Logs</h3>
+                    <button class="logs-modal-close" onclick="this.closest('.logs-modal-overlay').remove()">✕</button>
+                </div>
+                <div class="logs-modal-info">
+                    <span>📄 ${data.file}</span>
+                    <span>📊 ${data.total} lines</span>
+                </div>
+                <div class="logs-modal-content">
+                    <pre>${data.lines.join('\n')}</pre>
+                </div>
+            </div>
+        `;
+        
+        // Close on overlay click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+        
+        document.body.appendChild(modal);
+    }
+    
+    openGallery() {
+        const port = this.config.server_port || 8008;
+        window.open(`http://localhost:${port}/galleryout/`, '_blank');
     }
     
     render() {
@@ -60,6 +267,76 @@ class GalleryConfigUI {
                     <h2>🖼️ Gallery Configuration</h2>
                     <p class="gallery-config-subtitle">Configure SmartGallery backend settings</p>
                 </div>
+                
+                <!-- Dashboard Section -->
+                <section class="config-section dashboard-section">
+                    <h3>📊 Gallery Dashboard</h3>
+                    <div class="dashboard-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">📁</div>
+                            <div class="stat-content">
+                                <div class="stat-label">Total Files</div>
+                                <div class="stat-value" id="stat-total">-</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">🖼️</div>
+                            <div class="stat-content">
+                                <div class="stat-label">Images</div>
+                                <div class="stat-value" id="stat-images">-</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">🎬</div>
+                            <div class="stat-content">
+                                <div class="stat-label">Videos</div>
+                                <div class="stat-value" id="stat-videos">-</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">⚡</div>
+                            <div class="stat-content">
+                                <div class="stat-label">With Workflows</div>
+                                <div class="stat-value" id="stat-workflows">-</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">⭐</div>
+                            <div class="stat-content">
+                                <div class="stat-label">Favorites</div>
+                                <div class="stat-value" id="stat-favorites">-</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">💾</div>
+                            <div class="stat-content">
+                                <div class="stat-label">Cache Size</div>
+                                <div class="stat-value" id="stat-cache">-</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h4>📸 Recent Files</h4>
+                    <div class="recent-files-grid" id="recent-files">
+                        <div class="loading-box">Loading recent files...</div>
+                    </div>
+                    
+                    <h4>⚡ Quick Actions</h4>
+                    <div class="quick-actions-grid">
+                        <button class="btn-action" onclick="window.galleryConfigInstance.syncGallery()">
+                            🔄 Sync All Folders
+                        </button>
+                        <button class="btn-action" onclick="window.galleryConfigInstance.clearCache()">
+                            🗑️ Clear Cache
+                        </button>
+                        <button class="btn-action" onclick="window.galleryConfigInstance.viewLogs()">
+                            📋 View Logs
+                        </button>
+                        <button class="btn-action" onclick="window.galleryConfigInstance.openGallery()">
+                            🌐 Open Gallery
+                        </button>
+                    </div>
+                </section>
                 
                 <!-- Path Configuration Section -->
                 <section class="config-section">
@@ -478,6 +755,22 @@ app.registerExtension({
     async setup() {
         console.log("[SmartGallery] Registering configuration sidebar tab");
         
+        // Load CSS file programmatically
+        const cssLink = document.createElement("link");
+        cssLink.rel = "stylesheet";
+        cssLink.type = "text/css";
+        cssLink.href = new URL("./galleryConfig.css", import.meta.url).href;
+        
+        cssLink.onload = () => {
+            console.log("[SmartGallery] ✅ CSS loaded successfully:", cssLink.href);
+        };
+        
+        cssLink.onerror = () => {
+            console.error("[SmartGallery] ❌ Failed to load CSS:", cssLink.href);
+        };
+        
+        document.head.appendChild(cssLink);
+        
         // Register custom sidebar tab
         app.extensionManager.registerSidebarTab({
             id: "smart-gallery-config",
@@ -494,7 +787,12 @@ app.registerExtension({
             
             destroy: () => {
                 // Cleanup when tab is closed
-                window.galleryConfigInstance = null;
+                if (window.galleryConfigInstance) {
+                    if (window.galleryConfigInstance.refreshTimer) {
+                        clearInterval(window.galleryConfigInstance.refreshTimer);
+                    }
+                    window.galleryConfigInstance = null;
+                }
             }
         });
         
