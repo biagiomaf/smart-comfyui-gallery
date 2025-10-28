@@ -1,7 +1,7 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025 — MIT License (free to use and modify)
 #
-# Version: 1.35.1 - October 28, 2025 (Parallel Processing & File Rename)
+# Version: 1.36.0 - October 28, 2025 (Robust Deep-Linking with Pagination)
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -50,6 +50,9 @@ BATCH_SIZE = 500
 # - Set to 1 to disable parallel processing (slowest, like in previous versions).
 # - Set to a specific number of cores (e.g., 4) to limit CPU usage on a multi-core machine.
 MAX_PARALLEL_WORKERS = None
+
+# Number of files to display per page in the gallery view
+FILES_PER_PAGE = 50
 
 # --- CACHE AND FOLDER NAMES ---
 # Constants are now defined and loaded into app.config in the main block.
@@ -1028,6 +1031,12 @@ def gallery_view(folder_key):
     current_folder_info = folders[folder_key]
     folder_path = current_folder_info['path']
     
+    # Get page number from query parameters
+    page = request.args.get('page', 1, type=int)
+    if page < 1:
+        page = 1
+    offset = (page - 1) * FILES_PER_PAGE
+    
     conn = get_db()
     conditions, params = [], []
     conditions.append("path LIKE ?")
@@ -1056,18 +1065,20 @@ def gallery_view(folder_key):
         if ext_conditions: conditions.append(f"({' OR '.join(ext_conditions)})")
         
     sort_direction = "ASC" if sort_order == 'asc' else "DESC"
-    query = f"SELECT * FROM files WHERE {' AND '.join(conditions)} ORDER BY {sort_by} {sort_direction}"
-        
-    all_files_raw = conn.execute(query, params).fetchall()
-        
+    
+    # First get all files for cache (used by load_more)
+    query_all = f"SELECT * FROM files WHERE {' AND '.join(conditions)} ORDER BY {sort_by} {sort_direction}"
+    all_files_raw = conn.execute(query_all, params).fetchall()
+    
     folder_path_norm = os.path.normpath(folder_path)
     all_files_filtered = [dict(row) for row in all_files_raw if os.path.normpath(os.path.dirname(row['path'])) == folder_path_norm]
     
     # Thread-safe update of gallery_view_cache
     with gallery_view_cache_lock:
         gallery_view_cache = all_files_filtered
-        initial_files = gallery_view_cache[:app.config['PAGE_SIZE']]
         total_files_count = len(gallery_view_cache)
+        # Get paginated files for this page
+        initial_files = gallery_view_cache[offset:offset + FILES_PER_PAGE]
     
     _, extensions, prefixes = scan_folder_and_extract_options(folder_path)
     breadcrumbs, ancestor_keys = [], set()
@@ -1082,6 +1093,8 @@ def gallery_view(folder_key):
     return render_template('index.html', 
                            files=initial_files, 
                            total_files=total_files_count, 
+                           initial_page=page,
+                           files_per_page=FILES_PER_PAGE,
                            folders=folders,
                            current_folder_key=folder_key, 
                            current_folder_info=current_folder_info,
@@ -1198,17 +1211,107 @@ def delete_folder(folder_key):
 @app.route('/galleryout/load_more')
 @require_initialization
 def load_more():
-    offset = request.args.get('offset', 0, type=int)
+    page = request.args.get('page', 2, type=int)
     
     # Validate input
-    if offset < 0:
+    if page < 1:
         return jsonify(files=[])
+    
+    offset = (page - 1) * FILES_PER_PAGE
     
     # Thread-safe access to gallery_view_cache
     with gallery_view_cache_lock:
         if offset >= len(gallery_view_cache):
             return jsonify(files=[])
-        return jsonify(files=gallery_view_cache[offset:offset + app.config['PAGE_SIZE']])
+        
+        # Get the next page of files
+        end_index = offset + FILES_PER_PAGE
+        files_to_return = gallery_view_cache[offset:end_index]
+    
+    return jsonify(files=files_to_return)
+
+@app.route('/galleryout/file_location/<string:file_id>')
+@require_initialization
+def file_location(file_id):
+    """
+    Finds which folder and page a specific file_id belongs on,
+    respecting current filter and sort parameters.
+    """
+    conn = get_db()
+    
+    # First, find the file's folder by getting its path
+    file_info = conn.execute("SELECT path FROM files WHERE id = ?", (file_id,)).fetchone()
+    
+    if not file_info:
+        return jsonify({"status": "error", "message": "File not found"}), 404
+    
+    file_path = file_info['path']
+    file_dir = os.path.dirname(file_path)
+    
+    # Find the folder key for this directory
+    folders = get_dynamic_folder_config()
+    folder_key = None
+    for key, folder_data in folders.items():
+        if os.path.normpath(folder_data['path']) == os.path.normpath(file_dir):
+            folder_key = key
+            break
+    
+    if not folder_key:
+        return jsonify({"status": "error", "message": "Folder not found for file"}), 404
+    
+    # Re-apply the same filter/sort logic from gallery_view
+    # This is crucial for calculating the correct index.
+    search_term = request.args.get('search', '').strip()
+    selected_extensions = request.args.getlist('extension')
+    selected_prefixes = request.args.getlist('prefix')
+    show_favorites = request.args.get('favorites', 'false').lower() == 'true'
+    sort_by = 'name' if request.args.get('sort_by') == 'name' else 'mtime'
+    sort_order = 'asc' if request.args.get('sort_order', 'desc').lower() == 'asc' else 'desc'
+    
+    sort_direction = "ASC" if sort_order == 'asc' else "DESC"
+    
+    conditions = ["path LIKE ?"]
+    params = [file_dir + os.sep + '%']
+    
+    if search_term:
+        conditions.append("name LIKE ?")
+        params.append(f"%{search_term}%")
+    
+    if show_favorites:
+        conditions.append("is_favorite = 1")
+    
+    if selected_prefixes:
+        prefix_conditions = [f"name LIKE ?" for p in selected_prefixes if p.strip()]
+        params.extend([f"{p.strip()}_%" for p in selected_prefixes if p.strip()])
+        if prefix_conditions:
+            conditions.append(f"({' OR '.join(prefix_conditions)})")
+    
+    if selected_extensions:
+        ext_conditions = [f"name LIKE ?" for ext in selected_extensions if ext.strip()]
+        params.extend([f"%.{ext.lstrip('.').lower()}" for ext in selected_extensions if ext.strip()])
+        if ext_conditions:
+            conditions.append(f"({' OR '.join(ext_conditions)})")
+    
+    # Get all file IDs in the folder, with filters and sorting applied
+    query = f"SELECT id FROM files WHERE {' AND '.join(conditions)} ORDER BY {sort_by} {sort_direction}"
+    all_files_in_view = conn.execute(query, params).fetchall()
+    
+    all_ids_in_view = [row['id'] for row in all_files_in_view]
+    
+    try:
+        index_in_view = all_ids_in_view.index(file_id)
+        page = (index_in_view // FILES_PER_PAGE) + 1
+        
+        return jsonify({
+            "status": "success",
+            "folder_key": folder_key,
+            "page": page
+        })
+    except ValueError:
+        return jsonify({
+            "status": "error", 
+            "message": "File exists but is hidden by current filters."
+        }), 404
 
 def get_file_info_from_db(file_id, column='*'):
     try:

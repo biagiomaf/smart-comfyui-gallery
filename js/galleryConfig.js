@@ -273,7 +273,7 @@ class GalleryConfigUI {
         const html = `
             <div class="gallery-config-container">
                 <div class="gallery-config-header">
-                    <h2>🖼️ Gallery Configuration</h2>
+                    <h2>🖼️ Smart Gallery</h2>
                     <p class="gallery-config-subtitle">Configure SmartGallery backend settings</p>
                 </div>
                 
@@ -787,7 +787,7 @@ app.registerExtension({
         app.extensionManager.registerSidebarTab({
             id: "smart-gallery-config",
             icon: "pi pi-images",
-            title: "Gallery Config",
+            title: "Smart Gallery",
             tooltip: "Configure SmartGallery settings",
             type: "custom",
             

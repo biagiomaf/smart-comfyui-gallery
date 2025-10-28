@@ -28,15 +28,25 @@
 
 ---
 
-## 🆕 What's New in Version 1.35?
+## 🆕 What's New in Version 1.36?
 
+- 🔗 **Robust Deep-Linking with Pagination**: Share direct links to any file, anywhere in your gallery
+  - Intelligent file location lookup across all pages and folders
+  - Automatic navigation to correct page with preserved filters and sorting
+  - Instant opening for files on current page, smart navigation for files on other pages
+  - Perfect integration with ComfyUI sidebar's "Recent Files" feature
+- 📄 **Page-Based Pagination**: Cleaner, more efficient pagination system (50 files per page by default)
+- 🎯 **Filter-Aware Deep Links**: Deep links respect active filters and sort order for accurate file location
+- ⚡ **Performance Optimized**: Minimal server queries, cached results, instant UX for current page files
+
+### Previous Updates (v1.35)
 - ⚡ **10-20x Faster Sync**: Parallel processing with all CPU cores for blazing fast database updates on large galleries
 - ✏️ **File Rename**: Rename files directly from the lightbox with validation and automatic database updates
 - 💾 **Persistent UI State**: Folder expansion, sort preferences, and sidebar state remembered across sessions
 - 🔧 **Batch Processing**: Prevents out-of-memory errors on 10,000+ file galleries with smart batch writes
 - 📊 **Progress Feedback**: Real-time console progress bar (tqdm) shows sync status with file counts
 
-### Previous Updates (v1.34)
+### v1.34 Updates
 - 🎯 **Dashboard Improvements**: Clickable recent files, prominent "Open Gallery" button, clean 3-column quick actions layout
 - 🌐 **CORS Support**: Fixed cross-origin API calls between ComfyUI (port 8000) and Gallery server (port 8008)
 - 🔒 **Enhanced Logging**: Daily log rotation with timestamps for troubleshooting

@@ -1,6 +1,52 @@
 
 # Changelog
 
+## [1.36.0] - 2025-10-28
+
+### Added
+
+#### Robust Deep-Linking with Pagination (`smartgallery.py`, `templates/index.html`)
+- **New API Endpoint**: `/galleryout/file_location/<file_id>` - Intelligent file location lookup
+  - Finds which folder and page a specific file belongs to
+  - Respects current filter and sort parameters
+  - Returns JSON: `{"status": "success", "folder_key": "...", "page": 3}`
+  - Handles edge cases: file not found, filtered out, or in different folder
+- **Page-Based Pagination**: Replaced offset-based with page-based pagination (50 files per page)
+  - `FILES_PER_PAGE` constant for centralized configuration
+  - `gallery_view()` accepts `?page=N` query parameter
+  - `load_more` endpoint uses page numbers instead of offsets
+  - Frontend tracks `currentPage` variable
+- **Two-Stage Deep-Link Handler** (JavaScript):
+  - **Stage 1**: Instant open if file is on current page (< 100ms)
+  - **Stage 2**: Query server for location if not found, then navigate automatically
+  - Preserves filters, sort order, and folder context across navigation
+  - Prevents infinite redirect loops with smart page checking
+- **Filter/Sort Awareness**: Deep links work correctly with active filters and custom sorting
+- **User Notifications**: Informative messages during file location lookup
+- **Cross-Folder Navigation**: Automatically switches folders when file is in different location
+
+#### Documentation
+- **DEEP_LINKING_PAGINATION_FIX.md**: Complete implementation summary, problem analysis, and solution details
+- **DEEP_LINKING_FLOW_DIAGRAM.md**: Visual flow diagram, edge cases, and performance characteristics
+- **DEEP_LINKING_TESTING_GUIDE.md**: Comprehensive testing guide with examples, scripts, and common issues
+
+### Changed
+
+#### Pagination System Refactor
+- **`gallery_view()`**: Now returns paginated results based on `page` parameter
+- **`load_more`**: Updated to use page-based pagination for consistency
+- **Template Variables**: Added `initial_page` and `files_per_page` to `index.html`
+- **JavaScript Load More**: Increments `currentPage` and passes to server
+
+### Fixed
+
+#### Deep-Linking Limitations (Issue: Files only openable on first page)
+- **Previous Behavior**: Deep links only worked if file happened to be on first page
+- **New Behavior**: Works for any file on any page in any folder
+- **Performance**: Instant for current page (0ms), fast for other pages (~500ms total)
+
+---
+
 ## [1.35.2] - 2025-10-28
 
 ### Performance

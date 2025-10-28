@@ -350,6 +350,8 @@
         const currentFolderInfo = {{ current_folder_info | tojson }};
         const protectedFolderKeys = {{ protected_folder_keys | tojson }};
         const initialFiles = {{ files | tojson }};
+        const FILES_PER_PAGE = {{ files_per_page | default(50) }};
+        let currentPage = {{ initial_page | default(1) }};
         const totalFiles = {{ total_files }};
         const currentFolderKey = '{{ current_folder_key }}';
         const ancestorKeys = {{ ancestor_keys | tojson }};
@@ -709,7 +711,25 @@
             dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
             uploadSubmitBtn.addEventListener('click', performUpload);
             const loadMoreBtn = document.getElementById('load-more-btn');
-            if (loadMoreBtn) { loadMoreBtn.addEventListener('click', async function() { this.disabled = true; this.innerHTML = '📂 Loading...'; try { const response = await fetch(`/galleryout/load_more?offset=${currentItemCount}&folder_key=${currentFolderKey}&${new URLSearchParams(new FormData(document.querySelector('.filter-bar form')))}`); const data = await response.json(); if (data.files && data.files.length > 0) appendFiles(data.files); else { showNotification('No more files to load.', 'info'); this.style.display = 'none'; } } catch (error) { handleError(error); } if (currentItemCount < totalFiles) { this.disabled = false; this.innerHTML = '📂 Load More'; } }); }
+            if (loadMoreBtn) { 
+                loadMoreBtn.addEventListener('click', async function() { 
+                    this.disabled = true; 
+                    this.innerHTML = '📂 Loading...'; 
+                    try { 
+                        currentPage++;
+                        const queryParams = new URLSearchParams(new FormData(document.querySelector('.filter-bar form')));
+                        queryParams.set('page', currentPage);
+                        const response = await fetch(`/galleryout/load_more?folder_key=${currentFolderKey}&${queryParams}`); 
+                        const data = await response.json(); 
+                        if (data.files && data.files.length > 0) appendFiles(data.files); 
+                        else { showNotification('No more files to load.', 'info'); this.style.display = 'none'; } 
+                    } catch (error) { handleError(error); } 
+                    if (currentItemCount < totalFiles) { 
+                        this.disabled = false; 
+                        this.innerHTML = '📂 Load More'; 
+                    } 
+                }); 
+            }
             document.addEventListener('keydown', (event) => { if ((event.ctrlKey || event.metaKey) && event.key === 'a') { event.preventDefault(); selectAll(); } if (event.key === 'Escape') { if (uploadOverlay.classList.contains('visible')) closeUploadModal(); else if (summaryOverlay.classList.contains('visible')) closeNodeSummary(); else if (lightboxOverlay.classList.contains('visible')) closeLightbox(); else if (selectedFiles.size > 0) deselectAll(); hideDropZone(); } if (lightboxOverlay.classList.contains('visible')) { if (event.key === 'ArrowLeft') navigateLightbox(-1); if (event.key === 'ArrowRight') navigateLightbox(1); if (event.key === 'Delete') { event.preventDefault(); deleteFromLightbox(true); } } });
             window.onscroll = () => { if (backToTopBtn) { backToTopBtn.style.display = (window.scrollY > 300) ? 'block' : 'none'; } };
             startSyncProcess(false);
@@ -721,15 +741,48 @@
                 if (hash && hash.startsWith('#file-')) {
                     const fileId = hash.substring(6); // Remove '#file-' prefix
                     const itemElement = galleryItems.find(item => item.dataset.fileId === fileId);
-                    
+
                     if (itemElement) {
-                        console.log(`Deep link: Opening lightbox for file ${fileId}`);
-                        openLightbox(null, fileId); // Call with null event for programmatic open
+                        console.log(`Deep link: Found file ${fileId} on current page. Opening lightbox.`);
+                        openLightbox(null, fileId);
+                        itemElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     } else {
-                        console.warn(`Deep link: File ${fileId} not found on initial page load (may be on subsequent page)`);
+                        console.log(`Deep link: File ${fileId} not on current page. Asking server for location.`);
+                        showNotification('Locating deep-linked file...', 'info');
+
+                        const currentParams = new URLSearchParams(window.location.search);
+                        const query = `/galleryout/file_location/${fileId}?${currentParams.toString()}`;
+
+                        fetch(query)
+                            .then(response => {
+                                if (!response.ok) {
+                                    return response.json().then(err => { throw new Error(err.message || 'File not found.') });
+                                }
+                                return response.json();
+                            })
+                            .then(data => {
+                                if (data.status === 'success') {
+                                    const { folder_key, page } = data;
+                                    currentParams.set('page', page);
+                                    const newUrl = `/galleryout/view/${folder_key}?${currentParams.toString()}${hash}`;
+
+                                    if (window.location.pathname === `/galleryout/view/${folder_key}` && parseInt(currentParams.get('page')) === page) {
+                                        showNotification('File should be on this page but was not found.', 'error');
+                                        return;
+                                    }
+                                    showNotification(`Navigating to correct page for file...`, 'success');
+                                    window.location.href = newUrl;
+                                } else {
+                                    throw new Error(data.message || 'Could not locate file.');
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Deep link failed:', error);
+                                showNotification(error.message, 'error');
+                            });
                     }
                 }
-            }, 150); // Small delay to ensure gallery items are rendered
+            }, 200); // Small delay to ensure gallery items are rendered
         });
     </script>
 </body>
