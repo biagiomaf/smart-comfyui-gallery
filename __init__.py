@@ -77,15 +77,13 @@ def launch_gallery():
     print("## SmartGallery: Starting server...")
     
     try:
-        # --- DEBUG CHANGE: MAKE OUTPUT VISIBLE ---
-        # We are removing stdout=subprocess.DEVNULL to see any errors from the Flask app.
+        # We will keep the output visible for one more run to ensure there are no other errors.
         gallery_process = subprocess.Popen(
             cmd,
             # stdout=subprocess.DEVNULL, # Temporarily disabled for debugging
             # stderr=subprocess.STDOUT,  # Temporarily disabled for debugging
             cwd=current_dir
         )
-        # -----------------------------------------
         
         print("## SmartGallery: Server launched in the background.")
         print(f"## SmartGallery: URL: http://127.0.0.1:{config['server_port']}/galleryout/")
@@ -136,16 +134,15 @@ class SmartGalleryExtension(ComfyExtension):
         self.web_directory = "js"
 
     def on_load(self):
-        """Called by ComfyUI when the extension is loaded."""
+        """Called by ComfyUI when the extension is loaded successfully."""
+        print("## SmartGallery: on_load hook triggered.")
         gallery_thread = threading.Thread(target=launch_gallery, daemon=True)
         gallery_thread.start()
 
-    # --- FIX: ADDED MISSING ABSTRACT METHOD ---
-    # This method is required by the ComfyExtension abstract base class.
-    # Since this extension provides no nodes, we return an empty list.
+    # --- FIX: This method is required by the ComfyExtension abstract base class. ---
     async def get_node_list(self) -> list[type[io.ComfyNode]]:
+        """Since this extension provides no nodes, we return an empty list."""
         return []
-    # ------------------------------------------
 
 async def comfy_entrypoint() -> SmartGalleryExtension:
     """The function ComfyUI looks for to register the extension."""
