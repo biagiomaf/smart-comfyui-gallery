@@ -37,7 +37,7 @@ pip install -r requirements.txt > nul 2>&1
 echo *** INSTALLATION COMPLETE ***
 echo.
 echo --
-echo To finish your configuration update the following paths in smart-comfyui-galley/smartgallery.py
+echo To finish your configuration update the following paths in smart-comfyui-gallery/smartgallery.py
 echo --
 echo.
 echo -ComfyUI folders-
@@ -51,4 +51,5 @@ echo -Server port- (different from ComfyUI)
 echo 	SERVER_PORT = 8189
 echo.
 PAUSE
+
 
