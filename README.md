@@ -150,14 +150,29 @@ The gallery will start automatically in the background. You can access it at **`
 
 ## 🛠️ Configuration
 
-After installation, you can customize the gallery's settings directly within ComfyUI:
-1. Click the **Settings** icon (⚙️) in the ComfyUI menu.
-2. Find the **[SmartGallery]** section.
-3. Adjust the paths and port as needed.
+SmartGallery now features a **dedicated configuration interface** accessible from ComfyUI's sidebar! 🎉
 
-**Important:** You must **restart ComfyUI** for any configuration changes to take effect.
+### Quick Start
+1. Open ComfyUI
+2. Click the **Gallery Config** icon (🖼️) in the left sidebar
+3. Configure paths, port, and features through the intuitive UI
+4. Click **Save Configuration**
+5. Restart gallery server if prompted
 
-> **💡 Note**: By default, SmartGallery auto-detects your ComfyUI paths. You only need to adjust settings if you have a custom setup.
+### Configuration Options
+- **📁 Path Detection**: Auto-detect from ComfyUI or specify manually
+- **🌐 Server Port**: Configure gallery server port (default: 8008)
+- **✨ Features**: Enable/disable uploads, set size limits, adjust thumbnail quality
+- **⚙️ Advanced**: FFprobe path for video workflow extraction
+
+> **💡 Pro Tip**: The new sidebar configuration provides real-time validation, detailed error messages, and one-click gallery restart!
+
+> **� Detailed Documentation**: See [CONFIGURATION.md](CONFIGURATION.md) for complete configuration guide, API documentation, and troubleshooting.
+
+### Legacy Settings Panel (Deprecated)
+The old ComfyUI settings panel integration is deprecated but still functional for backward compatibility. Please migrate to the new sidebar tab for the best experience.
+
+**Important:** You must **restart the gallery server** (or ComfyUI) for configuration changes to take effect.
 
 > **📹 FFmpeg Note**: For complete workflow discovery from MP4 files, ensure FFmpeg is installed. Download from [ffmpeg.org](https://ffmpeg.org/) if needed.
 

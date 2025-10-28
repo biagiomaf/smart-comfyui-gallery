@@ -181,5 +181,151 @@ python smartgallery.py --output-path "C:/path/to/output" --input-path "C:/path/t
 
 ---
 
+## ✨ New Configuration System (v1.33+)
+
+Starting with version 1.33, SmartGallery features a **dedicated configuration sidebar tab** that replaces the settings panel approach.
+
+### Accessing the New Configuration UI
+1. Open ComfyUI
+2. Look for the **Gallery Config** tab in the left sidebar (🖼️ icon)
+3. Click to open the comprehensive configuration panel
+4. Make changes and click **Save Configuration**
+
+### Key Improvements
+- ✅ **Real-time Validation**: Instant feedback on configuration errors
+- 🔄 **One-Click Restart**: Restart gallery without restarting ComfyUI
+- 📊 **Detailed Messages**: Clear errors and warnings with suggestions
+- 🎨 **Modern UI**: Matches ComfyUI's aesthetic perfectly
+- 🔧 **Backend Integration**: Purpose-built for server-side configuration
+
+### Configuration API (v2)
+
+#### GET `/smartgallery/config`
+Retrieve current configuration with auto-detected paths.
+
+**Response:**
+```json
+{
+    "config": {
+        "auto_detect_paths": true,
+        "base_output_path": "",
+        "base_input_path": "",
+        "server_port": 8008,
+        "enable_upload": true,
+        "max_upload_size_mb": 100,
+        "thumbnail_quality": 85,
+        "ffprobe_manual_path": ""
+    },
+    "detected_paths": {
+        "output_path": "C:/ComfyUI/output",
+        "input_path": "C:/ComfyUI/input"
+    },
+    "effective_config": {
+        "base_output_path": "C:/ComfyUI/output",
+        "base_input_path": "C:/ComfyUI/input",
+        ...
+    },
+    "version": "1.33"
+}
+```
+
+#### POST `/smartgallery/config`
+Save configuration with validation.
+
+**Request:**
+```json
+{
+    "auto_detect_paths": false,
+    "base_output_path": "D:/AI/output",
+    "base_input_path": "D:/AI/input",
+    "server_port": 8009,
+    "enable_upload": true,
+    "max_upload_size_mb": 200,
+    "thumbnail_quality": 90,
+    "ffprobe_manual_path": "C:/ffmpeg/bin/ffprobe.exe"
+}
+```
+
+**Response:**
+```json
+{
+    "success": true,
+    "errors": [],
+    "warnings": ["FFprobe not found at specified path"],
+    "message": "Configuration saved successfully",
+    "requires_restart": true
+}
+```
+
+#### POST `/smartgallery/config/validate`
+Validate configuration without saving (for real-time feedback).
+
+**Request:** Same as save endpoint
+
+**Response:**
+```json
+{
+    "success": false,
+    "errors": ["Port must be between 1024 and 65535"],
+    "warnings": ["Output path does not exist: D:/AI/output"]
+}
+```
+
+#### POST `/smartgallery/restart`
+Restart gallery server without restarting ComfyUI.
+
+**Response:**
+```json
+{
+    "success": true,
+    "message": "Gallery server restarted successfully"
+}
+```
+
+### Migration from Settings Panel
+
+Your existing configuration is automatically migrated to the new system:
+1. Configuration file format remains the same (`config.json`)
+2. Legacy API routes still work for backward compatibility
+3. Settings panel shows a deprecation notice
+4. All new development focuses on the sidebar tab
+
+### Programmatic Configuration
+
+```python
+import requests
+
+base_url = "http://localhost:8188"
+
+# Get current config
+response = requests.get(f"{base_url}/smartgallery/config")
+config_data = response.json()
+print("Current config:", config_data["config"])
+print("Detected paths:", config_data["detected_paths"])
+
+# Update configuration
+new_config = config_data["config"].copy()
+new_config["server_port"] = 8009
+new_config["thumbnail_quality"] = 95
+
+response = requests.post(
+    f"{base_url}/smartgallery/config",
+    json=new_config
+)
+
+result = response.json()
+if result["success"]:
+    print("✅ Configuration saved")
+    if result.get("requires_restart"):
+        # Restart gallery
+        requests.post(f"{base_url}/smartgallery/restart")
+        print("🔄 Gallery restarted")
+else:
+    print("❌ Errors:", result["errors"])
+    print("⚠️ Warnings:", result["warnings"])
+```
+
+---
+
 **Questions or Issues?**  
 Open an issue on GitHub: https://github.com/opj161/smart-comfyui-gallery/issues

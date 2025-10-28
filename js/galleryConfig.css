@@ -1,0 +1,411 @@
+/* SmartGallery Configuration UI Styles */
+
+.gallery-config-container {
+    padding: 20px;
+    max-width: 700px;
+    font-family: var(--font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif);
+    color: var(--fg-color, #e0e0e0);
+    line-height: 1.6;
+}
+
+.gallery-config-header {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid var(--border-color, #3a3a3a);
+}
+
+.gallery-config-header h2 {
+    margin: 0 0 8px 0;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--fg-color, #e0e0e0);
+}
+
+.gallery-config-subtitle {
+    margin: 0;
+    font-size: 14px;
+    color: var(--descrip-text, #999);
+}
+
+.gallery-config-loading,
+.gallery-config-error {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--descrip-text, #999);
+}
+
+.gallery-config-error h3 {
+    color: var(--error-text, #ff6b6b);
+    margin-bottom: 16px;
+}
+
+.gallery-config-error p {
+    margin-bottom: 20px;
+    color: var(--fg-color, #e0e0e0);
+}
+
+/* Sections */
+.config-section {
+    margin-bottom: 32px;
+    padding: 20px;
+    background: var(--comfy-menu-bg, #2a2a2a);
+    border: 1px solid var(--border-color, #3a3a3a);
+    border-radius: 8px;
+}
+
+.config-section h3 {
+    margin: 0 0 20px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--fg-color, #e0e0e0);
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color, #3a3a3a);
+}
+
+/* Form Groups */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group:last-child {
+    margin-bottom: 0;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    font-size: 14px;
+    color: var(--fg-color, #e0e0e0);
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-weight: 400;
+}
+
+.checkbox-label input[type="checkbox"] {
+    margin-right: 10px;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.checkbox-label span {
+    font-size: 14px;
+}
+
+/* Text Inputs */
+.form-group input[type="text"],
+.form-group input[type="number"],
+.path-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color, #3a3a3a);
+    border-radius: 6px;
+    background: var(--comfy-input-bg, #1e1e1e);
+    color: var(--input-text, #e0e0e0);
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="number"]:focus,
+.path-input:focus {
+    outline: none;
+    border-color: var(--primary-color, #4a9eff);
+    box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.1);
+}
+
+.form-group input[type="text"]:disabled,
+.form-group input[type="number"]:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Number Inputs */
+.form-group input[type="number"] {
+    width: 150px;
+}
+
+/* Range Slider */
+.slider-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.form-group input[type="range"] {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border-color, #3a3a3a);
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.form-group input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--primary-color, #4a9eff);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.form-group input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--primary-color, #4a9eff);
+    cursor: pointer;
+    border: none;
+    transition: background 0.2s;
+}
+
+.form-group input[type="range"]::-webkit-slider-thumb:hover {
+    background: var(--primary-hover, #3a8eef);
+}
+
+.form-group input[type="range"]::-moz-range-thumb:hover {
+    background: var(--primary-hover, #3a8eef);
+}
+
+.slider-value {
+    min-width: 40px;
+    text-align: center;
+    font-weight: 600;
+    color: var(--primary-color, #4a9eff);
+    font-size: 16px;
+}
+
+/* Hints and Messages */
+.hint {
+    font-size: 12px;
+    color: var(--descrip-text, #999);
+    margin-top: 6px;
+    line-height: 1.4;
+}
+
+.hint.success {
+    color: var(--success-color, #4caf50);
+}
+
+.hint.warning {
+    color: var(--warning-color, #ff9800);
+}
+
+.hint code {
+    background: var(--comfy-input-bg, #1e1e1e);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+}
+
+.error-message {
+    display: none;
+    font-size: 12px;
+    color: var(--error-text, #ff6b6b);
+    margin-top: 6px;
+    padding: 6px 10px;
+    background: rgba(255, 107, 107, 0.1);
+    border-left: 3px solid var(--error-text, #ff6b6b);
+    border-radius: 4px;
+}
+
+/* Validation Messages */
+.validation-messages {
+    margin: 20px 0;
+}
+
+.error-box,
+.warning-box,
+.success-box,
+.info-box,
+.loading-box {
+    padding: 14px 16px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.error-box {
+    background: rgba(255, 107, 107, 0.15);
+    border-left: 4px solid var(--error-text, #ff6b6b);
+    color: var(--error-text, #ff6b6b);
+}
+
+.warning-box {
+    background: rgba(255, 152, 0, 0.15);
+    border-left: 4px solid var(--warning-color, #ff9800);
+    color: var(--warning-color, #ff9800);
+}
+
+.success-box {
+    background: rgba(76, 175, 80, 0.15);
+    border-left: 4px solid var(--success-color, #4caf50);
+    color: var(--success-color, #4caf50);
+}
+
+.info-box {
+    background: rgba(74, 158, 255, 0.15);
+    border-left: 4px solid var(--primary-color, #4a9eff);
+    color: var(--primary-color, #4a9eff);
+}
+
+.loading-box {
+    background: var(--comfy-menu-bg, #2a2a2a);
+    border-left: 4px solid var(--descrip-text, #999);
+    color: var(--descrip-text, #999);
+    text-align: center;
+}
+
+.error-box strong,
+.warning-box strong {
+    display: block;
+    margin-bottom: 8px;
+}
+
+.error-box ul,
+.warning-box ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.error-box li,
+.warning-box li {
+    margin-bottom: 4px;
+}
+
+/* Action Buttons */
+.config-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 2px solid var(--border-color, #3a3a3a);
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-restart,
+.btn-link {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.btn-primary {
+    background: var(--primary-color, #4a9eff);
+    color: white;
+    flex: 1;
+    min-width: 180px;
+}
+
+.btn-primary:hover {
+    background: var(--primary-hover, #3a8eef);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(74, 158, 255, 0.3);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-secondary {
+    background: var(--comfy-menu-bg, #2a2a2a);
+    color: var(--fg-color, #e0e0e0);
+    border: 1px solid var(--border-color, #3a3a3a);
+}
+
+.btn-secondary:hover {
+    background: var(--border-color, #3a3a3a);
+    border-color: var(--fg-color, #e0e0e0);
+}
+
+.btn-restart {
+    background: var(--warning-color, #ff9800);
+    color: white;
+    margin-left: 12px;
+    padding: 8px 16px;
+    font-size: 13px;
+}
+
+.btn-restart:hover {
+    background: #f57c00;
+}
+
+.btn-link {
+    background: transparent;
+    color: var(--primary-color, #4a9eff);
+    text-decoration: underline;
+    padding: 8px 12px;
+    font-size: 13px;
+}
+
+.btn-link:hover {
+    color: var(--primary-hover, #3a8eef);
+}
+
+/* Status Message */
+.status-message {
+    margin-top: 20px;
+    min-height: 20px;
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+    .gallery-config-container {
+        padding: 16px;
+    }
+    
+    .config-section {
+        padding: 16px;
+    }
+    
+    .config-actions {
+        flex-direction: column;
+    }
+    
+    .btn-primary,
+    .btn-secondary {
+        width: 100%;
+    }
+    
+    .form-group input[type="number"] {
+        width: 100%;
+    }
+}
+
+/* Dark Mode Enhancements */
+@media (prefers-color-scheme: dark) {
+    .gallery-config-container {
+        color: #e0e0e0;
+    }
+    
+    .form-group input[type="text"],
+    .form-group input[type="number"],
+    .path-input {
+        background: #1a1a1a;
+        border-color: #404040;
+        color: #e0e0e0;
+    }
+    
+    .config-section {
+        background: #252525;
+        border-color: #404040;
+    }
+}
