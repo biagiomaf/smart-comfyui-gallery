@@ -539,45 +539,58 @@
         async function populateWorkflowFilters() {
             try {
                 const response = await fetch('/galleryout/filter_options');
-                if (!response.ok) throw new Error('Failed to fetch filter options');
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch filter options: ${response.status} ${response.statusText}`);
+                }
                 
                 const data = await response.json();
-                if (data.status !== 'success') throw new Error('Invalid response from server');
+                if (data.status !== 'success') {
+                    throw new Error(data.message || 'Invalid response from server');
+                }
                 
                 const options = data.options;
                 
                 // Populate model dropdown
                 const modelSelect = document.getElementById('model-select');
                 const currentModel = '{{ request.args.get("filter_model", "") }}';
-                options.models.forEach(model => {
-                    const option = document.createElement('option');
-                    option.value = model;
-                    option.textContent = model;
-                    if (model === currentModel) option.selected = true;
-                    modelSelect.appendChild(option);
-                });
+                if (modelSelect && options.models && options.models.length > 0) {
+                    options.models.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model;
+                        option.textContent = model;
+                        if (model === currentModel) option.selected = true;
+                        modelSelect.appendChild(option);
+                    });
+                    console.log(`Loaded ${options.models.length} models into filter`);
+                }
                 
                 // Populate sampler dropdown
                 const samplerSelect = document.getElementById('sampler-select');
                 const currentSampler = '{{ request.args.get("filter_sampler", "") }}';
-                options.samplers.forEach(sampler => {
-                    const option = document.createElement('option');
-                    option.value = sampler;
-                    option.textContent = sampler;
-                    if (sampler === currentSampler) option.selected = true;
-                    samplerSelect.appendChild(option);
-                });
+                if (samplerSelect && options.samplers && options.samplers.length > 0) {
+                    options.samplers.forEach(sampler => {
+                        const option = document.createElement('option');
+                        option.value = sampler;
+                        option.textContent = sampler;
+                        if (sampler === currentSampler) option.selected = true;
+                        samplerSelect.appendChild(option);
+                    });
+                    console.log(`Loaded ${options.samplers.length} samplers into filter`);
+                }
                 
                 // Populate scheduler dropdown
                 const schedulerSelect = document.getElementById('scheduler-select');
                 const currentScheduler = '{{ request.args.get("filter_scheduler", "") }}';
-                options.schedulers.forEach(scheduler => {
-                    const option = document.createElement('option');
-                    option.value = scheduler;
-                    option.textContent = scheduler;
-                    if (scheduler === currentScheduler) option.selected = true;
-                    schedulerSelect.appendChild(option);
-                });
+                if (schedulerSelect && options.schedulers && options.schedulers.length > 0) {
+                    options.schedulers.forEach(scheduler => {
+                        const option = document.createElement('option');
+                        option.value = scheduler;
+                        option.textContent = scheduler;
+                        if (scheduler === currentScheduler) option.selected = true;
+                        schedulerSelect.appendChild(option);
+                    });
+                    console.log(`Loaded ${options.schedulers.length} schedulers into filter`);
+                }
                 
                 // Set placeholder values for range inputs
                 const cfgMinInput = document.getElementById('cfg-min-input');
@@ -589,17 +602,30 @@
                 const heightMinInput = document.getElementById('height-min-input');
                 const heightMaxInput = document.getElementById('height-max-input');
                 
-                cfgMinInput.placeholder = `Min: ${options.cfg_range.min}`;
-                cfgMaxInput.placeholder = `Max: ${options.cfg_range.max}`;
-                stepsMinInput.placeholder = `Min: ${options.steps_range.min}`;
-                stepsMaxInput.placeholder = `Max: ${options.steps_range.max}`;
-                widthMinInput.placeholder = `Min: ${options.width_range.min}`;
-                widthMaxInput.placeholder = `Max: ${options.width_range.max}`;
-                heightMinInput.placeholder = `Min: ${options.height_range.min}`;
-                heightMaxInput.placeholder = `Max: ${options.height_range.max}`;
+                if (cfgMinInput && options.cfg_range) cfgMinInput.placeholder = `Min: ${options.cfg_range.min}`;
+                if (cfgMaxInput && options.cfg_range) cfgMaxInput.placeholder = `Max: ${options.cfg_range.max}`;
+                if (stepsMinInput && options.steps_range) stepsMinInput.placeholder = `Min: ${options.steps_range.min}`;
+                if (stepsMaxInput && options.steps_range) stepsMaxInput.placeholder = `Max: ${options.steps_range.max}`;
+                if (widthMinInput && options.width_range) widthMinInput.placeholder = `Min: ${options.width_range.min}`;
+                if (widthMaxInput && options.width_range) widthMaxInput.placeholder = `Max: ${options.width_range.max}`;
+                if (heightMinInput && options.height_range) heightMinInput.placeholder = `Min: ${options.height_range.min}`;
+                if (heightMaxInput && options.height_range) heightMaxInput.placeholder = `Max: ${options.height_range.max}`;
+                
+                console.log('Workflow filter options loaded successfully');
                 
             } catch (error) {
-                console.warn('Could not load workflow filter options:', error);
+                console.error('Failed to load workflow filter options:', error);
+                // Show user-friendly message but don't block the UI
+                const filterPanel = document.getElementById('filter-panel');
+                if (filterPanel) {
+                    const errorMsg = document.createElement('div');
+                    errorMsg.style.cssText = 'padding: 1rem; background: rgba(220, 53, 69, 0.1); border: 1px solid rgba(220, 53, 69, 0.3); border-radius: 6px; margin-bottom: 1rem; color: var(--danger-color); font-size: 0.85rem;';
+                    errorMsg.innerHTML = `<strong>⚠️ Filter Options Error:</strong><br>${error.message}<br><small>Workflow filters may not be available. Check console for details.</small>`;
+                    const filterContent = document.querySelector('.filter-panel-content');
+                    if (filterContent) {
+                        filterContent.insertBefore(errorMsg, filterContent.firstChild);
+                    }
+                }
             }
         }
         

@@ -1,7 +1,14 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025 — MIT License (free to use and modify)
 #
-# Version: 1.37.4 - October 29, 2025 (Workflow Metadata Extraction Robustness)
+# Version: 1.38.0 - October 28, 2025 (Critical Metadata Extraction Fixes)
+# - Fixed PNG metadata case sensitivity (Prompt/Workflow vs prompt/workflow)
+# - Enhanced _validate_and_get_workflow to handle both API and Workflow formats
+# - Added type safety and validation for extracted metadata values
+# - Expanded sampler and model loader node type detection
+# - Added file_id index for JOIN performance optimization
+# - Added metadata normalization and deduplication in filter_options
+# - Improved frontend error handling with user feedback
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -255,13 +262,60 @@ def find_ffprobe_path():
     return None
 
 def _validate_and_get_workflow(json_string):
+    """
+    Validates and extracts workflow data from JSON string.
+    Handles both:
+    1. Workflow format: {"nodes": [...], "links": [...]}
+    2. Prompt/API format: {"node_id": {...}, "node_id2": {...}}
+    """
     try:
         data = json.loads(json_string)
+        
+        # Try to get workflow data from nested structure first
         workflow_data = data.get('workflow', data.get('prompt', data))
-        if isinstance(workflow_data, dict) and 'nodes' in workflow_data: return json.dumps(workflow_data)
+        
+        # Check if it's workflow format (has 'nodes' array)
+        if isinstance(workflow_data, dict) and 'nodes' in workflow_data:
+            return json.dumps(workflow_data)
+        
+        # Check if it's Prompt/API format (flat dict with numeric string keys)
+        # API format: {"12": {...}, "13": {...}} where keys are node IDs
+        if isinstance(workflow_data, dict) and workflow_data:
+            # Check if it looks like API format (has numeric string keys)
+            keys = list(workflow_data.keys())
+            if keys and any(str(k).isdigit() for k in keys):
+                # Convert API format to workflow format for compatibility
+                nodes = []
+                for node_id, node_data in workflow_data.items():
+                    if isinstance(node_data, dict):
+                        node = {
+                            'id': int(node_id) if str(node_id).isdigit() else node_id,
+                            'type': node_data.get('class_type', ''),
+                            'widgets_values': node_data.get('inputs', {}),
+                            'inputs': []
+                        }
+                        # Extract input connections if present
+                        if 'inputs' in node_data and isinstance(node_data['inputs'], dict):
+                            for input_name, input_value in node_data['inputs'].items():
+                                if isinstance(input_value, list) and len(input_value) >= 2:
+                                    # This is a link: [source_node_id, source_output_index]
+                                    node['inputs'].append({
+                                        'name': input_name,
+                                        'link': f"{input_value[0]}_{input_value[1]}"
+                                    })
+                        nodes.append(node)
+                
+                # Create minimal workflow structure
+                converted = {
+                    'nodes': nodes,
+                    'links': []  # Links reconstruction would be complex, skip for now
+                }
+                return json.dumps(converted)
+        
+        return None
     except Exception as e:
         print(f"DEBUG: Failed to validate workflow JSON: {e}")
-    return None
+        return None
 
 def _scan_bytes_for_workflow(content_bytes):
     open_braces, start_index = 0, -1
@@ -305,7 +359,9 @@ def extract_workflow(filepath):
     else:
         try:
             with Image.open(filepath) as img:
-                workflow_str = img.info.get('workflow') or img.info.get('prompt')
+                # Check for both lowercase and capitalized keys (PNG metadata can vary)
+                workflow_str = (img.info.get('workflow') or img.info.get('Workflow') or 
+                               img.info.get('prompt') or img.info.get('Prompt'))
                 if workflow_str:
                     workflow = _validate_and_get_workflow(workflow_str)
                     if workflow: return workflow
@@ -380,8 +436,19 @@ def extract_workflow_metadata(workflow_json_string):
                     links_by_target[target_id] = []
                 links_by_target[target_id].append((link_id, target_slot, origin_id, origin_slot))
         
-        # Known sampler node types (extensible list)
-        SAMPLER_NODE_TYPES = ['KSampler', 'KSamplerAdvanced', 'SamplerCustom', 'KSamplerSelect']
+        # Expanded list of known sampler node types
+        SAMPLER_NODE_TYPES = [
+            'KSampler', 'KSamplerAdvanced', 'SamplerCustom', 'KSamplerSelect',
+            'KSamplerEulerAncestral', 'KSamplerDPMPP_2M', 'KSamplerDPMPP_SDE',
+            'SamplerCustomAdvanced', 'KSamplerEfficient', 'KSamplerPipe'
+        ]
+        
+        # Known model loader node types
+        MODEL_LOADER_TYPES = [
+            'CheckpointLoaderSimple', 'CheckpointLoader', 'CheckpointLoaderComplex',
+            'unCLIPCheckpointLoader', 'DiffusersLoader', 'Load Checkpoint',
+            'LoraLoader', 'Load LoRA', 'CheckpointLoaderNF4', 'UNETLoader'
+        ]
         
         # Step 1: Find the primary sampler node
         sampler_node = None
@@ -396,26 +463,40 @@ def extract_workflow_metadata(workflow_json_string):
             node_type = sampler_node.get('type', '')
             widgets_values = sampler_node.get('widgets_values', [])
             
-            # Extract sampler parameters based on node type
-            if node_type == 'KSampler' and len(widgets_values) >= 6:
-                # KSampler: [seed, steps, cfg, sampler_name, scheduler, denoise]
-                metadata['steps'] = widgets_values[1]
-                metadata['cfg'] = widgets_values[2]
-                metadata['sampler_name'] = widgets_values[3]
-                metadata['scheduler'] = widgets_values[4]
+            # Helper function to safely convert to numeric types
+            def safe_int(value):
+                try:
+                    if value is None: return None
+                    return int(float(value))  # Handle "20" or "20.0" strings
+                except (ValueError, TypeError):
+                    return None
+            
+            def safe_float(value):
+                try:
+                    if value is None: return None
+                    return float(value)
+                except (ValueError, TypeError):
+                    return None
+            
+            # Extract sampler parameters based on node type with type safety
+            if node_type in ['KSampler', 'KSamplerEulerAncestral', 'KSamplerDPMPP_2M', 'KSamplerDPMPP_SDE'] and len(widgets_values) >= 6:
+                # Standard KSampler variants: [seed, steps, cfg, sampler_name, scheduler, denoise]
+                metadata['steps'] = safe_int(widgets_values[1])
+                metadata['cfg'] = safe_float(widgets_values[2])
+                metadata['sampler_name'] = str(widgets_values[3]) if widgets_values[3] else None
+                metadata['scheduler'] = str(widgets_values[4]) if widgets_values[4] else None
             elif node_type == 'KSamplerAdvanced' and len(widgets_values) >= 6:
                 # KSamplerAdvanced: [add_noise, noise_seed, steps, cfg, sampler_name, scheduler, ...]
-                metadata['steps'] = widgets_values[2]
-                metadata['cfg'] = widgets_values[3]
-                metadata['sampler_name'] = widgets_values[4]
-                metadata['scheduler'] = widgets_values[5]
-            elif node_type == 'SamplerCustom' and len(widgets_values) >= 1:
+                metadata['steps'] = safe_int(widgets_values[2])
+                metadata['cfg'] = safe_float(widgets_values[3])
+                metadata['sampler_name'] = str(widgets_values[4]) if widgets_values[4] else None
+                metadata['scheduler'] = str(widgets_values[5]) if widgets_values[5] else None
+            elif node_type in ['SamplerCustom', 'SamplerCustomAdvanced'] and len(widgets_values) >= 1:
                 # SamplerCustom may have different structure, extract what's available
-                # Typically: [steps, cfg, ...]
                 if len(widgets_values) >= 1:
-                    metadata['steps'] = widgets_values[0]
+                    metadata['steps'] = safe_int(widgets_values[0])
                 if len(widgets_values) >= 2:
-                    metadata['cfg'] = widgets_values[1]
+                    metadata['cfg'] = safe_float(widgets_values[1])
             
             # Step 2: Trace model input link from sampler
             # Look for 'model' input on the sampler node
@@ -432,11 +513,18 @@ def extract_workflow_metadata(workflow_json_string):
                 loader_node_id = link[1]  # origin_id
                 loader_node = nodes_by_id.get(loader_node_id)
                 
-                if loader_node and 'widgets_values' in loader_node:
-                    loader_widgets = loader_node['widgets_values']
-                    # Heuristic: Model name is typically the first widget value in loader nodes
-                    if loader_widgets and len(loader_widgets) > 0:
-                        metadata['model_name'] = loader_widgets[0]
+                # Verify it's actually a model loader node type
+                if loader_node:
+                    loader_type = loader_node.get('type', '')
+                    if loader_type in MODEL_LOADER_TYPES or 'checkpoint' in loader_type.lower() or 'loader' in loader_type.lower():
+                        loader_widgets = loader_node.get('widgets_values', [])
+                        # Model name is typically the first widget value in loader nodes
+                        if loader_widgets and len(loader_widgets) > 0 and loader_widgets[0]:
+                            model_name = str(loader_widgets[0]).strip()
+                            # Remove file extension for cleaner display
+                            if model_name.endswith(('.safetensors', '.ckpt', '.pt', '.pth')):
+                                model_name = os.path.splitext(model_name)[0]
+                            metadata['model_name'] = model_name
             
             # Step 3: Trace positive and negative prompt links
             positive_link_id = None
@@ -457,8 +545,8 @@ def extract_workflow_metadata(workflow_json_string):
                 
                 if prompt_node and prompt_node.get('type') == 'CLIPTextEncode':
                     prompt_widgets = prompt_node.get('widgets_values', [])
-                    if prompt_widgets and len(prompt_widgets) > 0:
-                        metadata['positive_prompt'] = prompt_widgets[0]
+                    if prompt_widgets and len(prompt_widgets) > 0 and prompt_widgets[0]:
+                        metadata['positive_prompt'] = str(prompt_widgets[0])
             
             # Trace negative prompt
             if negative_link_id and negative_link_id in links_by_id:
@@ -468,10 +556,11 @@ def extract_workflow_metadata(workflow_json_string):
                 
                 if prompt_node and prompt_node.get('type') == 'CLIPTextEncode':
                     prompt_widgets = prompt_node.get('widgets_values', [])
-                    if prompt_widgets and len(prompt_widgets) > 0:
-                        metadata['negative_prompt'] = prompt_widgets[0]
+                    if prompt_widgets and len(prompt_widgets) > 0 and prompt_widgets[0]:
+                        metadata['negative_prompt'] = str(prompt_widgets[0])
             
-            # Step 4: Trace latent input to find EmptyLatentImage for dimensions
+            # Step 4: Trace latent input to find dimensions
+            # First try EmptyLatentImage
             latent_link_id = None
             for inp in sampler_inputs:
                 inp_name = inp.get('name', '').lower()
@@ -484,24 +573,45 @@ def extract_workflow_metadata(workflow_json_string):
                 latent_node_id = link[1]  # origin_id
                 latent_node = nodes_by_id.get(latent_node_id)
                 
-                if latent_node and latent_node.get('type') == 'EmptyLatentImage':
+                if latent_node:
+                    latent_type = latent_node.get('type', '')
                     latent_widgets = latent_node.get('widgets_values', [])
+                    
                     # EmptyLatentImage: [width, height, batch_size]
-                    if len(latent_widgets) >= 2:
-                        metadata['width'] = latent_widgets[0]
-                        metadata['height'] = latent_widgets[1]
+                    if latent_type == 'EmptyLatentImage' and len(latent_widgets) >= 2:
+                        metadata['width'] = safe_int(latent_widgets[0])
+                        metadata['height'] = safe_int(latent_widgets[1])
+                    # LatentUpscale: may have width/height in different positions
+                    elif 'upscale' in latent_type.lower() and len(latent_widgets) >= 2:
+                        metadata['width'] = safe_int(latent_widgets[0])
+                        metadata['height'] = safe_int(latent_widgets[1])
         
         # Fallback: If no sampler found, try to extract prompts from any CLIPTextEncode nodes
         if not sampler_node:
             for node in nodes_list:
                 if node.get('type') == 'CLIPTextEncode':
                     widgets_values = node.get('widgets_values', [])
-                    if len(widgets_values) > 0:
-                        prompt_text = widgets_values[0]
+                    if len(widgets_values) > 0 and widgets_values[0]:
+                        prompt_text = str(widgets_values[0])
                         if metadata['positive_prompt'] is None:
                             metadata['positive_prompt'] = prompt_text
                         elif metadata['negative_prompt'] is None:
                             metadata['negative_prompt'] = prompt_text
+        
+        # Fallback: If no dimensions from latent, try LoadImage or other image nodes
+        if metadata['width'] is None or metadata['height'] is None:
+            for node in nodes_list:
+                node_type = node.get('type', '')
+                if node_type in ['LoadImage', 'ImageScale', 'ImageResize']:
+                    widgets_values = node.get('widgets_values', [])
+                    # These nodes may have dimension info in metadata
+                    if len(widgets_values) >= 2:
+                        width = safe_int(widgets_values[0])
+                        height = safe_int(widgets_values[1])
+                        if width and height:
+                            metadata['width'] = width
+                            metadata['height'] = height
+                            break
         
         return metadata
     except Exception as e:
@@ -654,7 +764,9 @@ def process_single_file(filepath, thumbnail_cache_dir, thumbnail_width, video_ex
         try:
             if ext_lower not in video_exts:
                 with Image.open(filepath) as img:
-                    if img.info.get('workflow') or img.info.get('prompt'):
+                    # Check for both lowercase and capitalized keys (PNG metadata can vary)
+                    if (img.info.get('workflow') or img.info.get('Workflow') or 
+                        img.info.get('prompt') or img.info.get('Prompt')):
                         workflow_found = True
         except:
             pass
@@ -830,6 +942,7 @@ def init_db(conn=None):
     conn.execute('CREATE INDEX IF NOT EXISTS idx_steps ON workflow_metadata(steps)')
     conn.execute('CREATE INDEX IF NOT EXISTS idx_width ON workflow_metadata(width)')
     conn.execute('CREATE INDEX IF NOT EXISTS idx_height ON workflow_metadata(height)')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_file_id ON workflow_metadata(file_id)')  # Performance: JOIN optimization
     conn.commit()
     if close_conn: conn.close()
     
@@ -1580,10 +1693,15 @@ def filter_options():
     try:
         conn = get_db()
         
-        # Get all unique values for each filterable field
-        models = conn.execute("SELECT DISTINCT model_name FROM workflow_metadata WHERE model_name IS NOT NULL ORDER BY model_name").fetchall()
-        samplers = conn.execute("SELECT DISTINCT sampler_name FROM workflow_metadata WHERE sampler_name IS NOT NULL ORDER BY sampler_name").fetchall()
-        schedulers = conn.execute("SELECT DISTINCT scheduler FROM workflow_metadata WHERE scheduler IS NOT NULL ORDER BY scheduler").fetchall()
+        # Get all unique values for each filterable field with normalization
+        models_raw = conn.execute("SELECT DISTINCT model_name FROM workflow_metadata WHERE model_name IS NOT NULL ORDER BY model_name").fetchall()
+        samplers_raw = conn.execute("SELECT DISTINCT sampler_name FROM workflow_metadata WHERE sampler_name IS NOT NULL ORDER BY sampler_name").fetchall()
+        schedulers_raw = conn.execute("SELECT DISTINCT scheduler FROM workflow_metadata WHERE scheduler IS NOT NULL ORDER BY scheduler").fetchall()
+        
+        # Normalize and deduplicate values (trim whitespace, remove duplicates)
+        models = sorted(set(row['model_name'].strip() for row in models_raw if row['model_name']))
+        samplers = sorted(set(row['sampler_name'].strip() for row in samplers_raw if row['sampler_name']))
+        schedulers = sorted(set(row['scheduler'].strip() for row in schedulers_raw if row['scheduler']))
         
         # Get min/max ranges for numeric fields
         cfg_range = conn.execute("SELECT MIN(cfg) as min_cfg, MAX(cfg) as max_cfg FROM workflow_metadata WHERE cfg IS NOT NULL").fetchone()
@@ -1593,9 +1711,9 @@ def filter_options():
         return jsonify({
             'status': 'success',
             'options': {
-                'models': [row['model_name'] for row in models],
-                'samplers': [row['sampler_name'] for row in samplers],
-                'schedulers': [row['scheduler'] for row in schedulers],
+                'models': models,
+                'samplers': samplers,
+                'schedulers': schedulers,
                 'cfg_range': {
                     'min': cfg_range['min_cfg'] if cfg_range['min_cfg'] is not None else 0,
                     'max': cfg_range['max_cfg'] if cfg_range['max_cfg'] is not None else 30
@@ -1616,6 +1734,8 @@ def filter_options():
         })
     except Exception as e:
         print(f"ERROR: filter_options failed: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/galleryout/load_more')
