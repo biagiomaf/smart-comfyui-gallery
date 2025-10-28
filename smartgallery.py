@@ -1,7 +1,7 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025 — MIT License (free to use and modify)
 #
-# Version: 1.30 - October 26, 2025
+# Version: 1.32 - October 28, 2025
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -19,6 +19,7 @@ import glob
 import sys
 import subprocess
 import base64
+import threading
 from flask import Flask, render_template, send_from_directory, abort, send_file, url_for, redirect, request, jsonify, Response
 from PIL import Image, ImageSequence
 import colorsys
@@ -46,18 +47,24 @@ def key_to_path(key):
     if key == '_root_': return ''
     try:
         return base64.urlsafe_b64decode(key.encode()).decode().replace('/', os.sep)
-    except Exception: return None
+    except Exception as e:
+        print(f"ERROR: Failed to decode key '{key}': {e}")
+        return None
 
 # --- DERIVED SETTINGS ---
 DB_SCHEMA_VERSION = 21  # Schema version is static and can remain global
 
 # --- FLASK APP INITIALIZATION ---
 app = Flask(__name__)
+
+# Thread-safe caches with locks for concurrent access
 gallery_view_cache = []
+gallery_view_cache_lock = threading.Lock()
 folder_config_cache = None
+folder_config_cache_lock = threading.Lock()
 
 
-# Strutture dati per la categorizzazione e l'analisi dei nodi
+# Data structures for node categorization and analysis
 NODE_CATEGORIES_ORDER = ["input", "model", "processing", "output", "others"]
 NODE_CATEGORIES = {
     "Load Checkpoint": "input", "CheckpointLoaderSimple": "input", "Empty Latent Image": "input",
@@ -79,20 +86,20 @@ NODE_PARAM_NAMES = {
     "ModelMerger": ["ckpt_name1", "ckpt_name2", "ratio"],
 }
 
-# Cache per i colori dei nodi
+# Cache for node colors
 _node_colors_cache = {}
 
 def get_node_color(node_type):
-    """Genera un colore univoco e consistente per un tipo di nodo."""
+    """Generates a unique and consistent color for a node type."""
     if node_type not in _node_colors_cache:
-        # Usa un hash per ottenere un colore consistente per lo stesso tipo di nodo
+        # Use hash to get a consistent color for the same node type
         hue = (hash(node_type + "a_salt_string") % 360) / 360.0
         rgb = [int(c * 255) for c in colorsys.hsv_to_rgb(hue, 0.7, 0.85)]
         _node_colors_cache[node_type] = f"#{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"
     return _node_colors_cache[node_type]
 
 def filter_enabled_nodes(workflow_data):
-    """Filtra e restituisce solo i nodi e i link attivi (mode=0) da un workflow."""
+    """Filters and returns only active nodes and links (mode=0) from a workflow."""
     if not isinstance(workflow_data, dict): return {'nodes': [], 'links': []}
     
     active_nodes = [n for n in workflow_data.get("nodes", []) if n.get("mode", 0) == 0]
@@ -157,13 +164,14 @@ def find_ffprobe_path():
         try:
             subprocess.run([manual_path, "-version"], capture_output=True, check=True, creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
             return manual_path
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"WARNING: Manual ffprobe path '{manual_path}' is invalid: {e}")
     base_name = "ffprobe.exe" if sys.platform == "win32" else "ffprobe"
     try:
-        subprocess.run([base_name, "-version"], capture_output=True, check=True, creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
+        result = subprocess.run([base_name, "-version"], capture_output=True, check=True, creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
         return base_name
-    except Exception: pass
+    except Exception as e:
+        print(f"WARNING: ffprobe not found in PATH: {e}")
     print("WARNING: ffprobe not found. Video metadata analysis will be disabled.")
     return None
 
@@ -172,7 +180,8 @@ def _validate_and_get_workflow(json_string):
         data = json.loads(json_string)
         workflow_data = data.get('workflow', data.get('prompt', data))
         if isinstance(workflow_data, dict) and 'nodes' in workflow_data: return json.dumps(workflow_data)
-    except Exception: pass
+    except Exception as e:
+        print(f"DEBUG: Failed to validate workflow JSON: {e}")
     return None
 
 def _scan_bytes_for_workflow(content_bytes):
@@ -192,13 +201,13 @@ def _scan_bytes_for_workflow(content_bytes):
                 candidate = stream_subset[start_index : i + 1]
                 json.loads(candidate)
                 return candidate
-    except Exception:
-        return None
+    except Exception as e:
+        print(f"DEBUG: Error scanning bytes for workflow: {e}")
     return None
 
 def extract_workflow(filepath):
     ext = os.path.splitext(filepath)[1].lower()
-    video_exts = ['.mp4', '.mkv', '.webm', '.mov', '.avi']
+    video_exts = app.config.get('VIDEO_EXTENSIONS', ['.mp4', '.mkv', '.webm', '.mov', '.avi'])
     
     if ext in video_exts:
         ffprobe_path = app.config.get("FFPROBE_EXECUTABLE_PATH")
@@ -212,7 +221,8 @@ def extract_workflow(filepath):
                         if isinstance(value, str) and value.strip().startswith('{'):
                             workflow = _validate_and_get_workflow(value)
                             if workflow: return workflow
-            except Exception: pass
+            except Exception as e:
+                print(f"DEBUG: Error extracting workflow from video metadata: {e}")
     else:
         try:
             with Image.open(filepath) as img:
@@ -226,7 +236,8 @@ def extract_workflow(filepath):
                     if json_str:
                         workflow = _validate_and_get_workflow(json_str)
                         if workflow: return workflow
-        except Exception: pass
+        except Exception as e:
+            print(f"DEBUG: Error extracting workflow from image metadata: {e}")
 
     try:
         with open(filepath, 'rb') as f:
@@ -235,7 +246,8 @@ def extract_workflow(filepath):
         if json_str:
             workflow = _validate_and_get_workflow(json_str)
             if workflow: return workflow
-    except Exception: pass
+    except Exception as e:
+        print(f"DEBUG: Error scanning file content for workflow: {e}")
 
     try:
         base_filename = os.path.basename(filepath)
@@ -246,14 +258,17 @@ def extract_workflow(filepath):
             with open(latest, 'r', encoding='utf-8') as f:
                 workflow = _validate_and_get_workflow(f.read())
                 if workflow: return workflow
-    except Exception: pass
+    except Exception as e:
+        print(f"DEBUG: Error searching for workflow log file: {e}")
                 
     return None
 
 def is_webp_animated(filepath):
     try:
         with Image.open(filepath) as img: return getattr(img, 'is_animated', False)
-    except: return False
+    except Exception as e:
+        print(f"DEBUG: Error checking if WebP is animated: {e}")
+        return False
 
 def format_duration(seconds):
     if not seconds or seconds < 0: return ""
@@ -263,13 +278,31 @@ def format_duration(seconds):
 def analyze_file_metadata(filepath):
     details = {'type': 'unknown', 'duration': '', 'dimensions': '', 'has_workflow': 0}
     ext_lower = os.path.splitext(filepath)[1].lower()
-    type_map = {'.png': 'image', '.jpg': 'image', '.jpeg': 'image', '.gif': 'animated_image', '.mp4': 'video', '.webm': 'video', '.mov': 'video', '.mp3': 'audio', '.wav': 'audio', '.ogg': 'audio', '.flac': 'audio'}
-    details['type'] = type_map.get(ext_lower, 'unknown')
-    if details['type'] == 'unknown' and ext_lower == '.webp': details['type'] = 'animated_image' if is_webp_animated(filepath) else 'image'
+    
+    # Use centralized extension configuration
+    image_exts = app.config.get('IMAGE_EXTENSIONS', ['.png', '.jpg', '.jpeg'])
+    animated_exts = app.config.get('ANIMATED_IMAGE_EXTENSIONS', ['.gif', '.webp'])
+    video_exts = app.config.get('VIDEO_EXTENSIONS', ['.mp4', '.webm', '.mov'])
+    audio_exts = app.config.get('AUDIO_EXTENSIONS', ['.mp3', '.wav', '.ogg', '.flac'])
+    
+    if ext_lower in image_exts:
+        details['type'] = 'image'
+    elif ext_lower in animated_exts:
+        details['type'] = 'animated_image'
+    elif ext_lower in video_exts:
+        details['type'] = 'video'
+    elif ext_lower in audio_exts:
+        details['type'] = 'audio'
+    
+    # Special handling for WebP (can be static or animated)
+    if details['type'] == 'animated_image' and ext_lower == '.webp':
+        details['type'] = 'animated_image' if is_webp_animated(filepath) else 'image'
+    
     if 'image' in details['type']:
         try:
             with Image.open(filepath) as img: details['dimensions'] = f"{img.width}x{img.height}"
-        except Exception: pass
+        except Exception as e:
+            print(f"DEBUG: Error getting image dimensions for {filepath}: {e}")
     if extract_workflow(filepath): details['has_workflow'] = 1
     total_duration_sec = 0
     if details['type'] == 'video':
@@ -280,14 +313,16 @@ def analyze_file_metadata(filepath):
                 if fps > 0 and count > 0: total_duration_sec = count / fps
                 details['dimensions'] = f"{int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))}x{int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))}"
                 cap.release()
-        except Exception: pass
+        except Exception as e:
+            print(f"DEBUG: Error analyzing video metadata for {filepath}: {e}")
     elif details['type'] == 'animated_image':
         try:
             with Image.open(filepath) as img:
                 if getattr(img, 'is_animated', False):
                     if ext_lower == '.gif': total_duration_sec = sum(frame.info.get('duration', 100) for frame in ImageSequence.Iterator(img)) / 1000
                     elif ext_lower == '.webp': total_duration_sec = getattr(img, 'n_frames', 1) / app.config['WEBP_ANIMATED_FPS']
-        except Exception: pass
+        except Exception as e:
+            print(f"DEBUG: Error analyzing animated image duration for {filepath}: {e}")
     if total_duration_sec > 0: details['duration'] = format_duration(total_duration_sec)
     return details
 
@@ -301,7 +336,7 @@ def create_thumbnail(filepath, file_hash, file_type):
                 if file_type == 'animated_image' and getattr(img, 'is_animated', False):
                     frames = [fr.copy() for fr in ImageSequence.Iterator(img)]
                     if frames:
-                        for frame in frames: frame.thumbnail((THUMBNAIL_WIDTH, THUMBNAIL_WIDTH * 2), Image.Resampling.LANCZOS)
+                        for frame in frames: frame.thumbnail((app.config['THUMBNAIL_WIDTH'], app.config['THUMBNAIL_WIDTH'] * 2), Image.Resampling.LANCZOS)
                         processed_frames = [frame.convert('RGBA').convert('RGB') for frame in frames]
                         if processed_frames:
                             processed_frames[0].save(cache_path, save_all=True, append_images=processed_frames[1:], duration=img.info.get('duration', 100), loop=img.info.get('loop', 0), optimize=True)
@@ -348,10 +383,12 @@ def init_db(conn=None):
     
 def get_dynamic_folder_config(force_refresh=False):
     global folder_config_cache
-    if folder_config_cache is not None and not force_refresh:
-        return folder_config_cache
+    
+    with folder_config_cache_lock:
+        if folder_config_cache is not None and not force_refresh:
+            return folder_config_cache
 
-    print("INFO: Refreshing folder configuration by scanning directory tree...")
+        print("INFO: Refreshing folder configuration by scanning directory tree...")
 
     base_path_normalized = os.path.normpath(app.config['BASE_OUTPUT_PATH']).replace('\\', '/')
     
@@ -411,8 +448,8 @@ def get_dynamic_folder_config(force_refresh=False):
     except FileNotFoundError:
         print(f"WARNING: The base directory '{app.config['BASE_OUTPUT_PATH']}' was not found.")
     
-    folder_config_cache = dynamic_config
-    return dynamic_config
+        folder_config_cache = dynamic_config
+        return dynamic_config
     
 def full_sync_database(conn):
     print("INFO: Starting full file scan...")
@@ -453,7 +490,9 @@ def sync_folder_on_demand(folder_path):
     
     try:
         with get_db_connection() as conn:
-            disk_files, valid_extensions = {}, {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.mp4', '.mkv', '.webm', '.mov', '.avi', '.mp3', '.wav', '.ogg', '.flac'}
+            # Use centralized extension configuration
+            valid_extensions = set(app.config.get('ALL_MEDIA_EXTENSIONS', []))
+            disk_files = {}
             
             if os.path.isdir(folder_path):
                 for name in os.listdir(folder_path):
@@ -569,7 +608,7 @@ def sync_status(folder_key):
 
 @app.route('/galleryout/view/<string:folder_key>')
 def gallery_view(folder_key):
-    global gallery_view_cache
+    global gallery_view_cache  # Module-level cache shared across requests (thread-safe via lock)
     folders = get_dynamic_folder_config(force_refresh=True)
     if folder_key not in folders:
         return redirect(url_for('gallery_view', folder_key='_root_'))
@@ -611,8 +650,13 @@ def gallery_view(folder_key):
         
     folder_path_norm = os.path.normpath(folder_path)
     all_files_filtered = [dict(row) for row in all_files_raw if os.path.normpath(os.path.dirname(row['path'])) == folder_path_norm]
-    gallery_view_cache = all_files_filtered  # gallery_view_cache is a module-level global
-    initial_files = gallery_view_cache[:app.config['PAGE_SIZE']]
+    
+    # Thread-safe update of gallery_view_cache
+    with gallery_view_cache_lock:
+        gallery_view_cache = all_files_filtered
+        initial_files = gallery_view_cache[:app.config['PAGE_SIZE']]
+        total_files_count = len(gallery_view_cache)
+    
     _, extensions, prefixes = scan_folder_and_extract_options(folder_path)
     breadcrumbs, ancestor_keys = [], set()
     curr_key = folder_key
@@ -625,7 +669,7 @@ def gallery_view(folder_key):
     
     return render_template('index.html', 
                            files=initial_files, 
-                           total_files=len(gallery_view_cache), 
+                           total_files=total_files_count, 
                            folders=folders,
                            current_folder_key=folder_key, 
                            current_folder_info=current_folder_info,
@@ -719,14 +763,26 @@ def delete_folder(folder_key):
 @app.route('/galleryout/load_more')
 def load_more():
     offset = request.args.get('offset', 0, type=int)
-    if offset >= len(gallery_view_cache): return jsonify(files=[])
-    return jsonify(files=gallery_view_cache[offset:offset + app.config['PAGE_SIZE']])
+    
+    # Validate input
+    if offset < 0:
+        return jsonify(files=[])
+    
+    # Thread-safe access to gallery_view_cache
+    with gallery_view_cache_lock:
+        if offset >= len(gallery_view_cache):
+            return jsonify(files=[])
+        return jsonify(files=gallery_view_cache[offset:offset + app.config['PAGE_SIZE']])
 
 def get_file_info_from_db(file_id, column='*'):
-    with get_db_connection() as conn:
-        row = conn.execute(f"SELECT {column} FROM files WHERE id = ?", (file_id,)).fetchone()
-    if not row: abort(404)
-    return dict(row) if column == '*' else row[0]
+    try:
+        with get_db_connection() as conn:
+            row = conn.execute(f"SELECT {column} FROM files WHERE id = ?", (file_id,)).fetchone()
+        if not row: abort(404)
+        return dict(row) if column == '*' else row[0]
+    except sqlite3.Error as e:
+        print(f"ERROR: Database error in get_file_info_from_db for file_id {file_id}: {e}")
+        abort(500)
 
 def _get_unique_filepath(destination_folder, filename):
     base, ext = os.path.splitext(filename)
@@ -784,11 +840,22 @@ def delete_batch():
     deleted_count, failed_files = 0, []
     with get_db_connection() as conn:
         placeholders = ','.join('?' * len(file_ids))
-        files_to_delete = conn.execute(f"SELECT id, path FROM files WHERE id IN ({placeholders})", file_ids).fetchall()
+        files_to_delete = conn.execute(f"SELECT id, path, mtime FROM files WHERE id IN ({placeholders})", file_ids).fetchall()
         ids_to_remove_from_db = []
         for row in files_to_delete:
             try:
-                if os.path.exists(row['path']): os.remove(row['path'])
+                if os.path.exists(row['path']): 
+                    os.remove(row['path'])
+                
+                # Clean up orphaned thumbnail
+                file_hash = hashlib.md5((row['path'] + str(row['mtime'])).encode()).hexdigest()
+                thumbnail_pattern = os.path.join(app.config['THUMBNAIL_CACHE_DIR'], f"{file_hash}.*")
+                for thumbnail_path in glob.glob(thumbnail_pattern):
+                    try:
+                        os.remove(thumbnail_path)
+                    except Exception as e:
+                        print(f"WARNING: Could not remove thumbnail {thumbnail_path}: {e}")
+                
                 ids_to_remove_from_db.append(row['id'])
                 deleted_count += 1
             except Exception as e: 
@@ -827,11 +894,12 @@ def toggle_favorite(file_id):
 @app.route('/galleryout/delete/<string:file_id>', methods=['POST'])
 def delete_file(file_id):
     with get_db_connection() as conn:
-        file_info = conn.execute("SELECT path FROM files WHERE id = ?", (file_id,)).fetchone()
+        file_info = conn.execute("SELECT path, mtime FROM files WHERE id = ?", (file_id,)).fetchone()
         if not file_info:
             return jsonify({'status': 'success', 'message': 'File already deleted from database.'})
         
         filepath = file_info['path']
+        mtime = file_info['mtime']
         
         try:
             if os.path.exists(filepath):
@@ -841,6 +909,16 @@ def delete_file(file_id):
             # A real OS error occurred (e.g., permissions).
             print(f"ERROR: Could not delete file {filepath} from disk: {e}")
             return jsonify({'status': 'error', 'message': f'Could not delete file from disk: {e}'}), 500
+
+        # Clean up orphaned thumbnail
+        file_hash = hashlib.md5((filepath + str(mtime)).encode()).hexdigest()
+        try:
+            thumbnail_pattern = os.path.join(app.config['THUMBNAIL_CACHE_DIR'], f"{file_hash}.*")
+            for thumbnail_path in glob.glob(thumbnail_pattern):
+                os.remove(thumbnail_path)
+                print(f"INFO: Removed orphaned thumbnail: {os.path.basename(thumbnail_path)}")
+        except Exception as e:
+            print(f"WARNING: Could not remove thumbnail for {filepath}: {e}")
 
         # Whether the file was deleted now or was already gone, we clean up the DB.
         conn.execute("DELETE FROM files WHERE id = ?", (file_id,))
@@ -920,6 +998,18 @@ if __name__ == '__main__':
     app.config['WEBP_ANIMATED_FPS'] = 16.0
     app.config['PAGE_SIZE'] = 100
     app.config['SPECIAL_FOLDERS'] = ['video', 'audio']
+    
+    # --- Define valid file extensions (centralized) ---
+    app.config['VIDEO_EXTENSIONS'] = ['.mp4', '.mkv', '.webm', '.mov', '.avi']
+    app.config['IMAGE_EXTENSIONS'] = ['.png', '.jpg', '.jpeg']
+    app.config['ANIMATED_IMAGE_EXTENSIONS'] = ['.gif', '.webp']
+    app.config['AUDIO_EXTENSIONS'] = ['.mp3', '.wav', '.ogg', '.flac']
+    app.config['ALL_MEDIA_EXTENSIONS'] = (
+        app.config['VIDEO_EXTENSIONS'] + 
+        app.config['IMAGE_EXTENSIONS'] + 
+        app.config['ANIMATED_IMAGE_EXTENSIONS'] + 
+        app.config['AUDIO_EXTENSIONS']
+    )
     
     # --- Set constants for cache/folder names ---
     app.config['THUMBNAIL_CACHE_FOLDER_NAME'] = '.thumbnails_cache'

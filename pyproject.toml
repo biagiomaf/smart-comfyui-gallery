@@ -1,6 +1,6 @@
 [project]
 name = "smart-comfyui-gallery"
-version = "1.31.0"
+version = "1.32.0"
 description = "A visual hub for ComfyUI with universal workflow recall, upload magic, and intelligent organization."
 license = { file = "LICENSE" }
 
