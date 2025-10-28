@@ -23,7 +23,7 @@
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License"></a>
   <img src="https://img.shields.io/badge/Python-3.9+-blue.svg" alt="Python Version">
-  <a href="https://github.com/biagiomaf/smart-comfyui-gallery/stargazers"><img src="https://img.shields.io/github/stars/biagiomaf/smart-comfyui-gallery?style=social" alt="GitHub stars"></a>
+  <a href="https://github.com/opj161/smart-comfyui-gallery/stargazers"><img src="https://img.shields.io/github/stars/opj161/smart-comfyui-gallery?style=social" alt="GitHub stars"></a>
 </p>
 
 ---
@@ -112,14 +112,14 @@ The gallery will start automatically in the background with ComfyUI.
     ```
 2.  Clone this repository:
 ```bash
-git clone https://github.com/biagiomaf/smart-comfyui-gallery
+git clone https://github.com/opj161/smart-comfyui-gallery
 ```
 3.  Install the required dependencies into your ComfyUI environment:
 ```bash
 # Navigate into the new folder
 cd smart-comfyui-gallery
 # Install dependencies
-pip install -r requirements.txt
+pip install -e .
 ```
 4.  **Restart ComfyUI.**
 
@@ -202,7 +202,7 @@ If SmartGallery has transformed your ComfyUI workflow, **please give it a ⭐ st
 
 It takes 2 seconds but means the world to me and helps other creators discover this tool.
 
-**[⭐ Star this repo now!](https://github.com/biagiomaf/smart-comfyui-gallery/stargazers)**
+**[⭐ Star this repo now!](https://github.com/opj161/smart-comfyui-gallery/stargazers)**
 
 ---
 

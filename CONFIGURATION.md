@@ -182,4 +182,4 @@ python smartgallery.py --output-path "C:/path/to/output" --input-path "C:/path/t
 ---
 
 **Questions or Issues?**  
-Open an issue on GitHub: https://github.com/biagiomaf/smart-comfyui-gallery/issues
+Open an issue on GitHub: https://github.com/opj161/smart-comfyui-gallery/issues

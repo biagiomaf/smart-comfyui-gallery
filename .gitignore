@@ -42,3 +42,7 @@ thumbnails/
 # OS
 .DS_Store
 Thumbs.db
+
+.docs/
+smart-comfyui-gallery.xml
+config.json_old

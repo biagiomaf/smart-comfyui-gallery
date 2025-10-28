@@ -1,0 +1,21 @@
+[project]
+name = "smart-comfyui-gallery"
+version = "1.31.0"
+description = "A visual hub for ComfyUI with universal workflow recall, upload magic, and intelligent organization."
+license = { file = "LICENSE" }
+
+dependencies = [
+    "Flask",
+    "Pillow",
+    "opencv-python"
+]
+
+[project.urls]
+Repository = "https://github.com/opj161/smart-comfyui-gallery"
+
+[tool.comfy]
+# This section is used by the ComfyUI Registry
+PublisherId = "opj161"
+DisplayName = "Smart Gallery"
+# Optional: Add a URL to an icon for a professional look in the registry
+# Icon = "https://raw.githubusercontent.com/opj161/smart-comfyui-gallery/main/assets/icon.png"

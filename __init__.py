@@ -9,6 +9,7 @@ import json
 import atexit
 import server
 import folder_paths
+from comfy_api.latest import ComfyExtension, io
 from aiohttp import web
 
 # This is the main ComfyUI server instance
@@ -136,11 +137,26 @@ async def save_gallery_config(request):
 
 print("## SmartGallery: API routes registered.")
 
-# --- Startup ---
-gallery_thread = threading.Thread(target=launch_gallery, daemon=True)
-gallery_thread.start()
+# --- ComfyUI V3 Registration ---
 
-# --- ComfyUI Registration ---
-WEB_DIRECTORY = "js"
-NODE_CLASS_MAPPINGS = {}
-NODE_DISPLAY_NAME_MAPPINGS = {}
+class SmartGalleryExtension(ComfyExtension):
+    def __init__(self):
+        # Call the parent class's constructor
+        super().__init__()
+        # Set the web_directory as an instance attribute for ComfyUI to discover
+        self.web_directory = "js"
+
+    def on_load(self):
+        """Called by ComfyUI when the extension is loaded."""
+        # This is the modern, clean way to handle startup logic.
+        gallery_thread = threading.Thread(target=launch_gallery, daemon=True)
+        gallery_thread.start()
+
+    async def get_node_list(self) -> list[type[io.ComfyNode]]:
+        """This extension registers no nodes."""
+        return []
+
+async def comfy_entrypoint() -> SmartGalleryExtension:
+    """The function ComfyUI looks for to register the extension."""
+    # Instantiate the extension class without arguments
+    return SmartGalleryExtension()

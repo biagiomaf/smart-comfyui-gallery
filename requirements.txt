@@ -1,3 +1,0 @@
-Flask
-Pillow
-opencv-python
