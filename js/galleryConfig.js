@@ -478,6 +478,22 @@ app.registerExtension({
     async setup() {
         console.log("[SmartGallery] Registering configuration sidebar tab");
         
+        // Load CSS file programmatically
+        const cssLink = document.createElement("link");
+        cssLink.rel = "stylesheet";
+        cssLink.type = "text/css";
+        cssLink.href = new URL("./galleryConfig.css", import.meta.url).href;
+        
+        cssLink.onload = () => {
+            console.log("[SmartGallery] ✅ CSS loaded successfully:", cssLink.href);
+        };
+        
+        cssLink.onerror = () => {
+            console.error("[SmartGallery] ❌ Failed to load CSS:", cssLink.href);
+        };
+        
+        document.head.appendChild(cssLink);
+        
         // Register custom sidebar tab
         app.extensionManager.registerSidebarTab({
             id: "smart-gallery-config",
