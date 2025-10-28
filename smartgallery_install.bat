@@ -1,3 +1,11 @@
+::An installation bat that:
+:: Navigates cmd to the current directory
+:: Clones the github repo
+:: Navigates to the clone
+:: Creates and activates a venv
+:: Installs requirements.txt
+:: Presents a message displaying smartgallery.py config variables.
+
 @echo off
 color 0b
 echo.
@@ -43,3 +51,4 @@ echo -Server port- (different from ComfyUI)
 echo 	SERVER_PORT = 8189
 echo.
 PAUSE
+
