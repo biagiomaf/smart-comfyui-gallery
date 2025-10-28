@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "smart-comfyui-gallery"
-version = "1.36.0"
+version = "1.36.1"
 description = "A visual hub for ComfyUI with universal workflow recall, upload magic, and intelligent organization."
 license = "MIT"
 license-files = ["LICENSE"]

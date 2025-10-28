@@ -1,7 +1,7 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025 — MIT License (free to use and modify)
 #
-# Version: 1.36.0 - October 28, 2025 (Robust Deep-Linking with Pagination)
+# Version: 1.36.1 - October 28, 2025 (Robust Deep-Linking with Pagination)
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -52,7 +52,7 @@ BATCH_SIZE = 500
 MAX_PARALLEL_WORKERS = None
 
 # Number of files to display per page in the gallery view
-FILES_PER_PAGE = 50
+FILES_PER_PAGE = 100
 
 # --- CACHE AND FOLDER NAMES ---
 # Constants are now defined and loaded into app.config in the main block.
