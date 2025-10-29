@@ -1,7 +1,15 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025 — MIT License (free to use and modify)
 #
-# Version: 1.40.0 - January 2025 (Hybrid UI/API Parser)
+# Version: 1.40.1 - January 2025 (UI Styling Polish)
+# CHANGES (v1.40.1):
+# - Enhanced filter panel styling with comprehensive Tom-Select dropdown theming
+# - Improved text readability in dropdown menus (dark background, light text)
+# - Added modern hover/focus states for all input fields and dropdowns
+# - Styled multi-select pills with blue rounded badges
+# - Enhanced visual feedback with smooth cubic-bezier transitions
+# - Better accessibility with clear focus indicators and contrast
+#
 # BREAKING CHANGES (v1.40.0):
 # - MAJOR REFACTOR: ComfyUIWorkflowParser now handles BOTH UI and API formats natively
 # - Removed convert_ui_workflow_to_api_format() function (no longer needed)

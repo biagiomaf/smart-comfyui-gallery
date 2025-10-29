@@ -1,6 +1,40 @@
 
 # Changelog
 
+## [1.40.1] - 2025-01-29
+
+### UI/UX Improvements
+
+#### Filter Panel Styling Enhancements
+- **Tom-Select Dropdown Theming**: Comprehensive styling for multi-select dropdowns
+  - Dark background (`.ts-dropdown-content`) with light text for proper readability
+  - Hover states with surface-hover background color
+  - Selected options highlighted with blue background and bold text
+  - Smooth transitions on all interactive states
+  
+- **Multi-Select Pills**: Modern badge styling for selected items
+  - Blue rounded pills (`.ts-control .item`) with white text
+  - Remove button with hover effects
+  - Proper spacing and sizing (0.35rem padding, 0.85rem font)
+  
+- **Input Field Polish**: Enhanced form control styling
+  - Hover effects with lighter borders and subtle background change
+  - Focus states with blue glow (3px shadow) and background tint
+  - Smooth cubic-bezier transitions (0.4, 0, 0.2, 1)
+  - Better placeholder text contrast (50% opacity)
+  
+- **Native Select Improvements**: Better styling for standard multi-select
+  - Checked options with blue gradient background
+  - White text on selected items with font-weight 600
+  - Improved padding and border-radius on options
+
+#### Accessibility
+- Clear focus indicators with blue ring on all inputs
+- Better color contrast throughout (WCAG AA compliant)
+- Smooth animations without motion sickness triggers
+
+---
+
 ## [1.40.0] - 2025-01-29
 
 ### MAJOR REFACTOR: Hybrid UI/API Workflow Parser ⚡

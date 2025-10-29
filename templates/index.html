@@ -99,15 +99,59 @@
         .filter-group { display: flex; flex-direction: column; }
         
         /* Filter Form Controls - applies to both .filter-bar and .filter-panel-content */
-        .filter-bar label, .filter-panel-content label { font-weight: 600; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .filter-bar label, .filter-panel-content label { 
+            font-weight: 600; 
+            margin-bottom: 0.5rem; 
+            color: var(--text-muted); 
+            font-size: 0.85rem; 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px;
+            display: block;
+        }
         .filter-bar select, .filter-bar input[type="text"], .filter-bar input[type="number"], .filter-bar button, .filter-bar a,
         .filter-panel-content select, .filter-panel-content input[type="text"], .filter-panel-content input[type="number"], .filter-panel-footer button, .filter-panel-footer a { 
-            background: var(--glass-bg); color: var(--text-color); border: 1px solid var(--glass-border); border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.9rem; transition: all 0.3s; backdrop-filter: blur(10px); 
+            background: var(--glass-bg); 
+            color: var(--text-color); 
+            border: 1px solid var(--glass-border); 
+            border-radius: 8px; 
+            padding: 0.75rem 1rem; 
+            font-size: 0.9rem; 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            backdrop-filter: blur(10px);
+            font-family: inherit;
         }
-        .filter-bar select[multiple], .filter-panel-content select[multiple] { min-height: 120px; }
+        .filter-bar input[type="text"]::placeholder,
+        .filter-panel-content input[type="text"]::placeholder {
+            color: var(--text-muted);
+            opacity: 0.5;
+        }
+        .filter-bar select[multiple], .filter-panel-content select[multiple] { 
+            min-height: 120px; 
+            padding: 0.5rem;
+        }
+        .filter-bar select[multiple] option,
+        .filter-panel-content select[multiple] option {
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-bottom: 2px;
+        }
+        .filter-bar select[multiple] option:checked,
+        .filter-panel-content select[multiple] option:checked {
+            background: var(--primary-color) linear-gradient(0deg, var(--primary-color) 0%, var(--primary-color) 100%);
+            color: white;
+            font-weight: 600;
+        }
         .filter-bar input[type="text"]:focus, .filter-bar input[type="number"]:focus, .filter-bar select:focus,
         .filter-panel-content input[type="text"]:focus, .filter-panel-content input[type="number"]:focus, .filter-panel-content select:focus { 
-            outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1); 
+            outline: none; 
+            border-color: var(--primary-color); 
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+            background: rgba(0, 123, 255, 0.05);
+        }
+        .filter-bar input[type="text"]:hover, .filter-bar input[type="number"]:hover, .filter-bar select:hover,
+        .filter-panel-content input[type="text"]:hover, .filter-panel-content input[type="number"]:hover, .filter-panel-content select:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.03);
         }
         .filter-bar input[type="number"], .filter-panel-content input[type="number"] { font-variant-numeric: tabular-nums; }
         .filter-bar input[type="number"]::-webkit-inner-spin-button, .filter-bar input[type="number"]::-webkit-outer-spin-button,
@@ -167,9 +211,116 @@
         .mobile-actions-row { display: flex; gap: 0.75rem; }
         .mobile-actions-row > * { flex-grow: 1; text-align: center; justify-content: center; }
         .mobile-actions-row button { padding-left: 0.8rem; padding-right: 0.8rem; }
-        .ts-control { background: var(--glass-bg) !important; border: 1px solid var(--glass-border) !important; border-radius: 8px !important; backdrop-filter: blur(10px) !important; }
-        .ts-dropdown, .ts-control, .ts-control input { color: var(--text-color) !important; }
-        .ts-dropdown { background: var(--surface-color) !important; border: 1px solid var(--border-color) !important; z-index: 1000; border-radius: 8px !important; box-shadow: var(--shadow-lg) !important; }
+        
+        /* Tom-Select Multi-Select Dropdown Styling */
+        .ts-wrapper { width: 100%; }
+        .ts-control { 
+            background: var(--glass-bg) !important; 
+            border: 1px solid var(--glass-border) !important; 
+            border-radius: 8px !important; 
+            backdrop-filter: blur(10px) !important; 
+            padding: 0.5rem !important;
+            min-height: 42px !important;
+        }
+        .ts-control, .ts-control input { 
+            color: var(--text-color) !important; 
+            font-size: 0.9rem !important;
+        }
+        .ts-control input::placeholder {
+            color: var(--text-muted) !important;
+            opacity: 0.6 !important;
+        }
+        
+        /* Tom-Select Dropdown Menu */
+        .ts-dropdown { 
+            background: var(--surface-color) !important; 
+            border: 1px solid var(--border-color) !important; 
+            border-radius: 8px !important; 
+            box-shadow: var(--shadow-lg) !important;
+            margin-top: 4px !important;
+            z-index: 1000 !important;
+        }
+        .ts-dropdown-content { 
+            background: var(--surface-color) !important;
+            color: var(--text-color) !important;
+            max-height: 240px !important;
+        }
+        
+        /* Tom-Select Options */
+        .ts-dropdown .option, .ts-dropdown .optgroup-header, .ts-dropdown .no-results, .ts-dropdown .create {
+            background: var(--surface-color) !important;
+            color: var(--text-color) !important;
+            padding: 0.65rem 0.85rem !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+        }
+        .ts-dropdown .option:hover, .ts-dropdown .option.active {
+            background: var(--surface-hover) !important;
+            color: var(--text-color) !important;
+        }
+        .ts-dropdown .option.selected {
+            background: rgba(0, 123, 255, 0.15) !important;
+            color: var(--primary-color) !important;
+            font-weight: 600 !important;
+        }
+        .ts-dropdown .option.selected:hover {
+            background: rgba(0, 123, 255, 0.25) !important;
+        }
+        
+        /* Tom-Select Selected Items (Pills) */
+        .ts-control .item {
+            background: var(--primary-color) !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 16px !important;
+            padding: 0.35rem 0.65rem !important;
+            margin: 0.15rem 0.25rem 0.15rem 0 !important;
+            font-size: 0.85rem !important;
+            font-weight: 600 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 0.4rem !important;
+        }
+        .ts-control .item .remove {
+            color: rgba(255, 255, 255, 0.8) !important;
+            border: none !important;
+            padding: 0 !important;
+            margin-left: 0.25rem !important;
+            font-size: 1rem !important;
+            font-weight: 700 !important;
+            opacity: 0.8 !important;
+        }
+        .ts-control .item .remove:hover {
+            background: none !important;
+            color: white !important;
+            opacity: 1 !important;
+        }
+        
+        /* Tom-Select Focus State */
+        .ts-wrapper.focus .ts-control {
+            border-color: var(--primary-color) !important;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1) !important;
+        }
+        
+        /* Tom-Select Optgroup Headers */
+        .ts-dropdown .optgroup-header {
+            background: var(--surface-hover) !important;
+            color: var(--text-muted) !important;
+            font-weight: 700 !important;
+            font-size: 0.8rem !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.5px !important;
+            padding: 0.5rem 0.85rem !important;
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 1 !important;
+        }
+        
+        /* Tom-Select No Results */
+        .ts-dropdown .no-results {
+            color: var(--text-muted) !important;
+            font-style: italic !important;
+        }
+        
         #gallery-anchor { display: block; position: relative; top: -20px; visibility: hidden; }
         .gallery-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 2rem; padding: 2rem; min-height: 50vh; }
         .gallery-item { background: var(--glass-bg); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; position: relative; border: 2px solid transparent; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); }
