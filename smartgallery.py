@@ -1,7 +1,13 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025 — MIT License (free to use and modify)
 #
-# Version: 1.40.1 - January 2025 (UI Styling Polish)
+# Version: 1.40.2 - January 2025 (Filter Dropdown Fix)
+# CHANGES (v1.40.2):
+# - FIXED: Workflow metadata dropdowns (Model, Sampler, Scheduler) now use Tom-Select
+# - Previously these were plain HTML select elements, styling wasn't applied
+# - Now initialized with Tom-Select after population for consistent modern UX
+# - Applies all the enhanced dropdown styling from v1.40.1
+#
 # CHANGES (v1.40.1):
 # - Enhanced filter panel styling with comprehensive Tom-Select dropdown theming
 # - Improved text readability in dropdown menus (dark background, light text)

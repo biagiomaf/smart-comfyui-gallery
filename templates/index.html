@@ -805,6 +805,29 @@
                 
                 console.log('Workflow filter options loaded successfully');
                 
+                // Initialize Tom-Select on workflow metadata dropdowns for better UX
+                if (modelSelect && options.models && options.models.length > 0) {
+                    new TomSelect('#model-select', {
+                        placeholder: '🤖 Select model...',
+                        allowEmptyOption: true,
+                        maxOptions: 200
+                    });
+                }
+                if (samplerSelect && options.samplers && options.samplers.length > 0) {
+                    new TomSelect('#sampler-select', {
+                        placeholder: '🎲 Select sampler...',
+                        allowEmptyOption: true,
+                        maxOptions: 50
+                    });
+                }
+                if (schedulerSelect && options.schedulers && options.schedulers.length > 0) {
+                    new TomSelect('#scheduler-select', {
+                        placeholder: '📅 Select scheduler...',
+                        allowEmptyOption: true,
+                        maxOptions: 50
+                    });
+                }
+                
             } catch (error) {
                 console.error('Failed to load workflow filter options:', error);
                 // Show user-friendly message but don't block the UI

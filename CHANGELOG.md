@@ -1,6 +1,28 @@
 
 # Changelog
 
+## [1.40.2] - 2025-01-29
+
+### Bug Fixes
+
+#### Filter Dropdown Styling Fix
+- **FIXED**: Workflow metadata dropdowns (Model, Sampler, Scheduler) now properly styled
+- **Root Cause**: These dropdowns were plain HTML `<select>` elements without Tom-Select initialization
+- **Solution**: Added Tom-Select initialization in `populateWorkflowFilters()` function
+- **Result**: All filter dropdowns now have consistent modern styling with:
+  - Dark background dropdown menus (proper readability)
+  - Hover effects on options
+  - Blue highlight for selected items
+  - Smooth transitions and interactions
+
+#### Technical Details
+- Tom-Select initialized after dropdown options are populated from API
+- Configuration: `allowEmptyOption: true` to support "All X" default option
+- `maxOptions` set appropriately (200 for models, 50 for samplers/schedulers)
+- All v1.40.1 Tom-Select CSS styling now applies correctly
+
+---
+
 ## [1.40.1] - 2025-01-29
 
 ### UI/UX Improvements
