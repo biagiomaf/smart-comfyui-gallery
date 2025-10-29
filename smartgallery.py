@@ -892,6 +892,12 @@ gallery_view_cache_lock = threading.Lock()
 folder_config_cache = None
 folder_config_cache_lock = threading.Lock()
 
+# --- NEW: In-Memory Cache for Filter Options ---
+_filter_options_cache = {}
+_cache_lock = threading.Lock()
+CACHE_DURATION_SECONDS = 300  # 5 minutes
+# ---------------------------------------------
+
 # Request counter for stats
 request_counter = {'count': 0, 'lock': threading.Lock()}
 
@@ -1519,6 +1525,76 @@ def build_metadata_filter_subquery(filters):
         return (subquery, params)
     else:
         return ("", [])
+
+def _build_filter_conditions(args):
+    """
+    Builds a list of SQL conditions and parameters based on request arguments.
+    This centralizes the filtering logic for gallery_view and load_more.
+
+    Args:
+        args: A dictionary-like object containing request arguments (e.g., request.args).
+
+    Returns:
+        A tuple of (conditions_list, params_list).
+    """
+    conditions = []
+    params = []
+
+    # Gather workflow metadata filters
+    metadata_filters = {}
+    if args.get('filter_model', '').strip():
+        metadata_filters['model'] = args.get('filter_model').strip()
+    if args.get('filter_sampler', '').strip():
+        metadata_filters['sampler'] = args.get('filter_sampler').strip()
+    if args.get('filter_scheduler', '').strip():
+        metadata_filters['scheduler'] = args.get('filter_scheduler').strip()
+    if args.get('filter_cfg_min', type=float) is not None:
+        metadata_filters['cfg_min'] = args.get('filter_cfg_min', type=float)
+    if args.get('filter_cfg_max', type=float) is not None:
+        metadata_filters['cfg_max'] = args.get('filter_cfg_max', type=float)
+    if args.get('filter_steps_min', type=int) is not None:
+        metadata_filters['steps_min'] = args.get('filter_steps_min', type=int)
+    if args.get('filter_steps_max', type=int) is not None:
+        metadata_filters['steps_max'] = args.get('filter_steps_max', type=int)
+    if args.get('filter_width_min', type=int) is not None:
+        metadata_filters['width_min'] = args.get('filter_width_min', type=int)
+    if args.get('filter_width_max', type=int) is not None:
+        metadata_filters['width_max'] = args.get('filter_width_max', type=int)
+    if args.get('filter_height_min', type=int) is not None:
+        metadata_filters['height_min'] = args.get('filter_height_min', type=int)
+    if args.get('filter_height_max', type=int) is not None:
+        metadata_filters['height_max'] = args.get('filter_height_max', type=int)
+
+    # Build EXISTS subquery for metadata filters
+    if metadata_filters:
+        subquery_sql, subquery_params = build_metadata_filter_subquery(metadata_filters)
+        if subquery_sql:
+            conditions.append(subquery_sql)
+            params.extend(subquery_params)
+
+    search_term = args.get('search', '').strip()
+    if search_term:
+        conditions.append("f.name LIKE ?")
+        params.append(f"%{search_term}%")
+    
+    if args.get('favorites', 'false').lower() == 'true':
+        conditions.append("f.is_favorite = 1")
+
+    selected_prefixes = args.getlist('prefix')
+    if selected_prefixes:
+        prefix_conditions = [f"f.name LIKE ?" for p in selected_prefixes if p.strip()]
+        if prefix_conditions:
+            conditions.append(f"({' OR '.join(prefix_conditions)})")
+            params.extend([f"{p.strip()}_%" for p in selected_prefixes if p.strip()])
+
+    selected_extensions = args.getlist('extension')
+    if selected_extensions:
+        ext_conditions = [f"f.name LIKE ?" for ext in selected_extensions if ext.strip()]
+        if ext_conditions:
+            conditions.append(f"({' OR '.join(ext_conditions)})")
+            params.extend([f"%.{ext.lstrip('.').lower()}" for ext in selected_extensions if ext.strip()])
+
+    return conditions, params
 
 def init_db(conn=None):
     close_conn = False
@@ -2247,64 +2323,19 @@ def gallery_view(folder_key):
     offset = (page - 1) * FILES_PER_PAGE
     
     conn = get_db()
-    conditions, params = [], []
-    conditions.append("f.path LIKE ?")
-    params.append(folder_path + os.sep + '%')
     
-    # Gather workflow metadata filters
-    metadata_filters = {}
-    if request.args.get('filter_model', '').strip():
-        metadata_filters['model'] = request.args.get('filter_model').strip()
-    if request.args.get('filter_sampler', '').strip():
-        metadata_filters['sampler'] = request.args.get('filter_sampler').strip()
-    if request.args.get('filter_scheduler', '').strip():
-        metadata_filters['scheduler'] = request.args.get('filter_scheduler').strip()
-    if request.args.get('filter_cfg_min', type=float) is not None:
-        metadata_filters['cfg_min'] = request.args.get('filter_cfg_min', type=float)
-    if request.args.get('filter_cfg_max', type=float) is not None:
-        metadata_filters['cfg_max'] = request.args.get('filter_cfg_max', type=float)
-    if request.args.get('filter_steps_min', type=int) is not None:
-        metadata_filters['steps_min'] = request.args.get('filter_steps_min', type=int)
-    if request.args.get('filter_steps_max', type=int) is not None:
-        metadata_filters['steps_max'] = request.args.get('filter_steps_max', type=int)
-    if request.args.get('filter_width_min', type=int) is not None:
-        metadata_filters['width_min'] = request.args.get('filter_width_min', type=int)
-    if request.args.get('filter_width_max', type=int) is not None:
-        metadata_filters['width_max'] = request.args.get('filter_width_max', type=int)
-    if request.args.get('filter_height_min', type=int) is not None:
-        metadata_filters['height_min'] = request.args.get('filter_height_min', type=int)
-    if request.args.get('filter_height_max', type=int) is not None:
-        metadata_filters['height_max'] = request.args.get('filter_height_max', type=int)
+    # Base conditions for this view (scoping to the current folder)
+    conditions = ["f.path LIKE ?"]
+    params = [folder_path + os.sep + '%']
     
-    # Build EXISTS subquery for metadata filters (prevents duplicate file results)
-    if metadata_filters:
-        subquery_sql, subquery_params = build_metadata_filter_subquery(metadata_filters)
-        if subquery_sql:
-            conditions.append(subquery_sql)
-            params.extend(subquery_params)
-        
+    # Get all filter conditions from the centralized helper function
+    filter_conditions, filter_params = _build_filter_conditions(request.args)
+    conditions.extend(filter_conditions)
+    params.extend(filter_params)
+    
     sort_by = 'name' if request.args.get('sort_by') == 'name' else 'mtime'
     sort_order = 'asc' if request.args.get('sort_order', 'desc').lower() == 'asc' else 'desc'
-
-    search_term = request.args.get('search', '').strip()
-    if search_term:
-        conditions.append("f.name LIKE ?")
-        params.append(f"%{search_term}%")
-    if request.args.get('favorites', 'false').lower() == 'true':
-        conditions.append("f.is_favorite = 1")
-
-    selected_prefixes = request.args.getlist('prefix')
-    if selected_prefixes:
-        prefix_conditions = [f"f.name LIKE ?" for p in selected_prefixes if p.strip()]
-        params.extend([f"{p.strip()}_%" for p in selected_prefixes if p.strip()])
-        if prefix_conditions: conditions.append(f"({' OR '.join(prefix_conditions)})")
-
-    selected_extensions = request.args.getlist('extension')
-    if selected_extensions:
-        ext_conditions = [f"f.name LIKE ?" for ext in selected_extensions if ext.strip()]
-        params.extend([f"%.{ext.lstrip('.').lower()}" for ext in selected_extensions if ext.strip()])
-        if ext_conditions: conditions.append(f"({' OR '.join(ext_conditions)})")
-        
+    
     sort_direction = "ASC" if sort_order == 'asc' else "DESC"
     
     # TRUE SQL PAGINATION (v1.41.0) - Query only needed rows, not all results
@@ -2472,39 +2503,25 @@ def delete_folder(folder_key):
 @require_initialization
 def filter_options():
     """
-    Returns all unique values for filterable workflow metadata fields.
-    Used to populate filter dropdowns in the frontend.
+    Returns unique values for filterable metadata, with caching.
+    NOTE: This endpoint no longer returns models as they are handled by a separate search API.
     """
-    import sys
-    sys.stdout.flush()
-    print("=" * 80, flush=True)
-    print("DEBUG: filter_options ROUTE CALLED!", flush=True)
-    print("=" * 80, flush=True)
-    sys.stdout.flush()
+    global _filter_options_cache
+    
+    with _cache_lock:
+        cache_entry = _filter_options_cache.get('options')
+        if cache_entry and (time.time() - cache_entry['timestamp']) < CACHE_DURATION_SECONDS:
+            print("INFO: Serving filter options from cache.")
+            return jsonify(cache_entry['data'])
+
+    # --- If cache is invalid, proceed with database query ---
+    print("INFO: Cache miss or expired. Querying DB for filter options.")
     
     try:
-        print("DEBUG: filter_options endpoint called")
         conn = get_db()
         
-        # First check if workflow_metadata table has any data
-        try:
-            count = conn.execute("SELECT COUNT(*) as count FROM workflow_metadata").fetchone()
-            print(f"DEBUG: workflow_metadata table has {count['count']} rows")
-        except Exception as e:
-            print(f"ERROR: Failed to count workflow_metadata rows: {e}")
+        # NOTE: Model query is REMOVED from this function.
         
-        # Get all unique values for each filterable field WITH COUNTS (v1.41.0)
-        print("DEBUG: Querying models with counts...")
-        models_raw = conn.execute("""
-            SELECT model_name, COUNT(DISTINCT file_id) as file_count 
-            FROM workflow_metadata 
-            WHERE model_name IS NOT NULL AND model_name != '' 
-            GROUP BY model_name 
-            ORDER BY file_count DESC, model_name
-        """).fetchall()
-        print(f"DEBUG: Found {len(models_raw)} model entries")
-        
-        print("DEBUG: Querying samplers with counts...")
         samplers_raw = conn.execute("""
             SELECT sampler_name, COUNT(DISTINCT file_id) as file_count 
             FROM workflow_metadata 
@@ -2512,9 +2529,7 @@ def filter_options():
             GROUP BY sampler_name 
             ORDER BY file_count DESC, sampler_name
         """).fetchall()
-        print(f"DEBUG: Found {len(samplers_raw)} sampler entries")
         
-        print("DEBUG: Querying schedulers with counts...")
         schedulers_raw = conn.execute("""
             SELECT scheduler, COUNT(DISTINCT file_id) as file_count 
             FROM workflow_metadata 
@@ -2522,132 +2537,92 @@ def filter_options():
             GROUP BY scheduler 
             ORDER BY file_count DESC, scheduler
         """).fetchall()
-        print(f"DEBUG: Found {len(schedulers_raw)} scheduler entries")
         
-        # Safely extract and normalize values WITH COUNTS (v1.41.0)
-        models = []
-        samplers = []
-        schedulers = []
-        
-        try:
-            # Process models with counts
-            for row in models_raw:
-                try:
-                    val = row['model_name']
-                    count = row['file_count']
-                    if val and isinstance(val, str):
-                        val_clean = val.strip()
-                        if val_clean:
-                            models.append({'value': val_clean, 'count': count})
-                except (KeyError, TypeError, AttributeError) as e:
-                    print(f"DEBUG: Skipping invalid model row: {e}")
-                    continue
-        except Exception as e:
-            print(f"ERROR: Failed to process models: {e}")
-            models = []
-        
-        try:
-            # Process samplers with counts
-            for row in samplers_raw:
-                try:
-                    val = row['sampler_name']
-                    count = row['file_count']
-                    if val and isinstance(val, str):
-                        val_clean = val.strip()
-                        if val_clean:
-                            samplers.append({'value': val_clean, 'count': count})
-                except (KeyError, TypeError, AttributeError) as e:
-                    print(f"DEBUG: Skipping invalid sampler row: {e}")
-                    continue
-        except Exception as e:
-            print(f"ERROR: Failed to process samplers: {e}")
-            samplers = []
-        
-        try:
-            # Process schedulers with counts
-            for row in schedulers_raw:
-                try:
-                    val = row['scheduler']
-                    count = row['file_count']
-                    if val and isinstance(val, str):
-                        val_clean = val.strip()
-                        if val_clean:
-                            schedulers.append({'value': val_clean, 'count': count})
-                except (KeyError, TypeError, AttributeError) as e:
-                    print(f"DEBUG: Skipping invalid scheduler row: {e}")
-                    continue
-        except Exception as e:
-            print(f"ERROR: Failed to process schedulers: {e}")
-            schedulers = []
-        
-        # Get min/max ranges for numeric fields with safe defaults
-        try:
-            cfg_range = conn.execute("SELECT MIN(CAST(cfg AS REAL)) as min_cfg, MAX(CAST(cfg AS REAL)) as max_cfg FROM workflow_metadata WHERE cfg IS NOT NULL").fetchone()
-        except Exception as e:
-            print(f"DEBUG: Failed to get cfg range: {e}")
-            cfg_range = None
-        
-        try:
-            steps_range = conn.execute("SELECT MIN(CAST(steps AS INTEGER)) as min_steps, MAX(CAST(steps AS INTEGER)) as max_steps FROM workflow_metadata WHERE steps IS NOT NULL").fetchone()
-        except Exception as e:
-            print(f"DEBUG: Failed to get steps range: {e}")
-            steps_range = None
-        
-        try:
-            dimensions_range = conn.execute("SELECT MIN(CAST(width AS INTEGER)) as min_width, MAX(CAST(width AS INTEGER)) as max_width, MIN(CAST(height AS INTEGER)) as min_height, MAX(CAST(height AS INTEGER)) as max_height FROM workflow_metadata WHERE width IS NOT NULL AND height IS NOT NULL").fetchone()
-        except Exception as e:
-            print(f"DEBUG: Failed to get dimensions range: {e}")
-            dimensions_range = None
-        
-        # Build response with safe defaults
+        # Safely extract and normalize values
+        samplers = [{'value': row['sampler_name'], 'count': row['file_count']} for row in samplers_raw if row['sampler_name']]
+        schedulers = [{'value': row['scheduler'], 'count': row['file_count']} for row in schedulers_raw if row['scheduler']]
+
+        # (Ranges are cheap to query, so they are not part of this cache optimization focus but are included)
+        cfg_range = conn.execute("SELECT MIN(cfg) as min_cfg, MAX(cfg) as max_cfg FROM workflow_metadata WHERE cfg IS NOT NULL").fetchone()
+        steps_range = conn.execute("SELECT MIN(steps) as min_steps, MAX(steps) as max_steps FROM workflow_metadata WHERE steps IS NOT NULL").fetchone()
+        dimensions_range = conn.execute("SELECT MIN(width) as min_width, MAX(width) as max_width, MIN(height) as min_height, MAX(height) as max_height FROM workflow_metadata WHERE width IS NOT NULL AND height IS NOT NULL").fetchone()
+
         response_data = {
             'status': 'success',
             'options': {
-                'models': models,
+                'models': [], # IMPORTANT: Models are now handled by a separate API endpoint
                 'samplers': samplers,
                 'schedulers': schedulers,
-                'cfg_range': {
-                    'min': float(cfg_range['min_cfg']) if cfg_range and cfg_range['min_cfg'] is not None else 1.0,
-                    'max': float(cfg_range['max_cfg']) if cfg_range and cfg_range['max_cfg'] is not None else 30.0
-                },
-                'steps_range': {
-                    'min': int(steps_range['min_steps']) if steps_range and steps_range['min_steps'] is not None else 1,
-                    'max': int(steps_range['max_steps']) if steps_range and steps_range['max_steps'] is not None else 150
-                },
-                'width_range': {
-                    'min': int(dimensions_range['min_width']) if dimensions_range and dimensions_range['min_width'] is not None else 512,
-                    'max': int(dimensions_range['max_width']) if dimensions_range and dimensions_range['max_width'] is not None else 2048
-                },
-                'height_range': {
-                    'min': int(dimensions_range['min_height']) if dimensions_range and dimensions_range['min_height'] is not None else 512,
-                    'max': int(dimensions_range['max_height']) if dimensions_range and dimensions_range['max_height'] is not None else 2048
-                }
+                'cfg_range': {'min': cfg_range['min_cfg'], 'max': cfg_range['max_cfg']} if cfg_range else None,
+                'steps_range': {'min': steps_range['min_steps'], 'max': steps_range['max_steps']} if steps_range else None,
+                'width_range': {'min': dimensions_range['min_width'], 'max': dimensions_range['max_width']} if dimensions_range else None,
+                'height_range': {'min': dimensions_range['min_height'], 'max': dimensions_range['max_height']} if dimensions_range else None
             }
         }
         
-        print(f"INFO: filter_options returning {len(models)} models, {len(samplers)} samplers, {len(schedulers)} schedulers")
+        # Update cache
+        with _cache_lock:
+            _filter_options_cache['options'] = {
+                'timestamp': time.time(),
+                'data': response_data
+            }
+        
+        print(f"INFO: filter_options returning {len(samplers)} samplers, {len(schedulers)} schedulers.")
         return jsonify(response_data)
         
     except Exception as e:
-        print(f"ERROR: filter_options failed with exception: {e}")
-        print(f"ERROR: Exception type: {type(e).__name__}")
-        import traceback
-        print("ERROR: Full traceback:")
-        traceback.print_exc()
+        print(f"ERROR: filter_options failed: {e}")
         # Return error but with empty arrays so frontend doesn't break
         return jsonify({
-            'status': 'error',
-            'message': str(e),
-            'options': {
-                'models': [],
-                'samplers': [],
-                'schedulers': [],
-                'cfg_range': {'min': 1.0, 'max': 30.0},
-                'steps_range': {'min': 1, 'max': 150},
-                'width_range': {'min': 512, 'max': 2048},
-                'height_range': {'min': 512, 'max': 2048}
-            }
+            'status': 'error', 'message': str(e),
+            'options': {'models': [], 'samplers': [], 'schedulers': []}
         }), 500
+
+@app.route('/galleryout/api/models')
+@require_initialization
+def search_models():
+    """
+    API endpoint for searching model names for Tom Select dropdown.
+    Accepts a 'q' query parameter for the search term.
+    """
+    query = request.args.get('q', '').strip()
+    limit = request.args.get('limit', 50, type=int)
+
+    try:
+        conn = get_db()
+        
+        # Use LIKE for searching and LIMIT for performance
+        # The query is parameterized to prevent SQL injection
+        if query:
+            models_raw = conn.execute("""
+                SELECT model_name, COUNT(DISTINCT file_id) as file_count 
+                FROM workflow_metadata 
+                WHERE model_name LIKE ?
+                GROUP BY model_name 
+                ORDER BY file_count DESC, model_name
+                LIMIT ?
+            """, (f'%{query}%', limit)).fetchall()
+        else:
+            # Return most popular models if search is empty
+            models_raw = conn.execute("""
+                SELECT model_name, COUNT(DISTINCT file_id) as file_count 
+                FROM workflow_metadata 
+                WHERE model_name IS NOT NULL AND model_name != ''
+                GROUP BY model_name 
+                ORDER BY file_count DESC, model_name
+                LIMIT ?
+            """, (limit,)).fetchall()
+            
+        # Format for Tom Select { value, text }
+        results = [
+            {'value': row['model_name'], 'text': f"{row['model_name']} ({row['file_count']})"}
+            for row in models_raw if row['model_name']
+        ]
+        
+        return jsonify(results)
+    except Exception as e:
+        print(f"ERROR: Model search API failed: {e}")
+        return jsonify([]), 500
 
 @app.route('/galleryout/workflow_samplers/<string:file_id>')
 @require_initialization
@@ -2733,63 +2708,19 @@ def load_more():
     
     # Rebuild query with same filters as gallery_view
     conn = get_db()
-    conditions, params = [], []
-    conditions.append("f.path LIKE ?")
-    params.append(folder_path + os.sep + '%')
-    
-    # Apply all filters from query params (same logic as gallery_view)
-    metadata_filters = {}
-    if request.args.get('filter_model', '').strip():
-        metadata_filters['model'] = request.args.get('filter_model').strip()
-    if request.args.get('filter_sampler', '').strip():
-        metadata_filters['sampler'] = request.args.get('filter_sampler').strip()
-    if request.args.get('filter_scheduler', '').strip():
-        metadata_filters['scheduler'] = request.args.get('filter_scheduler').strip()
-    if request.args.get('filter_cfg_min', type=float) is not None:
-        metadata_filters['cfg_min'] = request.args.get('filter_cfg_min', type=float)
-    if request.args.get('filter_cfg_max', type=float) is not None:
-        metadata_filters['cfg_max'] = request.args.get('filter_cfg_max', type=float)
-    if request.args.get('filter_steps_min', type=int) is not None:
-        metadata_filters['steps_min'] = request.args.get('filter_steps_min', type=int)
-    if request.args.get('filter_steps_max', type=int) is not None:
-        metadata_filters['steps_max'] = request.args.get('filter_steps_max', type=int)
-    if request.args.get('filter_width_min', type=int) is not None:
-        metadata_filters['width_min'] = request.args.get('filter_width_min', type=int)
-    if request.args.get('filter_width_max', type=int) is not None:
-        metadata_filters['width_max'] = request.args.get('filter_width_max', type=int)
-    if request.args.get('filter_height_min', type=int) is not None:
-        metadata_filters['height_min'] = request.args.get('filter_height_min', type=int)
-    if request.args.get('filter_height_max', type=int) is not None:
-        metadata_filters['height_max'] = request.args.get('filter_height_max', type=int)
-    
-    if metadata_filters:
-        subquery_sql, subquery_params = build_metadata_filter_subquery(metadata_filters)
-        if subquery_sql:
-            conditions.append(subquery_sql)
-            params.extend(subquery_params)
-    
+
+    # Base conditions for this view (scoping to the current folder)
+    conditions = ["f.path LIKE ?"]
+    params = [folder_path + os.sep + '%']
+
+    # Get all filter conditions from the centralized helper function
+    filter_conditions, filter_params = _build_filter_conditions(request.args)
+    conditions.extend(filter_conditions)
+    params.extend(filter_params)
+
     sort_by = 'name' if request.args.get('sort_by') == 'name' else 'mtime'
     sort_order = 'asc' if request.args.get('sort_order', 'desc').lower() == 'asc' else 'desc'
-    
-    search_term = request.args.get('search', '').strip()
-    if search_term:
-        conditions.append("f.name LIKE ?")
-        params.append(f"%{search_term}%")
-    if request.args.get('favorites', 'false').lower() == 'true':
-        conditions.append("f.is_favorite = 1")
-    
-    selected_prefixes = request.args.getlist('prefix')
-    if selected_prefixes:
-        prefix_conditions = [f"f.name LIKE ?" for p in selected_prefixes if p.strip()]
-        params.extend([f"{p.strip()}_%" for p in selected_prefixes if p.strip()])
-        if prefix_conditions: conditions.append(f"({' OR '.join(prefix_conditions)})")
-    
-    selected_extensions = request.args.getlist('extension')
-    if selected_extensions:
-        ext_conditions = [f"f.name LIKE ?" for ext in selected_extensions if ext.strip()]
-        params.extend([f"%.{ext.lstrip('.').lower()}" for ext in selected_extensions if ext.strip()])
-        if ext_conditions: conditions.append(f"({' OR '.join(ext_conditions)})")
-    
+
     sort_direction = "ASC" if sort_order == 'asc' else "DESC"
     
     # Get total count
