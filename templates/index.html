@@ -864,9 +864,9 @@
                         <h3>🎨 Workflow Parameters</h3>
                     </div>
                     
-                    <div class="filter-group"><label for="model-select">🤖 Model</label><select name="filter_model" id="model-select" x-model="filters.model" x-tom-select placeholder="🤖 Select model..."><option value="">All Models</option><template x-for="model in filterOptions.models" :key="model.value"><option :value="model.value" x-text="`${model.value} (${model.count})`"></option></template></select></div>
-                    <div class="filter-group"><label for="sampler-select">🎲 Sampler</label><select name="filter_sampler" id="sampler-select" x-model="filters.sampler" x-tom-select placeholder="🎲 Select sampler..."><option value="">All Samplers</option><template x-for="sampler in filterOptions.samplers" :key="sampler.value"><option :value="sampler.value" x-text="`${sampler.value} (${sampler.count})`"></option></template></select></div>
-                    <div class="filter-group"><label for="scheduler-select">📅 Scheduler</label><select name="filter_scheduler" id="scheduler-select" x-model="filters.scheduler" x-tom-select placeholder="📅 Select scheduler..."><option value="">All Schedulers</option><template x-for="scheduler in filterOptions.schedulers" :key="scheduler.value"><option :value="scheduler.value" x-text="`${scheduler.value} (${scheduler.count})`"></option></template></select></div>
+                    <div class="filter-group"><label for="model-select">🤖 Model</label><select name="filter_model" id="model-select" x-model="filters.model" x-tom-select placeholder="🤖 Select model..."><option value="">All Models</option></select></div>
+                    <div class="filter-group"><label for="sampler-select">🎲 Sampler</label><select name="filter_sampler" id="sampler-select" x-model="filters.sampler" x-tom-select placeholder="🎲 Select sampler..."><option value="">All Samplers</option></select></div>
+                    <div class="filter-group"><label for="scheduler-select">📅 Scheduler</label><select name="filter_scheduler" id="scheduler-select" x-model="filters.scheduler" x-tom-select placeholder="📅 Select scheduler..."><option value="">All Schedulers</option></select></div>
                     
                     <!-- CFG Range Pair -->
                     <div class="filter-range-pair">
@@ -1396,9 +1396,17 @@
                                             formattedValue = value || '';
                                         }
                                         
-                                        // Use a function to set the value directly
-                                        const setValue = evaluateLater(`${modelName} = __value`);
-                                        setValue(() => {}, { __value: formattedValue });
+                                        // Use Alpine's magic to set value - create a scoped evaluation
+                                        const setValue = new Function('$el', 'value', `
+                                            const component = window.Alpine.$data($el);
+                                            const path = '${modelName}'.split('.');
+                                            let obj = component;
+                                            for (let i = 0; i < path.length - 1; i++) {
+                                                obj = obj[path[i]];
+                                            }
+                                            obj[path[path.length - 1]] = value;
+                                        `);
+                                        setValue(el, formattedValue);
                                     } catch (error) {
                                         console.error('[x-tom-select] Error updating Alpine state:', error);
                                     }
@@ -2523,10 +2531,43 @@
                         const data = await response.json();
                         
                         if (data.status === 'success' && data.options) {
-                            // Populate filterOptions state - x-tom-select directive handles the rest
+                            // Populate Alpine state. This remains useful for other logic.
                             this.filterOptions.models = data.options.models || [];
                             this.filterOptions.samplers = data.options.samplers || [];
                             this.filterOptions.schedulers = data.options.schedulers || [];
+
+                            // Wait for Alpine's next DOM update cycle to ensure TomSelect instances are ready.
+                            await this.$nextTick();
+
+                            // Helper to refresh a TomSelect instance programmatically.
+                            const refreshTomSelect = (id, options, emptyText, currentValue) => {
+                                const selectInstance = document.getElementById(id)?._tomSelect;
+                                if (!selectInstance) {
+                                    console.warn(`[refreshTomSelect] TomSelect instance not found for #${id}`);
+                                    return;
+                                }
+
+                                selectInstance.clearOptions();
+                                selectInstance.addOption({ value: '', text: emptyText });
+                                
+                                const formattedOptions = options.map(opt => ({
+                                    value: opt.value,
+                                    text: `${opt.value} (${opt.count})`
+                                }));
+                                selectInstance.addOptions(formattedOptions);
+                                
+                                // Restore the currently selected value without triggering an onChange event.
+                                selectInstance.setValue(currentValue, true);
+                                
+                                // Redraw the dropdown with the new options.
+                                selectInstance.refreshOptions(false);
+                            };
+
+                            // Refresh each dropdown with its fetched data and current filter value.
+                            refreshTomSelect('model-select', this.filterOptions.models, 'All Models', this.filters.model);
+                            refreshTomSelect('sampler-select', this.filterOptions.samplers, 'All Samplers', this.filters.sampler);
+                            refreshTomSelect('scheduler-select', this.filterOptions.schedulers, 'All Schedulers', this.filters.scheduler);
+
                         } else {
                             console.warn('[populateWorkflowFilters] Unexpected response format:', data);
                             this.$store.notifications.add('Failed to load filter options', 'warning');
