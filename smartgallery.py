@@ -55,20 +55,20 @@ FFPROBE_MANUAL_PATH = os.environ.get('FFPROBE_MANUAL_PATH', "C:/omgp10/ffmpeg2/b
 # Port on which the gallery web server will run. 
 # Must be different from the ComfyUI port.  
 # Note: the gallery does not require ComfyUI to be running; it works independently.
-SERVER_PORT = os.environ.get('SERVER_PORT', 8189)
+SERVER_PORT = int(os.environ.get('SERVER_PORT', 8189))
 
 # Width (in pixels) of the generated thumbnails.
-THUMBNAIL_WIDTH = os.environ.get('THUMBNAIL_WIDTH', 300)
+THUMBNAIL_WIDTH = int(os.environ.get('THUMBNAIL_WIDTH', 300))
 
 # Assumed frame rate for animated WebP files.  
 # Many tools, including ComfyUI, generate WebP animations at ~16 FPS.  
 # Adjust this value if your WebPs use a different frame rate,  
 # so that animation durations are calculated correctly.
-WEBP_ANIMATED_FPS = os.environ.get('WEBP_ANIMATED_FPS', 16.0)
+WEBP_ANIMATED_FPS = float(os.environ.get('WEBP_ANIMATED_FPS', 16.0))
 
 # Maximum number of files to load initially before showing a "Load more" button.  
 # Use a very large number (e.g., 9999999) for "infinite" loading.
-PAGE_SIZE = os.environ.get('PAGE_SIZE', 100)
+PAGE_SIZE = int(os.environ.get('PAGE_SIZE', 100))
 
 # Names of special folders (e.g., 'video', 'audio').  
 # These folders will appear in the menu only if they exist inside BASE_OUTPUT_PATH.  
@@ -77,13 +77,15 @@ SPECIAL_FOLDERS = ['video', 'audio']
 
 # Number of files to process at once during database sync. 
 # Higher values use more memory but may be faster. Lower this if you run out of memory.
-BATCH_SIZE = os.environ.get('BATCH_SIZE', 500)
+BATCH_SIZE = int(os.environ.get('BATCH_SIZE', 500))
 
 # Number of parallel processes to use for thumbnail and metadata generation.
 # - Set to None to use all available CPU cores (fastest, but uses more CPU).
 # - Set to 1 to disable parallel processing (slowest, like in the previous versions).
 # - Set to a specific number of cores (e.g., 4) to limit CPU usage on a multi-core machine.
 MAX_PARALLEL_WORKERS = os.environ.get('MAX_PARALLEL_WORKERS', None)
+if MAX_PARALLEL_WORKERS is not None:
+    MAX_PARALLEL_WORKERS = int(MAX_PARALLEL_WORKERS)
 
 # ------- END OF USER CONFIGURATION -------
 
