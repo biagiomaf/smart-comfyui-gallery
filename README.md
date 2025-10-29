@@ -184,6 +184,23 @@ http://127.0.0.1:8189/galleryout
 
 ---
 
+## Docker Setup
+
+A `Dockerfile` is provided and will perform a simple build using a `python:3.12-slim` base image. 
+
+The `Makefile` contains a `build`, `run` and `kill` targets to ease the process of building and running the container.
+Adapt the variables in the `Makefile` to match your setup before performing a `make run`.
+
+Those environment variables are also compatible with a `compose.yaml` usage as can be seen in the example file.
+
+Two variables were added to support a `WANTED_UID` and `WANTED_GID` to match the user running the container and create files with the correct permissions. Find those values by running `id -u` and `id -g` respectively and replace the variables in the corresponding environment variables in the `Makefile` or `compose.yaml`.
+
+**Important**: make sure to create the folder referred to by `BASE_SMARTGALLERY_PATH` with the `WANTED_UID` and `WANTED_GID` permissions before running the container or it will fail to write files such as thumbnail or databases.
+
+**Note**: the build step will create a `buildx` builder if it doesn't exist. Delete it after succesful build using `make buildx_rm`.
+
+---
+
 ## 🤝 Join the Community
 
 ### Found a Bug? Have an Idea?

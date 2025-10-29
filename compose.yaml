@@ -1,0 +1,18 @@
+services:
+  comfy-smartgallery:
+    image: smartgallery:latest
+    container_name: comfy-smartgallery
+    ports:
+      - 8189:8189
+    volumes:
+      - /comfyui-nvidia/basedir/output:/mnt/output
+      - /comfyui-nvidia/basedir/input:/mnt/input
+      - /comfyui-nvidia/SmartGallery:/mnt/SmartGallery
+    restart: unless-stopped
+    environment:
+      - BASE_OUTPUT_PATH=/mnt/output
+      - BASE_INPUT_PATH=/mnt/input
+      - BASE_SMARTGALLERY_PATH=/mnt/SmartGallery
+      # Adapt to wanted values (use id -u and id -g to obtain values)
+      - WANTED_UID=1000
+      - WANTED_GID=1000
