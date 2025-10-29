@@ -96,12 +96,15 @@
         .filter-panel-content::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
         
         .filter-form-grid { display: flex; flex-direction: column; gap: 1.5rem; }
-        .filter-group { display: flex; flex-direction: column; }
+        .filter-group { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 0.5rem;  /* Modern gap property replaces label margin-bottom */
+        }
         
         /* Filter Form Controls - applies to both .filter-bar and .filter-panel-content */
         .filter-bar label, .filter-panel-content label { 
             font-weight: 600; 
-            margin-bottom: 0.5rem; 
             color: var(--text-muted); 
             font-size: 0.85rem; 
             text-transform: uppercase; 
@@ -153,18 +156,46 @@
             border-color: rgba(255, 255, 255, 0.2);
             background: rgba(255, 255, 255, 0.03);
         }
-        .filter-bar input[type="number"], .filter-panel-content input[type="number"] { font-variant-numeric: tabular-nums; }
+        .filter-bar input[type="number"], .filter-panel-content input[type="number"] { 
+            font-variant-numeric: tabular-nums; 
+            font-family: 'SF Mono', 'Monaco', 'Consolas', 'Courier New', monospace;
+            letter-spacing: 0.5px;
+        }
         .filter-bar input[type="number"]::-webkit-inner-spin-button, .filter-bar input[type="number"]::-webkit-outer-spin-button,
-        .filter-panel-content input[type="number"]::-webkit-inner-spin-button, .filter-panel-content input[type="number"]::-webkit-outer-spin-button { opacity: 0.6; }
+        .filter-panel-content input[type="number"]::-webkit-inner-spin-button, .filter-panel-content input[type="number"]::-webkit-outer-spin-button { 
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
         .filter-bar input[type="number"]:hover::-webkit-inner-spin-button, .filter-bar input[type="number"]:hover::-webkit-outer-spin-button,
-        .filter-panel-content input[type="number"]:hover::-webkit-inner-spin-button, .filter-panel-content input[type="number"]:hover::-webkit-outer-spin-button { opacity: 1; }
+        .filter-panel-content input[type="number"]:hover::-webkit-inner-spin-button, .filter-panel-content input[type="number"]:hover::-webkit-outer-spin-button { 
+            opacity: 1; 
+        }
         .filter-bar button, .filter-panel-footer button { background: var(--primary-color); cursor: pointer; font-weight: 600; color: white; border: 1px solid var(--primary-color); }
         .filter-bar button:hover, .filter-panel-footer button:hover { background: var(--primary-hover); transform: translateY(-1px); }
         .filter-bar button.refresh-btn { background: var(--workflow-color); border-color: var(--workflow-color); }
         .filter-bar a, .filter-panel-footer a { text-decoration: none; text-align: center; color: var(--text-muted); }
         .filter-bar a:hover, .filter-panel-footer a:hover { background: var(--surface-hover); color: var(--text-color); }
-        .filter-group-inline { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
-        .filter-group-inline input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary-color); }
+        .filter-group-inline { 
+            display: flex; 
+            align-items: center; 
+            gap: 0.75rem; 
+            margin-bottom: 0;  /* No extra margin, gap handles spacing */
+        }
+        .filter-group-inline input[type="checkbox"] { 
+            width: 18px; 
+            height: 18px; 
+            accent-color: var(--primary-color); 
+            flex-shrink: 0;  /* Prevent checkbox from shrinking */
+        }
+        .filter-group-inline label {
+            /* Make checkbox labels consistent with other labels */
+            font-weight: 600;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0;  /* Override default label margin */
+        }
         
         /* Filter Toggle Button in Header */
         #filter-toggle-btn { position: relative; background: var(--gradient-primary); color: white; border: none; padding: 0.65rem 1.25rem; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; transition: all 0.3s; box-shadow: var(--shadow-sm); }
@@ -185,21 +216,81 @@
         
         /* Workflow Metadata Section */
         .workflow-filters-section { display: contents; }
-        .workflow-section-header { margin-top: 1.5rem; margin-bottom: 1rem; padding: 0.75rem 1rem; background: linear-gradient(90deg, rgba(40, 167, 69, 0.1) 0%, rgba(40, 167, 69, 0.05) 50%, transparent 100%); border-left: 3px solid var(--workflow-color); border-radius: 6px; }
-        .workflow-section-header h3 { margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--workflow-color); text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 0.5rem; }
+        .workflow-section-header { 
+            margin: 1.5rem 0 1rem 0;  /* Consistent top margin with grid gap */
+            padding: 0.75rem 1rem; 
+            background: linear-gradient(90deg, rgba(40, 167, 69, 0.1) 0%, rgba(40, 167, 69, 0.05) 50%, transparent 100%); 
+            border-left: 3px solid var(--workflow-color); 
+            border-radius: 6px; 
+        }
+        .workflow-section-header h3 { 
+            margin: 0; 
+            font-size: 0.95rem; 
+            font-weight: 700; 
+            color: var(--workflow-color); 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+            display: flex; 
+            align-items: center; 
+            gap: 0.5rem; 
+        }
         
         /* Range Filter Pairs */
-        .filter-range-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+        .filter-range-pair { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 0.75rem;
+            /* Visual grouping for min/max pairs */
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            position: relative;
+        }
         .filter-range-pair .filter-group { position: relative; }
-        .filter-range-pair .filter-group:first-child::after { content: '↔'; position: absolute; right: -0.5rem; top: 50%; transform: translateY(-50%) translateY(0.5rem); color: var(--text-muted); font-size: 1rem; font-weight: 700; opacity: 0.5; z-index: 1; pointer-events: none; }
+        .filter-range-pair .filter-group:first-child::after { 
+            content: '↔'; 
+            position: absolute; 
+            right: -0.5rem; 
+            top: 50%; 
+            transform: translateY(-50%) translateY(0.5rem); 
+            color: var(--text-color); 
+            font-size: 1.2rem; 
+            font-weight: 700; 
+            opacity: 0.4; 
+            z-index: 1; 
+            pointer-events: none; 
+        }
         .filter-range-pair .filter-group label { color: var(--text-muted); }
-        .filter-range-pair .filter-group:first-child label { color: var(--success-color); }
-        .filter-range-pair .filter-group:last-child label { color: var(--danger-color); }
+        .filter-range-pair .filter-group:first-child label { 
+            color: var(--success-color); 
+            font-weight: 700;
+        }
+        .filter-range-pair .filter-group:last-child label { 
+            color: var(--danger-color); 
+            font-weight: 700;
+        }
         
-        /* Dimension Filters Special Styling */
-        .dimension-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1rem; background: rgba(0, 123, 255, 0.03); border: 1px solid rgba(0, 123, 255, 0.1); border-radius: 8px; margin-top: 0.5rem; }
-        .dimension-filters .filter-group label { font-size: 0.8rem; display: flex; align-items: center; gap: 0.4rem; }
-        .dimension-filters .filter-group input { background: var(--surface-color); border-color: rgba(0, 123, 255, 0.2); }
+        /* Dimension Filters - Unified with Range Pair Styling */
+        .dimension-filters { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 1rem 0.75rem;  /* row-gap column-gap */
+            padding: 1rem; 
+            background: rgba(255, 255, 255, 0.02); 
+            border: 1px solid rgba(255, 255, 255, 0.05); 
+            border-radius: 8px;
+        }
+        .dimension-filters .filter-group label { 
+            font-size: 0.85rem;  /* Match standard label size */
+            display: flex; 
+            align-items: center; 
+            gap: 0.4rem; 
+        }
+        .dimension-filters .filter-group input { 
+            background: var(--surface-color); 
+            border-color: rgba(255, 255, 255, 0.08);  /* Slightly more visible */
+        }
         
         /* Panel Footer Actions */
         .filter-panel-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); background: var(--surface-hover); display: flex; gap: 0.75rem; flex-shrink: 0; }
@@ -1106,8 +1197,22 @@
             renderAllTrees(); 
             setupSidebarExpansion();
             appendFiles(initialFiles);
-            new TomSelect('#extension-select', { plugins: ['checkbox_options', 'clear_button'], placeholder: '📄 Select extensions...' });
-            new TomSelect('#prefix-select', { plugins: ['checkbox_options', 'clear_button'], placeholder: '🏷️ Select prefixes...' });
+            
+            // Initialize Tom-Select on multi-select filters with enhanced config
+            new TomSelect('#extension-select', { 
+                plugins: ['checkbox_options', 'clear_button', 'remove_button'],
+                placeholder: '📄 Select extensions...',
+                maxOptions: null,  // Show all available
+                closeAfterSelect: false,  // Keep open for multi-select
+                hidePlaceholder: false
+            });
+            new TomSelect('#prefix-select', { 
+                plugins: ['checkbox_options', 'clear_button', 'remove_button'],
+                placeholder: '🏷️ Select prefixes...',
+                maxOptions: null,
+                closeAfterSelect: false,
+                hidePlaceholder: false
+            });
             
             // Initialize workflow filter options
             populateWorkflowFilters();

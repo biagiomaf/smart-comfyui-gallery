@@ -1,6 +1,123 @@
 
 # Changelog
 
+## [1.40.4] - 2025-01-29
+
+### UX/UI Improvements
+
+#### Complete Filter Panel Styling Unification
+- **UNIFIED**: Achieved complete visual consistency across all filter panel elements
+- **Fixed checkbox label inconsistency**: "⭐ Favorites Only" now matches uppercase styling
+  - Previously the only normal-case label in the entire panel
+  - Now uses same uppercase + letter-spacing as all other labels
+- **Modernized with CSS gap property**:
+  - Replaced all `margin-bottom` with modern `gap` property
+  - `.filter-group` now uses `gap: 0.5rem` between label and input
+  - Better maintainability and cleaner code structure
+
+#### Enhanced Range Pair Visual Grouping
+- **CFG & Steps range filters** now visually grouped as cohesive units:
+  - Subtle background: `rgba(255, 255, 255, 0.02)`
+  - Border: `1px solid rgba(255, 255, 255, 0.05)`
+  - Padding: `1rem` with `border-radius: 8px`
+  - **Improved arrow indicator**: Larger (1.2rem), more visible (white color, 0.4 opacity)
+  - **Bold labels**: Min (green) and Max (red) now use `font-weight: 700`
+
+#### Unified Dimension Filters
+- **Width/Height filters** now match range pair styling:
+  - Replaced blue-tinted background with neutral `rgba(255, 255, 255, 0.02)`
+  - Border changed from blue to neutral `rgba(255, 255, 255, 0.05)`
+  - Labels now standard `0.85rem` (was `0.8rem`) for consistency
+  - Same padding and border-radius as range pairs
+  - **Result**: All numeric input groups have identical visual treatment
+
+#### Number Input Polish
+- **Enhanced number inputs** with professional refinements:
+  - Monospace font: `'SF Mono', 'Monaco', 'Consolas', 'Courier New', monospace`
+  - Letter-spacing: `0.5px` for better readability
+  - Spinner controls: Lower initial opacity (0.5), smooth transitions
+  - Hover state: Full opacity (1.0) for clear interactive feedback
+  - Tabular nums for aligned digit columns
+
+#### Consistent Spacing Rhythm
+- **Standardized spacing** throughout filter panel:
+  - Grid gap: `1.5rem` between all form elements
+  - Workflow section header: `margin: 1.5rem 0 1rem 0`
+  - Removed dimension filter `margin-top: 0.5rem` (let grid handle spacing)
+  - **Result**: Harmonious 1.5rem rhythm creates visual flow
+
+### Technical Details
+
+**Before v1.40.4**:
+- Checkbox label: Normal case (visual outlier)
+- Mixed margin-bottom and gaps
+- Dimension filters: Blue-tinted, different sizing
+- Range pairs: No visual grouping
+- Arrow indicators: Small, hard to see
+- Inconsistent spacing (1.5rem, 1rem, 0.5rem mix)
+
+**After v1.40.4**:
+- All labels: Uppercase + letter-spacing (unified)
+- Pure gap-based layout (modern CSS)
+- All numeric groups: Identical neutral styling
+- Range pairs: Visually grouped with backgrounds
+- Arrow indicators: Larger, clearer
+- Consistent 1.5rem spacing rhythm
+
+**CSS Improvements**:
+```css
+/* Unified label styling */
+.filter-group-inline label {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.85rem;
+}
+
+/* Modern gap property */
+.filter-group {
+    gap: 0.5rem;  /* Replaces margin-bottom */
+}
+
+/* Visual range grouping */
+.filter-range-pair {
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+/* Polished number inputs */
+input[type="number"] {
+    font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+    letter-spacing: 0.5px;
+}
+```
+
+---
+
+## [1.40.3] - 2025-01-29
+
+### UX Improvements
+
+#### Multi-Select Filter Enhancements
+- **Enhanced Extensions & Prefixes dropdowns** with improved multi-select behavior
+- **Added `remove_button` plugin**: Each selected item now has an individual × button
+- **Set `closeAfterSelect: false`**: Dropdown stays open for easier multiple selections
+- **Set `maxOptions: null`**: Shows all available options instead of limiting display
+- **Set `hidePlaceholder: false`**: Keeps placeholder visible for better UX
+- **Result**: More intuitive multi-select experience with better visual feedback
+
+#### Configuration Updates
+```javascript
+// Extensions & Prefixes now use:
+plugins: ['checkbox_options', 'clear_button', 'remove_button']
+closeAfterSelect: false  // Keep dropdown open
+maxOptions: null         // Show all options
+hidePlaceholder: false   // Keep placeholder
+```
+
+---
+
 ## [1.40.2] - 2025-01-29
 
 ### Bug Fixes

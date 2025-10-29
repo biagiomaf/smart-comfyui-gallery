@@ -1,7 +1,26 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025 — MIT License (free to use and modify)
 #
-# Version: 1.40.2 - January 2025 (Filter Dropdown Fix)
+# Version: 1.40.4 - January 2025 (Filter Panel Styling Unification)
+# CHANGES (v1.40.4):
+# - UNIFIED: Complete filter panel styling consistency across all elements
+# - Fixed checkbox label to match uppercase styling (was only normal case element)
+# - Modernized with CSS gap property throughout (replaced margin-bottom)
+# - Added visual grouping to range pairs (CFG, Steps) with subtle backgrounds
+# - Unified dimension filters with range pair styling (consistent appearance)
+# - Enhanced number inputs with monospace font and refined spinner controls
+# - Improved arrow indicators between min/max ranges (larger, more visible)
+# - Consistent 1.5rem spacing rhythm throughout filter panel
+# - Color-coded range labels now bold (green for min, red for max)
+# - Professional polish: All filter elements now have uniform visual language
+#
+# CHANGES (v1.40.3):
+# - Enhanced Extensions and Prefixes multi-select dropdowns
+# - Added 'remove_button' plugin for individual item removal
+# - Set closeAfterSelect: false for better multi-select UX
+# - Set maxOptions: null to show all available options
+# - Improved placeholder visibility with hidePlaceholder: false
+#
 # CHANGES (v1.40.2):
 # - FIXED: Workflow metadata dropdowns (Model, Sampler, Scheduler) now use Tom-Select
 # - Previously these were plain HTML select elements, styling wasn't applied
