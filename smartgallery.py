@@ -1,7 +1,16 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025 — MIT License (free to use and modify)
 #
-# Version: 1.40.4 - January 2025 (Filter Panel Styling Unification)
+# Version: 1.40.5 - January 2025 (Critical Streaming Context Fix)
+# CHANGES (v1.40.5):
+# - CRITICAL FIX: Resolved "RuntimeError: Working outside of application context"
+# - Issue: Real-time sync endpoint crashed after first yield from generator
+# - Root cause: Flask application context torn down during Server-Sent Events stream
+# - Solution: Wrapped generator with stream_with_context() to maintain context
+# - Fixed endpoint: /galleryout/sync_status/<folder_key>
+# - Impact: Real-time file sync now works correctly without crashes
+# - Technical: Added stream_with_context import and applied to sync_folder_on_demand()
+#
 # CHANGES (v1.40.4):
 # - UNIFIED: Complete filter panel styling consistency across all elements
 # - Fixed checkbox label to match uppercase styling (was only normal case element)
@@ -86,7 +95,7 @@ import base64
 import threading
 import logging
 from datetime import datetime
-from flask import g, Flask, render_template, send_from_directory, abort, send_file, url_for, redirect, request, jsonify, Response
+from flask import g, Flask, render_template, send_from_directory, abort, send_file, url_for, redirect, request, jsonify, Response, stream_with_context
 from flask_cors import CORS
 from PIL import Image, ImageSequence
 import colorsys
@@ -2191,7 +2200,7 @@ def sync_status(folder_key):
     if folder_key not in folders:
         abort(404)
     folder_path = folders[folder_key]['path']
-    return Response(sync_folder_on_demand(folder_path), mimetype='text/event-stream')
+    return Response(stream_with_context(sync_folder_on_demand(folder_path)), mimetype='text/event-stream')
 
 @app.route('/galleryout/view/<string:folder_key>')
 @require_initialization

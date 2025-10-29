@@ -1,6 +1,42 @@
 
 # Changelog
 
+## [1.40.5] - 2025-01-29
+
+### Bug Fixes
+
+#### Critical Streaming Context Fix
+- **CRITICAL FIX**: Resolved `RuntimeError: Working outside of application context` in real-time sync
+- **Affected Endpoint**: `/galleryout/sync_status/<folder_key>` (Server-Sent Events)
+- **Root Cause**: Flask application context was torn down after first `yield` from generator
+  - New database connection management (v1.35.2+) uses Flask's `g` object
+  - `g` requires active application context
+  - Streaming responses terminate context after first yield
+  - Subsequent database calls via `get_db()` failed with context error
+  
+#### Solution Implemented
+- **Import**: Added `stream_with_context` to Flask imports
+- **Wrapper**: Applied `stream_with_context()` to `sync_folder_on_demand()` generator
+- **Technical Details**:
+  ```python
+  # Before (broken):
+  return Response(sync_folder_on_demand(folder_path), mimetype='text/event-stream')
+  
+  # After (fixed):
+  return Response(stream_with_context(sync_folder_on_demand(folder_path)), 
+                  mimetype='text/event-stream')
+  ```
+- **Result**: Application and request contexts now maintained for entire stream duration
+- **Impact**: Real-time file sync works correctly without navigation/filtering crashes
+
+#### Why This Matters
+- Real-time sync is critical for detecting new files without manual refresh
+- Broken sync caused navigation failures and filter crashes
+- Fix ensures stable long-running connections for live updates
+- Maintains compatibility with Flask best practices for context management
+
+---
+
 ## [1.40.4] - 2025-01-29
 
 ### UX/UI Improvements
