@@ -13,3 +13,6 @@ services:
       - BASE_OUTPUT_PATH=/mnt/output
       - BASE_INPUT_PATH=/mnt/input
       - BASE_SMARTGALLERY_PATH=/mnt/SmartGallery
+      # Adapt to wanted values (use id -u and id -g to obtain values)
+      - WANTED_UID=1000
+      - WANTED_GID=1000

@@ -193,6 +193,12 @@ Adapt the variables in the `Makefile` to match your setup before performing a `m
 
 Those environment variables are also compatible with a `compose.yaml` usage as can be seen in the example file.
 
+Two variables were added to support a `WANTED_UID` and `WANTED_GID` to match the user running the container and create files with the correct permissions. Find those values by running `id -u` and `id -g` respectively and replace the variables in the corresponding environment variables in the `Makefile` or `compose.yaml`.
+
+**Important**: make sure to create the folder referred to by `BASE_SMARTGALLERY_PATH` with the `WANTED_UID` and `WANTED_GID` permissions before running the container or it will fail to write files such as thumbnail or databases.
+
+**Note**: the build step will create a `buildx` builder if it doesn't exist. Delete it after succesful build using `make buildx_rm`.
+
 ---
 
 ## 🤝 Join the Community
