@@ -1,7 +1,18 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025 — MIT License (free to use and modify)
 #
-# Version: 1.40.5 - January 2025 (Critical Streaming Context Fix)
+# Version: 1.40.6 - January 2025 (Filter Clearing System Fix)
+# CHANGES (v1.40.6):
+# - CRITICAL FIX: Complete filter clearing system now works correctly
+# - Issue: "Clear All" button didn't clear Tom-Select instances, only navigated
+# - Root cause: Tom-Select instances created but never stored globally
+# - Solution: Added global tomSelectInstances object to store all 5 instances
+# - Fixed: "Clear All" button now programmatically clears all inputs + Tom-Select
+# - Fixed: Individual pill removal now clears Tom-Select instances via .clear() API
+# - Added: Automatic form submission after clearing (changes reach server)
+# - Technical: Stored references during initialization, use Tom-Select API in clear functions
+# - Impact: All filter clearing mechanisms now work as expected
+#
 # CHANGES (v1.40.5):
 # - CRITICAL FIX: Resolved "RuntimeError: Working outside of application context"
 # - Issue: Real-time sync endpoint crashed after first yield from generator

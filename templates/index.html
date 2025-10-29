@@ -797,6 +797,15 @@
             }
         } catch (e) { console.warn('Could not load sort preferences:', e); }
         
+        // Global Tom-Select instance storage for programmatic access
+        const tomSelectInstances = {
+            extension: null,
+            prefix: null,
+            model: null,
+            sampler: null,
+            scheduler: null
+        };
+        
         // Load saved folder expansion state (use consistent name: galleryFolderState)
         let expandedFolderKeys = new Set();
         try {
@@ -898,21 +907,21 @@
                 
                 // Initialize Tom-Select on workflow metadata dropdowns for better UX
                 if (modelSelect && options.models && options.models.length > 0) {
-                    new TomSelect('#model-select', {
+                    tomSelectInstances.model = new TomSelect('#model-select', {
                         placeholder: '🤖 Select model...',
                         allowEmptyOption: true,
                         maxOptions: 200
                     });
                 }
                 if (samplerSelect && options.samplers && options.samplers.length > 0) {
-                    new TomSelect('#sampler-select', {
+                    tomSelectInstances.sampler = new TomSelect('#sampler-select', {
                         placeholder: '🎲 Select sampler...',
                         allowEmptyOption: true,
                         maxOptions: 50
                     });
                 }
                 if (schedulerSelect && options.schedulers && options.schedulers.length > 0) {
-                    new TomSelect('#scheduler-select', {
+                    tomSelectInstances.scheduler = new TomSelect('#scheduler-select', {
                         placeholder: '📅 Select scheduler...',
                         allowEmptyOption: true,
                         maxOptions: 50
@@ -1199,14 +1208,14 @@
             appendFiles(initialFiles);
             
             // Initialize Tom-Select on multi-select filters with enhanced config
-            new TomSelect('#extension-select', { 
+            tomSelectInstances.extension = new TomSelect('#extension-select', { 
                 plugins: ['checkbox_options', 'clear_button', 'remove_button'],
                 placeholder: '📄 Select extensions...',
                 maxOptions: null,  // Show all available
                 closeAfterSelect: false,  // Keep open for multi-select
                 hidePlaceholder: false
             });
-            new TomSelect('#prefix-select', { 
+            tomSelectInstances.prefix = new TomSelect('#prefix-select', { 
                 plugins: ['checkbox_options', 'clear_button', 'remove_button'],
                 placeholder: '🏷️ Select prefixes...',
                 maxOptions: null,
@@ -1302,11 +1311,26 @@
                         pill.addEventListener('click', () => {
                             const input = document.querySelector(`[name="${filter.field}"]`);
                             if (input) {
-                                if (input.type === 'checkbox') input.checked = false;
-                                else if (input.multiple) { Array.from(input.options).forEach(opt => opt.selected = false); }
-                                else input.value = '';
+                                // Check if this is a Tom-Select field
+                                const tsKey = Object.keys(tomSelectInstances).find(key => {
+                                    const ts = tomSelectInstances[key];
+                                    return ts && ts.input === input;
+                                });
+                                
+                                if (tsKey && tomSelectInstances[tsKey]) {
+                                    // Clear Tom-Select instance
+                                    tomSelectInstances[tsKey].clear();
+                                } else {
+                                    // Clear native inputs
+                                    if (input.type === 'checkbox') input.checked = false;
+                                    else if (input.multiple) { Array.from(input.options).forEach(opt => opt.selected = false); }
+                                    else input.value = '';
+                                }
                             }
-                            updateActiveFilters();
+                            
+                            // Submit form to apply changes
+                            const filterForm = document.getElementById('filter-form');
+                            if (filterForm) filterForm.submit();
                         });
                         activeFiltersDisplay.appendChild(pill);
                     });
@@ -1315,11 +1339,40 @@
                     const clearBtn = document.createElement('button');
                     clearBtn.id = 'clear-all-filters-btn';
                     clearBtn.textContent = 'Clear All';
-                    clearBtn.addEventListener('click', () => {
-                        window.location.href = "{{ url_for('gallery_view', folder_key=current_folder_key) }}";
+                    clearBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        clearAllFilters();
                     });
                     activeFiltersDisplay.appendChild(clearBtn);
                 }
+            }
+            
+            // Clear all filter inputs and submit form
+            function clearAllFilters() {
+                // Clear Tom-Select instances
+                Object.values(tomSelectInstances).forEach(ts => { 
+                    if (ts) ts.clear(); 
+                });
+                
+                // Clear text input
+                const searchInput = document.getElementById('search-input');
+                if (searchInput) searchInput.value = '';
+                
+                // Clear number inputs
+                ['cfg-min-input', 'cfg-max-input', 'steps-min-input', 'steps-max-input',
+                 'width-min-input', 'width-max-input', 'height-min-input', 'height-max-input']
+                    .forEach(id => { 
+                        const el = document.getElementById(id); 
+                        if (el) el.value = ''; 
+                    });
+                
+                // Clear checkbox
+                const favoritesCheck = document.getElementById('favorites-check');
+                if (favoritesCheck) favoritesCheck.checked = false;
+                
+                // Submit form to apply changes
+                const filterForm = document.getElementById('filter-form');
+                if (filterForm) filterForm.submit();
             }
             
             filterToggleBtn.addEventListener('click', openFilterPanel);

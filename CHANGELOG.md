@@ -1,6 +1,71 @@
 
 # Changelog
 
+## [1.40.6] - 2025-01-29
+
+### Bug Fixes
+
+#### Complete Filter Clearing System Fix
+- **CRITICAL FIX**: Filter clearing now works correctly across all mechanisms
+- **Affected Features**: "Clear All" button, individual filter pill removal
+- **Root Causes Identified**:
+  1. **Tom-Select instances not stored globally** - Created but references lost immediately
+  2. **"Clear All" button used page navigation** - Reloaded page instead of clearing programmatically
+  3. **Pill removal didn't handle Tom-Select** - Only cleared native `<select>` elements
+  4. **No automatic form submission** - Changes didn't propagate to server
+
+#### Solution Implemented
+
+**1. Global Tom-Select Storage**
+- Added `tomSelectInstances` object to store all 5 Tom-Select instances:
+  - `extension`: Extensions multi-select
+  - `prefix`: Prefixes multi-select
+  - `model`: Model single-select
+  - `sampler`: Sampler single-select
+  - `scheduler`: Scheduler single-select
+- Stored references during initialization: `tomSelectInstances.extension = new TomSelect(...)`
+
+**2. Comprehensive clearAllFilters() Function**
+- Clears all Tom-Select instances via `.clear()` API
+- Clears text input (search)
+- Clears all 8 number inputs (CFG, Steps, Width, Height min/max)
+- Clears checkbox (Favorites)
+- Automatically submits form to apply changes
+
+**3. Fixed "Clear All" Button**
+```javascript
+// Before (broken):
+clearBtn.addEventListener('click', () => {
+    window.location.href = "...";  // Only navigates
+});
+
+// After (fixed):
+clearBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    clearAllFilters();  // Programmatic clearing + submission
+});
+```
+
+**4. Fixed Individual Pill Removal**
+- Detects if input is a Tom-Select field
+- Uses Tom-Select `.clear()` API for Tom-Select instances
+- Falls back to native clearing for other inputs
+- Automatically submits form after clearing
+
+#### Technical Details
+- **Tom-Select API Integration**: All clearing uses proper `.clear()` method
+- **Form Submission**: Changes now reach server via automatic `form.submit()`
+- **Instance Detection**: Checks `ts.input === input` to match Tom-Select to native element
+- **Backwards Compatibility**: Native input clearing still works for non-Tom-Select fields
+
+#### Impact
+- "Clear All" button now clears all filters including Tom-Select dropdowns
+- Individual filter pill removal works correctly for all filter types
+- Filter state properly synchronized between client and server
+- Foundation established for future filter manipulation features
+
+---
+
 ## [1.40.5] - 2025-01-29
 
 ### Bug Fixes
