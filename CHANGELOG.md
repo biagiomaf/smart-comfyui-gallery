@@ -1,5 +1,42 @@
 
 # Changelog
+## [1.50.0] - 2025-10-30
+
+### Added
+
+- Backend pre-calculation and storage of prompt previews and sampler names:
+  - `files` table now includes `prompt_preview` (TEXT) and `sampler_names` (TEXT).
+  - `process_single_file()` now extracts a truncated `prompt_preview` (150 chars) and a sorted, unique `sampler_names` string for each file with a workflow and returns them from the worker.
+  - `full_sync_database()`, `sync_folder_internal()` and `sync_folder_on_demand()` updated to persist the new fields during batch and per-folder syncs.
+
+### Changed
+
+- Database migration and init:
+  - `initialize_gallery()` now includes a safe migration check that adds the new `prompt_preview` and `sampler_names` columns via `ALTER TABLE` when missing, and commits the change automatically.
+  - `init_db()` CREATE TABLE for `files` includes the two new columns for fresh installs.
+
+- Frontend (templates/index.html):
+  - Reworked gallery item card markup to a cleaner declarative structure:
+    - Replaced the legacy action bar with a compact action area containing a persistent favorite button and a kebab (`⋮`) menu for secondary actions (Node Summary, Download, Delete).
+    - Implemented a declarative selection overlay on the thumbnail (`.selection-overlay` / `.selection-checkbox`) that separates selection from lightbox opening.
+    - Surface `prompt_preview` (two-line truncated preview) and `sampler_names` (tooltip on workflow badge) in the gallery card.
+
+- CSS
+  - Removed old `.selection-checkmark` and `.item-actions` rules and added the new OptimalUX styles: `.prompt-preview`, `.filename-subtitle`, `.selection-overlay`, `.selection-checkbox`, `.item-actions-container`, `.favorite-btn`, `.kebab-menu-container`, `.kebab-btn`, and `.kebab-dropdown` to match the new UI.
+
+### Fixed
+
+- Wiring and behavior
+  - Alpine.js bindings updated to keep existing handlers intact (`toggleSelection`, `openLightbox`, `toggleFavorite`, `showNodeSummary`, `deleteFile`) so interactions remain consistent while the markup was upgraded.
+
+### Notes and compatibility
+
+- Migration: the `ALTER TABLE` additions are non-destructive and safe on existing SQLite databases; new columns default to NULL/empty when no workflow is present.
+- Worker tuple shape: the worker return tuple was extended to include the two new values. Current code slices the tuple approach to assemble DB rows; this matches existing style but is fragile to future tuple changes — consider switching to a keyed dictionary return in a later refactor.
+- Frontend expectations: the gallery endpoints that return file rows (e.g., `gallery_view`, `load_more`) should include `prompt_preview` and `sampler_names` for the UI to show the new fields; existing queries selecting `f.*` will automatically include them after migration.
+- Verification: static checks for syntax and binding presence were performed post-change; no runtime tests were executed here.
+
+---
 
 ## [1.40.6] - 2025-01-29
 

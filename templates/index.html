@@ -464,19 +464,181 @@
         .gallery-item { background: var(--glass-bg); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; position: relative; border: 2px solid transparent; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); }
         .gallery-item:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
         .gallery-item.selected { border-color: var(--primary-color); box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.2); }
-        .selection-checkmark { position: absolute; bottom: 12px; right: 12px; width: 24px; height: 24px; background: rgba(0,0,0,0.6); border: 2px solid var(--text-color); border-radius: 50%; display: flex; justify-content: center; align-items: center; z-index: 11; transition: all 0.3s; color: transparent; cursor: pointer; font-size: 12px; backdrop-filter: blur(10px); }
-        .gallery-item.selected .selection-checkmark { background: var(--primary-color); border-color: var(--primary-color); color: white; transform: scale(1.1); }
+    /* selection-checkmark removed in favor of new selection-overlay styles (OptimalUX) */
         .thumbnail-link { cursor: pointer; }
         .thumbnail-wrapper { position: relative; width: 100%; background: var(--surface-color); overflow: hidden; }
         .thumbnail-wrapper img, .thumbnail-wrapper video { display: block; width: 100%; height: auto; transition: transform 0.3s; }
         .gallery-item:hover .thumbnail-wrapper img, .gallery-item:hover .thumbnail-wrapper video { transform: scale(1.05); }
-        .item-info { padding: 1.5rem; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between; padding-bottom: 48px; }
+    /* item-info replaced by OptimalUX card info hierarchy below */
         .item-info p { margin: 0; word-wrap: break-word; font-size: 0.95rem; font-weight: 500; line-height: 1.4; margin-bottom: 0.75rem; }
         .file-metadata { font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem 0.75rem; }
         .file-metadata span { display: inline-flex; align-items: center; gap: 0.3rem; }
-        .item-actions { display: flex; gap: 0.75rem; margin-top: auto; flex-wrap: wrap; }
-        .item-actions a, .item-actions button { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; background: var(--glass-bg); color: var(--text-color); padding: 0.6rem 1rem; border-radius: 8px; font-size: 0.8rem; border: 1px solid var(--glass-border); cursor: pointer; transition: all 0.3s; font-weight: 500; backdrop-filter: blur(10px); }
-        .item-actions .delete-btn { background: var(--danger-color); border-color: var(--danger-color); color: white; }
+        /* old item-actions removed; replaced by kebab menu and compact action buttons (see new CSS below) */
+
+        /* --- NEW: Card Information Hierarchy (v.OptimalUX) --- */
+        .item-info {
+            padding: 1.25rem;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .prompt-preview {
+            display: -webkit-box;
+            -webkit-line-clamp: 2; /* Show max 2 lines of prompt */
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.4;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 0.5rem;
+        }
+        .filename-subtitle {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            word-break: break-all;
+            margin-bottom: 0.75rem;
+        }
+
+        /* --- NEW: Declarative Selection Overlay (v.OptimalUX) --- */
+        .selection-overlay {
+            position: absolute;
+            top: 0;
+            right: 0;
+            padding: 12px;
+            cursor: pointer;
+            z-index: 12;
+        }
+        .selection-checkbox {
+            width: 24px;
+            height: 24px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: scale(0.9);
+            opacity: 0.6;
+        }
+        .gallery-item:hover .selection-checkbox {
+            transform: scale(1);
+            opacity: 1;
+        }
+        .gallery-item.selected .selection-checkbox {
+            background: var(--primary-color);
+            border-color: white;
+            transform: scale(1.05);
+            opacity: 1;
+            box-shadow: 0 0 10px var(--primary-color);
+        }
+        .selection-checkbox::after { /* The checkmark */
+            content: '✓';
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            transform: scale(0);
+            opacity: 0;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .gallery-item.selected .selection-checkbox::after {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        /* --- NEW: Kebab Menu for Actions (v.OptimalUX) --- */
+        .item-actions-container {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: auto; /* Pushes to bottom */
+            align-items: center;
+        }
+        .favorite-btn {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-color);
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .favorite-btn.favorited {
+            background: var(--favorite-color);
+            color: #000;
+            border-color: var(--favorite-color);
+        }
+        .kebab-menu-container {
+            position: relative;
+            margin-left: auto; /* Pushes to the right */
+        }
+        .kebab-btn {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-muted);
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 0; /* Aligns dots vertically */
+        }
+        .kebab-btn:hover {
+            background: var(--surface-hover);
+            color: var(--text-color);
+        }
+        .kebab-dropdown {
+            position: absolute;
+            bottom: 50px; /* Position above the button */
+            right: 0;
+            background: var(--surface-hover);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: var(--shadow-lg);
+            width: 180px;
+            z-index: 15;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .kebab-dropdown button,
+        .kebab-dropdown a {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            padding: 0.75rem 1rem;
+            text-align: left;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: block;
+            width: 100%;
+            text-decoration: none;
+        }
+        .kebab-dropdown button:hover,
+        .kebab-dropdown a:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+        .kebab-dropdown .text-danger {
+            color: var(--danger-color);
+        }
+        .kebab-dropdown .text-danger:hover {
+            background: var(--danger-color);
+            color: white;
+        }
         .favorite-btn.favorited { background: var(--favorite-color); color: #000; border-color: var(--favorite-color); }
         .duration-overlay { position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.8); color: white; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 500; backdrop-filter: blur(10px); z-index: 10; }
         .workflow-badge { position: absolute; top: 8px; left: 8px; background: var(--workflow-color); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; text-decoration: none; font-weight: 600; transition: all 0.3s; }
@@ -927,17 +1089,15 @@
                      draggable="true"
                      @dragstart="dragStart($event, file.id)">
                     
-                    <!-- Selection Checkmark -->
-                    <div class="selection-checkmark" 
-                         @click="toggleSelection($event, file.id)"
-                         x-text="'✓'">
+                    <!-- NEW: Declarative Selection Overlay on Thumbnail -->
+                    <div class="selection-overlay" @click.prevent="toggleSelection($event, file.id)">
+                        <div class="selection-checkbox"></div>
                     </div>
-                    
-                    <!-- Thumbnail Link -->
-                    <div class="thumbnail-link" 
-                         @click="openLightbox(file.id)">
+
+                    <!-- Thumbnail Link (now the primary click target for lightbox) -->
+                    <div class="thumbnail-link" @click="openLightbox(file.id)">
                         <div class="thumbnail-wrapper">
-                            <!-- Media Content -->
+                            <!-- Media Content (This block is unchanged) -->
                             <template x-if="file.type === 'audio'">
                                 <div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:4rem;color:#1ed760;">🎵</div>
                             </template>
@@ -963,64 +1123,76 @@
                                 <div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:3rem;color:var(--text-muted);">📄</div>
                             </template>
                             
-                            <!-- Workflow Badge -->
+                            <!-- MODIFIED: Workflow Badge with dynamic title -->
                             <template x-if="file.has_workflow">
                                 <a :href="`/galleryout/workflow/${file.id}`"
                                    class="workflow-badge"
                                    :data-sampler-count="file.sampler_count || 0"
-                                   :title="(file.sampler_count || 0) > 1 ? `This workflow uses ${file.sampler_count} different sampler configurations` : 'View workflow JSON'"
+                                   :title="file.sampler_names ? `Samplers: ${file.sampler_names}` : (file.sampler_count > 1 ? `This workflow uses ${file.sampler_count} sampler configurations` : 'View workflow JSON')"
                                    @click.stop>
                                     <span x-text="(file.sampler_count || 0) > 1 ? `⚙️ ${file.sampler_count} Samplers` : '⚙️ Workflow'"></span>
                                 </a>
                             </template>
                             
-                            <!-- Duration Overlay -->
+                            <!-- Duration Overlay (Unchanged) -->
                             <template x-if="file.duration">
                                 <span class="duration-overlay" x-text="`⏱️ ${file.duration}`"></span>
                             </template>
                         </div>
                     </div>
                     
-                    <!-- Item Info -->
+                    <!-- NEW: Refactored Item Info section -->
                     <div class="item-info">
-                        <div>
-                            <p :title="file.name">
-                                <strong x-text="file.name"></strong>
-                            </p>
-                            
-                            <!-- File Metadata -->
-                            <template x-if="file.dimensions || file.mtime">
-                                <div class="file-metadata">
-                                    <template x-if="file.dimensions">
-                                        <span x-text="`📐 ${file.dimensions}`"></span>
-                                    </template>
-                                    <template x-if="file.mtime">
-                                        <span x-text="`📅 ${new Date(file.mtime * 1000).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}`"></span>
-                                    </template>
-                                </div>
+                        <!-- Information Hierarchy: Prompt > Filename -->
+                        <div :title="file.name">
+                            <template x-if="file.prompt_preview">
+                                <p class="prompt-preview" x-text="file.prompt_preview"></p>
+                                <p class="filename-subtitle" x-text="file.name"></p>
+                            </template>
+                            <template x-if="!file.prompt_preview">
+                                <p><strong x-text="file.name"></strong></p>
                             </template>
                         </div>
+
+                        <!-- File Metadata (Unchanged) -->
+                        <template x-if="file.dimensions || file.mtime">
+                            <div class="file-metadata">
+                                <template x-if="file.dimensions"><span x-text="`📐 ${file.dimensions}`"></span></template>
+                                <template x-if="file.mtime"><span x-text="`📅 ${new Date(file.mtime * 1000).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}`"></span></template>
+                            </div>
+                        </template>
                         
-                        <!-- Item Actions -->
-                        <div class="item-actions">
-                            <template x-if="file.has_workflow">
-                                <button title="Node Summary" @click.stop="showNodeSummary(file.id)">📝</button>
-                            </template>
-                            
+                        <!-- NEW: Action Bar with Kebab Menu -->
+                        <div class="item-actions-container">
+                            <!-- Favorite button remains visible -->
                             <button class="favorite-btn"
                                     :class="{ 'favorited': file.is_favorite }"
                                     :title="file.is_favorite ? 'Unfavorite' : 'Favorite'"
-                                    @click.stop="toggleFavorite(file.id)"
-                                    x-text="file.is_favorite ? '⭐' : '☆'">
+                                    @click.stop="toggleFavorite(file.id)">
+                                <span x-text="file.is_favorite ? '⭐' : '☆'"></span>
                             </button>
                             
-                            <a :href="`/galleryout/download/${file.id}`"
-                               @click.stop
-                               title="Download">💾</a>
-                            
-                            <button class="delete-btn"
-                                    @click.stop="deleteFile(file.id)"
-                                    title="Delete">🗑️</button>
+                            <!-- Kebab menu for secondary actions -->
+                            <div x-data="{ open: false }" @click.outside="open = false" class="kebab-menu-container">
+                                <button @click.stop="open = !open" class="kebab-btn" title="More actions">⋮</button>
+                                
+                                <div x-show="open" 
+                                     x-transition:enter="transition ease-out duration-100"
+                                     x-transition:enter-start="opacity-0 transform scale-95"
+                                     x-transition:enter-end="opacity-100 transform scale-100"
+                                     x-transition:leave="transition ease-in duration-75"
+                                     x-transition:leave-start="opacity-100 transform scale-100"
+                                     x-transition:leave-end="opacity-0 transform scale-95"
+                                     class="kebab-dropdown"
+                                     style="display: none;">
+                                    
+                                    <template x-if="file.has_workflow">
+                                        <button @click.stop="showNodeSummary(file.id); open = false;">📝 Node Summary</button>
+                                    </template>
+                                    <a :href="`/galleryout/download/${file.id}`" @click="open = false">💾 Download</a>
+                                    <button @click="deleteFile(file.id); open = false;">🗑️ Delete</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

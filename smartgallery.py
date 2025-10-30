@@ -1,7 +1,8 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025 — MIT License (free to use and modify)
 #
-# Version: 1.41.0 - January 2025 (Performance & UX Improvements)
+# Version: 1.50.0 - January 2025 (Performance & UX Improvements)
+
 # CHANGES (v1.41.0):
 # - CRITICAL PERFORMANCE: Added 5 database indices on files table (10-50x faster queries)
 #   - idx_files_name: Fast name search (was O(n), now O(log n))
@@ -1412,12 +1413,37 @@ def process_single_file(filepath, thumbnail_cache_dir, thumbnail_width, video_ex
                         extraction_status['sampler_count'] = len(workflow_metadata_list)
             except Exception as e:
                 extraction_status['parse_error'] = str(e)
-        
+
+        # --- NEW: Logic for Prompt Preview and Sampler Names ---
+        prompt_preview = None
+        sampler_names = ""
+        try:
+            if workflow_metadata_list:
+                # For prompt preview, take the positive prompt from the first sampler
+                first_sampler = workflow_metadata_list[0]
+                if first_sampler and first_sampler.get('positive_prompt'):
+                    preview_text = str(first_sampler.get('positive_prompt') or '').strip()
+                    if len(preview_text) > 150:
+                        prompt_preview = preview_text[:150] + '...'
+                    else:
+                        prompt_preview = preview_text
+
+                # For sampler names, collect all unique names
+                unique_samplers = sorted(list({s.get('sampler_name') for s in workflow_metadata_list if s and s.get('sampler_name')}))
+                sampler_names = ', '.join(unique_samplers)
+        except Exception:
+            # Keep defaults if anything goes wrong
+            prompt_preview = prompt_preview
+            sampler_names = sampler_names
+        # --- End of New Logic ---
+
         return (
             file_id, filepath, mtime, os.path.basename(filepath),
             details['type'], details['duration'], details['dimensions'], details['has_workflow'],
             workflow_metadata_list,  # Returns LIST of metadata dicts (one per sampler)
-            extraction_status  # Statistics for reporting
+            extraction_status,  # Statistics for reporting
+            prompt_preview,  # NEW return value
+            sampler_names    # NEW return value
         )
     except Exception as e:
         print(f"ERROR: Failed to process file {os.path.basename(filepath)} in worker: {e}")
@@ -1605,7 +1631,8 @@ def init_db(conn=None):
         CREATE TABLE IF NOT EXISTS files (
             id TEXT PRIMARY KEY, path TEXT NOT NULL UNIQUE, mtime REAL NOT NULL,
             name TEXT NOT NULL, type TEXT, duration TEXT, dimensions TEXT,
-            has_workflow INTEGER, is_favorite INTEGER DEFAULT 0
+            has_workflow INTEGER, is_favorite INTEGER DEFAULT 0,
+            prompt_preview TEXT, sampler_names TEXT
         )
     ''')
     conn.execute('''
@@ -1894,9 +1921,10 @@ def full_sync_database(conn):
             file_ids_with_metadata = set()
             
             for result in results:
-                # result now has 10 elements: (id, path, mtime, name, type, duration, dimensions, has_workflow, workflow_metadata_list, extraction_status)
+                # result now has 12 elements: (id, path, mtime, name, type, duration, dimensions, has_workflow, workflow_metadata_list, extraction_status, prompt_preview, sampler_names)
                 file_id = result[0]
-                file_tuple = result[:8]  # First 8 elements for files table
+                # Build file tuple: first 8 standard fields + prompt_preview and sampler_names (positions 10 and 11)
+                file_tuple = result[:8] + tuple(result[10:12])
                 workflow_metadata_list = result[8]  # 9th element is LIST of metadata dicts
                 
                 files_data.append(file_tuple)
@@ -1923,7 +1951,7 @@ def full_sync_database(conn):
             for i in range(0, len(files_data), BATCH_SIZE):
                 batch = files_data[i:i + BATCH_SIZE]
                 conn.executemany(
-                    "INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, prompt_preview, sampler_names) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     batch
                 )
                 conn.commit()
@@ -1993,7 +2021,28 @@ def sync_folder_internal(folder_path):
                     create_thumbnail(path, file_hash, metadata['type'])
                 
                 file_id = hashlib.md5(path.encode()).hexdigest()
-                data_to_upsert.append((file_id, path, disk_files[path], os.path.basename(path), *metadata.values()))
+
+                # --- NEW: Extract preview data here as well ---
+                prompt_preview = None
+                sampler_names = ""
+                workflow_meta_list = []
+                if metadata['has_workflow']:
+                    try:
+                        workflow_json = extract_workflow(path)
+                        if workflow_json:
+                            workflow_meta_list = extract_workflow_metadata(workflow_json, Path(path))
+                            if workflow_meta_list:
+                                first_sampler = workflow_meta_list[0]
+                                if first_sampler and first_sampler.get('positive_prompt'):
+                                    preview_text = str(first_sampler.get('positive_prompt') or '').strip()
+                                    prompt_preview = (preview_text[:150] + '...') if len(preview_text) > 150 else preview_text
+                                unique_samplers = sorted(list({s.get('sampler_name') for s in workflow_meta_list if s and s.get('sampler_name')}))
+                                sampler_names = ', '.join(unique_samplers)
+                    except Exception as e:
+                        print(f"DEBUG: Error extracting workflow metadata for {os.path.basename(path)}: {e}")
+                # --- End new logic ---
+
+                data_to_upsert.append((file_id, path, disk_files[path], os.path.basename(path), metadata['type'], metadata['duration'], metadata['dimensions'], metadata['has_workflow'], prompt_preview, sampler_names))
                 
                 # Extract workflow metadata if present (returns LIST of sampler metadata)
                 if metadata['has_workflow']:
@@ -2021,7 +2070,7 @@ def sync_folder_internal(folder_path):
                         print(f"DEBUG: Error extracting workflow metadata for {os.path.basename(path)}: {e}")
                 
             if data_to_upsert: 
-                conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", data_to_upsert)
+                conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, prompt_preview, sampler_names) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", data_to_upsert)
             
             # Use DELETE-then-INSERT pattern for metadata (handles variable sampler counts)
             if metadata_to_upsert:
@@ -2117,31 +2166,55 @@ def sync_folder_on_demand(folder_path):
                 metadata_data = []
                 
                 for result in data_to_upsert:
-                    # result now has 9 elements: (id, path, mtime, name, type, duration, dimensions, has_workflow, workflow_metadata)
+                    # result now has 12 elements: (id, path, mtime, name, type, duration, dimensions, has_workflow, workflow_metadata_list, extraction_status, prompt_preview, sampler_names)
                     file_id = result[0]
-                    file_tuple = result[:8]  # First 8 elements for files table
-                    workflow_metadata = result[8]  # 9th element is metadata dict or None
+                    # First 8 + prompt_preview + sampler_names
+                    file_tuple = result[:8] + tuple(result[10:12])
+                    workflow_metadata = result[8]  # 9th element is metadata dict/list or None
                     
                     files_data.append(file_tuple)
                     
                     if workflow_metadata:
-                        metadata_data.append((
-                            file_id,
-                            workflow_metadata.get('model_name'),
-                            workflow_metadata.get('sampler_name'),
-                            workflow_metadata.get('scheduler'),
-                            workflow_metadata.get('cfg'),
-                            workflow_metadata.get('steps'),
-                            workflow_metadata.get('positive_prompt'),
-                            workflow_metadata.get('negative_prompt'),
-                            workflow_metadata.get('width'),
-                            workflow_metadata.get('height')
-                        ))
-                
-                conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", files_data)
+                        # If workflow_metadata is a list, insert each sampler; otherwise treat as single
+                        if isinstance(workflow_metadata, list):
+                            for sampler_index, sampler_meta in enumerate(workflow_metadata):
+                                metadata_data.append((
+                                    file_id,
+                                    sampler_index,
+                                    sampler_meta.get('model_name'),
+                                    sampler_meta.get('sampler_name'),
+                                    sampler_meta.get('scheduler'),
+                                    sampler_meta.get('cfg'),
+                                    sampler_meta.get('steps'),
+                                    sampler_meta.get('positive_prompt'),
+                                    sampler_meta.get('negative_prompt'),
+                                    sampler_meta.get('width'),
+                                    sampler_meta.get('height')
+                                ))
+                        elif isinstance(workflow_metadata, dict):
+                            metadata_data.append((
+                                file_id,
+                                0,
+                                workflow_metadata.get('model_name'),
+                                workflow_metadata.get('sampler_name'),
+                                workflow_metadata.get('scheduler'),
+                                workflow_metadata.get('cfg'),
+                                workflow_metadata.get('steps'),
+                                workflow_metadata.get('positive_prompt'),
+                                workflow_metadata.get('negative_prompt'),
+                                workflow_metadata.get('width'),
+                                workflow_metadata.get('height')
+                            ))
+
+                conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, prompt_preview, sampler_names) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", files_data)
                 
                 if metadata_data:
-                    conn.executemany("INSERT OR REPLACE INTO workflow_metadata (file_id, model_name, sampler_name, scheduler, cfg, steps, positive_prompt, negative_prompt, width, height) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", metadata_data)
+                    # DELETE old metadata for these files then insert to handle variable sampler counts
+                    file_ids = {m[0] for m in metadata_data}
+                    if file_ids:
+                        placeholders = ','.join(['?'] * len(file_ids))
+                        conn.execute(f"DELETE FROM workflow_metadata WHERE file_id IN ({placeholders})", list(file_ids))
+                    conn.executemany("INSERT INTO workflow_metadata (file_id, sampler_index, model_name, sampler_name, scheduler, cfg, steps, positive_prompt, negative_prompt, width, height) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", metadata_data)
 
         if files_to_delete:
             conn.executemany("DELETE FROM files WHERE path IN (?)", [(p,) for p in files_to_delete])
@@ -2213,6 +2286,22 @@ def initialize_gallery(flask_app):
     # Wrap database initialization in app context (required for g object access during startup)
     with flask_app.app_context():
         conn = get_db()
+
+        # --- NEW: Schema Migration Logic ---
+        try:
+            cursor = conn.execute("PRAGMA table_info(files)")
+            columns = [row['name'] for row in cursor.fetchall()]
+            if 'prompt_preview' not in columns:
+                print("INFO: Migrating database schema: Adding 'prompt_preview' column to files table.")
+                conn.execute("ALTER TABLE files ADD COLUMN prompt_preview TEXT")
+            if 'sampler_names' not in columns:
+                print("INFO: Migrating database schema: Adding 'sampler_names' column to files table.")
+                conn.execute("ALTER TABLE files ADD COLUMN sampler_names TEXT")
+            conn.commit()
+        except sqlite3.DatabaseError:
+            # If the files table does not exist yet or PRAGMA failed, ensure init_db will create it later
+            pass
+
         try:
             stored_version = conn.execute('PRAGMA user_version').fetchone()[0]
         except sqlite3.DatabaseError: stored_version = 0
