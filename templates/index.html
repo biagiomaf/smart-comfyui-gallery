@@ -102,9 +102,7 @@
         }
         .results-count .count-label { display: inline-block; }
         .results-count strong { color: var(--text-color); font-weight: 700; }
-        
-        .filter-bar { padding: 1.5rem 2rem; }
-        .filter-bar form { display: flex; flex-direction: column; gap: 1.5rem; }
+
         
         /* Modern Filter Panel Styles */
         #filter-panel { position: fixed; top: 0; right: 0; width: 450px; height: 100vh; background: var(--surface-color); border-left: 1px solid var(--border-color); transform: translateX(100%); transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 2000; display: flex; flex-direction: column; box-shadow: -4px 0 24px rgba(0, 0, 0, 0.5); }
@@ -130,9 +128,8 @@
             flex-direction: column; 
             gap: 0.5rem;  /* Modern gap property replaces label margin-bottom */
         }
-        
-        /* Filter Form Controls - applies to both .filter-bar and .filter-panel-content */
-        .filter-bar label, .filter-panel-content label { 
+        /* Filter Form Controls - applies to .filter-panel-content and .filter-panel-footer */
+        .filter-panel-content label { 
             font-weight: 600; 
             color: var(--text-muted); 
             font-size: 0.85rem; 
@@ -140,8 +137,11 @@
             letter-spacing: 0.5px;
             display: block;
         }
-        .filter-bar select, .filter-bar input[type="text"], .filter-bar input[type="number"], .filter-bar button, .filter-bar a,
-        .filter-panel-content select, .filter-panel-content input[type="text"], .filter-panel-content input[type="number"], .filter-panel-footer button, .filter-panel-footer a { 
+        .filter-panel-content select, 
+        .filter-panel-content input[type="text"], 
+        .filter-panel-content input[type="number"], 
+        .filter-panel-footer button, 
+        .filter-panel-footer a { 
             background: var(--glass-bg); 
             color: var(--text-color); 
             border: 1px solid var(--glass-border); 
@@ -152,58 +152,76 @@
             backdrop-filter: blur(10px);
             font-family: inherit;
         }
-        .filter-bar input[type="text"]::placeholder,
         .filter-panel-content input[type="text"]::placeholder {
             color: var(--text-muted);
             opacity: 0.5;
         }
-        .filter-bar select[multiple], .filter-panel-content select[multiple] { 
+        .filter-panel-content select[multiple] { 
             min-height: 120px; 
             padding: 0.5rem;
         }
-        .filter-bar select[multiple] option,
         .filter-panel-content select[multiple] option {
             padding: 0.5rem;
             border-radius: 4px;
             margin-bottom: 2px;
         }
-        .filter-bar select[multiple] option:checked,
         .filter-panel-content select[multiple] option:checked {
             background: var(--primary-color) linear-gradient(0deg, var(--primary-color) 0%, var(--primary-color) 100%);
             color: white;
             font-weight: 600;
         }
-        .filter-bar input[type="text"]:focus, .filter-bar input[type="number"]:focus, .filter-bar select:focus,
-        .filter-panel-content input[type="text"]:focus, .filter-panel-content input[type="number"]:focus, .filter-panel-content select:focus { 
+        .filter-panel-content input[type="text"]:focus, 
+        .filter-panel-content input[type="number"]:focus, 
+        .filter-panel-content select:focus { 
             outline: none; 
             border-color: var(--primary-color); 
             box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
             background: rgba(0, 123, 255, 0.05);
         }
-        .filter-bar input[type="text"]:hover, .filter-bar input[type="number"]:hover, .filter-bar select:hover,
-        .filter-panel-content input[type="text"]:hover, .filter-panel-content input[type="number"]:hover, .filter-panel-content select:hover {
+        .filter-panel-content input[type="text"]:hover, 
+        .filter-panel-content input[type="number"]:hover, 
+        .filter-panel-content select:hover {
             border-color: rgba(255, 255, 255, 0.2);
             background: rgba(255, 255, 255, 0.03);
         }
-        .filter-bar input[type="number"], .filter-panel-content input[type="number"] { 
+        .filter-panel-content input[type="number"] { 
             font-variant-numeric: tabular-nums; 
             font-family: 'SF Mono', 'Monaco', 'Consolas', 'Courier New', monospace;
             letter-spacing: 0.5px;
         }
-        .filter-bar input[type="number"]::-webkit-inner-spin-button, .filter-bar input[type="number"]::-webkit-outer-spin-button,
-        .filter-panel-content input[type="number"]::-webkit-inner-spin-button, .filter-panel-content input[type="number"]::-webkit-outer-spin-button { 
+        .filter-panel-content input[type="number"]::-webkit-inner-spin-button, 
+        .filter-panel-content input[type="number"]::-webkit-outer-spin-button { 
             opacity: 0.5;
             transition: opacity 0.2s;
         }
-        .filter-bar input[type="number"]:hover::-webkit-inner-spin-button, .filter-bar input[type="number"]:hover::-webkit-outer-spin-button,
-        .filter-panel-content input[type="number"]:hover::-webkit-inner-spin-button, .filter-panel-content input[type="number"]:hover::-webkit-outer-spin-button { 
+        .filter-panel-content input[type="number"]:hover::-webkit-inner-spin-button, 
+        .filter-panel-content input[type="number"]:hover::-webkit-outer-spin-button { 
             opacity: 1; 
         }
-        .filter-bar button, .filter-panel-footer button { background: var(--primary-color); cursor: pointer; font-weight: 600; color: white; border: 1px solid var(--primary-color); }
-        .filter-bar button:hover, .filter-panel-footer button:hover { background: var(--primary-hover); transform: translateY(-1px); }
-        button.refresh-btn { background: var(--workflow-color); border-color: var(--workflow-color); }
-        .filter-bar a, .filter-panel-footer a { text-decoration: none; text-align: center; color: var(--text-muted); }
-        .filter-bar a:hover, .filter-panel-footer a:hover { background: var(--surface-hover); color: var(--text-color); }
+        .filter-panel-footer button { 
+            background: var(--primary-color); 
+            cursor: pointer; 
+            font-weight: 600; 
+            color: white; 
+            border: 1px solid var(--primary-color); 
+        }
+        .filter-panel-footer button:hover { 
+            background: var(--primary-hover); 
+            transform: translateY(-1px); 
+        }
+        button.refresh-btn { 
+            background: var(--workflow-color); 
+            border-color: var(--workflow-color); 
+        }
+        .filter-panel-footer a { 
+            text-decoration: none; 
+            text-align: center; 
+            color: var(--text-muted); 
+        }
+        .filter-panel-footer a:hover { 
+            background: var(--surface-hover); 
+            color: var(--text-color); 
+        }
         .filter-group-inline { 
             display: flex; 
             align-items: center; 
@@ -619,9 +637,10 @@
     </style>
 </head>
 <body x-data="gallery()" 
-      @keydown.escape.window="handleEscape()" 
-      @keydown.ctrl.a.window.prevent="selectAll()"
-      @resize.window.debounce.150ms="handleResize()"
+    @keydown.escape.window="handleEscape()" 
+    @keydown.ctrl.a.window.prevent="selectAll()"
+    @resize.window.debounce.150ms="handleResize()"
+    @scroll.window.debounce.150ms="shouldShowBackToTop = window.scrollY > 300"
       :class="{ 
           'lightbox-open': isLightboxOpen, 
           'modal-open': isUploadOpen || isSummaryOpen,
@@ -641,11 +660,13 @@
             </div>
         </template>
     </div>
+    <!-- Hidden, Alpine-managed drag image element for native Drag & Drop API -->
+    <div x-ref="dragImage" x-text="dragImageLabel" aria-hidden="true" style="position: absolute; top: -1000px; left: -1000px; background: var(--primary-color); color: white; padding: 8px 16px; border-radius: 8px; font-weight: 600; pointer-events: none;"> </div>
     <aside class="sidebar" :class="{ 'nav-collapsed': isMobileView && isMobileNavCollapsed }">
         <div class="sidebar-header">
             <a href="{{ url_for('gallery_view', folder_key='_root_') }}" style="text-decoration: none;"><h1>SmartGallery</h1></a>
             <div class="sidebar-actions">
-                <button id="sidebar-expand-btn" title="Expand Sidebar">
+                <button id="sidebar-expand-btn" @click="sidebarExpanded = !sidebarExpanded" title="Expand Sidebar">
                     <span>↔️</span><span id="sidebar-expand-text">Expand</span>
                 </button>
                 <button id="sidebar-toggle-btn" 
@@ -775,7 +796,7 @@
                 </template>
             </ul>
         </div>
-        <button @click="createFolder()">➕ Create New Folder</button>
+        <button id="create-folder-btn" @click="createFolder()">➕ Create New Folder</button>
     </aside>
     <div class="main-content">
         <header class="breadcrumbs">
@@ -830,7 +851,7 @@
                     <span>🎛️ Filters & Options</span>
                     <span>
                         <span class="filter-count-badge" x-text="activeFilterCount + ' Active'"></span>
-                        <button type="button" @click="isFilterPanelOpen = false">✕</button>
+                        <button type="button" id="filter-close-btn" @click="isFilterPanelOpen = false">✕</button>
                     </span>
                 </h2>
             </div>
@@ -855,8 +876,8 @@
                     <div class="filter-form-grid" id="filter-form-grid">
                     <!-- Basic Filters -->
                     <div class="filter-group"><label for="search-input">🔍 Search by Name</label><input type="text" name="search" id="search-input" placeholder="Search files..." x-model.debounce.300ms="filters.search"></div>
-                    <div class="filter-group"><label for="extension-select">📄 Extensions</label><select name="extension" id="extension-select" multiple x-model="filters.extensions" x-tom-select placeholder="📄 Select extensions...">{% for ext in available_extensions %}<option value="{{ ext }}" {% if ext in selected_extensions %}selected{% endif %}>{{ ext }}</option>{% endfor %}</select></div>
-                    <div class="filter-group"><label for="prefix-select">🏷️ Prefixes</label><select name="prefix" id="prefix-select" multiple x-model="filters.prefixes" x-tom-select placeholder="🏷️ Select prefixes...">{% for pfx in available_prefixes %}{% if pfx != '.gallery ' %}<option value="{{ pfx }}" {% if pfx in selected_prefixes %}selected{% endif %}>{{ pfx }}</option>{% endif %}{% endfor %}</select></div>
+                    <div class="filter-group"><label for="extension-select">📄 Extensions</label><select name="extension" id="extension-select" multiple x-model="filters.extensions" x-tom-select x-ref="extensionsSelect" placeholder="📄 Select extensions...">{% for ext in available_extensions %}<option value="{{ ext }}" {% if ext in selected_extensions %}selected{% endif %}>{{ ext }}</option>{% endfor %}</select></div>
+                    <div class="filter-group"><label for="prefix-select">🏷️ Prefixes</label><select name="prefix" id="prefix-select" multiple x-model="filters.prefixes" x-tom-select x-ref="prefixesSelect" placeholder="🏷️ Select prefixes...">{% for pfx in available_prefixes %}{% if pfx != '.gallery ' %}<option value="{{ pfx }}" {% if pfx in selected_prefixes %}selected{% endif %}>{{ pfx }}</option>{% endif %}{% endfor %}</select></div>
                     <div class="filter-group"><div class="filter-group-inline"><input type="checkbox" name="favorites" id="favorites-check" value="true" x-model="filters.favorites"><label for="favorites-check">⭐ Favorites Only</label></div></div>
                     
                     <!-- Workflow Metadata Section -->
@@ -864,9 +885,9 @@
                         <h3>🎨 Workflow Parameters</h3>
                     </div>
                     
-                    <div class="filter-group"><label for="model-select">🤖 Model</label><select name="filter_model" id="model-select" x-model="filters.model" x-tom-select="modelSelectConfig" placeholder="🤖 Type to search models..."><option value="">All Models</option></select></div>
-                    <div class="filter-group"><label for="sampler-select">🎲 Sampler</label><select name="filter_sampler" id="sampler-select" x-model="filters.sampler" x-tom-select placeholder="🎲 Select sampler..."><option value="">All Samplers</option></select></div>
-                    <div class="filter-group"><label for="scheduler-select">📅 Scheduler</label><select name="filter_scheduler" id="scheduler-select" x-model="filters.scheduler" x-tom-select placeholder="📅 Select scheduler..."><option value="">All Schedulers</option></select></div>
+                    <div class="filter-group"><label for="model-select">🤖 Model</label><select name="filter_model" id="model-select" x-model="filters.model" x-tom-select x-ref="modelSelect" placeholder="🤖 Select model..."><option value="">All Models</option></select></div>
+                    <div class="filter-group"><label for="sampler-select">🎲 Sampler</label><select name="filter_sampler" id="sampler-select" x-model="filters.sampler" x-tom-select x-ref="samplerSelect" placeholder="🎲 Select sampler..."><option value="">All Samplers</option></select></div>
+                    <div class="filter-group"><label for="scheduler-select">📅 Scheduler</label><select name="filter_scheduler" id="scheduler-select" x-model="filters.scheduler" x-tom-select x-ref="schedulerSelect" placeholder="📅 Select scheduler..."><option value="">All Schedulers</option></select></div>
                     
                     <!-- CFG Range Pair -->
                     <div class="filter-range-pair">
@@ -895,7 +916,7 @@
                 <a href="{{ url_for('gallery_view', folder_key=current_folder_key) }}" style="flex: 0.5; background: var(--surface-hover); color: var(--text-muted); text-decoration: none; padding: 0.75rem 1.5rem; border-radius: 8px; text-align: center; font-weight: 600;">🔄 Reset</a>
             </div>
         </div>
-        <div id="gallery-anchor"></div>
+    <div id="gallery-anchor" x-ref="galleryAnchor"></div>
         <main class="gallery-container" id="gallery-container">
             <!-- Alpine x-for Gallery Grid -->
             <template x-for="file in filesOnPage" :key="file.id">
@@ -1270,7 +1291,39 @@
                 <h2>📝 Node Summary</h2>
                 <button class="close-btn" @click="isSummaryOpen = false">×</button>
             </div>
-            <div id="node-summary-content" x-html="summaryHtml"></div>
+            <div id="node-summary-content">
+                <!-- Loading state -->
+                <template x-if="isSummaryLoading">
+                    <div class="loader" style="margin:2rem auto;"></div>
+                </template>
+
+                <!-- Rendered summary data -->
+                <template x-if="!isSummaryLoading">
+                    <template x-for="node in summaryData" :key="node.id">
+                        <div class="summary-node-item">
+                            <div class="summary-node-header" :style="`background: ${node.color || 'transparent'}`">
+                                <strong x-text="node.type"></strong>
+                                <small x-text="` (ID: ${node.id})`"></small>
+                            </div>
+                            <ul class="summary-node-params">
+                                <template x-if="!node.params || node.params.length === 0">
+                                    <li>No parameters</li>
+                                </template>
+                                <template x-for="param in node.params" :key="param.name">
+                                    <li>
+                                        <strong x-text="param.name + ':'"></strong>
+                                        <code x-text="(typeof param.value === 'object') ? JSON.stringify(param.value) : param.value"></code>
+                                    </li>
+                                </template>
+                            </ul>
+                        </div>
+                    </template>
+
+                    <template x-if="summaryData.length === 0">
+                        <p>No active nodes found for this workflow.</p>
+                    </template>
+                </template>
+            </div>
         </div>
     </div>
     <div id="upload-overlay" x-show="isUploadOpen" @click.self="isUploadOpen = false" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-300" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
@@ -1600,7 +1653,11 @@
                 isUploadOpen: false,
                 isSummaryOpen: false,
                 isDropPanelVisible: false,
-                summaryHtml: '',
+                // Declarative summary state replaces summaryHtml
+                summaryData: [],
+                isSummaryLoading: false,
+                // Drag image label (declarative binding for drag image element)
+                dragImageLabel: '',
                 
                 // --- LIGHTBOX STATE ---
                 currentLightboxIndex: -1,
@@ -1651,36 +1708,7 @@
                     schedulers: []
                 },
                 
-                modelSelectConfig: {
-                    load: (query, callback) => {
-                        // Don't load anything if the user hasn't typed at least 2 chars
-                        if (query.length < 2) return callback();
-
-                        const url = `/galleryout/api/models?q=${encodeURIComponent(query)}`;
-                        fetch(url)
-                            .then(response => response.json())
-                            .then(json => {
-                                callback(json);
-                            }).catch(() => {
-                                callback();
-                            });
-                    },
-                    shouldLoad: (query) => {
-                        // Only trigger a search if the user types at least 2 characters
-                        return query.length >= 2;
-                    },
-                    // This allows Tom-Select to render the results from `load`
-                    score: function(search) {
-                        var score = this.getScoreFunction(search);
-                        return function(item) {
-                            return score(item);
-                        };
-                    },
-                    render: {
-                        // Show a message while loading
-                        loading: () => '<div class="ts-dropdown-content">Loading...</div>',
-                    }
-                },
+                
                 
                 // --- UI STATE ---
                 shouldShowBackToTop: false,
@@ -1705,8 +1733,17 @@
                     // Hide loader - replaced with Alpine-driven state
                     this.isPageLoading = false;
                     
-                    // Setup sidebar
-                    this.setupSidebarExpansion();
+                    // Setup sidebar persistence (load + watch)
+                    try {
+                        const savedState = localStorage.getItem('sidebarExpandedState');
+                        if (savedState === 'true') this.sidebarExpanded = true;
+                    } catch (e) {
+                        console.warn('Failed to load sidebar state:', e);
+                    }
+                    this.$watch('sidebarExpanded', (expanded) => {
+                        try { localStorage.setItem('sidebarExpandedState', expanded ? 'true' : 'false'); }
+                        catch (e) { console.warn('Failed to save sidebar state:', e); }
+                    });
                     
                     // Initialize after DOM ready
                     this.$nextTick(() => {
@@ -1718,10 +1755,7 @@
                     // Back to top button state - managed by Alpine
                     this.shouldShowBackToTop = window.scrollY > 300;
                     
-                    // Alpine scroll handler using @scroll.window
-                    window.addEventListener('scroll', () => {
-                        this.shouldShowBackToTop = window.scrollY > 300;
-                    });
+                    // Scroll handling is performed declaratively via @scroll.window on the <body>
                 },
                 
                 // ===================================
@@ -1789,7 +1823,7 @@
                                 label: `📄 ${ext}`,
                                 action: () => {
                                     this.filters.extensions = this.filters.extensions.filter(e => e !== ext);
-                                    const extSelect = document.getElementById('extension-select');
+                                    const extSelect = this.$refs.extensionsSelect;
                                     if (extSelect && extSelect._tomSelect) {
                                         extSelect._tomSelect.removeItem(ext, true);
                                     }
@@ -1807,7 +1841,7 @@
                                 label: `🏷️ ${pfx}`,
                                 action: () => {
                                     this.filters.prefixes = this.filters.prefixes.filter(p => p !== pfx);
-                                    const pfxSelect = document.getElementById('prefix-select');
+                                    const pfxSelect = this.$refs.prefixesSelect;
                                     if (pfxSelect && pfxSelect._tomSelect) {
                                         pfxSelect._tomSelect.removeItem(pfx, true);
                                     }
@@ -1824,7 +1858,7 @@
                             label: `🤖 Model: ${this.filters.model}`,
                             action: () => { 
                                 this.filters.model = ''; 
-                                const modelSelect = document.getElementById('model-select');
+                                const modelSelect = this.$refs.modelSelect;
                                 if (modelSelect && modelSelect._tomSelect) {
                                     modelSelect._tomSelect.clear(true);
                                 }
@@ -1840,7 +1874,7 @@
                             label: `🎲 Sampler: ${this.filters.sampler}`,
                             action: () => { 
                                 this.filters.sampler = ''; 
-                                const samplerSelect = document.getElementById('sampler-select');
+                                const samplerSelect = this.$refs.samplerSelect;
                                 if (samplerSelect && samplerSelect._tomSelect) {
                                     samplerSelect._tomSelect.clear(true);
                                 }
@@ -1856,7 +1890,7 @@
                             label: `📅 Scheduler: ${this.filters.scheduler}`,
                             action: () => { 
                                 this.filters.scheduler = ''; 
-                                const schedulerSelect = document.getElementById('scheduler-select');
+                                const schedulerSelect = this.$refs.schedulerSelect;
                                 if (schedulerSelect && schedulerSelect._tomSelect) {
                                     schedulerSelect._tomSelect.clear(true);
                                 }
@@ -2083,10 +2117,14 @@
                     this.filters.height_min = '';
                     this.filters.height_max = '';
                     
-                    // Clear TomSelect instances via element references
-                    const selectIds = ['extension-select', 'prefix-select', 'model-select', 'sampler-select', 'scheduler-select'];
-                    selectIds.forEach(id => {
-                        const el = document.getElementById(id);
+                    // Clear TomSelect instances via Alpine refs (declarative)
+                    [
+                        this.$refs.extensionsSelect,
+                        this.$refs.prefixesSelect,
+                        this.$refs.modelSelect,
+                        this.$refs.samplerSelect,
+                        this.$refs.schedulerSelect
+                    ].forEach(el => {
                         if (el && el._tomSelect) {
                             el._tomSelect.clear(true);
                         }
@@ -2150,9 +2188,8 @@
                             // Close filter panel
                             this.isFilterPanelOpen = false;
                             
-                            // Scroll to gallery - Alpine handles this via x-intersect
-                            const galleryAnchor = this.$el.querySelector('#gallery-anchor');
-                            if (galleryAnchor) galleryAnchor.scrollIntoView({ behavior: 'smooth' });
+                            // Scroll to gallery anchor using Alpine refs (declarative)
+                            if (this.$refs.galleryAnchor) this.$refs.galleryAnchor.scrollIntoView({ behavior: 'smooth' });
                             
                             // FIXED: Use totalFiles (complete count) instead of filesOnPage.length (paginated count)
                             this.$store.notifications.add(
@@ -2269,15 +2306,26 @@
                     if (!this.selectedFiles.includes(fileId)) {
                         this.selectedFiles = [fileId];
                     }
-                    
-                    // Create drag image - kept imperative as it's a native HTML5 drag API requirement
-                    const dragImage = document.createElement('div');
-                    dragImage.style.cssText = `position:absolute;top:-100px;background:var(--primary-color);color:white;padding:8px 16px;border-radius:8px;font-weight:600;`;
-                    dragImage.textContent = `📦 ${this.selectedFiles.length} file${this.selectedFiles.length !== 1 ? 's' : ''}`;
-                    document.body.appendChild(dragImage);
-                    event.dataTransfer.setDragImage(dragImage, 0, 0);
-                    setTimeout(() => document.body.removeChild(dragImage), 0);
-                    
+
+                    // Use Alpine-managed hidden element for drag image (declarative)
+                    try {
+                        // Update declarative state for drag image text
+                        this.dragImageLabel = `📦 ${this.selectedFiles.length} file${this.selectedFiles.length !== 1 ? 's' : ''}`;
+                        // Wait for Alpine to update the DOM, then call setDragImage
+                        this.$nextTick(() => {
+                            const dragImageEl = this.$refs.dragImage;
+                            if (dragImageEl) {
+                                try {
+                                    event.dataTransfer.setDragImage(dragImageEl, 0, 0);
+                                } catch (e) {
+                                    console.warn('Failed to set declarative drag image:', e);
+                                }
+                            }
+                        });
+                    } catch (e) {
+                        console.warn('Failed to set declarative drag image state:', e);
+                    }
+
                     event.dataTransfer.setData('text/plain', this.selectedFiles.join(','));
                     this.isDropPanelVisible = true;
                 },
@@ -2492,64 +2540,35 @@
                 // ===================================
                 async showNodeSummary(fileId) {
                     this.isSummaryOpen = true;
-                    this.summaryHtml = '<div class="loader" style="margin:2rem auto;"></div>';
-                    
+                    this.isSummaryLoading = true;
+                    this.summaryData = [];
+
                     try {
                         const response = await fetch(`/galleryout/node_summary/${fileId}`);
                         const data = await response.json();
-                        
-                        if (data.status === 'success' && data.summary?.length > 0) {
-                            this.summaryHtml = data.summary.map(node => {
-                                const paramsHTML = node.params.length > 0
-                                    ? node.params.map(p => `<li><strong>${this.escapeHTML(p.name)}:</strong> <code>${this.escapeHTML(p.value)}</code></li>`).join('')
-                                    : '<li>No parameters</li>';
-                                
-                                return `<div class="summary-node-item">
-                                            <div class="summary-node-header" style="background-color:${node.color};">${this.escapeHTML(node.type)} <small>(ID: ${node.id})</small></div>
-                                            <ul class="summary-node-params">${paramsHTML}</ul>
-                                        </div>`;
-                            }).join('');
+
+                        if (data.status === 'success' && Array.isArray(data.summary) && data.summary.length > 0) {
+                            this.summaryData = data.summary.map(node => ({
+                                id: node.id,
+                                type: node.type,
+                                color: node.color || null,
+                                params: Array.isArray(node.params) ? node.params : []
+                            }));
                         } else {
-                            this.summaryHtml = '<p>No active nodes found for this workflow.</p>';
+                            this.summaryData = [];
                         }
                     } catch (error) {
-                        this.summaryHtml = '<p style="color:var(--danger-color);">A network error occurred.</p>';
+                        console.error('[showNodeSummary] Failed to load node summary:', error);
+                        this.summaryData = [];
+                    } finally {
+                        this.isSummaryLoading = false;
                     }
                 },
                 
                 // ===================================
                 // INITIALIZATION METHODS
                 // ===================================
-                setupSidebarExpansion() {
-                    // Initialize sidebar state from localStorage
-                    this.sidebarExpanded = false;
-                    
-                    try {
-                        const savedState = localStorage.getItem('sidebarExpandedState');
-                        if (savedState === 'true') {
-                            this.sidebarExpanded = true;
-                        }
-                    } catch (e) {
-                        console.warn('Failed to load sidebar state:', e);
-                    }
-                    
-                    // Watch for changes and persist to localStorage
-                    this.$watch('sidebarExpanded', (expanded) => {
-                        try {
-                            localStorage.setItem('sidebarExpandedState', expanded ? 'true' : 'false');
-                        } catch (e) {
-                            console.warn('Failed to save sidebar state:', e);
-                        }
-                    });
-                    
-                    // Setup sidebar toggle button if it exists
-                    const toggleBtn = document.getElementById('sidebar-expand-btn');
-                    if (toggleBtn) {
-                        toggleBtn.addEventListener('click', () => {
-                            this.sidebarExpanded = !this.sidebarExpanded;
-                        });
-                    }
-                },
+                
                 
                 async populateWorkflowFilters() {
                     try {
@@ -2570,34 +2589,38 @@
                             // Wait for Alpine's next DOM update cycle to ensure TomSelect instances are ready.
                             await this.$nextTick();
 
-                            // Helper to refresh a TomSelect instance programmatically.
-                            const refreshTomSelect = (id, options, emptyText, currentValue) => {
-                                const selectInstance = document.getElementById(id)?._tomSelect;
+                            // Helper to refresh a TomSelect instance programmatically using Alpine refs.
+                            const refreshTomSelect = (selectRef, options, emptyText, currentValue) => {
+                                if (!selectRef) {
+                                    console.warn('[refreshTomSelect] selectRef is undefined');
+                                    return;
+                                }
+                                const selectInstance = selectRef._tomSelect;
                                 if (!selectInstance) {
-                                    console.warn(`[refreshTomSelect] TomSelect instance not found for #${id}`);
+                                    console.warn('[refreshTomSelect] TomSelect instance not found for ref', selectRef);
                                     return;
                                 }
 
                                 selectInstance.clearOptions();
                                 selectInstance.addOption({ value: '', text: emptyText });
-                                
+
                                 const formattedOptions = options.map(opt => ({
                                     value: opt.value,
                                     text: `${opt.value} (${opt.count})`
                                 }));
                                 selectInstance.addOptions(formattedOptions);
-                                
+
                                 // Restore the currently selected value without triggering an onChange event.
                                 selectInstance.setValue(currentValue, true);
-                                
+
                                 // Redraw the dropdown with the new options.
                                 selectInstance.refreshOptions(false);
                             };
 
-                            // Refresh each dropdown with its fetched data and current filter value.
-                            refreshTomSelect('model-select', this.filterOptions.models, 'All Models', this.filters.model);
-                            refreshTomSelect('sampler-select', this.filterOptions.samplers, 'All Samplers', this.filters.sampler);
-                            refreshTomSelect('scheduler-select', this.filterOptions.schedulers, 'All Schedulers', this.filters.scheduler);
+                            // Refresh each dropdown with its fetched data and current filter value using $refs.
+                            refreshTomSelect(this.$refs.modelSelect, this.filterOptions.models, 'All Models', this.filters.model);
+                            refreshTomSelect(this.$refs.samplerSelect, this.filterOptions.samplers, 'All Samplers', this.filters.sampler);
+                            refreshTomSelect(this.$refs.schedulerSelect, this.filterOptions.schedulers, 'All Schedulers', this.filters.scheduler);
 
                         } else {
                             console.warn('[populateWorkflowFilters] Unexpected response format:', data);

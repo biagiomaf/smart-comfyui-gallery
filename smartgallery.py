@@ -2520,7 +2520,14 @@ def filter_options():
     try:
         conn = get_db()
         
-        # NOTE: Model query is REMOVED from this function.
+        # --- RESTORE: Query models (pre-loaded + cached) ---
+        models_raw = conn.execute("""
+            SELECT model_name, COUNT(DISTINCT file_id) as file_count
+            FROM workflow_metadata
+            WHERE model_name IS NOT NULL AND model_name != ''
+            GROUP BY model_name
+            ORDER BY file_count DESC, model_name
+        """).fetchall()
         
         samplers_raw = conn.execute("""
             SELECT sampler_name, COUNT(DISTINCT file_id) as file_count 
@@ -2539,6 +2546,7 @@ def filter_options():
         """).fetchall()
         
         # Safely extract and normalize values
+        models = [{'value': row['model_name'], 'count': row['file_count']} for row in models_raw if row['model_name']]
         samplers = [{'value': row['sampler_name'], 'count': row['file_count']} for row in samplers_raw if row['sampler_name']]
         schedulers = [{'value': row['scheduler'], 'count': row['file_count']} for row in schedulers_raw if row['scheduler']]
 
@@ -2549,8 +2557,8 @@ def filter_options():
 
         response_data = {
             'status': 'success',
-            'options': {
-                'models': [], # IMPORTANT: Models are now handled by a separate API endpoint
+                'options': {
+                'models': models,
                 'samplers': samplers,
                 'schedulers': schedulers,
                 'cfg_range': {'min': cfg_range['min_cfg'], 'max': cfg_range['max_cfg']} if cfg_range else None,
@@ -2578,51 +2586,7 @@ def filter_options():
             'options': {'models': [], 'samplers': [], 'schedulers': []}
         }), 500
 
-@app.route('/galleryout/api/models')
-@require_initialization
-def search_models():
-    """
-    API endpoint for searching model names for Tom Select dropdown.
-    Accepts a 'q' query parameter for the search term.
-    """
-    query = request.args.get('q', '').strip()
-    limit = request.args.get('limit', 50, type=int)
 
-    try:
-        conn = get_db()
-        
-        # Use LIKE for searching and LIMIT for performance
-        # The query is parameterized to prevent SQL injection
-        if query:
-            models_raw = conn.execute("""
-                SELECT model_name, COUNT(DISTINCT file_id) as file_count 
-                FROM workflow_metadata 
-                WHERE model_name LIKE ?
-                GROUP BY model_name 
-                ORDER BY file_count DESC, model_name
-                LIMIT ?
-            """, (f'%{query}%', limit)).fetchall()
-        else:
-            # Return most popular models if search is empty
-            models_raw = conn.execute("""
-                SELECT model_name, COUNT(DISTINCT file_id) as file_count 
-                FROM workflow_metadata 
-                WHERE model_name IS NOT NULL AND model_name != ''
-                GROUP BY model_name 
-                ORDER BY file_count DESC, model_name
-                LIMIT ?
-            """, (limit,)).fetchall()
-            
-        # Format for Tom Select { value, text }
-        results = [
-            {'value': row['model_name'], 'text': f"{row['model_name']} ({row['file_count']})"}
-            for row in models_raw if row['model_name']
-        ]
-        
-        return jsonify(results)
-    except Exception as e:
-        print(f"ERROR: Model search API failed: {e}")
-        return jsonify([]), 500
 
 @app.route('/galleryout/workflow_samplers/<string:file_id>')
 @require_initialization
