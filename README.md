@@ -28,40 +28,33 @@
 
 ---
 
-## 🆕 What's New in Version 1.36?
+## 🆕 What's New in Version 1.50?
 
-- 🔗 **Robust Deep-Linking with Pagination**: Share direct links to any file, anywhere in your gallery
-  - Intelligent file location lookup across all pages and folders
-  - Automatic navigation to correct page with preserved filters and sorting
-  - Instant opening for files on current page, smart navigation for files on other pages
-  - Perfect integration with ComfyUI sidebar's "Recent Files" feature
-- 📄 **Page-Based Pagination**: Cleaner, more efficient pagination system (50 files per page by default)
-- 🎯 **Filter-Aware Deep Links**: Deep links respect active filters and sort order for accurate file location
-- ⚡ **Performance Optimized**: Minimal server queries, cached results, instant UX for current page files
+- 🎨 **Optimal UX Gallery Cards**: Revolutionary new card design for a cleaner, more intuitive browsing experience
+  - **Prompt Preview First**: See the actual prompt used to create each image at a glance (truncated to 2 lines)
+  - **Smart Information Hierarchy**: Prompts are now the primary info, filename becomes secondary subtitle
+  - **Declarative Selection**: Click the top-right checkbox to select files without opening the lightbox
+  - **Compact Actions**: Favorite button always visible, secondary actions (Download, Delete, Node Summary) hidden in a clean kebab menu (⋮)
+  - **Sampler Badges Enhanced**: Hover over workflow badges to see all sampler names used in multi-sampler workflows
+  
+- 🚀 **Backend Performance**: Pre-calculated prompt previews and sampler names stored in database for instant display
+  - Automatic migration adds new columns to existing databases safely
+  - Zero performance impact - all metadata extracted during existing sync operations
+  - Works seamlessly with workflow metadata filtering and deep-linking
 
-### Previous Updates (v1.35)
-- ⚡ **10-20x Faster Sync**: Parallel processing with all CPU cores for blazing fast database updates on large galleries
-- ✏️ **File Rename**: Rename files directly from the lightbox with validation and automatic database updates
+### Previous Updates (v1.36-v1.40)
+- 🔗 **Deep-Linking**: Share direct links to any file with intelligent pagination and filter-aware navigation
+- 🎯 **Advanced Filtering**: Tom-Select dropdowns, workflow metadata filters (model, sampler, scheduler, CFG, steps, dimensions)
+- � **Real-time Sync**: Server-Sent Events with progress overlay for non-blocking folder synchronization
+- 🐛 **Stability Fixes**: Flask context management, streaming fixes, filter clearing improvements
+
+### Earlier Updates (v1.30-v1.35)
+- ⚡ **10-20x Faster Sync**: Parallel processing with all CPU cores for blazing fast database updates
+- ✏️ **File Rename**: Rename files directly from the lightbox with validation
 - 💾 **Persistent UI State**: Folder expansion, sort preferences, and sidebar state remembered across sessions
-- 🔧 **Batch Processing**: Prevents out-of-memory errors on 10,000+ file galleries with smart batch writes
-- 📊 **Progress Feedback**: Real-time console progress bar (tqdm) shows sync status with file counts
-
-### v1.34 Updates
-- 🎯 **Dashboard Improvements**: Clickable recent files, prominent "Open Gallery" button, clean 3-column quick actions layout
-- 🌐 **CORS Support**: Fixed cross-origin API calls between ComfyUI (port 8000) and Gallery server (port 8008)
-- 🔒 **Enhanced Logging**: Daily log rotation with timestamps for troubleshooting
-
-### v1.31 Updates
-- 🔧 **Bulletproof Path Detection**: Now uses ComfyUI's official `folder_paths` API for 100% reliable auto-detection
-- ⚙️ **Universal Compatibility**: Works with ALL ComfyUI setups including custom node paths, Docker, network storage, and advanced configurations
-- 🚀 **Zero Configuration**: Automatically adapts to any ComfyUI installation method or directory structure
-
-### v1.30 Updates
-- 🔍 **Smart Folder Navigation**: Expandable sidebar with real-time search and bi-directional sorting (A-Z, Z-A, newest, oldest)
+- 🔍 **Smart Folder Navigation**: Expandable sidebar with real-time search and bi-directional sorting
 - 🖼️ **Enhanced Gallery Sorting**: Toggle thumbnail sorting by date or name with visual indicators
 - 🔎 **Advanced Lightbox**: Zoom with mouse wheel, persistent zoom levels, percentage display, and quick delete
-- ⚡ **Real-time Sync**: Silent background checks with visual progress overlay when new files are detected
-- 📝 **Smart Workflow Names**: Downloaded workflows now match your image filenames
 
 ---
 
@@ -88,11 +81,14 @@ SmartGallery isn't just another image viewer. It's a **time machine for your cre
 - 🏃‍♂️ **Blazing Fast**: SQLite database + smart caching = instant loading even with thousands of files
 - 📱 **Mobile Perfect**: Gorgeous interface that works flawlessly on any device
 - 🔍 **Node Summary Magic**: See model, seed, and key parameters at a glance
-- 📁 **Smart Organization** 🆕: Expandable sidebar with real-time search, bi-directional sorting (name/date), and intuitive folder management
-- 🖼️ **Enhanced Gallery View** 🆕: Sort thumbnails by date or name with instant toggle between ascending/descending order
-- 🔎 **Advanced Lightbox** 🆕: Zoom with mouse wheel, persistent zoom levels across images, and quick delete functionality
+- 🎨 **Prompt-First Design** 🆕: See the actual prompt used to create each image directly in the gallery card
+- 🎯 **Intuitive Selection** 🆕: Separate selection from viewing with clean top-right checkboxes
+- 📋 **Kebab Menus** 🆕: Organized secondary actions (Download, Delete, Node Summary) in compact dropdown menus
+- 📁 **Smart Organization**: Expandable sidebar with real-time search, bi-directional sorting (name/date), and intuitive folder management
+- 🖼️ **Enhanced Gallery View**: Sort thumbnails by date or name with instant toggle between ascending/descending order
+- 🔎 **Advanced Lightbox**: Zoom with mouse wheel, persistent zoom levels across images, and quick delete functionality
 - 🆕 **Universal Upload Magic**: Upload ANY ComfyUI-generated image/video from your PC or phone and instantly discover its workflow!
-- 🔄 **Real-time Sync** 🆕: Silent background checks with visual progress overlay when new files are detected
+- 🔄 **Real-time Sync**: Silent background checks with visual progress overlay when new files are detected
 - 🔧 **Standalone Power**: Works independently—manage your gallery even when ComfyUI is off
 - ⚡ **2-File Installation**: Just two files to transform your entire workflow
 
