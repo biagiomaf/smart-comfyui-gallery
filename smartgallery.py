@@ -1047,8 +1047,8 @@ def find_ffprobe_path():
         result = subprocess.run([base_name, "-version"], capture_output=True, check=True, creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
         return base_name
     except Exception as e:
-        logging.warning(f" ffprobe not found in PATH: {e}")
-    print("WARNING: ffprobe not found. Video metadata analysis will be disabled.")
+        logging.warning(f"ffprobe not found in PATH: {e}")
+    logging.warning("ffprobe not found. Video metadata analysis will be disabled.")
     return None
 
 def _validate_and_get_workflow(json_string):
@@ -1849,7 +1849,7 @@ def full_sync_database(conn):
     files_to_process = list(to_add.union(to_update))
     
     if files_to_process:
-        print(f"INFO: Processing {len(files_to_process)} files in parallel using up to {MAX_PARALLEL_WORKERS or 'all'} CPU cores...")
+        logging.info(f"Processing {len(files_to_process)} files in parallel using up to {MAX_PARALLEL_WORKERS or 'all'} CPU cores...")
         
         # Gather config values for worker processes
         thumbnail_cache_dir = app.config['THUMBNAIL_CACHE_DIR']
@@ -1930,42 +1930,42 @@ def full_sync_database(conn):
                     # Update the bar by 1 step for each completed job
                     pbar.update(1)
 
-        # Print comprehensive statistics
-        print("\n" + "="*80)
-        print("WORKFLOW METADATA EXTRACTION STATISTICS")
-        print("="*80)
-        print(f"Total files processed:              {stats['total_processed']}")
-        print(f"Files that failed to process:       {stats['failed_files']}")
-        print(f"\nWorkflow Detection:")
-        print(f"  Files with embedded workflows:    {stats['files_with_workflows']}")
-        print(f"  Workflows successfully extracted: {stats['workflows_extracted']}")
-        print(f"  Workflows that couldn't be read:  {stats['workflows_not_extracted']}")
-        print(f"\nMetadata Extraction:")
-        print(f"  Files with metadata extracted:    {stats['metadata_extracted']}")
-        print(f"  Files with no metadata found:     {stats['metadata_failed']}")
-        print(f"  Total samplers found:             {stats['total_samplers']}")
+        # Log comprehensive statistics
+        logging.info("="*80)
+        logging.info("WORKFLOW METADATA EXTRACTION STATISTICS")
+        logging.info("="*80)
+        logging.info(f"Total files processed:              {stats['total_processed']}")
+        logging.info(f"Files that failed to process:       {stats['failed_files']}")
+        logging.info("\nWorkflow Detection:")
+        logging.info(f"  Files with embedded workflows:    {stats['files_with_workflows']}")
+        logging.info(f"  Workflows successfully extracted: {stats['workflows_extracted']}")
+        logging.info(f"  Workflows that couldn't be read:  {stats['workflows_not_extracted']}")
+        logging.info("\nMetadata Extraction:")
+        logging.info(f"  Files with metadata extracted:    {stats['metadata_extracted']}")
+        logging.info(f"  Files with no metadata found:     {stats['metadata_failed']}")
+        logging.info(f"  Total samplers found:             {stats['total_samplers']}")
         
         if stats['metadata_extracted'] > 0:
             avg_samplers = stats['total_samplers'] / stats['metadata_extracted']
-            print(f"  Average samplers per workflow:    {avg_samplers:.2f}")
+            logging.info(f"  Average samplers per workflow:    {avg_samplers:.2f}")
         
         # Show parse errors (limit to first 10)
         if stats['parse_errors']:
-            print(f"\nParse Errors ({len(stats['parse_errors'])} total):")
+            logging.info(f"\nParse Errors ({len(stats['parse_errors'])} total):")
             for i, error_info in enumerate(stats['parse_errors'][:10]):
-                print(f"  {i+1}. {error_info['file']}: {error_info['error'][:80]}")
+                logging.info(f"  {i+1}. {error_info['file']}: {error_info['error'][:80]}")
             if len(stats['parse_errors']) > 10:
-                print(f"  ... and {len(stats['parse_errors']) - 10} more")
+                logging.info(f"  ... and {len(stats['parse_errors']) - 10} more")
         
         # Show files where workflow was found but no metadata extracted (limit to first 10)
         if stats['files_without_metadata']:
-            print(f"\nFiles with workflows but no metadata extracted ({len(stats['files_without_metadata'])} total):")
+            logging.info(f"\nFiles with workflows but no metadata extracted ({len(stats['files_without_metadata'])} total):")
             for i, filename in enumerate(stats['files_without_metadata'][:10]):
-                print(f"  {i+1}. {filename}")
+                logging.info(f"  {i+1}. {filename}")
             if len(stats['files_without_metadata']) > 10:
-                print(f"  ... and {len(stats['files_without_metadata']) - 10} more")
+                logging.info(f"  ... and {len(stats['files_without_metadata']) - 10} more")
         
-        print("="*80 + "\n")
+        logging.info("="*80 + "\n")
 
         if results:
             print(f"INFO: Inserting {len(results)} processed records into the database...")
