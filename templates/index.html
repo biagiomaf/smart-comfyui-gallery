@@ -1184,6 +1184,16 @@
             transform: scale(1.05); 
         }
         
+        /* Active/click animation for gallery items */
+        .gallery-item:active {
+            transform: scale(0.98);
+        }
+        
+        .gallery-item:active .thumbnail-wrapper img,
+        .gallery-item:active .thumbnail-wrapper video {
+            transform: scale(1.02);
+        }
+        
         /* Card Content - Information Hierarchy */
         .item-info { 
             padding: var(--space-3); 
@@ -3090,6 +3100,14 @@
                 // ===================================
                 // FILE OPERATIONS
                 // ===================================
+                
+                /**
+                 * Loads the next page of files using SQL pagination
+                 * Appends new files to existing gallery without replacing them
+                 * Uses Alpine filter state to build query parameters
+                 * @async
+                 * @returns {Promise<void>}
+                 */
                 async loadMore() {
                     if (this.isLoadingMore) return;
                     this.isLoadingMore = true;
@@ -3139,6 +3157,14 @@
                     }
                 },
                 
+                /**
+                 * Toggles favorite status for a file with optimistic UI update
+                 * Immediately updates UI, then syncs with server
+                 * Reverts on failure to maintain consistency
+                 * @async
+                 * @param {string} fileId - The ID of the file to toggle
+                 * @returns {Promise<void>}
+                 */
                 async toggleFavorite(fileId) {
                     const file = this.filesOnPage.find(f => f.id === fileId);
                     if (!file) return;
@@ -3165,6 +3191,13 @@
                     }
                 },
                 
+                /**
+                 * Deletes a file with user confirmation
+                 * Removes file from local state and updates selection
+                 * @async
+                 * @param {string} fileId - The ID of the file to delete
+                 * @returns {Promise<void>}
+                 */
                 async deleteFile(fileId) {
                     if (!confirm('🗑️ Delete this file? This cannot be undone.')) return;
                     
@@ -3187,6 +3220,12 @@
                 // ===================================
                 // FILTER OPERATIONS
                 // ===================================
+                
+                /**
+                 * Clears all active filters and Tom-Select instances
+                 * Resets filter state and applies empty filters to reload gallery
+                 * @returns {void}
+                 */
                 clearAllFilters() {
                     // Reset all filter values
                     this.filters.search = '';
@@ -3222,6 +3261,13 @@
                     this.applyFilters();
                 },
                 
+                /**
+                 * Applies the current filter state to the gallery view
+                 * Builds query parameters from filter state and fetches filtered results
+                 * Updates URL without page reload using History API
+                 * @async
+                 * @returns {Promise<void>}
+                 */
                 async applyFilters() {
                     try {
                         // Build query parameters from filters state
