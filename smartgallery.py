@@ -914,13 +914,59 @@ app.config['ALL_MEDIA_EXTENSIONS'] = (
 folder_config_cache = None
 folder_config_cache_lock = threading.Lock()
 
-# --- In-Memory Cache for Filter Options ---
+# --- Enhanced In-Memory Cache for Filter Options ---
 _filter_options_cache = {}
 _cache_lock = threading.Lock()
 CACHE_DURATION_SECONDS = 300  # 5 minutes
 
+class CacheEntry:
+    """Simple cache entry with timestamp and data."""
+    def __init__(self, data):
+        self.data = data
+        self.timestamp = time.time()
+        self.hits = 0
+    
+    def is_expired(self, max_age_seconds):
+        """Check if cache entry is older than max_age_seconds."""
+        return (time.time() - self.timestamp) > max_age_seconds
+    
+    def record_hit(self):
+        """Record a cache hit for statistics."""
+        self.hits += 1
+        return self.data
+
+def get_cache_stats():
+    """Return cache statistics for monitoring."""
+    with _cache_lock:
+        stats = {
+            'filter_options': {
+                'entries': len(_filter_options_cache),
+                'hits': sum(entry.hits for entry in _filter_options_cache.values() if isinstance(entry, dict) and 'data' in entry)
+            },
+            'folder_config': {
+                'cached': folder_config_cache is not None
+            }
+        }
+    return stats
+
 # Request counter for stats
 request_counter = {'count': 0, 'lock': threading.Lock()}
+
+# --- PERFORMANCE MONITORING ---
+# Track request timing for performance analysis
+request_timing_log = {'requests': [], 'lock': threading.Lock()}
+
+def log_request_timing(endpoint, duration_ms):
+    """Log request timing for performance monitoring."""
+    with request_timing_log['lock']:
+        request_timing_log['requests'].append({
+            'endpoint': endpoint,
+            'duration_ms': duration_ms,
+            'timestamp': time.time()
+        })
+        # Keep only last 1000 requests to prevent memory bloat
+        if len(request_timing_log['requests']) > 1000:
+            request_timing_log['requests'] = request_timing_log['requests'][-1000:]
 
 # --- INITIALIZATION GUARD DECORATOR (Issue #5) ---
 from functools import wraps
@@ -936,7 +982,20 @@ def require_initialization(f):
                 'error': 'Gallery not initialized',
                 'message': 'initialize_gallery() must be called before accessing routes'
             }), 503  # Service Unavailable
-        return f(*args, **kwargs)
+        
+        # Performance timing
+        start_time = time.time()
+        try:
+            result = f(*args, **kwargs)
+            duration_ms = (time.time() - start_time) * 1000
+            log_request_timing(f.__name__, duration_ms)
+            if duration_ms > 1000:  # Log slow requests (>1s)
+                logging.warning(f"Slow request: {f.__name__} took {duration_ms:.2f}ms")
+            return result
+        except Exception as e:
+            duration_ms = (time.time() - start_time) * 1000
+            logging.error(f"Request {f.__name__} failed after {duration_ms:.2f}ms: {e}")
+            raise
     return decorated_function
 
 
@@ -2789,6 +2848,114 @@ def workflow_samplers(file_id):
         logging.error(f"workflow_samplers endpoint failed: {e}")
         import traceback
         traceback.print_exc()
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+@app.route('/galleryout/health')
+def health_check():
+    """
+    Health check endpoint for monitoring application status.
+    Returns database connection status and basic statistics.
+    """
+    try:
+        # Check database connectivity
+        conn = get_db()
+        file_count = conn.execute("SELECT COUNT(*) as count FROM files").fetchone()['count']
+        workflow_count = conn.execute("SELECT COUNT(DISTINCT file_id) as count FROM workflow_metadata").fetchone()['count']
+        
+        # Get cache stats
+        cache_stats = get_cache_stats()
+        
+        # Get recent performance stats
+        with request_timing_log['lock']:
+            recent_requests = request_timing_log['requests'][-10:]
+            avg_response_time = sum(r['duration_ms'] for r in recent_requests) / len(recent_requests) if recent_requests else 0
+        
+        return jsonify({
+            'status': 'healthy',
+            'database': {
+                'connected': True,
+                'total_files': file_count,
+                'files_with_workflow': workflow_count
+            },
+            'cache': cache_stats,
+            'performance': {
+                'avg_response_time_ms': round(avg_response_time, 2),
+                'recent_requests': len(recent_requests)
+            }
+        })
+    except Exception as e:
+        logging.error(f"Health check failed: {e}")
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e)
+        }), 500
+
+
+@app.route('/galleryout/stats')
+@require_initialization
+def get_stats():
+    """
+    Performance and statistics endpoint for monitoring.
+    Provides detailed information about the gallery state.
+    """
+    try:
+        conn = get_db()
+        
+        # File statistics
+        file_stats = conn.execute("""
+            SELECT 
+                type,
+                COUNT(*) as count,
+                SUM(CASE WHEN has_workflow = 1 THEN 1 ELSE 0 END) as with_workflow,
+                SUM(CASE WHEN is_favorite = 1 THEN 1 ELSE 0 END) as favorites
+            FROM files
+            GROUP BY type
+        """).fetchall()
+        
+        # Workflow statistics
+        workflow_stats = conn.execute("""
+            SELECT 
+                COUNT(DISTINCT file_id) as total_files,
+                COUNT(*) as total_samplers,
+                COUNT(DISTINCT model_name) as unique_models,
+                COUNT(DISTINCT sampler_name) as unique_samplers,
+                COUNT(DISTINCT scheduler) as unique_schedulers
+            FROM workflow_metadata
+        """).fetchone()
+        
+        # Performance timing stats
+        with request_timing_log['lock']:
+            all_requests = request_timing_log['requests']
+            if all_requests:
+                durations = [r['duration_ms'] for r in all_requests]
+                timing_stats = {
+                    'total_requests': len(all_requests),
+                    'avg_ms': round(sum(durations) / len(durations), 2),
+                    'min_ms': round(min(durations), 2),
+                    'max_ms': round(max(durations), 2),
+                    'p95_ms': round(sorted(durations)[int(len(durations) * 0.95)], 2) if len(durations) > 20 else None
+                }
+            else:
+                timing_stats = {'total_requests': 0}
+        
+        return jsonify({
+            'status': 'success',
+            'files': [dict(row) for row in file_stats],
+            'workflows': dict(workflow_stats) if workflow_stats else {},
+            'performance': timing_stats,
+            'cache': get_cache_stats()
+        })
+        
+    except Exception as e:
+        logging.error(f"Stats endpoint failed: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
         return jsonify({
             'status': 'error',
             'message': str(e),

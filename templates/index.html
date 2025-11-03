@@ -1455,6 +1455,100 @@
         .sampler-prompt-text { font-size: 0.85rem; color: rgba(255, 255, 255, 0.9); background: rgba(0, 0, 0, 0.3); padding: 0.6rem; border-radius: 4px; line-height: 1.5; max-height: 100px; overflow-y: auto; }
         .sampler-loader { padding: 2rem; text-align: center; color: rgba(255, 255, 255, 0.6); }
         .sampler-error { padding: 1rem; color: var(--danger-color); text-align: center; }
+        
+        /* ===================================
+           LOADING SKELETONS & ANIMATIONS
+           =================================== */
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+        }
+        
+        .skeleton {
+            background: linear-gradient(
+                90deg,
+                var(--surface-color) 0%,
+                var(--surface-hover) 50%,
+                var(--surface-color) 100%
+            );
+            background-size: 1000px 100%;
+            animation: shimmer 2s infinite linear;
+            border-radius: 4px;
+        }
+        
+        .skeleton-card {
+            width: 100%;
+            aspect-ratio: 1;
+            border-radius: 8px;
+        }
+        
+        .skeleton-text {
+            height: 1rem;
+            width: 100%;
+            margin: 0.5rem 0;
+        }
+        
+        .skeleton-text-short {
+            height: 1rem;
+            width: 60%;
+            margin: 0.5rem 0;
+        }
+        
+        /* Image lazy loading - fade in effect */
+        .gallery-item img[loading="lazy"] {
+            opacity: 0;
+            transition: opacity 0.3s ease-in;
+        }
+        
+        .gallery-item img[loading="lazy"].loaded {
+            opacity: 1;
+        }
+        
+        /* Smooth transitions for interactive elements */
+        .gallery-item,
+        .folder-item,
+        .item-action-btn,
+        .workflow-badge {
+            transition: all var(--transition-fast);
+        }
+        
+        /* Pulse animation for loading states */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .loading-pulse {
+            animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        /* Progress indicator improvements */
+        .progress-bar {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.2),
+                transparent
+            );
+            animation: progress-shine 2s infinite;
+        }
+        
+        @keyframes progress-shine {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        
         #selection-bar { position: fixed; bottom: 0; transform: translateY(100%); transition: transform 200ms ease-out; left: 320px; right: 0; background: var(--surface-color); border-top: 1px solid var(--border-color); padding: 1rem 1.5rem; display: flex; align-items: center; gap: 1rem; z-index: 1001; box-sizing: border-box; backdrop-filter: none; flex-wrap: wrap; }
         body.sidebar-expanded #selection-bar { left: 600px; }
         #selection-bar.visible { transform: translateY(0); }
@@ -1589,11 +1683,12 @@
 <body x-data="gallery()" 
     @keydown.escape.window="handleEscape()" 
     @keydown.ctrl.a.window.prevent="selectAll()"
+    @keydown.window="if ($event.key === '?' && !isLightboxOpen && !isUploadOpen && !isSummaryOpen && !isFilterPanelOpen) { $event.preventDefault(); isHelpOpen = true; }"
     @resize.window.debounce.150ms="handleResize()"
     @scroll.window.debounce.150ms="shouldShowBackToTop = window.scrollY > 300"
       :class="{ 
           'lightbox-open': isLightboxOpen, 
-          'modal-open': isUploadOpen || isSummaryOpen,
+          'modal-open': isUploadOpen || isSummaryOpen || isHelpOpen,
           'sidebar-expanded': sidebarExpanded
       }">
     <div id="notification-container">
@@ -1752,6 +1847,10 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
                     Refresh
                 </button>
+                <button type="button" class="sort-btn" @click="isHelpOpen = true" title="Keyboard Shortcuts">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                    Help
+                </button>
             </div>
             
             <!-- Results Count Indicator -->
@@ -1878,6 +1977,7 @@
                                      :data-src="`/galleryout/thumbnail/${file.id}`"
                                      :alt="file.name"
                                      loading="lazy"
+                                     @load="$el.classList.add('loaded')"
                                      x-intersect:enter="$el.src = $el.dataset.src">
                             </template>
                             
@@ -2318,6 +2418,53 @@
         <div class="loader"></div>
     </div>
     
+    <!-- Help Modal -->
+    <div id="help-overlay" x-show="isHelpOpen" @click.self="isHelpOpen = false" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-300" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 2400;" x-cloak>
+        <div style="background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: var(--shadow-lg); max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; pointer-events: all;" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100" x-transition:leave="transition ease-in duration-300" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95" @click.stop>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem; border-bottom: 1px solid var(--border-color);">
+                <h2 style="margin: 0; font-size: 1.5rem; font-weight: 600;">Keyboard Shortcuts</h2>
+                <button @click="isHelpOpen = false" style="background: none; border: none; color: var(--text-muted); font-size: 2rem; cursor: pointer; padding: 0; line-height: 1;">×</button>
+            </div>
+            <div style="padding: 1.5rem;">
+                <div style="margin-bottom: 2rem;">
+                    <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; color: var(--accent-yellow);">Gallery Navigation</h3>
+                    <div style="display: grid; grid-template-columns: auto 1fr; gap: 0.75rem 1.5rem; color: var(--text-color); font-size: 0.95rem;">
+                        <kbd style="background: var(--bg-color); padding: 0.25rem 0.5rem; border-radius: 4px; font-family: var(--font-monospace); font-size: 0.85rem; border: 1px solid var(--border-color);">Ctrl+A</kbd>
+                        <span>Select all items</span>
+                        <kbd style="background: var(--bg-color); padding: 0.25rem 0.5rem; border-radius: 4px; font-family: var(--font-monospace); font-size: 0.85rem; border: 1px solid var(--border-color);">Esc</kbd>
+                        <span>Close lightbox or panels</span>
+                        <kbd style="background: var(--bg-color); padding: 0.25rem 0.5rem; border-radius: 4px; font-family: var(--font-monospace); font-size: 0.85rem; border: 1px solid var(--border-color);">←/→</kbd>
+                        <span>Navigate in lightbox</span>
+                        <kbd style="background: var(--bg-color); padding: 0.25rem 0.5rem; border-radius: 4px; font-family: var(--font-monospace); font-size: 0.85rem; border: 1px solid var(--border-color);">?</kbd>
+                        <span>Show this help</span>
+                    </div>
+                </div>
+                <div style="margin-bottom: 2rem;">
+                    <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; color: var(--accent-yellow);">Lightbox Controls</h3>
+                    <div style="display: grid; grid-template-columns: auto 1fr; gap: 0.75rem 1.5rem; color: var(--text-color); font-size: 0.95rem;">
+                        <kbd style="background: var(--bg-color); padding: 0.25rem 0.5rem; border-radius: 4px; font-family: var(--font-monospace); font-size: 0.85rem; border: 1px solid var(--border-color);">+/=</kbd>
+                        <span>Zoom in</span>
+                        <kbd style="background: var(--bg-color); padding: 0.25rem 0.5rem; border-radius: 4px; font-family: var(--font-monospace); font-size: 0.85rem; border: 1px solid var(--border-color);">-/_</kbd>
+                        <span>Zoom out</span>
+                        <kbd style="background: var(--bg-color); padding: 0.25rem 0.5rem; border-radius: 4px; font-family: var(--font-monospace); font-size: 0.85rem; border: 1px solid var(--border-color);">0</kbd>
+                        <span>Reset zoom</span>
+                        <kbd style="background: var(--bg-color); padding: 0.25rem 0.5rem; border-radius: 4px; font-family: var(--font-monospace); font-size: 0.85rem; border: 1px solid var(--border-color);">F</kbd>
+                        <span>Toggle favorite</span>
+                    </div>
+                </div>
+                <div>
+                    <h3 style="margin: 0 0 1rem 0; font-size: 1.1rem; color: var(--accent-yellow);">Tips</h3>
+                    <ul style="margin: 0; padding-left: 1.5rem; color: var(--text-muted); font-size: 0.9rem; line-height: 1.8;">
+                        <li>Drag & drop files between folders</li>
+                        <li>Click thumbnails to open in lightbox</li>
+                        <li>Use filters to narrow down your gallery</li>
+                        <li>Star icon marks items as favorites</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- ============================================= -->
     <!-- PURE ALPINE.JS SCRIPT - NO GLOBALS -->
     <!-- ============================================= -->
@@ -2592,6 +2739,7 @@
                 isUploadOpen: false,
                 isSummaryOpen: false,
                 isDropPanelVisible: false,
+                isHelpOpen: false,  // NEW: Help modal state
                 // Declarative summary state replaces summaryHtml
                 summaryData: [],
                 isSummaryLoading: false,
@@ -2909,7 +3057,8 @@
                 // KEYBOARD HANDLERS
                 // ===================================
                 handleEscape() {
-                    if (this.isUploadOpen) this.isUploadOpen = false;
+                    if (this.isHelpOpen) this.isHelpOpen = false;
+                    else if (this.isUploadOpen) this.isUploadOpen = false;
                     else if (this.isSummaryOpen) this.isSummaryOpen = false;
                     else if (this.isLightboxOpen) this.closeLightbox();
                     else if (this.isFilterPanelOpen) this.isFilterPanelOpen = false;
