@@ -447,7 +447,7 @@ class ComfyUIWorkflowParser:
             return sampler_data
             
         except Exception as e:
-            print(f"DEBUG: Failed to process sampler node {sampler_node.get('id')}: {e}")
+            logging.debug(f"Failed to process sampler node {sampler_node.get('id')}: {e}")
             return None
 
     def _find_source_node(self, start_node_id: str, input_name: str, 
@@ -718,7 +718,7 @@ def debug_save_workflow_stage(file_path: Path, stage: str, data: Any, format_inf
                 f.write(f"Preview: {data[:200]}...\n")
     
     except Exception as e:
-        print(f"DEBUG: Failed to save debug workflow stage: {e}")
+        logging.debug(f"Failed to save debug workflow stage: {e}")
 
 
 def extract_workflow_metadata(workflow_str: str, file_path: Path, debug_dir: str = None) -> List[Dict[str, Any]]:
@@ -797,7 +797,7 @@ def extract_workflow_metadata(workflow_str: str, file_path: Path, debug_dir: str
         
         # Validation: Ensure we have valid parser data
         if parser_data is None:
-            print(f"DEBUG: Could not detect valid workflow format for {file_path.name}")
+            logging.debug(f"Could not detect valid workflow format for {file_path.name}")
             return []
         
         # DEBUG: Save data that will be passed to parser
@@ -819,12 +819,11 @@ def extract_workflow_metadata(workflow_str: str, file_path: Path, debug_dir: str
         return result
         
     except (json.JSONDecodeError, TypeError) as e:
-        print(f"WARNING: Could not parse workflow JSON for {file_path.name}: {e}")
+        logging.warning(f" Could not parse workflow JSON for {file_path.name}: {e}")
         return []
     except Exception as e:
-        print(f"ERROR: Unexpected error in workflow metadata extraction for {file_path.name}: {e}")
-        import traceback
-        traceback.print_exc()
+        logging.error(f"Unexpected error in workflow metadata extraction for {file_path.name}: {e}")
+        logging.error("Traceback:", exc_info=True)
         return []
 
 
@@ -863,7 +862,7 @@ def key_to_path(key):
     try:
         return base64.urlsafe_b64decode(key.encode()).decode().replace('/', os.sep)
     except Exception as e:
-        print(f"ERROR: Failed to decode key '{key}': {e}")
+        logging.error(f"Failed to decode key '{key}': {e}")
         return None
 
 # --- DERIVED SETTINGS ---
@@ -911,16 +910,14 @@ app.config['ALL_MEDIA_EXTENSIONS'] = (
 )
 
 # Thread-safe caches with locks for concurrent access
-gallery_view_cache = []
-gallery_view_cache_lock = threading.Lock()
+# Note: gallery_view_cache removed in v1.41.0 - using SQL pagination instead
 folder_config_cache = None
 folder_config_cache_lock = threading.Lock()
 
-# --- NEW: In-Memory Cache for Filter Options ---
+# --- In-Memory Cache for Filter Options ---
 _filter_options_cache = {}
 _cache_lock = threading.Lock()
 CACHE_DURATION_SECONDS = 300  # 5 minutes
-# ---------------------------------------------
 
 # Request counter for stats
 request_counter = {'count': 0, 'lock': threading.Lock()}
@@ -1044,14 +1041,14 @@ def find_ffprobe_path():
             subprocess.run([manual_path, "-version"], capture_output=True, check=True, creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
             return manual_path
         except Exception as e:
-            print(f"WARNING: Manual ffprobe path '{manual_path}' is invalid: {e}")
+            logging.warning(f" Manual ffprobe path '{manual_path}' is invalid: {e}")
     base_name = "ffprobe.exe" if sys.platform == "win32" else "ffprobe"
     try:
         result = subprocess.run([base_name, "-version"], capture_output=True, check=True, creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
         return base_name
     except Exception as e:
-        print(f"WARNING: ffprobe not found in PATH: {e}")
-    print("WARNING: ffprobe not found. Video metadata analysis will be disabled.")
+        logging.warning(f"ffprobe not found in PATH: {e}")
+    logging.warning("ffprobe not found. Video metadata analysis will be disabled.")
     return None
 
 def _validate_and_get_workflow(json_string):
@@ -1084,12 +1081,11 @@ def _validate_and_get_workflow(json_string):
         
         return None
     except json.JSONDecodeError as e:
-        print(f"DEBUG: Invalid JSON in workflow: {e}")
+        logging.debug(f"Invalid JSON in workflow: {e}")
         return None
     except Exception as e:
-        print(f"DEBUG: Failed to validate workflow JSON: {e}")
-        import traceback
-        traceback.print_exc()
+        logging.debug(f"Failed to validate workflow JSON: {e}")
+        logging.debug("Traceback:", exc_info=True)
         return None
 
 def _scan_bytes_for_workflow(content_bytes):
@@ -1110,7 +1106,7 @@ def _scan_bytes_for_workflow(content_bytes):
                 json.loads(candidate)
                 return candidate
     except Exception as e:
-        print(f"DEBUG: Error scanning bytes for workflow: {e}")
+        logging.debug(f"Error scanning bytes for workflow: {e}")
     return None
 
 def extract_workflow(filepath):
@@ -1130,7 +1126,7 @@ def extract_workflow(filepath):
                             workflow = _validate_and_get_workflow(value)
                             if workflow: return workflow
             except Exception as e:
-                print(f"DEBUG: Error extracting workflow from video metadata: {e}")
+                logging.debug(f"Error extracting workflow from video metadata: {e}")
     else:
         try:
             with Image.open(filepath) as img:
@@ -1147,7 +1143,7 @@ def extract_workflow(filepath):
                         workflow = _validate_and_get_workflow(json_str)
                         if workflow: return workflow
         except Exception as e:
-            print(f"DEBUG: Error extracting workflow from image metadata: {e}")
+            logging.debug(f"Error extracting workflow from image metadata: {e}")
 
     try:
         with open(filepath, 'rb') as f:
@@ -1157,7 +1153,7 @@ def extract_workflow(filepath):
             workflow = _validate_and_get_workflow(json_str)
             if workflow: return workflow
     except Exception as e:
-        print(f"DEBUG: Error scanning file content for workflow: {e}")
+        logging.debug(f"Error scanning file content for workflow: {e}")
 
     try:
         base_filename = os.path.basename(filepath)
@@ -1169,7 +1165,7 @@ def extract_workflow(filepath):
                 workflow = _validate_and_get_workflow(f.read())
                 if workflow: return workflow
     except Exception as e:
-        print(f"DEBUG: Error searching for workflow log file: {e}")
+        logging.debug(f"Error searching for workflow log file: {e}")
                 
     return None
 
@@ -1178,7 +1174,7 @@ def is_webp_animated(filepath):
     try:
         with Image.open(filepath) as img: return getattr(img, 'is_animated', False)
     except Exception as e:
-        print(f"DEBUG: Error checking if WebP is animated: {e}")
+        logging.debug(f"Error checking if WebP is animated: {e}")
         return False
 
 def format_duration(seconds):
@@ -1213,7 +1209,7 @@ def analyze_file_metadata(filepath):
         try:
             with Image.open(filepath) as img: details['dimensions'] = f"{img.width}x{img.height}"
         except Exception as e:
-            print(f"DEBUG: Error getting image dimensions for {filepath}: {e}")
+            logging.debug(f"Error getting image dimensions for {filepath}: {e}")
     if extract_workflow(filepath): details['has_workflow'] = 1
     total_duration_sec = 0
     if details['type'] == 'video':
@@ -1225,7 +1221,7 @@ def analyze_file_metadata(filepath):
                 details['dimensions'] = f"{int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))}x{int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))}"
                 cap.release()
         except Exception as e:
-            print(f"DEBUG: Error analyzing video metadata for {filepath}: {e}")
+            logging.debug(f"Error analyzing video metadata for {filepath}: {e}")
     elif details['type'] == 'animated_image':
         try:
             with Image.open(filepath) as img:
@@ -1233,30 +1229,47 @@ def analyze_file_metadata(filepath):
                     if ext_lower == '.gif': total_duration_sec = sum(frame.info.get('duration', 100) for frame in ImageSequence.Iterator(img)) / 1000
                     elif ext_lower == '.webp': total_duration_sec = getattr(img, 'n_frames', 1) / app.config['WEBP_ANIMATED_FPS']
         except Exception as e:
-            print(f"DEBUG: Error analyzing animated image duration for {filepath}: {e}")
+            logging.debug(f"Error analyzing animated image duration for {filepath}: {e}")
     if total_duration_sec > 0: details['duration'] = format_duration(total_duration_sec)
     return details
 
 def create_thumbnail(filepath, file_hash, file_type):
+    """Create thumbnail for image or video file (optimized)."""
     thumbnail_cache_dir = app.config['THUMBNAIL_CACHE_DIR']
-    if file_type in ['image', 'animated_image']:
+    thumbnail_width = app.config['THUMBNAIL_WIDTH']
+    thumbnail_height = thumbnail_width * 2
+    
+    if file_type in ('image', 'animated_image'):
         try:
             with Image.open(filepath) as img:
                 fmt = 'gif' if img.format == 'GIF' else 'webp' if img.format == 'WEBP' else 'jpeg'
                 cache_path = os.path.join(thumbnail_cache_dir, f"{file_hash}.{fmt}")
+                
                 if file_type == 'animated_image' and getattr(img, 'is_animated', False):
                     frames = [fr.copy() for fr in ImageSequence.Iterator(img)]
                     if frames:
-                        for frame in frames: frame.thumbnail((app.config['THUMBNAIL_WIDTH'], app.config['THUMBNAIL_WIDTH'] * 2), Image.Resampling.LANCZOS)
+                        # Resize all frames
+                        for frame in frames: 
+                            frame.thumbnail((thumbnail_width, thumbnail_height), Image.Resampling.LANCZOS)
+                        
+                        # Convert to RGB
                         processed_frames = [frame.convert('RGBA').convert('RGB') for frame in frames]
                         if processed_frames:
-                            processed_frames[0].save(cache_path, save_all=True, append_images=processed_frames[1:], duration=img.info.get('duration', 100), loop=img.info.get('loop', 0), optimize=True)
+                            processed_frames[0].save(
+                                cache_path, save_all=True, append_images=processed_frames[1:], 
+                                duration=img.info.get('duration', 100), 
+                                loop=img.info.get('loop', 0), 
+                                optimize=True
+                            )
                 else:
-                    img.thumbnail((app.config['THUMBNAIL_WIDTH'], app.config['THUMBNAIL_WIDTH'] * 2), Image.Resampling.LANCZOS)
-                    if img.mode != 'RGB': img = img.convert('RGB')
+                    img.thumbnail((thumbnail_width, thumbnail_height), Image.Resampling.LANCZOS)
+                    if img.mode != 'RGB': 
+                        img = img.convert('RGB')
                     img.save(cache_path, 'JPEG', quality=85)
                 return cache_path
-        except Exception as e: print(f"ERROR (Pillow): Could not create thumbnail for {os.path.basename(filepath)}: {e}")
+        except Exception as e: 
+            logging.error(f"Pillow: Could not create thumbnail for {os.path.basename(filepath)}: {e}")
+            
     elif file_type == 'video':
         try:
             cap = cv2.VideoCapture(filepath)
@@ -1266,10 +1279,11 @@ def create_thumbnail(filepath, file_hash, file_type):
                 cache_path = os.path.join(thumbnail_cache_dir, f"{file_hash}.jpeg")
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 img = Image.fromarray(frame_rgb)
-                img.thumbnail((app.config['THUMBNAIL_WIDTH'], app.config['THUMBNAIL_WIDTH'] * 2), Image.Resampling.LANCZOS)
+                img.thumbnail((thumbnail_width, thumbnail_height), Image.Resampling.LANCZOS)
                 img.save(cache_path, 'JPEG', quality=80)
                 return cache_path
-        except Exception as e: print(f"ERROR (OpenCV): Could not create thumbnail for {os.path.basename(filepath)}: {e}")
+        except Exception as e: 
+            logging.error(f"OpenCV: Could not create thumbnail for {os.path.basename(filepath)}: {e}")
     return None
 
 def process_single_file(filepath, thumbnail_cache_dir, thumbnail_width, video_exts, image_exts, animated_exts, audio_exts, webp_animated_fps, base_input_path_workflow, debug_dir=None):
@@ -1451,8 +1465,8 @@ def process_single_file(filepath, thumbnail_cache_dir, thumbnail_width, video_ex
                     else:
                         prompt_preview = preview_text
 
-                # For sampler names, collect all unique names
-                unique_samplers = sorted(list({s.get('sampler_name') for s in workflow_metadata_list if s and s.get('sampler_name')}))
+                # For sampler names, collect all unique names (optimized: no need for list())
+                unique_samplers = sorted({s.get('sampler_name') for s in workflow_metadata_list if s and s.get('sampler_name')})
                 sampler_names = ', '.join(unique_samplers)
         except Exception:
             # Keep defaults if anything goes wrong
@@ -1469,7 +1483,7 @@ def process_single_file(filepath, thumbnail_cache_dir, thumbnail_width, video_ex
             sampler_names    # NEW return value
         )
     except Exception as e:
-        print(f"ERROR: Failed to process file {os.path.basename(filepath)} in worker: {e}")
+        logging.error(f"Failed to process file {os.path.basename(filepath)} in worker: {e}")
         return None
 
 def get_db():
@@ -1490,12 +1504,22 @@ def get_db():
         if not os.path.exists(db_dir):
             try:
                 os.makedirs(db_dir, exist_ok=True)
-                print(f"INFO: Created database directory: {db_dir}")
+                logging.info(f"Created database directory: {db_dir}")
             except (OSError, PermissionError) as e:
                 raise RuntimeError(f"Cannot create database directory {db_dir}: {e}")
         
-        g.db = sqlite3.connect(db_file, detect_types=sqlite3.PARSE_DECLTYPES)
+        # Open database connection with optimizations
+        g.db = sqlite3.connect(db_file, detect_types=sqlite3.PARSE_DECLTYPES, timeout=30.0)
         g.db.row_factory = sqlite3.Row
+        
+        # Enable performance optimizations
+        cursor = g.db.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging for better concurrency
+        cursor.execute("PRAGMA synchronous=NORMAL")  # Balance between safety and speed
+        cursor.execute("PRAGMA cache_size=-64000")  # 64MB cache (negative means KB)
+        cursor.execute("PRAGMA temp_store=MEMORY")  # Store temp tables in memory
+        cursor.close()
+        
     return g.db
 
 def close_db(e=None):
@@ -1504,7 +1528,7 @@ def close_db(e=None):
     if db is not None:
         db.close()
 
-def build_metadata_filter_subquery(filters):
+def build_metadata_filter_subquery(filters: Dict[str, Any]) -> Tuple[str, List[Any]]:
     """
     Build an EXISTS subquery for filtering files by workflow metadata.
     
@@ -1518,8 +1542,8 @@ def build_metadata_filter_subquery(filters):
     Returns:
         Tuple of (subquery_sql_string, [params_list])
     """
-    conditions = []
-    params = []
+    conditions: List[str] = []
+    params: List[Any] = []
     
     # Exact string matches
     if filters.get('model'):
@@ -1575,7 +1599,7 @@ def build_metadata_filter_subquery(filters):
     else:
         return ("", [])
 
-def _build_filter_conditions(args):
+def _build_filter_conditions(args) -> Tuple[List[str], List[Any]]:
     """
     Builds a list of SQL conditions and parameters based on request arguments.
     This centralizes the filtering logic for gallery_view and load_more.
@@ -1586,11 +1610,11 @@ def _build_filter_conditions(args):
     Returns:
         A tuple of (conditions_list, params_list).
     """
-    conditions = []
-    params = []
+    conditions: List[str] = []
+    params: List[Any] = []
 
     # Gather workflow metadata filters
-    metadata_filters = {}
+    metadata_filters: Dict[str, Any] = {}
     if args.get('filter_model', '').strip():
         metadata_filters['model'] = args.get('filter_model').strip()
     if args.get('filter_sampler', '').strip():
@@ -1699,6 +1723,7 @@ def init_db(conn=None):
     if close_conn: conn.close()
     
 def get_dynamic_folder_config(force_refresh=False):
+    """Get folder configuration with caching (optimized)."""
     global folder_config_cache
     
     with folder_config_cache_lock:
@@ -1706,14 +1731,14 @@ def get_dynamic_folder_config(force_refresh=False):
         if folder_config_cache is not None and not force_refresh:
             return folder_config_cache
 
-        print("INFO: Refreshing folder configuration by scanning directory tree...")
+        logging.info("Refreshing folder configuration by scanning directory tree...")
         
         # CRITICAL: All folder scanning must happen inside the lock to prevent race conditions
         base_path = app.config['BASE_OUTPUT_PATH']
         
         # Validation: Ensure BASE_OUTPUT_PATH is initialized (fixes Issue #2)
         if not base_path or base_path.strip() == '':
-            print("ERROR: BASE_OUTPUT_PATH is not initialized. Call initialize_gallery() first.")
+            logging.error("BASE_OUTPUT_PATH is not initialized. Call initialize_gallery() first.")
             return {'_root_': {
                 'display_name': 'Main',
                 'path': '',
@@ -1728,7 +1753,7 @@ def get_dynamic_folder_config(force_refresh=False):
         try:
             root_mtime = os.path.getmtime(base_path)
         except (OSError, PermissionError) as e:
-            print(f"WARNING: Could not get mtime for base path: {e}")
+            logging.warning(f"Could not get mtime for base path: {e}")
             root_mtime = time.time()
 
         dynamic_config = {
@@ -1742,17 +1767,21 @@ def get_dynamic_folder_config(force_refresh=False):
             }
         }
 
+        # Optimization: Pre-compile exclusion set
+        excluded_dirs = {app.config['THUMBNAIL_CACHE_FOLDER_NAME'], app.config['SQLITE_CACHE_FOLDER_NAME']}
+        
         try:
             all_folders = {}
             for dirpath, dirnames, _ in os.walk(base_path):
-                dirnames[:] = [d for d in dirnames if d not in [app.config['THUMBNAIL_CACHE_FOLDER_NAME'], app.config['SQLITE_CACHE_FOLDER_NAME']]]
+                # Filter out excluded directories in-place (more efficient)
+                dirnames[:] = [d for d in dirnames if d not in excluded_dirs]
                 for dirname in dirnames:
                     full_path = os.path.normpath(os.path.join(dirpath, dirname)).replace('\\', '/')
                     relative_path = os.path.relpath(full_path, base_path).replace('\\', '/')
                     try:
                         mtime = os.path.getmtime(full_path)
                     except (OSError, PermissionError) as e:
-                        print(f"WARNING: Could not get mtime for {full_path}: {e}")
+                        logging.warning(f"Could not get mtime for {full_path}: {e}")
                         mtime = time.time()
                     
                     all_folders[relative_path] = {
@@ -1761,13 +1790,14 @@ def get_dynamic_folder_config(force_refresh=False):
                         'mtime': mtime
                     }
 
+            # Sort by depth (number of path separators)
             sorted_paths = sorted(all_folders.keys(), key=lambda x: x.count('/'))
 
             for rel_path in sorted_paths:
                 folder_data = all_folders[rel_path]
                 key = path_to_key(rel_path)
                 parent_rel_path = os.path.dirname(rel_path).replace('\\', '/')
-                parent_key = '_root_' if parent_rel_path == '.' or parent_rel_path == '' else path_to_key(parent_rel_path)
+                parent_key = '_root_' if parent_rel_path in ('.', '') else path_to_key(parent_rel_path)
 
                 if parent_key in dynamic_config:
                     dynamic_config[parent_key]['children'].append(key)
@@ -1781,21 +1811,21 @@ def get_dynamic_folder_config(force_refresh=False):
                     'mtime': folder_data['mtime']
                 }
         except (FileNotFoundError, OSError, PermissionError) as e:
-            print(f"WARNING: Error scanning directory '{base_path}': {e}")
+            logging.warning(f" Error scanning directory '{base_path}': {e}")
         
         # Update cache atomically before releasing lock
         folder_config_cache = dynamic_config
         return dynamic_config
     
 def full_sync_database(conn):
-    print("INFO: Starting full file scan...")
+    logging.info(" Starting full file scan...")
     start_time = time.time()
 
     all_folders = get_dynamic_folder_config(force_refresh=True)
     db_files = {row['path']: row['mtime'] for row in conn.execute('SELECT path, mtime FROM files').fetchall()}
     
     disk_files = {}
-    print("INFO: Scanning directories on disk...")
+    logging.info(" Scanning directories on disk...")
     for folder_data in all_folders.values():
         folder_path = folder_data['path']
         if not os.path.isdir(folder_path): 
@@ -1806,7 +1836,7 @@ def full_sync_database(conn):
                 if os.path.isfile(filepath) and os.path.splitext(name)[1].lower() not in ['.json', '.sqlite']:
                     disk_files[filepath] = os.path.getmtime(filepath)
         except OSError as e:
-            print(f"WARNING: Could not access folder {folder_path}: {e}")
+            logging.warning(f" Could not access folder {folder_path}: {e}")
             
     db_paths = set(db_files.keys())
     disk_paths = set(disk_files.keys())
@@ -1819,7 +1849,7 @@ def full_sync_database(conn):
     files_to_process = list(to_add.union(to_update))
     
     if files_to_process:
-        print(f"INFO: Processing {len(files_to_process)} files in parallel using up to {MAX_PARALLEL_WORKERS or 'all'} CPU cores...")
+        logging.info(f"Processing {len(files_to_process)} files in parallel using up to {MAX_PARALLEL_WORKERS or 'all'} CPU cores...")
         
         # Gather config values for worker processes
         thumbnail_cache_dir = app.config['THUMBNAIL_CACHE_DIR']
@@ -1900,42 +1930,42 @@ def full_sync_database(conn):
                     # Update the bar by 1 step for each completed job
                     pbar.update(1)
 
-        # Print comprehensive statistics
-        print("\n" + "="*80)
-        print("WORKFLOW METADATA EXTRACTION STATISTICS")
-        print("="*80)
-        print(f"Total files processed:              {stats['total_processed']}")
-        print(f"Files that failed to process:       {stats['failed_files']}")
-        print(f"\nWorkflow Detection:")
-        print(f"  Files with embedded workflows:    {stats['files_with_workflows']}")
-        print(f"  Workflows successfully extracted: {stats['workflows_extracted']}")
-        print(f"  Workflows that couldn't be read:  {stats['workflows_not_extracted']}")
-        print(f"\nMetadata Extraction:")
-        print(f"  Files with metadata extracted:    {stats['metadata_extracted']}")
-        print(f"  Files with no metadata found:     {stats['metadata_failed']}")
-        print(f"  Total samplers found:             {stats['total_samplers']}")
+        # Log comprehensive statistics
+        logging.info("="*80)
+        logging.info("WORKFLOW METADATA EXTRACTION STATISTICS")
+        logging.info("="*80)
+        logging.info(f"Total files processed:              {stats['total_processed']}")
+        logging.info(f"Files that failed to process:       {stats['failed_files']}")
+        logging.info("\nWorkflow Detection:")
+        logging.info(f"  Files with embedded workflows:    {stats['files_with_workflows']}")
+        logging.info(f"  Workflows successfully extracted: {stats['workflows_extracted']}")
+        logging.info(f"  Workflows that couldn't be read:  {stats['workflows_not_extracted']}")
+        logging.info("\nMetadata Extraction:")
+        logging.info(f"  Files with metadata extracted:    {stats['metadata_extracted']}")
+        logging.info(f"  Files with no metadata found:     {stats['metadata_failed']}")
+        logging.info(f"  Total samplers found:             {stats['total_samplers']}")
         
         if stats['metadata_extracted'] > 0:
             avg_samplers = stats['total_samplers'] / stats['metadata_extracted']
-            print(f"  Average samplers per workflow:    {avg_samplers:.2f}")
+            logging.info(f"  Average samplers per workflow:    {avg_samplers:.2f}")
         
         # Show parse errors (limit to first 10)
         if stats['parse_errors']:
-            print(f"\nParse Errors ({len(stats['parse_errors'])} total):")
+            logging.info(f"\nParse Errors ({len(stats['parse_errors'])} total):")
             for i, error_info in enumerate(stats['parse_errors'][:10]):
-                print(f"  {i+1}. {error_info['file']}: {error_info['error'][:80]}")
+                logging.info(f"  {i+1}. {error_info['file']}: {error_info['error'][:80]}")
             if len(stats['parse_errors']) > 10:
-                print(f"  ... and {len(stats['parse_errors']) - 10} more")
+                logging.info(f"  ... and {len(stats['parse_errors']) - 10} more")
         
         # Show files where workflow was found but no metadata extracted (limit to first 10)
         if stats['files_without_metadata']:
-            print(f"\nFiles with workflows but no metadata extracted ({len(stats['files_without_metadata'])} total):")
+            logging.info(f"\nFiles with workflows but no metadata extracted ({len(stats['files_without_metadata'])} total):")
             for i, filename in enumerate(stats['files_without_metadata'][:10]):
-                print(f"  {i+1}. {filename}")
+                logging.info(f"  {i+1}. {filename}")
             if len(stats['files_without_metadata']) > 10:
-                print(f"  ... and {len(stats['files_without_metadata']) - 10} more")
+                logging.info(f"  ... and {len(stats['files_without_metadata']) - 10} more")
         
-        print("="*80 + "\n")
+        logging.info("="*80 + "\n")
 
         if results:
             print(f"INFO: Inserting {len(results)} processed records into the database...")
@@ -2062,7 +2092,7 @@ def sync_folder_internal(folder_path):
                                 unique_samplers = sorted(list({s.get('sampler_name') for s in workflow_meta_list if s and s.get('sampler_name')}))
                                 sampler_names = ', '.join(unique_samplers)
                     except Exception as e:
-                        print(f"DEBUG: Error extracting workflow metadata for {os.path.basename(path)}: {e}")
+                        logging.debug(f"Error extracting workflow metadata for {os.path.basename(path)}: {e}")
                 # --- End new logic ---
 
                 data_to_upsert.append((file_id, path, disk_files[path], os.path.basename(path), metadata['type'], metadata['duration'], metadata['dimensions'], metadata['has_workflow'], prompt_preview, sampler_names))
@@ -2090,7 +2120,7 @@ def sync_folder_internal(folder_path):
                                         sampler_meta.get('height')
                                     ))
                     except Exception as e:
-                        print(f"DEBUG: Error extracting workflow metadata for {os.path.basename(path)}: {e}")
+                        logging.debug(f"Error extracting workflow metadata for {os.path.basename(path)}: {e}")
                 
             if data_to_upsert: 
                 conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, prompt_preview, sampler_names) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", data_to_upsert)
@@ -2112,7 +2142,7 @@ def sync_folder_internal(folder_path):
 
         conn.commit()
     except Exception as e:
-        print(f"ERROR: sync_folder_internal failed for {folder_path}: {e}")
+        logging.error(f"sync_folder_internal failed for {folder_path}: {e}")
 
 def sync_folder_on_demand(folder_path):
     yield f"data: {json.dumps({'message': 'Checking folder for changes...', 'current': 0, 'total': 1})}\n\n"
@@ -2247,20 +2277,28 @@ def sync_folder_on_demand(folder_path):
 
     except Exception as e:
         error_message = f"Error during sync: {e}"
-        print(f"ERROR: {error_message}")
+        logging.error(error_message)
         yield f"data: {json.dumps({'message': error_message, 'current': 1, 'total': 1, 'error': True})}\n\n"
 
 def scan_folder_and_extract_options(folder_path):
+    """Scan folder for file extensions and prefixes (optimized)."""
     extensions, prefixes = set(), set()
     try:
-        if not os.path.isdir(folder_path): return None, [], []
+        if not os.path.isdir(folder_path): 
+            return None, [], []
+        
         for filename in os.listdir(folder_path):
-            if os.path.isfile(os.path.join(folder_path, filename)):
+            filepath = os.path.join(folder_path, filename)
+            if os.path.isfile(filepath):
                 ext = os.path.splitext(filename)[1]
-                if ext and ext.lower() not in ['.json', '.sqlite']: extensions.add(ext.lstrip('.').lower())
-                if '_' in filename: prefixes.add(filename.split('_')[0])
-    except Exception as e: print(f"ERROR: Could not scan folder '{folder_path}': {e}")
-    return None, sorted(list(extensions)), sorted(list(prefixes))
+                if ext and ext.lower() not in ('.json', '.sqlite'):
+                    extensions.add(ext.lstrip('.').lower())
+                if '_' in filename: 
+                    prefixes.add(filename.split('_', 1)[0])  # Only split once
+    except Exception as e: 
+        logging.error(f"Could not scan folder '{folder_path}': {e}")
+    
+    return None, sorted(extensions), sorted(prefixes)  # sorted() works on sets directly
 
 def initialize_gallery(flask_app):
     """Initializes the gallery by setting up derived paths and the database."""
@@ -2279,7 +2317,7 @@ def initialize_gallery(flask_app):
     if DEBUG_WORKFLOW_EXTRACTION:
         debug_path = os.path.join(flask_app.config['BASE_OUTPUT_PATH'], 'workflow_debug')
         print(f"INFO: Workflow debugging ENABLED - will save to {debug_path}")
-        print("INFO: Each file will have a subfolder with workflow data at each processing stage")
+        logging.info(" Each file will have a subfolder with workflow data at each processing stage")
     
     # Setup logging
     log_dir = os.path.join(flask_app.config['BASE_OUTPUT_PATH'], 'smartgallery_logs')
@@ -2297,7 +2335,7 @@ def initialize_gallery(flask_app):
     flask_app.logger.setLevel(logging.INFO)
     flask_app.config['LOG_FILE'] = log_file
 
-    print("INFO: Initializing gallery...")
+    logging.info(" Initializing gallery...")
     logging.info("SmartGallery initialization started")
     flask_app.config['FFPROBE_EXECUTABLE_PATH'] = find_ffprobe_path()
     os.makedirs(flask_app.config['THUMBNAIL_CACHE_DIR'], exist_ok=True)
@@ -2315,10 +2353,10 @@ def initialize_gallery(flask_app):
             cursor = conn.execute("PRAGMA table_info(files)")
             columns = [row['name'] for row in cursor.fetchall()]
             if 'prompt_preview' not in columns:
-                print("INFO: Migrating database schema: Adding 'prompt_preview' column to files table.")
+                logging.info(" Migrating database schema: Adding 'prompt_preview' column to files table.")
                 conn.execute("ALTER TABLE files ADD COLUMN prompt_preview TEXT")
             if 'sampler_names' not in columns:
-                print("INFO: Migrating database schema: Adding 'sampler_names' column to files table.")
+                logging.info(" Migrating database schema: Adding 'sampler_names' column to files table.")
                 conn.execute("ALTER TABLE files ADD COLUMN sampler_names TEXT")
             conn.commit()
         except sqlite3.DatabaseError:
@@ -2336,17 +2374,17 @@ def initialize_gallery(flask_app):
             if stored_version == 21 and DB_SCHEMA_VERSION == 22:
                 try:
                     # Step 1: Backup old workflow_metadata table
-                    print("INFO: Backing up workflow_metadata table...")
+                    logging.info(" Backing up workflow_metadata table...")
                     conn.execute('DROP TABLE IF EXISTS workflow_metadata_backup')
                     conn.execute('CREATE TABLE workflow_metadata_backup AS SELECT * FROM workflow_metadata')
                     
                     # Step 2: Drop old table and recreate with new schema
-                    print("INFO: Recreating workflow_metadata with new schema...")
+                    logging.info(" Recreating workflow_metadata with new schema...")
                     conn.execute('DROP TABLE workflow_metadata')
                     init_db(conn)  # Creates new schema with AUTOINCREMENT id
                     
                     # Step 3: Migrate existing data (all as sampler_index=0)
-                    print("INFO: Migrating existing workflow metadata...")
+                    logging.info(" Migrating existing workflow metadata...")
                     conn.execute('''
                         INSERT INTO workflow_metadata 
                         (file_id, sampler_index, model_name, sampler_name, scheduler, cfg, steps, 
@@ -2364,14 +2402,14 @@ def initialize_gallery(flask_app):
                     conn.execute('DROP TABLE workflow_metadata_backup')
                     conn.commit()
                     
-                    print("INFO: Migration complete. Triggering full rescan to extract multi-sampler metadata...")
+                    logging.info(" Migration complete. Triggering full rescan to extract multi-sampler metadata...")
                     logging.info("Schema migration v21→v22 complete. Starting full rescan.")
                     full_sync_database(conn)
-                    print("INFO: Rescan complete.")
+                    logging.info(" Rescan complete.")
                     logging.info("Full rescan after migration complete")
                     
                 except Exception as e:
-                    print(f"ERROR: Migration failed: {e}. Rolling back...")
+                    logging.error(f"Migration failed: {e}. Rolling back...")
                     logging.error(f"Migration failed: {e}", exc_info=True)
                     conn.rollback()
                     # Attempt rollback: restore from backup if exists
@@ -2380,7 +2418,7 @@ def initialize_gallery(flask_app):
                         conn.execute('CREATE TABLE workflow_metadata AS SELECT * FROM workflow_metadata_backup')
                         conn.execute('DROP TABLE workflow_metadata_backup')
                         conn.commit()
-                        print("INFO: Rollback successful. Old schema restored.")
+                        logging.info(" Rollback successful. Old schema restored.")
                         logging.info("Rollback successful. Old schema restored.")
                     except Exception as rollback_error:
                         print(f"CRITICAL: Rollback failed: {rollback_error}")
@@ -2388,14 +2426,14 @@ def initialize_gallery(flask_app):
                     raise
             else:
                 # For other version transitions, fall back to full rebuild
-                print("INFO: Performing full database rebuild...")
+                logging.info(" Performing full database rebuild...")
                 conn.execute('DROP TABLE IF EXISTS files')
                 conn.execute('DROP TABLE IF EXISTS workflow_metadata')
                 init_db(conn)
                 full_sync_database(conn)
                 conn.execute(f'PRAGMA user_version = {DB_SCHEMA_VERSION}')
                 conn.commit()
-                print("INFO: Rebuild complete.")
+                logging.info(" Rebuild complete.")
                 logging.info("Database rebuild complete")
         else:
             print(f"INFO: DB version ({stored_version}) is up to date. Starting normally.")
@@ -2420,7 +2458,7 @@ def sync_status(folder_key):
 @app.route('/galleryout/view/<string:folder_key>')
 @require_initialization
 def gallery_view(folder_key):
-    global gallery_view_cache  # Module-level cache shared across requests (thread-safe via lock)
+    # Note: gallery_view_cache removed in v1.41.0 - using SQL pagination instead
     folders = get_dynamic_folder_config(force_refresh=True)
     if folder_key not in folders:
         return redirect(url_for('gallery_view', folder_key='_root_'))
@@ -2623,11 +2661,11 @@ def filter_options():
     with _cache_lock:
         cache_entry = _filter_options_cache.get('options')
         if cache_entry and (time.time() - cache_entry['timestamp']) < CACHE_DURATION_SECONDS:
-            print("INFO: Serving filter options from cache.")
+            logging.info(" Serving filter options from cache.")
             return jsonify(cache_entry['data'])
 
     # --- If cache is invalid, proceed with database query ---
-    print("INFO: Cache miss or expired. Querying DB for filter options.")
+    logging.info(" Cache miss or expired. Querying DB for filter options.")
     
     try:
         conn = get_db()
@@ -2691,7 +2729,7 @@ def filter_options():
         return jsonify(response_data)
         
     except Exception as e:
-        print(f"ERROR: filter_options failed: {e}")
+        logging.error(f"filter_options failed: {e}")
         # Return error but with empty arrays so frontend doesn't break
         return jsonify({
             'status': 'error', 'message': str(e),
@@ -2748,7 +2786,7 @@ def workflow_samplers(file_id):
         })
         
     except Exception as e:
-        print(f"ERROR: workflow_samplers endpoint failed: {e}")
+        logging.error(f"workflow_samplers endpoint failed: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({
@@ -2954,7 +2992,7 @@ def get_file_info_from_db(file_id, column='*'):
         if not row: abort(404)
         return dict(row) if column == '*' else row[0]
     except sqlite3.Error as e:
-        print(f"ERROR: Database error in get_file_info_from_db for file_id {file_id}: {e}")
+        logging.error(f"Database error in get_file_info_from_db for file_id {file_id}: {e}")
         abort(500)
 
 def _get_unique_filepath(destination_folder, filename):
@@ -3017,11 +3055,11 @@ def move_batch():
                     conn.execute(f"ROLLBACK TO SAVEPOINT {savepoint}")
                     conn.execute(f"RELEASE SAVEPOINT {savepoint}")
                 except Exception as rb_error:
-                    print(f"ERROR: Failed to rollback savepoint: {rb_error}")
+                    logging.error(f"Failed to rollback savepoint: {rb_error}")
                 
             filename_for_error = os.path.basename(source_path) if source_path else f"ID {file_id}"
             failed_files.append(filename_for_error)
-            print(f"ERROR: Failed to move file {filename_for_error}. Reason: {e}")
+            logging.error(f"Failed to move file {filename_for_error}. Reason: {e}")
             continue
     conn.commit()
     
@@ -3052,13 +3090,13 @@ def delete_batch():
                 try:
                     os.remove(thumbnail_path)
                 except Exception as e:
-                    print(f"WARNING: Could not remove thumbnail {thumbnail_path}: {e}")
+                    logging.warning(f" Could not remove thumbnail {thumbnail_path}: {e}")
                 
             ids_to_remove_from_db.append(row['id'])
             deleted_count += 1
         except Exception as e: 
             failed_files.append(os.path.basename(row['path']))
-            print(f"ERROR: Could not delete {row['path']}: {e}")
+            logging.error(f"Could not delete {row['path']}: {e}")
     if ids_to_remove_from_db:
         db_placeholders = ','.join('?' * len(ids_to_remove_from_db))
         conn.execute(f"DELETE FROM files WHERE id IN ({db_placeholders})", ids_to_remove_from_db)
@@ -3143,10 +3181,10 @@ def rename_file(file_id):
         })
 
     except OSError as e:
-        print(f"ERROR: OS error during file rename for {file_id}: {e}")
+        logging.error(f"OS error during file rename for {file_id}: {e}")
         return jsonify({'status': 'error', 'message': f'A system error occurred during rename: {e}'}), 500
     except Exception as e:
-        print(f"ERROR: Generic error during file rename for {file_id}: {e}")
+        logging.error(f"Generic error during file rename for {file_id}: {e}")
         return jsonify({'status': 'error', 'message': f'An unexpected error occurred: {e}'}), 500
 
 # --- FIX: ROBUST DELETE ROUTE ---
@@ -3167,7 +3205,7 @@ def delete_file(file_id):
         # If file doesn't exist on disk, we still proceed to remove the DB entry, which is the desired state.
     except (OSError, PermissionError) as e:
         # A real OS error occurred (e.g., permissions). Issue #7: Catch both OSError and PermissionError
-        print(f"ERROR: Could not delete file {filepath} from disk: {e}")
+        logging.error(f"Could not delete file {filepath} from disk: {e}")
         return jsonify({'status': 'error', 'message': f'Could not delete file from disk: {e}'}), 500
 
     # Clean up orphaned thumbnail
@@ -3178,7 +3216,7 @@ def delete_file(file_id):
             os.remove(thumbnail_path)
             print(f"INFO: Removed orphaned thumbnail: {os.path.basename(thumbnail_path)}")
     except Exception as e:
-        print(f"WARNING: Could not remove thumbnail for {filepath}: {e}")
+        logging.warning(f" Could not remove thumbnail for {filepath}: {e}")
 
     # Whether the file was deleted now or was already gone, we clean up the DB.
     conn.execute("DELETE FROM files WHERE id = ?", (file_id,))
@@ -3313,11 +3351,11 @@ if __name__ == '__main__':
                 config_data = json.load(f)
             print(f"✓ Loaded configuration from: {args.config}")
         except Exception as e:
-            print(f"WARNING: Failed to load config file '{args.config}': {e}")
+            logging.warning(f" Failed to load config file '{args.config}': {e}")
             print("Continuing with command-line arguments only...")
     else:
         if args.config != "config.json":  # Only warn if non-default config was specified
-            print(f"WARNING: Config file '{args.config}' not found")
+            logging.warning(f" Config file '{args.config}' not found")
         print("Using command-line arguments only...")
 
     # Merge config: CLI args override config.json
