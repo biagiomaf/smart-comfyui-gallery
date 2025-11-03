@@ -2903,7 +2903,7 @@ def health_check():
         logging.error(f"Health check failed: {e}")
         return jsonify({
             'status': 'unhealthy',
-            'error': str(e)
+            'error': 'Health check failed. See server logs for details.'
         }), 500
 
 
@@ -2966,7 +2966,7 @@ def get_stats():
         logging.error(f"Stats endpoint failed: {e}")
         return jsonify({
             'status': 'error',
-            'message': str(e)
+            'message': 'Failed to retrieve statistics. See server logs for details.'
         }), 500
 
 @app.route('/galleryout/load_more')
