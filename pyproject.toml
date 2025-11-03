@@ -3,22 +3,22 @@ requires = ["setuptools>=77.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "smart-comfyui-gallery"
-version = "1.50.0"
-description = "A visual hub for ComfyUI with universal workflow recall, upload magic, intelligent organization, and advanced workflow metadata search."
+name = "smartgallery-standalone"
+version = "2.0.0"
+description = "Standalone AI media gallery with workflow metadata extraction. Browse, organize, and analyze AI-generated images and videos. Works with any ComfyUI-generated files."
 license = "MIT"
 license-files = ["LICENSE"]
 
 dependencies = [
-    "Flask",
-    "flask-cors",
-    "Pillow",
-    "opencv-python",
-    "tqdm"
+    "Flask>=3.0.0",
+    "Pillow>=10.0.0",
+    "opencv-python>=4.8.0",
+    "tqdm>=4.66.0"
 ]
 
 [project.urls]
-Repository = "https://github.com/opj161/smart-comfyui-gallery"
+Repository = "https://github.com/opj161/smartgallery-standalone"
+Original = "https://github.com/opj161/smart-comfyui-gallery"
 
 [tool.setuptools]
 py-modules = ["smartgallery"]
@@ -26,11 +26,4 @@ py-modules = ["smartgallery"]
 [tool.setuptools.packages.find]
 where = ["."]
 include = []
-exclude = ["js*", "assets*", "static*", "templates*"]
-
-[tool.comfy]
-# This section is used by the ComfyUI Registry
-PublisherId = "opj161"
-DisplayName = "Smart Gallery"
-# Optional: Add a URL to an icon for a professional look in the registry
-# Icon = "https://raw.githubusercontent.com/opj161/smart-comfyui-gallery/main/assets/icon.png"
+exclude = ["js*", "assets*", ".working-docs*"]

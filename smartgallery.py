@@ -1,7 +1,36 @@
-# Smart Gallery for ComfyUI
+# SmartGallery - Standalone AI Media Gallery
+# Formerly: Smart Gallery for ComfyUI (now decoupled from ComfyUI)
 # Author: Biagio Maffettone © 2025 — MIT License (free to use and modify)
 #
-# Version: 1.50.0 - January 2025 (Performance & UX Improvements)
+# Version: 2.0.0 - Standalone Version (November 2025)
+#
+# MAJOR CHANGES (v2.0.0 - Standalone Release):
+# - Decoupled from ComfyUI: Now runs as a standalone application
+# - Removed ComfyUI integration layer (__init__.py, sidebar dashboard)
+# - Enhanced configuration: Supports config.json + CLI arguments
+# - Still fully compatible with ComfyUI-generated files and workflows
+# - Removed CORS dependency (single-origin application)
+# - Simplified deployment: Just Python + pip install
+#
+# FEATURES:
+# - Browse and organize AI-generated images, videos, and audio files
+# - Extract and display ComfyUI workflow metadata from any file
+# - Advanced filtering: by type, date, dimensions, workflow parameters
+# - Thumbnail generation and caching for fast browsing
+# - SQLite database for efficient file indexing
+# - File upload support with workflow extraction
+# - Favorites and folder management
+# - Lightbox viewer with keyboard navigation
+#
+# COMPATIBILITY:
+# - Works with ANY ComfyUI-generated files (PNGs, videos with embedded workflows)
+# - Can point to ComfyUI's output/input folders
+# - No ComfyUI installation required
+# - Workflow extraction is 100% independent
+#
+# GitHub: https://github.com/opj161/smart-comfyui-gallery (plugin version)
+# GitHub: https://github.com/opj161/smartgallery-standalone (standalone version)
+# Contact: biagiomaf@gmail.com
 
 # CHANGES (v1.41.0):
 # - CRITICAL PERFORMANCE: Added 5 database indices on files table (10-50x faster queries)
@@ -114,7 +143,7 @@ import threading
 import logging
 from datetime import datetime
 from flask import g, Flask, render_template, send_from_directory, abort, send_file, url_for, redirect, request, jsonify, Response, stream_with_context
-from flask_cors import CORS
+# flask_cors removed - not needed for standalone version
 from PIL import Image, ImageSequence
 import colorsys
 from werkzeug.exceptions import HTTPException
@@ -847,14 +876,8 @@ DEBUG_WORKFLOW_EXTRACTION = True  # Change to True to enable debugging
 # --- FLASK APP INITIALIZATION ---
 app = Flask(__name__)
 
-# Enable CORS for sidebar dashboard (ComfyUI on port 8000, gallery on port 8008)
-CORS(app, resources={
-    r"/smartgallery/*": {
-        "origins": ["http://127.0.0.1:8000", "http://localhost:8000"],
-        "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type"]
-    }
-})
+# CORS not needed for standalone version (single-origin application)
+# All requests come from the same server (localhost:8008)
 
 # Set default configuration values (will be overridden by CLI args in __main__)
 # These MUST be set before any routes are accessed
@@ -3219,183 +3242,16 @@ def serve_thumbnail(file_id):
     return "Thumbnail generation failed", 404
 
 
-# --- SMARTGALLERY SIDEBAR API ROUTES ---
-# These routes provide dashboard functionality for the ComfyUI sidebar
-
-@app.route('/smartgallery/stats')
-@require_initialization
-def get_stats():
-    """Returns gallery statistics for sidebar dashboard"""
-    try:
-        conn = get_db()
-        # Total files
-        total_files = conn.execute("SELECT COUNT(*) FROM files").fetchone()[0]
-            
-        # Files by type
-        images = conn.execute("SELECT COUNT(*) FROM files WHERE type = 'image'").fetchone()[0]
-        videos = conn.execute("SELECT COUNT(*) FROM files WHERE type = 'video'").fetchone()[0]
-        animated = conn.execute("SELECT COUNT(*) FROM files WHERE type = 'animated_image'").fetchone()[0]
-        audio = conn.execute("SELECT COUNT(*) FROM files WHERE type = 'audio'").fetchone()[0]
-            
-        # Files with workflows
-        with_workflow = conn.execute("SELECT COUNT(*) FROM files WHERE has_workflow = 1").fetchone()[0]
-            
-        # Favorites
-        favorites = conn.execute("SELECT COUNT(*) FROM files WHERE is_favorite = 1").fetchone()[0]
-            
-        # Cache sizes
-        thumb_cache_size = sum(
-            os.path.getsize(os.path.join(app.config['THUMBNAIL_CACHE_DIR'], f))
-            for f in os.listdir(app.config['THUMBNAIL_CACHE_DIR'])
-            if os.path.isfile(os.path.join(app.config['THUMBNAIL_CACHE_DIR'], f))
-        ) if os.path.exists(app.config['THUMBNAIL_CACHE_DIR']) else 0
-            
-        db_size = os.path.getsize(app.config['DATABASE_FILE']) if os.path.exists(app.config['DATABASE_FILE']) else 0
-            
-        # Request count
-        with request_counter['lock']:
-            requests = request_counter['count']
-            
-        return jsonify({
-            'success': True,
-            'data': {
-                'total_files': total_files,
-                'by_type': {
-                    'images': images,
-                    'videos': videos,
-                    'animated': animated,
-                    'audio': audio
-                },
-                'with_workflow': with_workflow,
-                'favorites': favorites,
-                'cache_size_mb': round((thumb_cache_size + db_size) / (1024 * 1024), 2),
-                'thumbnail_cache_mb': round(thumb_cache_size / (1024 * 1024), 2),
-                'db_size_mb': round(db_size / (1024 * 1024), 2),
-                'requests': requests
-            }
-        })
-    except Exception as e:
-        logging.error(f"Failed to get stats: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@app.route('/smartgallery/recent')
-@require_initialization
-def get_recent_files():
-    """Returns recently added files for sidebar dashboard"""
-    try:
-        limit = request.args.get('limit', 6, type=int)
-        conn = get_db()
-        rows = conn.execute(
-            "SELECT id, name, type, dimensions, has_workflow FROM files ORDER BY mtime DESC LIMIT ?",
-            (limit,)
-        ).fetchall()
-            
-        files = [{
-            'id': row[0],
-            'name': row[1],
-            'type': row[2],
-            'dimensions': row[3],
-            'has_workflow': bool(row[4]),
-            'thumbnail_url': f'/galleryout/thumbnail/{row[0]}'
-        } for row in rows]
-            
-        return jsonify({'success': True, 'data': files})
-    except Exception as e:
-        logging.error(f"Failed to get recent files: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@app.route('/smartgallery/sync_all', methods=['POST'])
-@require_initialization
-def sync_all_folders():
-    """Triggers a full sync of all folders"""
-    try:
-        logging.info("Full sync initiated from sidebar")
-        conn = get_db()
-        full_sync_database(conn)
-        
-        # Clear caches
-        global gallery_view_cache, folder_config_cache
-        with gallery_view_cache_lock:
-            gallery_view_cache = []
-        with folder_config_cache_lock:
-            folder_config_cache = None
-        
-        logging.info("Full sync completed successfully")
-        return jsonify({'success': True, 'message': 'All folders synced successfully'})
-    except Exception as e:
-        logging.error(f"Full sync failed: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@app.route('/smartgallery/clear_cache', methods=['POST'])
-@require_initialization
-def clear_all_caches():
-    """Clears thumbnail cache and memory caches"""
-    try:
-        cache_type = request.json.get('type', 'all')  # 'thumbnails', 'memory', or 'all'
-        cleared = []
-        
-        if cache_type in ['thumbnails', 'all']:
-            # Clear thumbnail cache
-            thumb_dir = app.config['THUMBNAIL_CACHE_DIR']
-            if os.path.exists(thumb_dir):
-                count = 0
-                for filename in os.listdir(thumb_dir):
-                    filepath = os.path.join(thumb_dir, filename)
-                    if os.path.isfile(filepath):
-                        os.remove(filepath)
-                        count += 1
-                cleared.append(f'{count} thumbnails')
-                logging.info(f"Cleared {count} thumbnails from cache")
-        
-        if cache_type in ['memory', 'all']:
-            # Clear memory caches
-            global gallery_view_cache, folder_config_cache
-            with gallery_view_cache_lock:
-                gallery_view_cache = []
-            with folder_config_cache_lock:
-                folder_config_cache = None
-            cleared.append('memory caches')
-            logging.info("Cleared memory caches")
-        
-        return jsonify({
-            'success': True,
-            'message': f'Cleared: {", ".join(cleared)}'
-        })
-    except Exception as e:
-        logging.error(f"Cache clearing failed: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@app.route('/smartgallery/logs')
-@require_initialization
-def get_logs():
-    """Returns recent log entries"""
-    try:
-        lines = request.args.get('lines', 100, type=int)
-        log_file = app.config.get('LOG_FILE')
-        
-        if not log_file or not os.path.exists(log_file):
-            return jsonify({'success': False, 'error': 'Log file not found'}), 404
-        
-        # Read last N lines efficiently
-        with open(log_file, 'r', encoding='utf-8') as f:
-            all_lines = f.readlines()
-            recent_lines = all_lines[-lines:] if len(all_lines) > lines else all_lines
-        
-        return jsonify({
-            'success': True,
-            'data': {
-                'lines': [line.strip() for line in recent_lines],
-                'total': len(recent_lines),
-                'file': os.path.basename(log_file)
-            }
-        })
-    except Exception as e:
-        logging.error(f"Failed to read logs: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+# --- DASHBOARD API ROUTES REMOVED ---
+# The following routes were removed as they were only used by the ComfyUI sidebar:
+# - /smartgallery/stats (gallery statistics)
+# - /smartgallery/recent (recent files)
+# - /smartgallery/sync_all (full sync trigger)
+# - /smartgallery/clear_cache (cache clearing)
+# - /smartgallery/logs (log viewer)
+#
+# For standalone usage, all functionality is accessible directly through the
+# main gallery interface at /galleryout/
 
 
 # Request counter middleware
@@ -3438,20 +3294,74 @@ def handle_generic_exception(e):
 
 if __name__ == '__main__':
     import argparse
+    import json
 
-    parser = argparse.ArgumentParser(description="Smart Gallery for ComfyUI")
-    parser.add_argument("--output-path", type=str, required=True, help="Path to ComfyUI's output directory.")
-    parser.add_argument("--input-path", type=str, required=True, help="Path to ComfyUI's input directory.")
-    parser.add_argument("--port", type=int, default=8008, help="Port for the gallery web server.")
-    parser.add_argument("--ffprobe-path", type=str, default="", help="Manual path to the ffprobe executable.")
+    parser = argparse.ArgumentParser(description="SmartGallery - Standalone AI Media Gallery")
+    parser.add_argument("--config", type=str, default="config.json", help="Path to configuration file (default: config.json)")
+    parser.add_argument("--output-path", type=str, help="Path to your AI output directory (overrides config.json)")
+    parser.add_argument("--input-path", type=str, help="Path to your input directory (overrides config.json)")
+    parser.add_argument("--port", type=int, help="Port for the gallery web server (overrides config.json)")
+    parser.add_argument("--ffprobe-path", type=str, help="Manual path to the ffprobe executable (overrides config.json)")
 
     args = parser.parse_args()
 
-    # --- Populate Flask app config from arguments (overriding defaults) ---
-    app.config['BASE_OUTPUT_PATH'] = args.output_path
-    app.config['BASE_INPUT_PATH'] = args.input_path
-    app.config['SERVER_PORT'] = args.port
-    app.config['FFPROBE_MANUAL_PATH'] = args.ffprobe_path
+    # Load configuration from config.json if it exists
+    config_data = {}
+    if os.path.exists(args.config):
+        try:
+            with open(args.config, 'r', encoding='utf-8') as f:
+                config_data = json.load(f)
+            print(f"✓ Loaded configuration from: {args.config}")
+        except Exception as e:
+            print(f"WARNING: Failed to load config file '{args.config}': {e}")
+            print("Continuing with command-line arguments only...")
+    else:
+        if args.config != "config.json":  # Only warn if non-default config was specified
+            print(f"WARNING: Config file '{args.config}' not found")
+        print("Using command-line arguments only...")
+
+    # Merge config: CLI args override config.json
+    output_path = args.output_path or config_data.get('base_output_path')
+    input_path = args.input_path or config_data.get('base_input_path')
+    server_port = args.port or config_data.get('server_port', 8008)
+    ffprobe_path = args.ffprobe_path or config_data.get('ffprobe_manual_path', '')
+
+    # Validate required paths
+    if not output_path or not input_path:
+        print("\nERROR: Required paths not provided!")
+        print("\nYou must provide paths either via:")
+        print("  1. Command line: --output-path and --input-path")
+        print("  2. Config file: Create config.json with base_output_path and base_input_path")
+        print("\nExample config.json:")
+        print('{')
+        print('    "base_output_path": "/path/to/your/output",')
+        print('    "base_input_path": "/path/to/your/input",')
+        print('    "server_port": 8008')
+        print('}')
+        print("\nSee config.json.example for more options.")
+        sys.exit(1)
+
+    if not os.path.isdir(output_path):
+        print(f"\nERROR: Output path does not exist or is not a directory: {output_path}")
+        sys.exit(1)
+    
+    if not os.path.isdir(input_path):
+        print(f"\nERROR: Input path does not exist or is not a directory: {input_path}")
+        sys.exit(1)
+
+    # --- Populate Flask app config from merged configuration ---
+    app.config['BASE_OUTPUT_PATH'] = output_path
+    app.config['BASE_INPUT_PATH'] = input_path
+    app.config['SERVER_PORT'] = server_port
+    app.config['FFPROBE_MANUAL_PATH'] = ffprobe_path
+    
+    # Apply additional config options if present
+    if 'thumbnail_quality' in config_data:
+        app.config['THUMBNAIL_QUALITY'] = config_data['thumbnail_quality']
+    if 'enable_upload' in config_data:
+        app.config['ENABLE_UPLOAD'] = config_data['enable_upload']
+    if 'max_upload_size_mb' in config_data:
+        app.config['MAX_UPLOAD_SIZE_MB'] = config_data['max_upload_size_mb']
     
     # Update ALL_MEDIA_EXTENSIONS after potential config updates
     app.config['ALL_MEDIA_EXTENSIONS'] = (
@@ -3461,12 +3371,17 @@ if __name__ == '__main__':
         app.config['AUDIO_EXTENSIONS']
     )
 
-    if not os.path.isdir(app.config['BASE_OUTPUT_PATH']) or not os.path.isdir(app.config['BASE_INPUT_PATH']):
-        print(f"ERROR: One or more paths are invalid. Please check your configuration.\nOutput: {app.config['BASE_OUTPUT_PATH']}\nInput: {app.config['BASE_INPUT_PATH']}")
-        sys.exit(1)
-
     # Initialize derived paths and database
     initialize_gallery(app)
 
-    print(f"SmartGallery started! Open: http://127.0.0.1:{app.config['SERVER_PORT']}/galleryout/")
-    app.run(host='0.0.0.0', port=app.config['SERVER_PORT'], debug=False)
+    print("\n" + "="*60)
+    print("SmartGallery - Standalone AI Media Gallery")
+    print("="*60)
+    print(f"Output Path: {output_path}")
+    print(f"Input Path:  {input_path}")
+    print(f"Server Port: {server_port}")
+    print(f"\n✓ SmartGallery is running!")
+    print(f"✓ Open in browser: http://127.0.0.1:{server_port}/galleryout/")
+    print("="*60 + "\n")
+    
+    app.run(host='0.0.0.0', port=server_port, debug=False)

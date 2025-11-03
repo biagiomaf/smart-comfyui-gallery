@@ -120,5 +120,3 @@ DROPDOWN_EMPTY_ISSUE_ANALYSIS.md
 .github/
 audit_dom_manipulation.py
 test_config.py
-.working-docs/
-test_config.py
