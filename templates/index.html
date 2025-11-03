@@ -1693,7 +1693,7 @@
 <body x-data="gallery()" 
     @keydown.escape.window="handleEscape()" 
     @keydown.ctrl.a.window.prevent="selectAll()"
-    @keydown.window="if ($event.key === '?' && !isLightboxOpen && !isUploadOpen && !isSummaryOpen && !isFilterPanelOpen) { $event.preventDefault(); isHelpOpen = true; }"
+    @keydown.window="if ($event.key === '?' && shouldShowHelp()) { $event.preventDefault(); isHelpOpen = true; }"
     @resize.window.debounce.150ms="handleResize()"
     @scroll.window.debounce.150ms="shouldShowBackToTop = window.scrollY > 300"
       :class="{ 
@@ -3066,6 +3066,21 @@
                 // ===================================
                 // KEYBOARD HANDLERS
                 // ===================================
+                // KEYBOARD HANDLERS
+                // ===================================
+                
+                /**
+                 * Checks if help modal should be shown when ? key is pressed
+                 * Ensures help doesn't open when other modals are active
+                 * @returns {boolean}
+                 */
+                shouldShowHelp() {
+                    return !this.isLightboxOpen && 
+                           !this.isUploadOpen && 
+                           !this.isSummaryOpen && 
+                           !this.isFilterPanelOpen;
+                },
+                
                 handleEscape() {
                     if (this.isHelpOpen) this.isHelpOpen = false;
                     else if (this.isUploadOpen) this.isUploadOpen = false;

@@ -942,10 +942,10 @@ def get_cache_stats():
         total_hits = 0
         for entry in _filter_options_cache.values():
             if isinstance(entry, dict) and 'data' in entry:
-                # Old cache format (for backward compatibility)
-                total_hits += 0
+                # Old dict-based cache format doesn't track hits (backward compatibility)
+                pass
             elif hasattr(entry, 'hits'):
-                # New CacheEntry format
+                # New CacheEntry format with hit tracking
                 total_hits += entry.hits
         
         stats = {
@@ -2860,7 +2860,9 @@ def workflow_samplers(file_id):
         traceback.print_exc()
         return jsonify({
             'status': 'error',
-            'message': str(e)
+            'message': str(e),
+            'sampler_count': 0,
+            'samplers': []
         }), 500
 
 
