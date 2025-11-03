@@ -46,7 +46,6 @@ Thumbs.db
 .docs/
 smart-comfyui-gallery.xml
 config.json_old
-.github/copilot-instructions.md
 TESTING_CHECKLIST.md
 SIDEBAR_FIX_SUMMARY.md
 IMPLEMENTATION_SUMMARY.md
@@ -117,6 +116,7 @@ FILTERING_SYSTEM_IMPROVEMENT_v1.40.7.md
 v1.41.0_IMPLEMENTATION_SUMMARY.md
 IMPLEMENTATION_PLAN_v1.41.0.md
 DROPDOWN_EMPTY_ISSUE_ANALYSIS.md
-.github/
 audit_dom_manipulation.py
 test_config.py
+assets/
+.working-docs/
