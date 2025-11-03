@@ -6,6 +6,8 @@
     <title>SmartGallery: {{ current_folder_info.display_name }}</title>
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='galleryout/favicon.ico') }}">
     <link href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
     
     <!-- Alpine.js Core + Plugins -->
     <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
@@ -14,307 +16,870 @@
     
     <style>
         :root {
-            --bg-color: #0a0a0a; --surface-color: #1a1a1a; --surface-hover: #252525;
-            --primary-color: #007bff; --primary-hover: #0056b3; --text-color: #f8f9fa;
-            --text-muted: #adb5bd; --border-color: #343a40; --danger-color: #dc3545;
-            --danger-hover: #c82333; --favorite-color: #ffc107; --workflow-color: #28a745;
-            --success-color: #20c997; --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            --glass-bg: rgba(255, 255, 255, 0.05); --glass-border: rgba(255, 255, 255, 0.1);
-            --shadow-sm: 0 2px 4px rgba(0,0,0,0.1); --shadow-md: 0 4px 12px rgba(0,0,0,0.2);
-            --shadow-lg: 0 8px 24px rgba(0,0,0,0.3);
+            /* Inkwell UI: Core Palette - Strict Monochrome + Single Accent */
+            --bg-color: #121212;
+            --surface-color: #1E1E1E;
+            --surface-hover: #2a2a2a;
+            --border-color: #333333;
+            --text-color: #EAEAEA;
+            --text-muted: #888888;
+            --accent-yellow: #FFD60A;
+            --danger-color: #FF4d4d;
+            --success-color: #52c41a;
+
+            /* Typography Scale - Standardized */
+            --font-body: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-monospace: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+            
+            /* Font Sizes - 8px base scale */
+            --text-xs: 0.75rem;   /* 12px - labels, badges */
+            --text-sm: 0.875rem;  /* 14px - secondary info */
+            --text-base: 1rem;    /* 16px - body text */
+            --text-lg: 1.125rem;  /* 18px - large body */
+            --text-xl: 1.25rem;   /* 20px - small headers */
+            --text-2xl: 1.5rem;   /* 24px - medium headers */
+            --text-3xl: 1.875rem; /* 30px - large headers */
+            
+            /* Spacing Scale - 8px base unit */
+            --space-1: 0.5rem;   /* 8px */
+            --space-2: 0.75rem;  /* 12px */
+            --space-3: 1rem;     /* 16px */
+            --space-4: 1.5rem;   /* 24px */
+            --space-5: 2rem;     /* 32px */
+            --space-6: 3rem;     /* 48px */
+
+            /* Shadows - Subtle depth only */
+            --shadow-sm: 0 2px 4px rgba(0,0,0,0.15);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.25);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.35);
+            
+            /* Layout */
             --sidebar-width: 320px;
+            
+            /* Transitions - Standardized */
+            --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
         }
-        * { box-sizing: border-box; }
+        * { 
+            box-sizing: border-box; 
+            margin: 0;
+            padding: 0;
+        }
         
-        /* Accessibility: Focus States */
+        /* Accessibility: Consistent Focus States */
         *:focus-visible {
-            outline: 2px solid var(--primary-color);
+            outline: 2px solid var(--accent-yellow);
             outline-offset: 2px;
             border-radius: 4px;
         }
         
-        html { scroll-behavior: smooth; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif; margin: 0; background: var(--bg-color); color: var(--text-color); line-height: 1.6; display: flex; min-height: 100vh; }
+        /* Remove default focus outline for mouse users */
+        *:focus:not(:focus-visible) {
+            outline: none;
+        }
+        
+        html { 
+            scroll-behavior: smooth; 
+            font-size: 16px; /* Base size for rem calculations */
+        }
+        
+        body { 
+            font-family: var(--font-body);
+            font-size: var(--text-base);
+            font-weight: 400;
+            margin: 0; 
+            background: var(--bg-color); 
+            color: var(--text-color); 
+            line-height: 1.6; 
+            display: flex; 
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
         body.lightbox-open, body.modal-open { overflow: hidden; }
         
-        #notification-container { position: fixed; top: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
-        .notification { background-color: var(--surface-color); color: var(--text-color); padding: 12px 20px; border-radius: 8px; box-shadow: var(--shadow-lg); border-left: 5px solid var(--primary-color); opacity: 0; transform: translateX(100%); transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); font-weight: 600; }
-        .notification.show { opacity: 1; transform: translateX(0); }
-        .notification.success { background-color: var(--success-color); color: white; border-color: #1a9c77; }
-        .notification.error { background-color: var(--danger-color); color: white; border-color: #b32a38; }
-        .notification.warning { background-color: var(--favorite-color); color: #000; border-color: #d39e00;}
-        .notification.info { background-color: var(--primary-color); color: white; border-color: #0056b3; }
+        /* ===================================
+           NOTIFICATION SYSTEM
+           =================================== */
+        #notification-container { 
+            position: fixed; 
+            top: var(--space-4); 
+            right: var(--space-4); 
+            z-index: 10000; 
+            display: flex; 
+            flex-direction: column; 
+            gap: var(--space-2); 
+            align-items: flex-end; 
+        }
+        
+        .notification { 
+            background-color: var(--surface-color); 
+            color: var(--text-color); 
+            padding: var(--space-2) var(--space-4); 
+            border-radius: 4px; 
+            box-shadow: var(--shadow-lg); 
+            border-left: 3px solid var(--accent-yellow); 
+            opacity: 0; 
+            transform: translateX(100%); 
+            transition: all var(--transition-base); 
+            font-weight: 600; 
+            font-size: var(--text-sm);
+            max-width: 400px;
+        }
+        
+        .notification.show { 
+            opacity: 1; 
+            transform: translateX(0); 
+        }
+        
+        .notification.success { 
+            background-color: var(--success-color); 
+            color: white; 
+            border-color: #1a9c77; 
+        }
+        
+        .notification.error { 
+            background-color: var(--danger-color); 
+            color: white; 
+            border-color: #b32a38; 
+        }
+        
+        .notification.warning { 
+            background-color: var(--accent-yellow); 
+            color: var(--bg-color); 
+            border-color: #d39e00; 
+            font-weight: 700; 
+        }
+        
+        .notification.info { 
+            background-color: var(--surface-hover); 
+            color: var(--text-color); 
+            border-color: var(--border-color); 
+        }
 
-        .sidebar { width: var(--sidebar-width); min-width: var(--sidebar-width); background: var(--surface-color); border-right: 1px solid var(--border-color); padding: 1.5rem; display: flex; flex-direction: column; height: 100vh; position: sticky; top: 0; transition: min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1000; }
-        body.sidebar-expanded .sidebar { min-width: 600px; }
-        .main-content { flex-grow: 1; padding-bottom: 80px; transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);}
-        .sidebar-header { margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-shrink: 0;}
-        .sidebar-header h1 { margin: 0; font-size: 1.8rem; font-weight: 700; background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        #sidebar-toggle-btn { display: none; background: var(--surface-hover); color: var(--text-color); border: 1px solid var(--border-color); padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; align-items: center; gap: 0.5rem; }
-        .folder-controls { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem; flex-shrink: 0;}
-        .folder-search-input { width: 100%; background: var(--glass-bg); color: var(--text-color); border: 1px solid var(--glass-border); border-radius: 8px; padding: 0.5rem 0.75rem; font-size: 0.9rem; }
-        .folder-sort-buttons { display: flex; gap: 0.5rem; }
-        .folder-sort-buttons button { flex-grow: 1; background: var(--surface-hover); color: var(--text-muted); border: 1px solid var(--glass-border); padding: 0.5rem; border-radius: 8px; cursor: pointer; font-weight: 600; }
-        .folder-sort-buttons button.active { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+        /* ===================================
+           SIDEBAR NAVIGATION
+           =================================== */
+        .sidebar { 
+            width: var(--sidebar-width); 
+            min-width: var(--sidebar-width); 
+            background: var(--surface-color); 
+            border-right: 1px solid var(--border-color); 
+            padding: var(--space-4); 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            position: sticky; 
+            top: 0; 
+            transition: min-width var(--transition-slow), transform var(--transition-slow); 
+            z-index: 1000; 
+        }
+        
+        body.sidebar-expanded .sidebar { 
+            min-width: 600px; 
+        }
+        
+        .main-content { 
+            flex-grow: 1; 
+            padding-bottom: 80px; 
+            transition: margin-left var(--transition-base);
+        }
+        
+        .sidebar-header { 
+            margin-bottom: var(--space-4); 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            gap: var(--space-3); 
+            flex-shrink: 0;
+        }
+        
+        .sidebar-header h1 { 
+            margin: 0; 
+            font-size: var(--text-3xl); 
+            font-weight: 700; 
+            color: var(--text-color); 
+            letter-spacing: -0.02em;
+        }
+        #sidebar-toggle-btn { display: none; background: var(--surface-hover); color: var(--text-color); border: 1px solid var(--border-color); padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.9rem; font-weight: 600; align-items: center; gap: 0.5rem; }
+        /* ===================================
+           FOLDER CONTROLS & BUTTONS
+           =================================== */
+        .folder-controls { 
+            display: flex; 
+            flex-direction: column; 
+            gap: var(--space-2); 
+            margin-bottom: var(--space-3); 
+            flex-shrink: 0;
+        }
+        
+        .folder-search-input { 
+            width: 100%; 
+            background: var(--bg-color); 
+            color: var(--text-color); 
+            border: 1px solid var(--border-color); 
+            border-radius: 4px; 
+            padding: var(--space-2) var(--space-3); 
+            font-size: var(--text-sm); 
+            font-family: var(--font-body);
+            transition: all var(--transition-fast);
+        }
+        
+        .folder-search-input::placeholder {
+            color: var(--text-muted);
+            opacity: 0.7;
+        }
+        
+        .folder-search-input:hover {
+            border-color: var(--text-muted);
+        }
+        
+        .folder-search-input:focus {
+            border-color: var(--accent-yellow);
+            background: var(--bg-color);
+        }
+        
+        .folder-sort-buttons { 
+            display: flex; 
+            gap: var(--space-1); 
+        }
+        
+        .folder-sort-buttons button { 
+            flex-grow: 1; 
+            background: var(--surface-hover); 
+            color: var(--text-muted); 
+            border: 1px solid var(--border-color); 
+            padding: var(--space-2); 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-weight: 600; 
+            font-size: var(--text-sm);
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            gap: 0.25rem; 
+            font-family: var(--font-monospace); 
+            transition: all var(--transition-fast);
+        }
+        
+        .folder-sort-buttons button:hover {
+            background: var(--surface-color);
+            border-color: var(--text-muted);
+        }
+        
+        .folder-sort-buttons button.active { 
+            background: var(--surface-color); 
+            color: var(--accent-yellow); 
+            border-color: var(--accent-yellow); 
+        }
+        
+        .folder-sort-buttons button svg { 
+            width: 16px; 
+            height: 16px; 
+        }
         .sidebar-actions { display: flex; gap: 0.5rem; align-items: center; }
-        .sidebar-actions button { background: none; border: 1px solid var(--glass-border); color: var(--text-color); border-radius: 8px; padding: 0.5rem 0.75rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.3s; }
-        .sidebar-actions button:hover { background: var(--surface-color); border-color: var(--primary-color); }
+        .sidebar-actions button { background: none; border: 1px solid var(--border-color); color: var(--text-color); border-radius: 4px; padding: 0.5rem 0.75rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 150ms ease-out; }
+        .sidebar-actions button:hover { background: var(--surface-hover); border-color: var(--text-muted); }
         .folder-tree-container { flex-grow: 1; overflow-y: auto; min-height: 0; }
         .folder-tree, .folder-tree ul { list-style: none; padding: 0; margin: 0; }
-        .folder-tree li { padding-left: 20px; position: relative; }
-        .folder-tree > li:first-child { padding-left: 0; }
-        .folder-item { display: flex; align-items: center; padding: 8px; border-radius: 8px; transition: background-color 0.2s; position: relative; }
+        .folder-item { display: flex; align-items: center; padding: 6px 8px; border-radius: 4px; transition: background-color 150ms ease-out; position: relative; }
         .folder-item:hover { background-color: var(--surface-hover); }
-        .folder-item.active { background-color: var(--primary-color); color: white; font-weight: 600; }
-        .toggle-btn { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); cursor: pointer; font-size: 1.1rem; line-height: 1; user-select: none; }
-        .toggle-btn.empty { visibility: hidden; }
-        .folder-link { flex-grow: 1; text-decoration: none; color: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-left: 25px; cursor: pointer; }
-        .folder-actions { margin-left: auto; display: flex; opacity: 1; }
-        .folder-action-btn { background: none; border: none; color: inherit; cursor: pointer; padding: 4px; border-radius: 4px; font-size: 0.9rem; }
+        .folder-item.active { background-color: var(--surface-hover); font-weight: 600; color: var(--text-color); }
+        .folder-link { flex-grow: 1; text-decoration: none; color: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; }
+        .folder-link svg { width: 16px; height: 16px; flex-shrink: 0; }
+        .folder-actions { margin-left: auto; display: flex; }
+        .folder-action-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px; border-radius: 4px; display: flex; align-items: center; }
+        .folder-action-btn svg { width: 14px; height: 14px; }
         .folder-action-btn:hover { background-color: rgba(255,255,255,0.15); }
-        .folder-tree li.collapsed > ul { display: none; }
-        .folder-tree li.is-hidden { display: none; }
-        .folder-tree li:not(.collapsed) > .folder-item > .toggle-btn::before { content: '▾'; }
-        .folder-tree li.collapsed > .folder-item > .toggle-btn::before { content: '▸'; }
-        .folder-tree li.no-children > .folder-item > .toggle-btn { visibility: hidden; }
-        #create-folder-btn { width: 100%; background: var(--gradient-secondary); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 12px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.3s; box-shadow: var(--shadow-sm); margin-top: 1.5rem; flex-shrink: 0;}
-        #create-folder-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-        .breadcrumbs { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1rem 2rem; background: var(--surface-color); border-bottom: 1px solid var(--border-color); flex-wrap: wrap; }
-        .breadcrumb-links { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; overflow: hidden; flex-grow: 1; }
-        .breadcrumb-links a, .breadcrumb-links span { color: var(--text-muted); text-decoration: none; font-weight: 500; white-space: nowrap; }
-        .breadcrumb-links a:hover { color: var(--text-color); }
-        .breadcrumb-links span:last-child { color: var(--text-color); font-weight: 700; text-overflow: ellipsis; overflow: hidden; }
-        .gallery-sort-controls { display: flex; gap: 0.5rem; flex-shrink: 0; }
-        .gallery-sort-controls .sort-btn { flex-shrink: 0; padding: 0.5rem 1rem; font-size: 0.85rem; background: var(--surface-hover); color: var(--text-color); font-weight: 600; text-decoration: none; border-radius: 8px; border: 1px solid var(--glass-border); transition: all 0.3s; }
-        .gallery-sort-controls .sort-btn:hover { background: var(--surface-color); }
-        .gallery-sort-controls .sort-btn.active { background: var(--primary-color); color: white; border-color: var(--primary-color);}
+
+        #folder-search-nav, #folder-search-move {
+            font-family: var(--font-monospace);
+        }
+        .move-here-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            margin-left: auto;
+            transition: all 150ms ease-out;
+        }
+        .move-here-btn:hover:not([disabled]) {
+            background-color: var(--surface-hover);
+            color: var(--accent-yellow);
+        }
+        .move-here-btn[disabled] {
+            opacity: 0.2;
+            cursor: not-allowed;
+        }
+
+        .folder-toggle { color: var(--text-muted); cursor: pointer; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .folder-toggle.empty { visibility: hidden; }
+        .folder-toggle svg { transition: transform 150ms ease-out; }
+        li:not(.collapsed) .folder-toggle svg { transform: rotate(90deg); }
+        #create-folder-btn { width: 100%; background: var(--surface-hover); color: var(--text-color); border: 1px solid var(--border-color); padding: 0.75rem 1.5rem; border-radius: 4px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 150ms ease-out; margin-top: 1.5rem; flex-shrink: 0; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        #create-folder-btn:hover { background: var(--surface-color); border-color: var(--accent-yellow); color: var(--accent-yellow); }
+        #create-folder-btn svg { width: 16px; height: 16px; }
+        /* ===================================
+           BREADCRUMBS & HEADER CONTROLS
+           =================================== */
+        .breadcrumbs { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            gap: var(--space-3); 
+            padding: var(--space-3) var(--space-5); 
+            background: var(--surface-color); 
+            border-bottom: 1px solid var(--border-color); 
+            flex-wrap: wrap; 
+        }
+        
+        .breadcrumb-links { 
+            display: flex; 
+            align-items: center; 
+            gap: var(--space-1); 
+            flex-wrap: wrap; 
+            overflow: hidden; 
+            flex-grow: 1; 
+        }
+        
+        .breadcrumb-links a, 
+        .breadcrumb-links span { 
+            color: var(--text-muted); 
+            text-decoration: none; 
+            font-weight: 500; 
+            font-size: var(--text-sm);
+            white-space: nowrap; 
+            transition: color var(--transition-fast);
+        }
+        
+        .breadcrumb-links a:hover { 
+            color: var(--text-color); 
+        }
+        
+        .breadcrumb-links span:last-child { 
+            color: var(--text-color); 
+            font-weight: 700; 
+            text-overflow: ellipsis; 
+            overflow: hidden; 
+        }
+        
+        /* Gallery Sort Controls - Standardized Buttons */
+        .gallery-sort-controls { 
+            display: flex; 
+            gap: var(--space-2); 
+            flex-shrink: 0; 
+        }
+        
+        .gallery-sort-controls .sort-btn { 
+            flex-shrink: 0; 
+            padding: var(--space-2) var(--space-3); 
+            font-size: var(--text-sm); 
+            background: transparent; 
+            color: var(--text-muted); 
+            font-weight: 600; 
+            text-decoration: none; 
+            border-radius: 4px; 
+            border: 1px solid var(--border-color); 
+            transition: all var(--transition-fast); 
+            display: flex; 
+            align-items: center; 
+            gap: var(--space-1); 
+            cursor: pointer;
+        }
+        
+        .gallery-sort-controls .sort-btn:hover { 
+            background: var(--surface-hover); 
+            color: var(--text-color); 
+            border-color: var(--text-muted); 
+        }
+        
+        .gallery-sort-controls .sort-btn.active {
+            background: var(--surface-color);
+            color: var(--accent-yellow);
+            border-color: var(--accent-yellow);
+            font-weight: 700;
+        }
+        
+        .gallery-sort-controls .sort-btn svg { 
+            width: 16px; 
+            height: 16px; 
+        }
         
         /* Results Count Indicator */
         .results-count { 
-            padding: 0.5rem 1rem; 
-            background: var(--glass-background); 
-            border: 1px solid var(--glass-border); 
-            border-radius: 8px; 
-            font-size: 0.85rem;
+            padding: var(--space-2) var(--space-3); 
+            background: var(--surface-color); 
+            border: 1px solid var(--border-color); 
+            border-radius: 4px; 
+            font-size: var(--text-sm);
+            font-family: var(--font-monospace);
             color: var(--text-muted);
             flex-shrink: 0;
         }
-        .results-count .count-label { display: inline-block; }
-        .results-count strong { color: var(--text-color); font-weight: 700; }
+        
+        .results-count .count-label { 
+            display: inline-block; 
+        }
+        
+        .results-count strong { 
+            color: var(--text-color); 
+            font-weight: 700; 
+        }
 
+        /* ===================================
+           FILTER PANEL - INKWELL DESIGN
+           =================================== */
+        #filter-panel { 
+            position: fixed; 
+            top: 0; 
+            right: 0; 
+            width: 450px; 
+            height: 100vh; 
+            background: var(--surface-color); 
+            border-left: 1px solid var(--border-color); 
+            transform: translateX(100%); 
+            transition: transform var(--transition-base); 
+            z-index: 2000; 
+            display: flex; 
+            flex-direction: column; 
+            box-shadow: -4px 0 24px rgba(0, 0, 0, 0.4); 
+        }
         
-        /* Modern Filter Panel Styles */
-        #filter-panel { position: fixed; top: 0; right: 0; width: 450px; height: 100vh; background: var(--surface-color); border-left: 1px solid var(--border-color); transform: translateX(100%); transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 2000; display: flex; flex-direction: column; box-shadow: -4px 0 24px rgba(0, 0, 0, 0.5); }
-        #filter-panel.open { transform: translateX(0); }
-        #filter-backdrop { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1999; }
-        #filter-backdrop.visible { opacity: 1; pointer-events: auto; }
+        #filter-panel.open { 
+            transform: translateX(0); 
+        }
         
-        .filter-panel-header { padding: 1.5rem; border-bottom: 1px solid var(--border-color); background: var(--gradient-primary); color: white; flex-shrink: 0; position: sticky; top: 0; z-index: 10; }
-        .filter-panel-header h2 { margin: 0; font-size: 1.3rem; font-weight: 700; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-        .filter-panel-header h2 .filter-count-badge { background: rgba(255, 255, 255, 0.2); padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 600; min-width: 24px; text-align: center; }
-        #filter-close-btn { background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: white; padding: 0.5rem; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: all 0.3s; }
-        #filter-close-btn:hover { background: rgba(255, 255, 255, 0.2); transform: rotate(90deg); }
+        #filter-backdrop { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100vw; 
+            height: 100vh; 
+            background: rgba(0, 0, 0, 0.6); 
+            backdrop-filter: none; 
+            opacity: 0; 
+            pointer-events: none; 
+            transition: opacity var(--transition-base); 
+            z-index: 1999; 
+        }
         
-        .filter-panel-content { flex: 1; overflow-y: auto; padding: 1.5rem; }
-        .filter-panel-content::-webkit-scrollbar { width: 8px; }
-        .filter-panel-content::-webkit-scrollbar-track { background: var(--surface-hover); border-radius: 4px; }
-        .filter-panel-content::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
-        .filter-panel-content::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+        #filter-backdrop.visible { 
+            opacity: 1; 
+            pointer-events: auto; 
+        }
         
-        .filter-form-grid { display: flex; flex-direction: column; gap: 1.5rem; }
+        .filter-panel-header { 
+            padding: var(--space-4); 
+            border-bottom: 1px solid var(--border-color); 
+            background: var(--surface-hover); 
+            color: var(--text-color); 
+            flex-shrink: 0; 
+        }
+        
+        .filter-panel-header h2 { 
+            margin: 0; 
+            font-size: var(--text-2xl); 
+            font-weight: 700; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            gap: var(--space-3); 
+        }
+        
+        .filter-panel-header h2 .filter-count-badge { 
+            background: var(--accent-yellow); 
+            color: var(--bg-color); 
+            padding: 2px var(--space-2); 
+            border-radius: 4px; 
+            font-size: var(--text-sm); 
+            font-weight: 700; 
+        }
+        
+        #filter-close-btn { 
+            background: transparent; 
+            border: none; 
+            color: var(--text-muted); 
+            width: 36px; 
+            height: 36px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 1.5rem; 
+            transition: all var(--transition-fast); 
+        }
+        
+        #filter-close-btn:hover { 
+            background: var(--surface-color); 
+            color: var(--text-color); 
+        }
+        
+        .filter-panel-content { 
+            flex: 1; 
+            overflow-y: auto; 
+            padding: var(--space-4); 
+        }
+        
+        .filter-panel-content::-webkit-scrollbar { 
+            width: 8px; 
+        }
+        
+        .filter-panel-content::-webkit-scrollbar-track { 
+            background: var(--surface-hover); 
+            border-radius: 4px; 
+        }
+        
+        .filter-panel-content::-webkit-scrollbar-thumb { 
+            background: var(--border-color); 
+            border-radius: 4px; 
+        }
+        
+        .filter-panel-content::-webkit-scrollbar-thumb:hover { 
+            background: var(--text-muted); 
+        }
+        
+        .filter-form-grid { 
+            display: flex; 
+            flex-direction: column; 
+            gap: var(--space-4); 
+        }
+        
         .filter-group { 
             display: flex; 
             flex-direction: column; 
-            gap: 0.5rem;  /* Modern gap property replaces label margin-bottom */
+            gap: var(--space-2);
         }
-        /* Filter Form Controls - applies to .filter-panel-content and .filter-panel-footer */
+        
+        /* Form Labels - Consistent styling */
         .filter-panel-content label { 
-            font-weight: 600; 
+            font-weight: 700; 
             color: var(--text-muted); 
-            font-size: 0.85rem; 
+            font-size: var(--text-xs); 
             text-transform: uppercase; 
             letter-spacing: 0.5px;
             display: block;
         }
+        
+        /* Form Controls - Unified appearance */
         .filter-panel-content select, 
         .filter-panel-content input[type="text"], 
-        .filter-panel-content input[type="number"], 
-        .filter-panel-footer button, 
-        .filter-panel-footer a { 
-            background: var(--glass-bg); 
+        .filter-panel-content input[type="number"] { 
+            background: var(--bg-color); 
             color: var(--text-color); 
-            border: 1px solid var(--glass-border); 
-            border-radius: 8px; 
-            padding: 0.75rem 1rem; 
-            font-size: 0.9rem; 
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-            backdrop-filter: blur(10px);
-            font-family: inherit;
+            border: 1px solid var(--border-color); 
+            border-radius: 4px; 
+            padding: var(--space-2) var(--space-3); 
+            font-size: var(--text-sm); 
+            transition: all var(--transition-fast); 
+            font-family: var(--font-body);
         }
+        
         .filter-panel-content input[type="text"]::placeholder {
             color: var(--text-muted);
-            opacity: 0.5;
+            opacity: 0.6;
         }
+        
         .filter-panel-content select[multiple] { 
             min-height: 120px; 
-            padding: 0.5rem;
+            padding: var(--space-1);
         }
+        
         .filter-panel-content select[multiple] option {
-            padding: 0.5rem;
+            padding: var(--space-1);
             border-radius: 4px;
             margin-bottom: 2px;
         }
+        
         .filter-panel-content select[multiple] option:checked {
-            background: var(--primary-color) linear-gradient(0deg, var(--primary-color) 0%, var(--primary-color) 100%);
-            color: white;
+            background: var(--accent-yellow);
+            color: var(--bg-color);
             font-weight: 600;
         }
+        
         .filter-panel-content input[type="text"]:focus, 
         .filter-panel-content input[type="number"]:focus, 
         .filter-panel-content select:focus { 
-            outline: none; 
-            border-color: var(--primary-color); 
-            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
-            background: rgba(0, 123, 255, 0.05);
+            border-color: var(--accent-yellow); 
+            background: var(--bg-color);
         }
+        
         .filter-panel-content input[type="text"]:hover, 
         .filter-panel-content input[type="number"]:hover, 
         .filter-panel-content select:hover {
-            border-color: rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.03);
+            border-color: var(--text-muted);
         }
+        
+        /* Number inputs - Monospace for precision */
         .filter-panel-content input[type="number"] { 
             font-variant-numeric: tabular-nums; 
-            font-family: 'SF Mono', 'Monaco', 'Consolas', 'Courier New', monospace;
-            letter-spacing: 0.5px;
+            font-family: var(--font-monospace);
+            letter-spacing: 0.3px;
         }
+        
         .filter-panel-content input[type="number"]::-webkit-inner-spin-button, 
         .filter-panel-content input[type="number"]::-webkit-outer-spin-button { 
             opacity: 0.5;
-            transition: opacity 0.2s;
+            transition: opacity var(--transition-base);
         }
+        
         .filter-panel-content input[type="number"]:hover::-webkit-inner-spin-button, 
         .filter-panel-content input[type="number"]:hover::-webkit-outer-spin-button { 
             opacity: 1; 
         }
-        .filter-panel-footer button { 
-            background: var(--primary-color); 
-            cursor: pointer; 
-            font-weight: 600; 
-            color: white; 
-            border: 1px solid var(--primary-color); 
-        }
-        .filter-panel-footer button:hover { 
-            background: var(--primary-hover); 
-            transform: translateY(-1px); 
-        }
-        button.refresh-btn { 
-            background: var(--workflow-color); 
-            border-color: var(--workflow-color); 
-        }
+        
         .filter-panel-footer a { 
             text-decoration: none; 
             text-align: center; 
             color: var(--text-muted); 
         }
+        
         .filter-panel-footer a:hover { 
             background: var(--surface-hover); 
             color: var(--text-color); 
         }
+        /* ===================================
+           TOGGLE SWITCH (FAVORITES FILTER)
+           =================================== */
         .filter-group-inline { 
             display: flex; 
-            align-items: center; 
-            gap: 0.75rem; 
-            margin-bottom: 0;  /* No extra margin, gap handles spacing */
+            align-items: center;
+            gap: var(--space-2); 
+            margin-bottom: 0;
         }
+        
         .filter-group-inline input[type="checkbox"] { 
-            width: 18px; 
-            height: 18px; 
-            accent-color: var(--primary-color); 
-            flex-shrink: 0;  /* Prevent checkbox from shrinking */
+            width: 20px; 
+            height: 20px;
+            accent-color: var(--accent-yellow);
+            flex-shrink: 0;
+            cursor: pointer;
+            border-radius: 3px;
         }
+        
         .filter-group-inline label {
-            /* Make checkbox labels consistent with other labels */
             font-weight: 600;
             color: var(--text-muted);
-            font-size: 0.85rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 0;  /* Override default label margin */
+            font-size: var(--text-sm);
+            margin-bottom: 0;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        /* Toggle Switch Container */
+        .toggle-switch-container {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
         }
         
-        /* Filter Toggle Button in Header */
-        #filter-toggle-btn { position: relative; background: var(--gradient-primary); color: white; border: none; padding: 0.65rem 1.25rem; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; transition: all 0.3s; box-shadow: var(--shadow-sm); }
-        #filter-toggle-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
-        #filter-toggle-btn .filter-icon { font-size: 1.1rem; transition: transform 0.3s; }
-        #filter-toggle-btn.active .filter-icon { transform: rotate(180deg); }
-        #filter-toggle-btn .active-count-badge { position: absolute; top: -6px; right: -6px; background: var(--danger-color); color: white; border-radius: 50%; min-width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; padding: 0 6px; box-shadow: 0 2px 8px rgba(220, 53, 69, 0.4); animation: pulse-badge 2s infinite; }
-        @keyframes pulse-badge { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
-        
-        /* Active Filter Pills */
-        .active-filters-container { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0.75rem 1rem; background: rgba(0, 123, 255, 0.05); border-radius: 8px; margin-bottom: 1.5rem; }
-        .active-filters-container:empty { display: none; }
-        .active-filter-pill { display: inline-flex; align-items: center; gap: 0.5rem; background: var(--primary-color); color: white; padding: 0.4rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-        .active-filter-pill:hover { background: var(--primary-hover); transform: scale(1.05); }
-        .active-filter-pill .remove-icon { font-size: 1rem; font-weight: 700; }
-        #clear-all-filters-btn { background: var(--danger-color); color: white; border: none; padding: 0.4rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
-        #clear-all-filters-btn:hover { background: var(--danger-hover); }
-        
-        /* Workflow Metadata Section */
-        .workflow-filters-section { display: contents; }
-        .workflow-section-header { 
-            margin: 1.5rem 0 1rem 0;  /* Consistent top margin with grid gap */
-            padding: 0.75rem 1rem; 
-            background: linear-gradient(90deg, rgba(40, 167, 69, 0.1) 0%, rgba(40, 167, 69, 0.05) 50%, transparent 100%); 
-            border-left: 3px solid var(--workflow-color); 
-            border-radius: 6px; 
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+            cursor: pointer;
+            flex-shrink: 0;
         }
-        .workflow-section-header h3 { 
-            margin: 0; 
-            font-size: 0.95rem; 
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .toggle-switch-handle {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--bg-color);
+            border: 2px solid var(--border-color);
+            border-radius: 24px;
+            transition: all var(--transition-fast);
+        }
+        
+        .toggle-switch-handle::before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: var(--text-muted);
+            border-radius: 50%;
+            transition: all var(--transition-fast);
+        }
+        
+        .toggle-switch input:checked + .toggle-switch-handle {
+            background-color: var(--accent-yellow);
+            border-color: var(--accent-yellow);
+        }
+        
+        .toggle-switch input:checked + .toggle-switch-handle::before {
+            transform: translateX(20px);
+            background-color: var(--bg-color);
+        }
+        
+        .toggle-switch:hover .toggle-switch-handle {
+            border-color: var(--text-muted);
+        }
+        
+        .toggle-switch input:checked:hover + .toggle-switch-handle {
+            border-color: var(--accent-yellow);
+            background-color: var(--accent-yellow);
+            filter: brightness(1.1);
+        }
+        
+        .toggle-switch-container label {
+            font-weight: 600;
+            color: var(--text-muted);
+            font-size: var(--text-sm);
+            margin-bottom: 0;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        /* ===================================
+           ACTIVE FILTER PILLS
+           =================================== */
+        .active-filters-container { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: var(--space-1); 
+            padding: 0; 
+            border-radius: 4px; 
+            margin-bottom: var(--space-4); 
+        }
+        
+        .active-filters-container:empty { 
+            display: none; 
+        }
+        
+        .active-filter-pill { 
+            display: inline-flex; 
+            align-items: center; 
+            gap: var(--space-1); 
+            background: var(--surface-hover); 
+            color: var(--text-color); 
+            padding: 0.35rem var(--space-2); 
+            border-radius: 4px; 
+            font-size: var(--text-xs); 
+            font-weight: 600; 
+            cursor: pointer; 
+            transition: all var(--transition-fast);
+            border: 1px solid var(--border-color);
+        }
+        
+        .active-filter-pill:hover { 
+            background: var(--surface-color);
+            border-color: var(--text-muted);
+            color: var(--text-color);
+        }
+        
+        .active-filter-pill .remove-icon { 
+            font-size: 1rem; 
             font-weight: 700; 
-            color: var(--workflow-color); 
+            opacity: 0.7;
+        }
+        
+        .active-filter-pill:hover .remove-icon {
+            opacity: 1;
+        }
+        
+        #clear-all-filters-btn { 
+            background: var(--surface-hover); 
+            color: var(--text-muted); 
+            border: 1px solid var(--border-color); 
+            padding: 0.35rem var(--space-2); 
+            border-radius: 4px; 
+            font-size: var(--text-xs); 
+            font-weight: 600; 
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        
+        #clear-all-filters-btn:hover { 
+            background: var(--surface-color);
+            border-color: var(--text-muted);
+            color: var(--text-color);
+        }
+        /* ===================================
+           WORKFLOW METADATA FILTERS
+           =================================== */
+        .workflow-filters-section { 
+            display: contents; 
+        }
+        
+        .workflow-section-header {
+            margin: var(--space-4) 0 var(--space-3) 0;
+            padding-bottom: var(--space-2);
+            border-bottom: 1px solid var(--border-color);
+            background: none;
+            border-left: none;
+            border-radius: 0;
+        }
+        
+        .workflow-section-header h3 {
+            margin: 0; 
+            font-size: var(--text-xs); 
+            font-weight: 700; 
+            color: var(--text-muted); 
             text-transform: uppercase; 
             letter-spacing: 1px; 
             display: flex; 
             align-items: center; 
-            gap: 0.5rem; 
+            gap: var(--space-1); 
         }
         
-        /* Range Filter Pairs */
+        /* Range Filter Pairs - Improved Visual Grouping */
         .filter-range-pair { 
             display: grid; 
             grid-template-columns: 1fr 1fr; 
-            gap: 0.75rem;
-            /* Visual grouping for min/max pairs */
-            padding: 1rem;
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
+            gap: var(--space-2);
+            padding: var(--space-3);
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
             position: relative;
         }
-        .filter-range-pair .filter-group { position: relative; }
+        
+        .filter-range-pair .filter-group { 
+            position: relative; 
+        }
+        
         .filter-range-pair .filter-group:first-child::after { 
-            content: '↔'; 
+            content: '→'; 
             position: absolute; 
-            right: -0.5rem; 
+            right: calc(-1 * var(--space-2) / 2); 
             top: 50%; 
-            transform: translateY(-50%) translateY(0.5rem); 
-            color: var(--text-color); 
-            font-size: 1.2rem; 
+            transform: translateY(-50%) translateY(var(--space-2)); 
+            color: var(--text-muted);
+            font-size: 1rem; 
             font-weight: 700; 
-            opacity: 0.4; 
+            opacity: 0.5; 
             z-index: 1; 
             pointer-events: none; 
         }
-        .filter-range-pair .filter-group label { color: var(--text-muted); }
+        
+        .filter-range-pair .filter-group label { 
+            color: var(--text-muted); 
+        }
+        
         .filter-range-pair .filter-group:first-child label { 
-            color: var(--success-color); 
+            color: var(--text-color); 
             font-weight: 700;
         }
+        
         .filter-range-pair .filter-group:last-child label { 
-            color: var(--danger-color); 
+            color: var(--text-color); 
             font-weight: 700;
         }
         
@@ -322,132 +887,225 @@
         .dimension-filters { 
             display: grid; 
             grid-template-columns: 1fr 1fr; 
-            gap: 1rem 0.75rem;  /* row-gap column-gap */
-            padding: 1rem; 
-            background: rgba(255, 255, 255, 0.02); 
-            border: 1px solid rgba(255, 255, 255, 0.05); 
-            border-radius: 8px;
+            gap: var(--space-3) var(--space-2);
+            padding: var(--space-3); 
+            background: var(--bg-color); 
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
         }
+        
         .dimension-filters .filter-group label { 
-            font-size: 0.85rem;  /* Match standard label size */
+            font-size: var(--text-xs);
             display: flex; 
             align-items: center; 
             gap: 0.4rem; 
         }
-        .dimension-filters .filter-group input { 
+        /* ===================================
+           FILTER PANEL FOOTER
+           =================================== */
+        .filter-panel-footer { 
+            padding: var(--space-3) var(--space-4); 
+            border-top: 1px solid var(--border-color); 
+            background: var(--bg-color); 
+            display: flex; 
+            gap: var(--space-2); 
+            flex-shrink: 0; 
+        }
+        
+        .filter-panel-footer button { 
+            flex: 1; 
+            padding: var(--space-2) var(--space-4); 
+            border-radius: 4px; 
+            font-weight: 600; 
+            font-size: var(--text-sm); 
+            border: 1px solid var(--accent-yellow); 
+            background: var(--accent-yellow); 
+            color: var(--bg-color); 
+            cursor: pointer; 
+            transition: all var(--transition-fast); 
+        }
+        
+        .filter-panel-footer button:hover { 
+            background: transparent; 
+            color: var(--accent-yellow); 
+        }
+        
+        .filter-panel-footer a { 
+            flex: 0.5; 
+            padding: var(--space-2) var(--space-4); 
+            border-radius: 4px; 
+            font-weight: 600; 
+            font-size: var(--text-sm); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            border: 1px solid var(--border-color); 
             background: var(--surface-color); 
-            border-color: rgba(255, 255, 255, 0.08);  /* Slightly more visible */
+            color: var(--text-muted); 
+            text-decoration: none; 
+            transition: all var(--transition-fast); 
         }
         
-        /* Panel Footer Actions */
-        .filter-panel-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); background: var(--surface-hover); display: flex; gap: 0.75rem; flex-shrink: 0; }
-        .filter-panel-footer button { flex: 1; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; font-size: 0.95rem; }
-        .filter-panel-footer a { flex: 0.5; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; justify-content: center; }
-        .filter-actions-row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
-        .filter-actions-row > a, .filter-actions-row > button { display: inline-flex; align-items: center; justify-content: center; }
-        .filter-actions-row button[type="submit"] { padding-left: 0.8rem; padding-right: 0.8rem; }
-        .mobile-actions-row { display: flex; gap: 0.75rem; }
-        .mobile-actions-row > * { flex-grow: 1; text-align: center; justify-content: center; }
-        .mobile-actions-row button { padding-left: 0.8rem; padding-right: 0.8rem; }
+        .filter-panel-footer a:hover { 
+            background: var(--surface-hover); 
+            color: var(--text-color); 
+            border-color: var(--text-muted); 
+        }
         
-        /* Tom-Select Multi-Select Dropdown Styling */
-        .ts-wrapper { width: 100%; }
+        .filter-actions-row { 
+            display: flex; 
+            gap: var(--space-2); 
+            flex-wrap: wrap; 
+        }
+        
+        .filter-actions-row > a, 
+        .filter-actions-row > button { 
+            display: inline-flex; 
+            align-items: center; 
+            justify-content: center; 
+        }
+        
+        .filter-actions-row button[type="submit"] { 
+            padding-left: var(--space-2); 
+            padding-right: var(--space-2); 
+        }
+        
+        .mobile-actions-row { 
+            display: flex; 
+            gap: var(--space-2); 
+        }
+        
+        .mobile-actions-row > * { 
+            flex-grow: 1; 
+            text-align: center; 
+            justify-content: center; 
+        }
+        
+        .mobile-actions-row button { 
+            padding-left: var(--space-2); 
+            padding-right: var(--space-2); 
+        }
+
+        /* ===================================
+           TOM-SELECT DROPDOWN THEMING
+           =================================== */
+        .ts-wrapper { 
+            width: 100%; 
+        }
+        
         .ts-control { 
-            background: var(--glass-bg) !important; 
-            border: 1px solid var(--glass-border) !important; 
-            border-radius: 8px !important; 
-            backdrop-filter: blur(10px) !important; 
-            padding: 0.5rem !important;
-            min-height: 42px !important;
+            background: var(--bg-color) !important; 
+            border: 1px solid var(--border-color) !important; 
+            border-radius: 4px !important; 
+            padding: var(--space-2) var(--space-3) !important;
+            box-shadow: none !important;
+            transition: all var(--transition-fast) !important;
         }
-        .ts-control, .ts-control input { 
+        
+        .ts-control, 
+        .ts-control input { 
             color: var(--text-color) !important; 
-            font-size: 0.9rem !important;
+            font-size: var(--text-sm) !important; 
+            font-family: var(--font-monospace) !important;
         }
+
         .ts-control input::placeholder {
             color: var(--text-muted) !important;
-            opacity: 0.6 !important;
+            opacity: 0.7 !important;
+        }
+        
+        /* Tom-Select Hover State */
+        .ts-wrapper:not(.focus) .ts-control:hover {
+            border-color: var(--text-muted) !important;
         }
         
         /* Tom-Select Dropdown Menu */
-        .ts-dropdown { 
-            background: var(--surface-color) !important; 
+        .ts-dropdown {
+            background: var(--surface-hover) !important; 
             border: 1px solid var(--border-color) !important; 
-            border-radius: 8px !important; 
-            box-shadow: var(--shadow-lg) !important;
+            border-radius: 4px !important; 
+            box-shadow: var(--shadow-md) !important;
             margin-top: 4px !important;
             z-index: 1000 !important;
         }
-        .ts-dropdown-content { 
-            background: var(--surface-color) !important;
+        
+        .ts-dropdown-content {
             color: var(--text-color) !important;
             max-height: 240px !important;
         }
         
         /* Tom-Select Options */
-        .ts-dropdown .option, .ts-dropdown .optgroup-header, .ts-dropdown .no-results, .ts-dropdown .create {
-            background: var(--surface-color) !important;
+        .ts-dropdown .option, 
+        .ts-dropdown .optgroup-header, 
+        .ts-dropdown .no-results, 
+        .ts-dropdown .create {
+            background: transparent !important;
             color: var(--text-color) !important;
-            padding: 0.65rem 0.85rem !important;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
-        }
-        .ts-dropdown .option:hover, .ts-dropdown .option.active {
-            background: var(--surface-hover) !important;
-            color: var(--text-color) !important;
-        }
-        .ts-dropdown .option.selected {
-            background: rgba(0, 123, 255, 0.15) !important;
-            color: var(--primary-color) !important;
-            font-weight: 600 !important;
-        }
-        .ts-dropdown .option.selected:hover {
-            background: rgba(0, 123, 255, 0.25) !important;
+            padding: var(--space-2) var(--space-3) !important;
+            border-bottom: none !important;
+            font-size: var(--text-sm) !important;
         }
         
-        /* Tom-Select Selected Items (Pills) */
-        .ts-control .item {
-            background: var(--primary-color) !important;
-            color: white !important;
-            border: none !important;
-            border-radius: 16px !important;
-            padding: 0.35rem 0.65rem !important;
-            margin: 0.15rem 0.25rem 0.15rem 0 !important;
-            font-size: 0.85rem !important;
-            font-weight: 600 !important;
-            display: inline-flex !important;
-            align-items: center !important;
-            gap: 0.4rem !important;
+        .ts-dropdown .option:hover, 
+        .ts-dropdown .option.active {
+            background: var(--surface-color) !important;
+            color: var(--text-color) !important;
         }
+        
+        .ts-dropdown .option.selected {
+            background: var(--bg-color) !important;
+            color: var(--accent-yellow) !important;
+            font-weight: 600 !important;
+        }
+        
+        .ts-dropdown .option.selected:hover {
+            background: var(--bg-color) !important;
+        }
+        
+        /* Tom-Select Selected Items (Multi-select Pills) */
+        .ts-control .item {
+            background: transparent !important;
+            color: var(--text-color) !important;
+            padding: 0 var(--space-1) 0 0 !important;
+            margin: 0 !important;
+            font-size: var(--text-sm) !important;
+            font-weight: 500 !important;
+            border-right: 1px solid var(--border-color);
+            margin-right: var(--space-1) !important;
+        }
+
         .ts-control .item .remove {
-            color: rgba(255, 255, 255, 0.8) !important;
+            color: var(--text-muted) !important;
             border: none !important;
             padding: 0 !important;
             margin-left: 0.25rem !important;
             font-size: 1rem !important;
             font-weight: 700 !important;
-            opacity: 0.8 !important;
+            opacity: 0.7 !important;
+            text-decoration: none !important;
+            transition: all var(--transition-fast) !important;
         }
+        
         .ts-control .item .remove:hover {
             background: none !important;
-            color: white !important;
+            color: var(--text-color) !important;
             opacity: 1 !important;
         }
         
         /* Tom-Select Focus State */
         .ts-wrapper.focus .ts-control {
-            border-color: var(--primary-color) !important;
-            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1) !important;
+            border-color: var(--accent-yellow) !important;
+            box-shadow: none !important;
         }
         
         /* Tom-Select Optgroup Headers */
         .ts-dropdown .optgroup-header {
-            background: var(--surface-hover) !important;
+            background: var(--bg-color) !important;
             color: var(--text-muted) !important;
             font-weight: 700 !important;
-            font-size: 0.8rem !important;
+            font-size: var(--text-xs) !important;
             text-transform: uppercase !important;
-            letter-spacing: 0.5px !important;
-            padding: 0.5rem 0.85rem !important;
+            letter-spacing: 1px !important;
             position: sticky !important;
             top: 0 !important;
             z-index: 1 !important;
@@ -457,263 +1115,393 @@
         .ts-dropdown .no-results {
             color: var(--text-muted) !important;
             font-style: italic !important;
+            font-size: var(--text-sm) !important;
         }
         
-        #gallery-anchor { display: block; position: relative; top: -20px; visibility: hidden; }
-        .gallery-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 2rem; padding: 2rem; min-height: 50vh; }
-        .gallery-item { background: var(--glass-bg); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; position: relative; border: 2px solid transparent; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); }
-        .gallery-item:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
-        .gallery-item.selected { border-color: var(--primary-color); box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.2); }
-    /* selection-checkmark removed in favor of new selection-overlay styles (OptimalUX) */
-        .thumbnail-link { cursor: pointer; }
-        .thumbnail-wrapper { position: relative; width: 100%; background: var(--surface-color); overflow: hidden; }
-        .thumbnail-wrapper img, .thumbnail-wrapper video { display: block; width: 100%; height: auto; transition: transform 0.3s; }
-        .gallery-item:hover .thumbnail-wrapper img, .gallery-item:hover .thumbnail-wrapper video { transform: scale(1.05); }
-    /* item-info replaced by OptimalUX card info hierarchy below */
-        .item-info p { margin: 0; word-wrap: break-word; font-size: 0.95rem; font-weight: 500; line-height: 1.4; margin-bottom: 0.75rem; }
-        .file-metadata { font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem 0.75rem; }
-        .file-metadata span { display: inline-flex; align-items: center; gap: 0.3rem; }
-        /* old item-actions removed; replaced by kebab menu and compact action buttons (see new CSS below) */
-
-        /* --- NEW: Card Information Hierarchy (v.OptimalUX) --- */
-        .item-info {
-            padding: 1.25rem;
-            flex-grow: 1;
+        /* ===================================
+           GALLERY GRID & CARDS
+           =================================== */
+        #gallery-anchor { 
+            display: block; 
+            position: relative; 
+            top: -20px; 
+            visibility: hidden; 
+        }
+        
+        .gallery-container { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); 
+            gap: var(--space-5); 
+            padding: var(--space-5); 
+            min-height: 50vh; 
+        }
+        
+        /* Gallery Cards - Inkwell Design */
+        .gallery-item {
+            background-color: var(--surface-color);
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            box-shadow: none;
+            transition: all var(--transition-fast);
+            backdrop-filter: none;
             display: flex;
             flex-direction: column;
         }
+        
+        .gallery-item:hover {
+            transform: none;
+            border-color: var(--text-muted);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .gallery-item.selected {
+            border-color: var(--accent-yellow);
+            box-shadow: inset 0 0 0 1px var(--accent-yellow);
+        }
+
+        .thumbnail-link { 
+            cursor: pointer; 
+        }
+        
+        .thumbnail-wrapper { 
+            position: relative; 
+            width: 100%; 
+            background: var(--bg-color); 
+            overflow: hidden; 
+            border-radius: 4px 4px 0 0;
+        }
+        
+        .thumbnail-wrapper img, 
+        .thumbnail-wrapper video { 
+            display: block; 
+            width: 100%; 
+            height: auto; 
+            transition: transform var(--transition-slow); 
+        }
+        
+        .gallery-item:hover .thumbnail-wrapper img, 
+        .gallery-item:hover .thumbnail-wrapper video { 
+            transform: scale(1.05); 
+        }
+        
+        /* Card Content - Information Hierarchy */
+        .item-info { 
+            padding: var(--space-3); 
+            flex-grow: 1; 
+            display: flex; 
+            flex-direction: column;
+            gap: var(--space-2);
+        }
+        
+        /* Prompt Preview - Primary Information */
         .prompt-preview {
+            font-size: var(--text-sm);
+            color: var(--text-color);
+            line-height: 1.5;
+            margin-bottom: var(--space-1);
             display: -webkit-box;
-            -webkit-line-clamp: 2; /* Show max 2 lines of prompt */
+            -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
             text-overflow: ellipsis;
-            line-height: 1.4;
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: var(--text-color);
-            margin-bottom: 0.5rem;
+            font-weight: 500;
         }
-        .filename-subtitle {
-            display: block;
-            font-size: 0.8rem;
+        
+        /* Filename - Secondary Information */
+        .item-filename {
+            font-weight: 600;
             color: var(--text-muted);
             word-break: break-all;
-            margin-bottom: 0.75rem;
+            font-family: var(--font-monospace);
+            font-size: var(--text-xs);
+            letter-spacing: 0.02em;
+        }
+        
+        /* Metadata Grid - Tertiary Information */
+        .item-metadata {
+            font-family: var(--font-monospace);
+            font-size: var(--text-xs);
+            color: var(--text-muted);
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.15rem var(--space-1);
+        }
+        
+        .item-metadata span { 
+            display: inline-flex; 
+            align-items: center; 
+            gap: 0.3rem; 
+        }
+        
+        .item-metadata .label { 
+            grid-column: 1; 
+            opacity: 0.7;
+        }
+        
+        .item-metadata .value { 
+            grid-column: 2; 
+            font-weight: 500;
         }
 
-        /* --- NEW: Declarative Selection Overlay (v.OptimalUX) --- */
+        /* ===================================
+           SELECTION OVERLAY & CHECKBOX
+           =================================== */
         .selection-overlay {
             position: absolute;
-            top: 0;
-            right: 0;
-            padding: 12px;
+            top: var(--space-2);
+            left: var(--space-2);
             cursor: pointer;
             z-index: 12;
         }
+        
         .selection-checkbox {
-            width: 24px;
-            height: 24px;
-            background: rgba(0, 0, 0, 0.6);
-            border: 2px solid white;
-            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            background: rgba(18, 18, 18, 0.85);
+            border: 2px solid var(--border-color);
+            border-radius: 3px;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            transform: scale(0.9);
-            opacity: 0.6;
+            transition: all var(--transition-fast);
         }
+        
         .gallery-item:hover .selection-checkbox {
-            transform: scale(1);
-            opacity: 1;
+            border-color: var(--text-muted);
+            background: rgba(18, 18, 18, 0.95);
         }
+        
         .gallery-item.selected .selection-checkbox {
-            background: var(--primary-color);
-            border-color: white;
-            transform: scale(1.05);
-            opacity: 1;
-            box-shadow: 0 0 10px var(--primary-color);
+            background: var(--accent-yellow);
+            border-color: var(--accent-yellow);
         }
-        .selection-checkbox::after { /* The checkmark */
+        
+        .selection-checkbox::after {
             content: '✓';
-            color: white;
+            color: var(--bg-color);
             font-size: 14px;
             font-weight: bold;
             transform: scale(0);
             opacity: 0;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all var(--transition-fast);
         }
+        
         .gallery-item.selected .selection-checkbox::after {
             transform: scale(1);
             opacity: 1;
         }
 
-        /* --- NEW: Kebab Menu for Actions (v.OptimalUX) --- */
+        /* ===================================
+           ITEM ACTION BUTTONS
+           =================================== */
         .item-actions-container {
             display: flex;
-            gap: 0.5rem;
-            margin-top: auto; /* Pushes to bottom */
+            gap: 0;
+            margin-top: auto;
             align-items: center;
-        }
-        .favorite-btn {
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            color: var(--text-color);
-            width: 44px;
-            height: 44px;
-            border-radius: 8px;
-            font-size: 1.2rem;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .favorite-btn.favorited {
-            background: var(--favorite-color);
-            color: #000;
-            border-color: var(--favorite-color);
-        }
-        .kebab-menu-container {
-            position: relative;
-            margin-left: auto; /* Pushes to the right */
-        }
-        .kebab-btn {
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            color: var(--text-muted);
-            width: 44px;
-            height: 44px;
-            border-radius: 8px;
-            font-size: 1.5rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            line-height: 0; /* Aligns dots vertically */
-        }
-        .kebab-btn:hover {
-            background: var(--surface-hover);
-            color: var(--text-color);
-        }
-        .kebab-dropdown {
-            position: absolute;
-            bottom: 50px; /* Position above the button */
-            right: 0;
-            background: var(--surface-hover);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            box-shadow: var(--shadow-lg);
-            width: 180px;
-            z-index: 15;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-        .kebab-dropdown button,
-        .kebab-dropdown a {
-            background: none;
-            border: none;
-            color: var(--text-color);
-            padding: 0.75rem 1rem;
-            text-align: left;
-            font-size: 0.9rem;
-            font-weight: 500;
-            cursor: pointer;
-            display: block;
             width: 100%;
-            text-decoration: none;
+            border-top: 1px solid var(--border-color);
+            padding-top: var(--space-2);
         }
-        .kebab-dropdown button:hover,
-        .kebab-dropdown a:hover {
-            background: var(--primary-color);
-            color: white;
+        
+        .item-action-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: var(--space-1) var(--space-2);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            position: relative;
         }
-        .kebab-dropdown .text-danger {
-            color: var(--danger-color);
+        
+        .item-action-btn:hover {
+            background: var(--surface-hover);
+            color: var(--text-color);
         }
-        .kebab-dropdown .text-danger:hover {
-            background: var(--danger-color);
-            color: white;
+        
+        .item-action-btn.favorited {
+            color: var(--accent-yellow);
         }
-        .favorite-btn.favorited { background: var(--favorite-color); color: #000; border-color: var(--favorite-color); }
-        .duration-overlay { position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.8); color: white; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 500; backdrop-filter: blur(10px); z-index: 10; }
-        .workflow-badge { position: absolute; top: 8px; left: 8px; background: var(--workflow-color); color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; text-decoration: none; font-weight: 600; transition: all 0.3s; }
-        .workflow-badge:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(46, 204, 113, 0.4); }
+        
+        .item-action-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+        
+        .item-action-btn:last-of-type {
+            margin-left: auto;
+            flex: 0;
+            padding: var(--space-1);
+        }
+        
+        /* Tooltip for icon buttons (accessibility) */
+        .item-action-btn::before {
+            content: attr(aria-label);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-color);
+            color: var(--text-color);
+            padding: var(--space-1) var(--space-2);
+            border-radius: 4px;
+            font-size: var(--text-xs);
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity var(--transition-fast);
+            z-index: 100;
+            margin-bottom: 4px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .item-action-btn:hover::before {
+            opacity: 1;
+        }
+
+        /* ===================================
+           OVERLAYS & BADGES
+           =================================== */
+        
+        /* Duration Overlay - Subtle Inkwell Style */
+        .duration-overlay { 
+            position: absolute; 
+            bottom: var(--space-2); 
+            right: var(--space-2); 
+            background: rgba(0,0,0,0.9); 
+            color: white; 
+            padding: 2px var(--space-1); 
+            border-radius: 2px; 
+            font-size: var(--text-xs); 
+            font-family: var(--font-monospace); 
+            font-weight: 500; 
+            backdrop-filter: blur(10px); 
+            z-index: 10; 
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        /* Workflow Badge - Monochrome with Yellow Accent */
+        .workflow-badge { 
+            position: absolute; 
+            top: var(--space-2); 
+            right: var(--space-2); 
+            background: var(--text-muted); 
+            color: var(--bg-color); 
+            padding: 2px var(--space-2); 
+            border-radius: 4px; 
+            font-size: var(--text-xs); 
+            text-decoration: none; 
+            font-weight: 700; 
+            transition: all var(--transition-fast); 
+            display: flex; 
+            align-items: center; 
+            gap: 0.25rem; 
+            z-index: 11;
+        }
+        
+        .workflow-badge:hover { 
+            background: var(--text-color);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        /* Multi-sampler badge uses accent color */
         .workflow-badge[data-sampler-count="2"],
-        .workflow-badge[data-sampler-count="3"] { background: linear-gradient(135deg, var(--workflow-color) 0%, #3498db 100%); }
+        .workflow-badge[data-sampler-count="3"],
         .workflow-badge[data-sampler-count="4"],
-        .workflow-badge[data-sampler-count="5"] { background: linear-gradient(135deg, #3498db 0%, #9b59b6 100%); }
+        .workflow-badge[data-sampler-count="5"],
         .workflow-badge[data-sampler-count="6"],
         .workflow-badge[data-sampler-count="7"],
         .workflow-badge[data-sampler-count="8"],
-        .workflow-badge[data-sampler-count="9"] { background: linear-gradient(135deg, #9b59b6 0%, #e74c3c 100%); }
+        .workflow-badge[data-sampler-count="9"] { 
+            background: var(--accent-yellow);
+            color: var(--bg-color);
+        }
+        
+        .workflow-badge[data-sampler-count="2"]:hover,
+        .workflow-badge[data-sampler-count="3"]:hover,
+        .workflow-badge[data-sampler-count="4"]:hover,
+        .workflow-badge[data-sampler-count="5"]:hover,
+        .workflow-badge[data-sampler-count="6"]:hover,
+        .workflow-badge[data-sampler-count="7"]:hover,
+        .workflow-badge[data-sampler-count="8"]:hover,
+        .workflow-badge[data-sampler-count="9"]:hover { 
+            background: var(--accent-yellow);
+            filter: brightness(1.1);
+        }
         /* Sampler Panel Styles */
         .lightbox-sampler-panel { position: absolute; top: 120px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 800px; z-index: 2003; background: rgba(0, 0, 0, 0.85); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; backdrop-filter: blur(20px); overflow: hidden; }
         .sampler-toggle-btn { width: 100%; padding: 1rem 1.5rem; background: transparent; border: none; color: white; display: flex; align-items: center; gap: 0.75rem; cursor: pointer; font-size: 1rem; font-weight: 600; transition: background 0.3s; }
         .sampler-toggle-btn:hover { background: rgba(255, 255, 255, 0.1); }
         .toggle-icon { font-size: 0.9rem; transition: transform 0.3s; }
         .sampler-toggle-btn.expanded .toggle-icon { transform: rotate(180deg); }
-        .sampler-badge { margin-left: auto; background: var(--primary-color); padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.85rem; }
+        .sampler-badge { margin-left: auto; background: var(--accent-yellow); color: var(--bg-color); padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.85rem; font-weight: 700; }
         .sampler-content { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1); padding: 0 1.5rem; }
         .sampler-content.expanded { max-height: min(500px, calc(100vh - 250px)); overflow-y: auto; padding: 0 1.5rem 1.5rem; }
         .sampler-item { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 1rem; margin-bottom: 0.75rem; }
         .sampler-item:last-child { margin-bottom: 0; }
-        .sampler-header { font-size: 1.1rem; font-weight: 700; color: var(--primary-color); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+        .sampler-header { font-size: 1.1rem; font-weight: 700; color: var(--accent-yellow); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
         .sampler-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem; }
         .sampler-field { display: flex; flex-direction: column; gap: 0.25rem; }
         .sampler-field-label { font-size: 0.8rem; color: rgba(255, 255, 255, 0.6); text-transform: uppercase; letter-spacing: 0.5px; }
-        .sampler-field-value { font-size: 1rem; color: white; font-weight: 500; font-family: 'Courier New', monospace; background: rgba(0, 0, 0, 0.3); padding: 0.4rem 0.6rem; border-radius: 4px; }
+        .sampler-field-value { font-size: 1rem; color: white; font-weight: 500; font-family: var(--font-monospace); background: rgba(0, 0, 0, 0.3); padding: 0.4rem 0.6rem; border-radius: 4px; }
         .sampler-prompts { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255, 255, 255, 0.1); }
         .sampler-prompt-label { font-size: 0.9rem; color: rgba(255, 255, 255, 0.7); margin-bottom: 0.4rem; font-weight: 600; }
         .sampler-prompt-text { font-size: 0.85rem; color: rgba(255, 255, 255, 0.9); background: rgba(0, 0, 0, 0.3); padding: 0.6rem; border-radius: 4px; line-height: 1.5; max-height: 100px; overflow-y: auto; }
         .sampler-loader { padding: 2rem; text-align: center; color: rgba(255, 255, 255, 0.6); }
         .sampler-error { padding: 1rem; color: var(--danger-color); text-align: center; }
-        #selection-bar { position: fixed; bottom: 0; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); left: 320px; right: 0; background: var(--glass-bg); border-top: 1px solid var(--glass-border); padding: 1.5rem; display: flex; align-items: center; gap: 1rem; z-index: 1001; box-sizing: border-box; backdrop-filter: blur(20px); flex-wrap: wrap; }
+        #selection-bar { position: fixed; bottom: 0; transform: translateY(100%); transition: transform 200ms ease-out; left: 320px; right: 0; background: var(--surface-color); border-top: 1px solid var(--border-color); padding: 1rem 1.5rem; display: flex; align-items: center; gap: 1rem; z-index: 1001; box-sizing: border-box; backdrop-filter: none; flex-wrap: wrap; }
         body.sidebar-expanded #selection-bar { left: 600px; }
         #selection-bar.visible { transform: translateY(0); }
-        #selection-bar button { padding: 0.75rem 1.5rem; font-size: 0.9rem; border-radius: 8px; border: none; background: var(--primary-color); color: white; cursor: pointer; transition: all 0.3s; font-weight: 600; }
+        #selection-bar button { padding: 0.5rem 1rem; font-size: 0.9rem; border-radius: 4px; border: 1px solid var(--border-color); background: var(--surface-hover); color: var(--text-color); cursor: pointer; transition: all 150ms ease-out; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+        #selection-bar button:hover { background: var(--surface-color); border-color: var(--text-muted); }
+        #selection-bar button svg { width: 16px; height: 16px; }
         #selection-bar .delete-btn { background: var(--danger-color); }
-        #selection-counter { font-weight: 700; margin-right: auto; padding-left: 1rem; color: var(--primary-color); }
-        #drag-drop-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); z-index: 1002; display: none; opacity: 0; transition: opacity 0.3s; backdrop-filter: blur(5px); }
+        #selection-counter { font-weight: 700; margin-right: auto; padding-left: 1rem; color: var(--accent-yellow); }
+        #drag-drop-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); z-index: 1002; display: none; opacity: 0; transition: opacity 150ms ease-out; backdrop-filter: none; }
         #drag-drop-overlay.visible { display: block; opacity: 1; }
-        #drop-zone-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 400px; z-index: 1003; background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 16px; box-shadow: var(--shadow-lg); display: none; flex-direction: column; max-height: 80vh; }
+        #drop-zone-panel { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 400px; z-index: 1003; background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 4px; box-shadow: var(--shadow-lg); display: none; flex-direction: column; max-height: 80vh; }
         #drop-zone-panel.visible { display: flex; }
         #drop-zone-panel h3 { margin: 0; padding: 1rem 1.5rem; text-align: center; border-bottom: 1px solid var(--border-color); font-weight: 600; flex-shrink: 0;}
         #drop-zone-folders { overflow-y: auto; display: flex; flex-direction: column; padding: 0; min-height: 0; flex-grow: 1; }
-        #cancel-drop-btn { background: var(--danger-color); color: white; border: none; padding: 1rem; cursor: pointer; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; font-weight: 600; transition: background-color 0.3s; flex-shrink: 0;}
-        #loader-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 9999; display: flex; justify-content: center; align-items: center; transition: opacity 0.4s; }
-        .loader { border: 4px solid var(--surface-color); border-top: 4px solid var(--primary-color); border-radius: 50%; width: 48px; height: 48px; animation: spin 1.2s linear infinite; }
+        #cancel-drop-btn { background: var(--danger-color); color: white; border: none; padding: 1rem; cursor: pointer; border-bottom-left-radius: 4px; border-bottom-right-radius: 4px; font-weight: 600; transition: background-color 150ms ease-out; flex-shrink: 0;}
+        #loader-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 9999; display: flex; justify-content: center; align-items: center; transition: opacity 200ms ease-out; }
+        .loader { border: 4px solid var(--surface-color); border-top: 4px solid var(--accent-yellow); border-radius: 50%; width: 48px; height: 48px; animation: spin 1.2s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
-        #lightbox-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.95); backdrop-filter: blur(20px); z-index: 2000; display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        #lightbox-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(18,18,18,0.95); backdrop-filter: none; z-index: 2000; display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 200ms ease-out; }
         #lightbox-overlay.visible { opacity: 1; pointer-events: auto; }
-        .lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.6); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 50%; width: 60px; height: 60px; font-size: 1.8rem; cursor: pointer; transition: all 0.3s; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(10px); z-index: 2001; }
+        .lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.6); color: white; border: 1px solid var(--border-color); border-radius: 50%; width: 60px; height: 60px; font-size: 1.8rem; cursor: pointer; transition: all 150ms ease-out; display: flex; justify-content: center; align-items: center; backdrop-filter: none; z-index: 2001; }
+        .lightbox-nav:hover { background: rgba(0,0,0,0.8); }
         #lightbox-prev { left: 30px; }
         #lightbox-next { right: 30px; }
-        #lightbox-header { position: absolute; top: 0; left: 0; right: 0; z-index: 2002; padding: 1rem; background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 70%, transparent 100%); backdrop-filter: blur(10px); display: flex; flex-direction: column; gap: 1rem; align-items: center; text-align: center; }
+        #lightbox-header { position: absolute; top: 0; left: 0; right: 0; z-index: 2002; padding: 1rem; background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 70%, transparent 100%); backdrop-filter: none; display: flex; flex-direction: column; gap: 1rem; align-items: center; text-align: center; }
         #lightbox-title { font-size: 1.1rem; font-weight: 600; color: white; word-break: break-word; hyphens: auto; max-width: 90vw; }
         #lightbox-toolbar { display: flex; justify-content: center; flex-wrap: wrap; gap: 0.75rem; }
-        #lightbox-toolbar button, #lightbox-toolbar a { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 0.75rem; border-radius: 10px; font-size: 1.2rem; cursor: pointer; transition: all 0.3s; text-decoration: none; display: flex; align-items: center; justify-content: center; min-width: 44px; height: 44px; backdrop-filter: blur(10px); }
-        #lightbox-toolbar button:hover, #lightbox-toolbar a:hover { background: rgba(255,255,255,0.2); }
+        #lightbox-toolbar button, #lightbox-toolbar a { background: rgba(255,255,255,0.1); border: 1px solid var(--border-color); color: var(--text-muted); padding: 0.75rem; border-radius: 4px; font-size: 1.2rem; cursor: pointer; transition: all 150ms ease-out; text-decoration: none; display: flex; align-items: center; justify-content: center; min-width: 44px; height: 44px; backdrop-filter: none; }
+        #lightbox-toolbar button:hover, #lightbox-toolbar a:hover { background: rgba(255,255,255,0.2); color: var(--text-color); }
+        #lightbox-toolbar button svg, #lightbox-toolbar a svg { width: 20px; height: 20px; }
         #lightbox-content { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 6rem 1rem 2rem; }
         #lightbox-media { display: flex; align-items: center; justify-content: center; max-width: 95vw; max-height: 90vh; }
         #lightbox-media img, #lightbox-media video { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 12px; box-shadow: var(--shadow-lg); cursor: grab; }
-        #backToTopBtn { display: none; position: fixed; bottom: 110px; right: 30px; z-index: 99; font-size: 1.2rem; border: none; background: var(--primary-color); color: white; cursor: pointer; padding: 12px 16px; border-radius: 50%; transition: all 0.3s; box-shadow: var(--shadow-md); }
+        #backToTopBtn { display: none; position: fixed; bottom: 110px; right: 30px; z-index: 99; font-size: 1.2rem; border: none; background: var(--accent-yellow); color: var(--bg-color); cursor: pointer; padding: 12px 16px; border-radius: 4px; transition: all 150ms ease-out; box-shadow: var(--shadow-md); }
         #load-more-container { text-align: center; padding: 3rem; }
-        #load-more-btn { background: var(--gradient-primary); color: white; border: none; padding: 1rem 2.5rem; border-radius: 12px; cursor: pointer; font-size: 1rem; font-weight: 600; transition: all 0.3s; box-shadow: var(--shadow-sm); }
+        #load-more-btn { background: var(--surface-hover); border: 1px solid var(--border-color); color: var(--text-color); padding: 1rem 2.5rem; border-radius: 4px; cursor: pointer; font-size: 1rem; font-weight: 600; transition: all 150ms ease-out; }
+        #load-more-btn:hover { border-color: var(--accent-yellow); color: var(--accent-yellow); }
         .empty-state { text-align: center; padding: 4rem 2rem; color: var(--text-muted); }
-        #node-summary-overlay, #upload-overlay, #sync-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        #node-summary-overlay, #upload-overlay, #sync-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); backdrop-filter: none; display: flex; justify-content: center; align-items: center; opacity: 0; pointer-events: none; transition: opacity 150ms ease-out; }
         #node-summary-overlay { z-index: 2100; }
         #upload-overlay { z-index: 2200; }
         #sync-overlay { z-index: 2300; display: none; opacity: 1; pointer-events: all;}
         #node-summary-overlay.visible, #upload-overlay.visible { opacity: 1; pointer-events: auto; }
-        .node-summary-panel, #upload-panel, #sync-panel { background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 16px; box-shadow: var(--shadow-lg); width: 90vw; display: flex; flex-direction: column; transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .node-summary-panel, #upload-panel, #sync-panel { background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 4px; box-shadow: var(--shadow-lg); width: 90vw; display: flex; flex-direction: column; transform: scale(0.95); transition: transform 150ms ease-out; }
         .node-summary-panel { max-width: 900px; max-height: 85vh; }
         #upload-panel { max-width: 600px; max-height: 85vh; }
-        #sync-panel { max-width: 500px; padding: 2rem; align-items: center; text-align: center; }
+        #sync-panel { max-width: 500px; padding: 2rem; align-items: center; text-align: center; border-radius: 4px; }
         #node-summary-overlay.visible .node-summary-panel, #upload-overlay.visible #upload-panel { transform: scale(1); }
         .node-summary-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color); position: sticky; top: 0; background: var(--surface-color); }
         .node-summary-header h2 { margin: 0; font-size: 1.2rem; font-weight: 600; }
@@ -732,24 +1520,24 @@
         .upload-header h2 { margin: 0; font-size: 1.2rem; font-weight: 600; }
         .upload-header p { margin: 0.5rem 0 0; color: var(--text-muted); }
         .upload-body { padding: 1.5rem; flex-grow: 1; display: flex; flex-direction: column; overflow-y: auto; }
-        #drop-zone { border: 2px dashed var(--border-color); border-radius: 12px; padding: 2rem; text-align: center; color: var(--text-muted); transition: all 0.3s; cursor: pointer; display: flex; flex-direction: column; justify-content: center; align-items: center; flex-grow: 1; }
-        #drop-zone.dragover { border-color: var(--primary-color); background: var(--surface-hover); transform: scale(1.02); }
+        #drop-zone { border: 2px dashed var(--border-color); border-radius: 4px; padding: 2rem; text-align: center; color: var(--text-muted); transition: all 150ms ease-out; cursor: pointer; display: flex; flex-direction: column; justify-content: center; align-items: center; flex-grow: 1; }
+        #drop-zone.dragover { border-color: var(--accent-yellow); background: var(--surface-hover); transform: none; }
         #drop-zone p { font-size: 1.1rem; font-weight: 500; margin: 0 0 1rem 0; }
-        #file-upload-btn { background: var(--primary-color); color: white; font-weight: 600; padding: 0.75rem 1.5rem; border-radius: 8px; border: none; cursor: pointer; }
+        #file-upload-btn { background: var(--accent-yellow); color: var(--bg-color); font-weight: 600; padding: 0.75rem 1.5rem; border-radius: 4px; border: none; cursor: pointer; }
         #file-list { list-style: none; padding: 0; margin-top: 1.5rem; max-height: 200px; overflow-y: auto; }
-        #file-list li { background: var(--glass-bg); padding: 0.75rem; border-radius: 8px; margin-bottom: 0.5rem; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; }
+        #file-list li { background: var(--bg-color); border: 1px solid var(--border-color); padding: 0.75rem; border-radius: 4px; margin-bottom: 0.5rem; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; }
         .file-size { color: var(--text-muted); font-size: 0.8rem; }
         .upload-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 1rem; }
-        .upload-footer button { padding: 0.75rem 1.5rem; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; }
+        .upload-footer button { padding: 0.75rem 1.5rem; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; }
         #upload-cancel-btn { background: var(--surface-hover); color: var(--text-color); }
-        #upload-submit-btn { background: var(--success-color); color: white; }
+        #upload-submit-btn { background: var(--accent-yellow); color: var(--bg-color); }
         #upload-progress-container { display: none; margin-top: 1rem; }
         #upload-progress-bar { width: 100%; height: 8px; background: var(--border-color); border-radius: 4px; overflow: hidden; }
-        #upload-progress-fill { width: 0%; height: 100%; background: var(--primary-color); transition: width 0.2s; }
+        #upload-progress-fill { width: 0%; height: 100%; background: var(--accent-yellow); transition: width 0.2s; }
         #upload-file-input { display: none; }
         #sync-message { margin: 0 0 1rem; font-size: 1.1rem; font-weight: 500; }
         #sync-progress-bar { width: 100%; height: 10px; background-color: var(--border-color); border-radius: 5px; overflow: hidden; }
-        #sync-progress-fill { width: 0%; height: 100%; background-color: var(--primary-color); transition: width 0.3s ease; }
+        #sync-progress-fill { width: 0%; height: 100%; background-color: var(--accent-yellow); transition: width 200ms linear; }
         #mobile-filter-toggle { display: none; width: 100%; background: var(--surface-hover); color: var(--text-color); border: 1px solid var(--border-color); padding: 0.75rem 1rem; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; text-align: left; }
         .mobile-actions-only { display: none; }
         @media (max-width: 1024px) {
@@ -823,14 +1611,12 @@
         </template>
     </div>
     <!-- Hidden, Alpine-managed drag image element for native Drag & Drop API -->
-    <div x-ref="dragImage" x-text="dragImageLabel" aria-hidden="true" style="position: absolute; top: -1000px; left: -1000px; background: var(--primary-color); color: white; padding: 8px 16px; border-radius: 8px; font-weight: 600; pointer-events: none;"> </div>
+    <div x-ref="dragImage" x-text="dragImageLabel" aria-hidden="true" style="position: absolute; top: -1000px; left: -1000px; background: var(--accent-yellow); color: var(--bg-color); padding: 8px 16px; border-radius: 4px; font-weight: 700; pointer-events: none;"> </div>
     <aside class="sidebar" :class="{ 'nav-collapsed': isMobileView && isMobileNavCollapsed }">
         <div class="sidebar-header">
             <a href="{{ url_for('gallery_view', folder_key='_root_') }}" style="text-decoration: none;"><h1>SmartGallery</h1></a>
             <div class="sidebar-actions">
-                <button id="sidebar-expand-btn" @click="sidebarExpanded = !sidebarExpanded" title="Expand Sidebar">
-                    <span>↔️</span><span id="sidebar-expand-text">Expand</span>
-                </button>
+                <!-- Expand button is removed in Inkwell UI -->
                 <button id="sidebar-toggle-btn" 
                         x-show="isMobileView" 
                         @click="isMobileNavCollapsed = !isMobileNavCollapsed"
@@ -844,9 +1630,9 @@
         </div>
         <div class="folder-controls">
             <input type="search" 
-                   class="folder-search-input" 
+                   class="folder-search-input"
                    id="folder-search-nav" 
-                   placeholder="🔍 Search folders..."
+                   placeholder="Search folders..."
                    x-model.debounce.300ms="$store.gallery.folderSearchTerm">
             <div class="folder-sort-buttons" id="folder-sort-nav">
                 <button @click="$store.gallery.folderSort = { key: 'name', dir: $store.gallery.folderSort.key === 'name' && $store.gallery.folderSort.dir === 'asc' ? 'desc' : 'asc' }; $store.gallery.saveSortState()" 
@@ -855,8 +1641,10 @@
                         x-text="'A-Z' + ($store.gallery.folderSort.key === 'name' ? ($store.gallery.folderSort.dir === 'asc' ? ' ↑' : ' ↓') : '')">A-Z</button>
                 <button @click="$store.gallery.folderSort = { key: 'mtime', dir: $store.gallery.folderSort.key === 'mtime' && $store.gallery.folderSort.dir === 'desc' ? 'asc' : 'desc' }; $store.gallery.saveSortState()" 
                         :class="{ 'active': $store.gallery.folderSort.key === 'mtime' }"
-                        :title="'Sort by date ' + ($store.gallery.folderSort.key === 'mtime' ? ($store.gallery.folderSort.dir === 'asc' ? '↓' : '↑') : '')"
-                        x-text="'🗓️' + ($store.gallery.folderSort.key === 'mtime' ? ($store.gallery.folderSort.dir === 'asc' ? ' ↑' : ' ↓') : '')">🗓️</button>
+                        :title="'Sort by date ' + ($store.gallery.folderSort.key === 'mtime' ? ($store.gallery.folderSort.dir === 'asc' ? '↓' : '↑') : '')">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        <span x-text="($store.gallery.folderSort.key === 'mtime' ? ($store.gallery.folderSort.dir === 'asc' ? ' ↑' : ' ↓') : '')"></span>
+                </button>
             </div>
         </div>
         <div class="folder-tree-container">
@@ -864,59 +1652,38 @@
                 <!-- Start the recursion by looping over the root node's children -->
                 <template x-for="folderKey in $store.gallery.folders['_root_'].children" :key="folderKey">
                     <!-- Each top-level folder becomes a self-contained, recursive component -->
-                    <li x-data="folderNode(folderKey)" x-show="isVisible">
+                    <li x-data="folderNode(folderKey)" x-show="isVisible" :class="{ 'collapsed': !isOpen }">
                         <div class="folder-item" :class="{ 'active': key === $store.gallery.currentFolderKey }">
-                            <!-- Toggle button -->
-                            <span class="toggle-btn" 
-                                  :class="{ 'empty': !folder.children || folder.children.length === 0 }" 
-                                  @click.stop="toggle()"
-                                  x-text="isOpen ? '▾' : '▸'"></span>
-                            
+                            <span class="folder-toggle" :class="{ 'empty': !folder.children || folder.children.length === 0 }" @click.stop="toggle()"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span>
                             <!-- Folder link -->
-                            <a class="folder-link" 
-                               :href="`/galleryout/view/${key}`" 
-                               :title="folder.display_name">
-                                📁 <span x-text="folder.display_name"></span>
+                            <a class="folder-link" :href="`/galleryout/view/${key}`" :title="folder.display_name">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                                <span x-text="folder.display_name"></span>
                             </a>
-                            
                             <!-- Action buttons (rename/delete) -->
                             <template x-if="key !== '_root_' && !$store.gallery.protectedFolderKeys.includes(key)">
                                 <div class="folder-actions">
-                                    <button class="folder-action-btn" 
-                                            title="Rename" 
-                                            @click.stop="renameFolder(key, folder.display_name)">✏️</button>
-                                    <button class="folder-action-btn" 
-                                            title="Delete" 
-                                            @click.stop="deleteFolder(key, folder.display_name)">🗑️</button>
+                                    <button class="folder-action-btn" title="Rename" @click.stop="renameFolder(key, folder.display_name)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
+                                    <button class="folder-action-btn" title="Delete" @click.stop="deleteFolder(key, folder.display_name)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
                                 </div>
                             </template>
                         </div>
                         
                         <!-- RECURSION HAPPENS HERE: Children UL -->
                         <ul x-show="isOpen" x-collapse>
-                            <template x-for="childKey in filteredAndSortedChildren" :key="childKey">
+                            <template x-for="childKey in filteredAndSortedChildren" :key="childKey" >
                                 <!-- Nested folderNode component for recursion -->
-                                <li x-data="folderNode(childKey)" x-show="isVisible">
+                                <li x-data="folderNode(childKey)" x-show="isVisible" :class="{ 'collapsed': !isOpen }" style="padding-left: 20px;">
                                     <div class="folder-item" :class="{ 'active': key === $store.gallery.currentFolderKey }">
-                                        <span class="toggle-btn" 
-                                              :class="{ 'empty': !folder.children || folder.children.length === 0 }" 
-                                              @click.stop="toggle()"
-                                              x-text="isOpen ? '▾' : '▸'"></span>
-                                        
-                                        <a class="folder-link" 
-                                           :href="`/galleryout/view/${key}`" 
-                                           :title="folder.display_name">
-                                            📁 <span x-text="folder.display_name"></span>
+                                        <span class="folder-toggle" :class="{ 'empty': !folder.children || folder.children.length === 0 }" @click.stop="toggle()"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span>
+                                        <a class="folder-link" :href="`/galleryout/view/${key}`" :title="folder.display_name">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                                            <span x-text="folder.display_name"></span>
                                         </a>
-                                        
                                         <template x-if="key !== '_root_' && !$store.gallery.protectedFolderKeys.includes(key)">
                                             <div class="folder-actions">
-                                                <button class="folder-action-btn" 
-                                                        title="Rename" 
-                                                        @click.stop="renameFolder(key, folder.display_name)">✏️</button>
-                                                <button class="folder-action-btn" 
-                                                        title="Delete" 
-                                                        @click.stop="deleteFolder(key, folder.display_name)">🗑️</button>
+                                                <button class="folder-action-btn" title="Rename" @click.stop="renameFolder(key, folder.display_name)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
+                                                <button class="folder-action-btn" title="Delete" @click.stop="deleteFolder(key, folder.display_name)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
                                             </div>
                                         </template>
                                     </div>
@@ -924,27 +1691,17 @@
                                     <!-- Third level nesting (sufficient for most use cases) -->
                                     <ul x-show="isOpen" x-collapse>
                                         <template x-for="grandchildKey in filteredAndSortedChildren" :key="grandchildKey">
-                                            <li x-data="folderNode(grandchildKey)" x-show="isVisible">
+                                            <li x-data="folderNode(grandchildKey)" x-show="isVisible" :class="{ 'collapsed': !isOpen }" style="padding-left: 20px;">
                                                 <div class="folder-item" :class="{ 'active': key === $store.gallery.currentFolderKey }">
-                                                    <span class="toggle-btn" 
-                                                          :class="{ 'empty': !folder.children || folder.children.length === 0 }" 
-                                                          @click.stop="toggle()"
-                                                          x-text="isOpen ? '▾' : '▸'"></span>
-                                                    
-                                                    <a class="folder-link" 
-                                                       :href="`/galleryout/view/${key}`" 
-                                                       :title="folder.display_name">
-                                                        📁 <span x-text="folder.display_name"></span>
+                                                    <span class="folder-toggle" :class="{ 'empty': !folder.children || folder.children.length === 0 }" @click.stop="toggle()"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span>
+                                                    <a class="folder-link" :href="`/galleryout/view/${key}`" :title="folder.display_name">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                                                        <span x-text="folder.display_name"></span>
                                                     </a>
-                                                    
                                                     <template x-if="key !== '_root_' && !$store.gallery.protectedFolderKeys.includes(key)">
                                                         <div class="folder-actions">
-                                                            <button class="folder-action-btn" 
-                                                                    title="Rename" 
-                                                                    @click.stop="renameFolder(key, folder.display_name)">✏️</button>
-                                                            <button class="folder-action-btn" 
-                                                                    title="Delete" 
-                                                                    @click.stop="deleteFolder(key, folder.display_name)">🗑️</button>
+                                                            <button class="folder-action-btn" title="Rename" @click.stop="renameFolder(key, folder.display_name)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
+                                                            <button class="folder-action-btn" title="Delete" @click.stop="deleteFolder(key, folder.display_name)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
                                                         </div>
                                                     </template>
                                                 </div>
@@ -958,7 +1715,10 @@
                 </template>
             </ul>
         </div>
-        <button id="create-folder-btn" @click="createFolder()">➕ Create New Folder</button>
+        <button id="create-folder-btn" @click="createFolder()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Create New Folder
+        </button>
     </aside>
     <div class="main-content">
         <header class="breadcrumbs">
@@ -974,22 +1734,24 @@
                 {% set date_is_active = current_sort_by == 'date' %}
                 {% set date_next_order = 'asc' if date_is_active and current_sort_order == 'desc' else 'desc' %}
                 {% set date_query_params = dict(request.args.to_dict(flat=False), sort_by='date', sort_order=date_next_order) %}
-                <a href="{{ url_for('gallery_view', folder_key=current_folder_key, **date_query_params) }}" class="sort-btn {{ 'active' if date_is_active else '' }}">
-                    Sort by Date {% if date_is_active %}{{ '↑' if current_sort_order == 'asc' else '↓' }}{% endif %}
+                <a href="{{ url_for('gallery_view', folder_key=current_folder_key, **date_query_params) }}" class="sort-btn {{ 'active' if date_is_active else '' }}" title="Sort by Date">
+                    Sort by Date {% if date_is_active %}<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px; transform: rotate({{ '0' if current_sort_order == 'asc' else '180' }}deg);"><path d="M12 19V5M5 12l7-7 7 7"/></svg>{% endif %}
                 </a>
                 {% set name_is_active = current_sort_by == 'name' %}
                 {% set name_next_order = 'desc' if name_is_active and current_sort_order == 'asc' else 'asc' %}
                 {% set name_query_params = dict(request.args.to_dict(flat=False), sort_by='name', sort_order=name_next_order) %}
-                <a href="{{ url_for('gallery_view', folder_key=current_folder_key, **name_query_params) }}" class="sort-btn {{ 'active' if name_is_active else '' }}">
-                    Sort by Name {% if name_is_active %}{{ '↑' if current_sort_order == 'asc' else '↓' }}{% endif %}
+                <a href="{{ url_for('gallery_view', folder_key=current_folder_key, **name_query_params) }}" class="sort-btn {{ 'active' if name_is_active else '' }}" title="Sort by Name">
+                    Sort by Name {% if name_is_active %}<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px; transform: rotate({{ '0' if current_sort_order == 'asc' else '180' }}deg);"><path d="M12 19V5M5 12l7-7 7 7"/></svg>{% endif %}
                 </a>
-                <button type="button" class="sort-btn" @click="isFilterPanelOpen = true" :class="{ 'active': isFilterPanelOpen }">
-                    <span class="filter-icon">🎛️</span>
+                <button type="button" class="sort-btn" @click="isFilterPanelOpen = true" :class="{ 'active': isFilterPanelOpen || activeFilterCount > 0 }">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
                     <span>Filters</span>
-                    <span class="active-count-badge" x-show="activeFilterCount > 0" x-text="activeFilterCount"></span>
                 </button>
-                <button type="button" class="sort-btn" @click="isUploadOpen = true">☁️ Upload</button>
-                <button type="button" class="sort-btn refresh-btn" @click="startSyncProcess(true)">♻️ Refresh</button>
+                <button type="button" class="sort-btn" @click="isUploadOpen = true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> Upload</button>
+                <button type="button" class="sort-btn" @click="startSyncProcess(true)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                    Refresh
+                </button>
             </div>
             
             <!-- Results Count Indicator -->
@@ -1010,10 +1772,10 @@
         <div id="filter-panel" :class="{ 'open': isFilterPanelOpen }">
             <div class="filter-panel-header">
                 <h2>
-                    <span>🎛️ Filters & Options</span>
+                    <span>Filters & Options</span>
                     <span>
-                        <span class="filter-count-badge" x-text="activeFilterCount + ' Active'"></span>
-                        <button type="button" id="filter-close-btn" @click="isFilterPanelOpen = false">✕</button>
+                        <span class="filter-count-badge" x-show="activeFilterCount > 0" x-text="activeFilterCount + ' Active'"></span>
+                        <button type="button" id="filter-close-btn" @click="isFilterPanelOpen = false">&times;</button>
                     </span>
                 </h2>
             </div>
@@ -1037,45 +1799,53 @@
                     
                     <div class="filter-form-grid" id="filter-form-grid">
                     <!-- Basic Filters -->
-                    <div class="filter-group"><label for="search-input">🔍 Search by Name</label><input type="text" name="search" id="search-input" placeholder="Search files..." x-model.debounce.300ms="filters.search"></div>
-                    <div class="filter-group"><label for="extension-select">📄 Extensions</label><select name="extension" id="extension-select" multiple x-model="filters.extensions" x-tom-select x-ref="extensionsSelect" placeholder="📄 Select extensions...">{% for ext in available_extensions %}<option value="{{ ext }}" {% if ext in selected_extensions %}selected{% endif %}>{{ ext }}</option>{% endfor %}</select></div>
-                    <div class="filter-group"><label for="prefix-select">🏷️ Prefixes</label><select name="prefix" id="prefix-select" multiple x-model="filters.prefixes" x-tom-select x-ref="prefixesSelect" placeholder="🏷️ Select prefixes...">{% for pfx in available_prefixes %}{% if pfx != '.gallery ' %}<option value="{{ pfx }}" {% if pfx in selected_prefixes %}selected{% endif %}>{{ pfx }}</option>{% endif %}{% endfor %}</select></div>
-                    <div class="filter-group"><div class="filter-group-inline"><input type="checkbox" name="favorites" id="favorites-check" value="true" x-model="filters.favorites"><label for="favorites-check">⭐ Favorites Only</label></div></div>
+                    <div class="filter-group"><label for="search-input">Search by Name</label><input type="text" name="search" id="search-input" placeholder="Search files..." x-model.debounce.300ms="filters.search"></div>
+                    <div class="filter-group"><label for="extension-select">Extensions</label><select name="extension" id="extension-select" multiple x-model="filters.extensions" x-tom-select x-ref="extensionsSelect" placeholder="Select extensions...">{% for ext in available_extensions %}<option value="{{ ext }}" {% if ext in selected_extensions %}selected{% endif %}>{{ ext }}</option>{% endfor %}</select></div>
+                    <div class="filter-group"><label for="prefix-select">Prefixes</label><select name="prefix" id="prefix-select" multiple x-model="filters.prefixes" x-tom-select x-ref="prefixesSelect" placeholder="Select prefixes...">{% for pfx in available_prefixes %}{% if pfx != '.gallery ' %}<option value="{{ pfx }}" {% if pfx in selected_prefixes %}selected{% endif %}>{{ pfx }}</option>{% endif %}{% endfor %}</select></div>
+                    <div class="filter-group">
+                        <label class="toggle-switch-container">
+                            <span style="font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Favorites Only</span>
+                            <div class="toggle-switch">
+                                <input type="checkbox" name="favorites" id="favorites-check" value="true" x-model="filters.favorites">
+                                <div class="toggle-switch-handle"></div>
+                            </div>
+                        </label>
+                    </div>
                     
                     <!-- Workflow Metadata Section -->
                     <div class="workflow-section-header">
-                        <h3>🎨 Workflow Parameters</h3>
+                        <h3>Workflow Parameters</h3>
                     </div>
                     
-                    <div class="filter-group"><label for="model-select">🤖 Model</label><select name="filter_model" id="model-select" x-model="filters.model" x-tom-select x-ref="modelSelect" placeholder="🤖 Select model..."><option value="">All Models</option></select></div>
-                    <div class="filter-group"><label for="sampler-select">🎲 Sampler</label><select name="filter_sampler" id="sampler-select" x-model="filters.sampler" x-tom-select x-ref="samplerSelect" placeholder="🎲 Select sampler..."><option value="">All Samplers</option></select></div>
-                    <div class="filter-group"><label for="scheduler-select">📅 Scheduler</label><select name="filter_scheduler" id="scheduler-select" x-model="filters.scheduler" x-tom-select x-ref="schedulerSelect" placeholder="📅 Select scheduler..."><option value="">All Schedulers</option></select></div>
+                    <div class="filter-group"><label for="model-select">Model</label><select name="filter_model" id="model-select" x-model="filters.model" x-tom-select x-ref="modelSelect" placeholder="Select model..."><option value="">All Models</option></select></div>
+                    <div class="filter-group"><label for="sampler-select">Sampler</label><select name="filter_sampler" id="sampler-select" x-model="filters.sampler" x-tom-select x-ref="samplerSelect" placeholder="Select sampler..."><option value="">All Samplers</option></select></div>
+                    <div class="filter-group"><label for="scheduler-select">Scheduler</label><select name="filter_scheduler" id="scheduler-select" x-model="filters.scheduler" x-tom-select x-ref="schedulerSelect" placeholder="Select scheduler..."><option value="">All Schedulers</option></select></div>
                     
                     <!-- CFG Range Pair -->
                     <div class="filter-range-pair">
-                        <div class="filter-group"><label for="cfg-min-input">⚙️ CFG Min</label><input type="number" name="filter_cfg_min" id="cfg-min-input" placeholder="Min CFG" step="0.1" x-model.debounce.500ms="filters.cfg_min"></div>
-                        <div class="filter-group"><label for="cfg-max-input">⚙️ CFG Max</label><input type="number" name="filter_cfg_max" id="cfg-max-input" placeholder="Max CFG" step="0.1" x-model.debounce.500ms="filters.cfg_max"></div>
+                        <div class="filter-group"><label for="cfg-min-input">CFG Min</label><input type="number" name="filter_cfg_min" id="cfg-min-input" placeholder="Min CFG" step="0.1" x-model.debounce.500ms="filters.cfg_min"></div>
+                        <div class="filter-group"><label for="cfg-max-input">CFG Max</label><input type="number" name="filter_cfg_max" id="cfg-max-input" placeholder="Max CFG" step="0.1" x-model.debounce.500ms="filters.cfg_max"></div>
                     </div>
                     
                     <!-- Steps Range Pair -->
                     <div class="filter-range-pair">
-                        <div class="filter-group"><label for="steps-min-input">🔢 Steps Min</label><input type="number" name="filter_steps_min" id="steps-min-input" placeholder="Min Steps" step="1" x-model.debounce.500ms="filters.steps_min"></div>
-                        <div class="filter-group"><label for="steps-max-input">🔢 Steps Max</label><input type="number" name="filter_steps_max" id="steps-max-input" placeholder="Max Steps" step="1" x-model.debounce.500ms="filters.steps_max"></div>
+                        <div class="filter-group"><label for="steps-min-input">Steps Min</label><input type="number" name="filter_steps_min" id="steps-min-input" placeholder="Min Steps" step="1" x-model.debounce.500ms="filters.steps_min"></div>
+                        <div class="filter-group"><label for="steps-max-input">Steps Max</label><input type="number" name="filter_steps_max" id="steps-max-input" placeholder="Max Steps" step="1" x-model.debounce.500ms="filters.steps_max"></div>
                     </div>
                     
                     <!-- Dimension Filters -->
                     <div class="dimension-filters">
-                        <div class="filter-group"><label for="width-min-input">📏 Width Min</label><input type="number" name="filter_width_min" id="width-min-input" placeholder="Min Width" step="64" x-model.debounce.500ms="filters.width_min"></div>
-                        <div class="filter-group"><label for="width-max-input">📏 Width Max</label><input type="number" name="filter_width_max" id="width-max-input" placeholder="Max Width" step="64" x-model.debounce.500ms="filters.width_max"></div>
-                        <div class="filter-group"><label for="height-min-input">📐 Height Min</label><input type="number" name="filter_height_min" id="height-min-input" placeholder="Min Height" step="64" x-model.debounce.500ms="filters.height_min"></div>
-                        <div class="filter-group"><label for="height-max-input">📐 Height Max</label><input type="number" name="filter_height_max" id="height-max-input" placeholder="Max Height" step="64" x-model.debounce.500ms="filters.height_max"></div>
+                        <div class="filter-group"><label for="width-min-input">Width Min</label><input type="number" name="filter_width_min" id="width-min-input" placeholder="Min Width" step="64" x-model.debounce.500ms="filters.width_min"></div>
+                        <div class="filter-group"><label for="width-max-input">Width Max</label><input type="number" name="filter_width_max" id="width-max-input" placeholder="Max Width" step="64" x-model.debounce.500ms="filters.width_max"></div>
+                        <div class="filter-group"><label for="height-min-input">Height Min</label><input type="number" name="filter_height_min" id="height-min-input" placeholder="Min Height" step="64" x-model.debounce.500ms="filters.height_min"></div>
+                        <div class="filter-group"><label for="height-max-input">Height Max</label><input type="number" name="filter_height_max" id="height-max-input" placeholder="Max Height" step="64" x-model.debounce.500ms="filters.height_max"></div>
                     </div>
                     </div>
                 </form>
             </div>
             <div class="filter-panel-footer">
-                <button type="submit" form="filter-form">🔍 Apply Filters</button>
-                <a href="{{ url_for('gallery_view', folder_key=current_folder_key) }}" style="flex: 0.5; background: var(--surface-hover); color: var(--text-muted); text-decoration: none; padding: 0.75rem 1.5rem; border-radius: 8px; text-align: center; font-weight: 600;">🔄 Reset</a>
+                <button type="submit" form="filter-form">Apply Filters</button>
+                <a href="{{ url_for('gallery_view', folder_key=current_folder_key) }}">Reset</a>
             </div>
         </div>
     <div id="gallery-anchor" x-ref="galleryAnchor"></div>
@@ -1088,7 +1858,7 @@
                      :class="{ 'selected': selectedFiles.includes(file.id) }"
                      draggable="true"
                      @dragstart="dragStart($event, file.id)">
-                    
+
                     <!-- NEW: Declarative Selection Overlay on Thumbnail -->
                     <div class="selection-overlay" @click.prevent="toggleSelection($event, file.id)">
                         <div class="selection-checkbox"></div>
@@ -1130,88 +1900,83 @@
                                    :data-sampler-count="file.sampler_count || 0"
                                    :title="file.sampler_names ? `Samplers: ${file.sampler_names}` : (file.sampler_count > 1 ? `This workflow uses ${file.sampler_count} sampler configurations` : 'View workflow JSON')"
                                    @click.stop>
-                                    <span x-text="(file.sampler_count || 0) > 1 ? `⚙️ ${file.sampler_count} Samplers` : '⚙️ Workflow'"></span>
+                                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 12px; height: 12px;"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"></path></svg>
+                                   <span x-text="file.has_workflow ? 'Workflow' : ''"></span>
                                 </a>
                             </template>
                             
                             <!-- Duration Overlay (Unchanged) -->
                             <template x-if="file.duration">
-                                <span class="duration-overlay" x-text="`⏱️ ${file.duration}`"></span>
+                                <span class="duration-overlay" x-text="file.duration"></span>
                             </template>
                         </div>
                     </div>
                     
                     <!-- NEW: Refactored Item Info section -->
                     <div class="item-info">
-                        <!-- Information Hierarchy: Prompt > Filename -->
-                        <div :title="file.name">
-                            <template x-if="file.prompt_preview">
-                                <p class="prompt-preview" x-text="file.prompt_preview"></p>
-                                <p class="filename-subtitle" x-text="file.name"></p>
+                        <p class="item-filename" x-text="file.name" :title="file.name"></p>
+
+                        <!-- Prompt Preview -->
+                        <template x-if="file.prompt_preview">
+                            <p class="prompt-preview" x-text="file.prompt_preview"></p>
+                        </template>
+
+                        <!-- File Metadata -->
+                        <div class="item-metadata">
+                            <template x-if="file.dimensions">
+                                <div style="display: contents;">
+                                    <span class="label">Size</span>
+                                    <span class="value" x-text="file.dimensions"></span>
+                                </div>
                             </template>
-                            <template x-if="!file.prompt_preview">
-                                <p><strong x-text="file.name"></strong></p>
+                            <template x-if="file.mtime">
+                                <div style="display: contents;">
+                                    <span class="label">Date</span>
+                                    <span class="value" x-text="new Date(file.mtime * 1000).toLocaleDateString()"></span>
+                                </div>
+                            </template>
+                            <template x-if="file.sampler_names">
+                                <div style="display: contents;">
+                                    <span class="label">Samplers</span>
+                                    <span class="value" x-text="file.sampler_names.substring(0, 25) + (file.sampler_names.length > 25 ? '...' : '')" :title="file.sampler_names"></span>
+                                </div>
                             </template>
                         </div>
-
-                        <!-- File Metadata (Unchanged) -->
-                        <template x-if="file.dimensions || file.mtime">
-                            <div class="file-metadata">
-                                <template x-if="file.dimensions"><span x-text="`📐 ${file.dimensions}`"></span></template>
-                                <template x-if="file.mtime"><span x-text="`📅 ${new Date(file.mtime * 1000).toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}`"></span></template>
-                            </div>
-                        </template>
                         
                         <!-- NEW: Action Bar with Kebab Menu -->
                         <div class="item-actions-container">
-                            <!-- Favorite button remains visible -->
-                            <button class="favorite-btn"
-                                    :class="{ 'favorited': file.is_favorite }"
-                                    :title="file.is_favorite ? 'Unfavorite' : 'Favorite'"
-                                    @click.stop="toggleFavorite(file.id)">
-                                <span x-text="file.is_favorite ? '⭐' : '☆'"></span>
+                            <button class="item-action-btn" :class="{ 'favorited': file.is_favorite }" @click.stop="toggleFavorite(file.id)" title="Favorite" aria-label="Favorite">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                             </button>
-                            
-                            <!-- Kebab menu for secondary actions -->
-                            <div x-data="{ open: false }" @click.outside="open = false" class="kebab-menu-container">
-                                <button @click.stop="open = !open" class="kebab-btn" title="More actions">⋮</button>
-                                
-                                <div x-show="open" 
-                                     x-transition:enter="transition ease-out duration-100"
-                                     x-transition:enter-start="opacity-0 transform scale-95"
-                                     x-transition:enter-end="opacity-100 transform scale-100"
-                                     x-transition:leave="transition ease-in duration-75"
-                                     x-transition:leave-start="opacity-100 transform scale-100"
-                                     x-transition:leave-end="opacity-0 transform scale-95"
-                                     class="kebab-dropdown"
-                                     style="display: none;">
-                                    
-                                    <template x-if="file.has_workflow">
-                                        <button @click.stop="showNodeSummary(file.id); open = false;">📝 Node Summary</button>
-                                    </template>
-                                    <a :href="`/galleryout/download/${file.id}`" @click="open = false">💾 Download</a>
-                                    <button @click="deleteFile(file.id); open = false;">🗑️ Delete</button>
-                                </div>
-                            </div>
+                            <template x-if="file.has_workflow">
+                                <button class="item-action-btn" @click.stop="showNodeSummary(file.id)" title="Node Summary" aria-label="Node Summary">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>
+                                </button>
+                            </template>
+                            <a :href="`/galleryout/download/${file.id}`" class="item-action-btn" title="Download" aria-label="Download">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            </a>
+                            <button class="item-action-btn" @click.stop="deleteFile(file.id)" title="Delete" aria-label="Delete">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                            </button>
                         </div>
                     </div>
                 </div>
             </template>
-            
             <!-- Empty State -->
             <template x-if="filesOnPage.length === 0">
-                <div class="empty-state" style="grid-column: 1/-1;">
-                    <h3>📭 No files found</h3>
-                    <p>There are no files matching your criteria in this folder.</p>
-                </div>
-            </template>
+                                    <div class="empty-state" style="grid-column: 1/-1;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-muted); margin-bottom: 1rem;"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                                        <h3>No Files Found</h3>
+                                        <p>There are no files matching your criteria in this folder.</p>
+                                    </div>            </template>
         </main>
         <div id="load-more-container" x-show="filesOnPage.length < totalFiles">
             <button id="load-more-btn"
                     @click="loadMore()" 
-                    :disabled="isLoadingMore">
+                    :disabled="isLoadingMore" class="sort-btn" style="padding: 1rem 2.5rem;">
                 <span x-show="!isLoadingMore">
-                    📂 Load More 
+                    Load More 
                     <template x-if="totalFiles - filesOnPage.length <= {{ files_per_page }}">
                         <span x-text="`(${totalFiles - filesOnPage.length} remaining)`"></span>
                     </template>
@@ -1219,27 +1984,29 @@
                         <span x-text="`(${Math.min({{ files_per_page }}, totalFiles - filesOnPage.length)} of ${totalFiles - filesOnPage.length})`"></span>
                     </template>
                 </span>
-                <span x-show="isLoadingMore">📂 Loading...</span>
+                <span x-show="isLoadingMore">Loading...</span>
             </button>
         </div>
     </div>
-    <button @click="scrollToTop()" id="backToTopBtn" title="Go to Top" x-show="shouldShowBackToTop" style="display: none;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg></button>
+    <button @click="scrollToTop()" id="backToTopBtn" title="Go to Top" aria-label="Go to Top" x-show="shouldShowBackToTop" style="display: none;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg></button>
     <div id="drag-drop-overlay"></div>
     <div id="drop-zone-panel">
-        <h3>📁 Move to Folder:</h3>
+        <h3>Move to Folder:</h3>
         <div class="folder-controls" style="padding: 0 1rem; margin-top: 1rem;">
             <input type="search" 
                    class="folder-search-input" 
                    id="folder-search-move" 
-                   placeholder="🔍 Search folders..."
+                   placeholder="Search folders..."
                    x-model.debounce.300ms="$store.gallery.folderSearchTerm">
             <div class="folder-sort-buttons" id="folder-sort-move">
                 <button @click="$store.gallery.folderSort = { key: 'name', dir: $store.gallery.folderSort.key === 'name' && $store.gallery.folderSort.dir === 'asc' ? 'desc' : 'asc' }; $store.gallery.saveSortState()" 
                         :class="{ 'active': $store.gallery.folderSort.key === 'name' }"
                         x-text="'A-Z' + ($store.gallery.folderSort.key === 'name' ? ($store.gallery.folderSort.dir === 'asc' ? ' ↑' : ' ↓') : '')">A-Z</button>
                 <button @click="$store.gallery.folderSort = { key: 'mtime', dir: $store.gallery.folderSort.key === 'mtime' && $store.gallery.folderSort.dir === 'desc' ? 'asc' : 'desc' }; $store.gallery.saveSortState()" 
-                        :class="{ 'active': $store.gallery.folderSort.key === 'mtime' }"
-                        x-text="'🗓️' + ($store.gallery.folderSort.key === 'mtime' ? ($store.gallery.folderSort.dir === 'asc' ? ' ↑' : ' ↓') : '')">🗓️</button>
+                        :class="{ 'active': $store.gallery.folderSort.key === 'mtime' }">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        <span x-text="($store.gallery.folderSort.key === 'mtime' ? ($store.gallery.folderSort.dir === 'asc' ? ' ↑' : ' ↓') : '')"></span>
+                </button>
             </div>
         </div>
         <div id="drop-zone-folders">
@@ -1248,64 +2015,64 @@
                     <!-- Start the recursion by looping over the root node's children -->
                     <template x-for="folderKey in $store.gallery.folders['_root_'].children" :key="folderKey">
                         <!-- Each top-level folder in move panel -->
-                        <li x-data="folderNode(folderKey)" x-show="isVisible">
+                        <li x-data="folderNode(folderKey)" x-show="isVisible" :class="{ 'collapsed': !isOpen }">
                             <div class="folder-item">
-                                <span class="toggle-btn" 
-                                      :class="{ 'empty': !folder.children || folder.children.length === 0 }" 
-                                      @click.stop="toggle()"
-                                      x-text="isOpen ? '▾' : '▸'"></span>
+                                <span class="folder-toggle" :class="{ 'empty': !folder.children || folder.children.length === 0 }" @click.stop="toggle()"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span>
                                 
                                 <span class="folder-link" 
                                       :title="folder.display_name">
-                                    📁 <span x-text="folder.display_name"></span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px; flex-shrink: 0;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                                    <span x-text="folder.display_name"></span>
                                 </span>
                                 
                                 <button class="move-here-btn" 
                                         :disabled="key === $store.gallery.currentFolderKey"
                                         @click.stop="confirmMoveToFolder(key)"
-                                        title="Move here">➜</button>
+                                        title="Move here">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                                </button>
                             </div>
                             
                             <!-- Children UL for move panel -->
                             <ul x-show="isOpen" x-collapse>
                                 <template x-for="childKey in filteredAndSortedChildren" :key="childKey">
-                                    <li x-data="folderNode(childKey)" x-show="isVisible">
+                                    <li x-data="folderNode(childKey)" x-show="isVisible" :class="{ 'collapsed': !isOpen }">
                                         <div class="folder-item">
-                                            <span class="toggle-btn" 
-                                                  :class="{ 'empty': !folder.children || folder.children.length === 0 }" 
-                                                  @click.stop="toggle()"
-                                                  x-text="isOpen ? '▾' : '▸'"></span>
+                                            <span class="folder-toggle" :class="{ 'empty': !folder.children || folder.children.length === 0 }" @click.stop="toggle()"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span>
                                             
                                             <span class="folder-link" 
                                                   :title="folder.display_name">
-                                                📁 <span x-text="folder.display_name"></span>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px; flex-shrink: 0;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                                                <span x-text="folder.display_name"></span>
                                             </span>
                                             
                                             <button class="move-here-btn" 
                                                     :disabled="key === $store.gallery.currentFolderKey"
                                                     @click.stop="confirmMoveToFolder(key)"
-                                                    title="Move here">➜</button>
+                                                    title="Move here">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                                            </button>
                                         </div>
                                         
                                         <!-- Third level for move panel -->
                                         <ul x-show="isOpen" x-collapse>
                                             <template x-for="grandchildKey in filteredAndSortedChildren" :key="grandchildKey">
-                                                <li x-data="folderNode(grandchildKey)" x-show="isVisible">
+                                                <li x-data="folderNode(grandchildKey)" x-show="isVisible" :class="{ 'collapsed': !isOpen }">
                                                     <div class="folder-item">
-                                                        <span class="toggle-btn" 
-                                                              :class="{ 'empty': !folder.children || folder.children.length === 0 }" 
-                                                              @click.stop="toggle()"
-                                                              x-text="isOpen ? '▾' : '▸'"></span>
+                                                        <span class="folder-toggle" :class="{ 'empty': !folder.children || folder.children.length === 0 }" @click.stop="toggle()"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></span>
                                                         
                                                         <span class="folder-link" 
                                                               :title="folder.display_name">
-                                                            📁 <span x-text="folder.display_name"></span>
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px; flex-shrink: 0;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                                                            <span x-text="folder.display_name"></span>
                                                         </span>
                                                         
                                                         <button class="move-here-btn" 
                                                                 :disabled="key === $store.gallery.currentFolderKey"
                                                                 @click.stop="confirmMoveToFolder(key)"
-                                                                title="Move here">➜</button>
+                                                                title="Move here">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                                                        </button>
                                                     </div>
                                                 </li>
                                             </template>
@@ -1318,32 +2085,32 @@
                 </ul>
             </div>
         </div>
-        <button @click="hideDropZone()">❌ Cancel</button>
+        <button @click="hideDropZone()" class="upload-footer button">Cancel</button>
     </div>
     <div id="selection-bar" x-show="selectedFiles.length > 0" :class="{ 'visible': selectedFiles.length > 0 }">
-        <span x-text="`📊 ${selectedFiles.length} file${selectedFiles.length !== 1 ? 's' : ''} selected`"></span>
+        <span id="selection-counter" x-text="`${selectedFiles.length} file${selectedFiles.length !== 1 ? 's' : ''} selected`"></span>
         <div class="actions-grid">
-            <button @click="moveSelected()">📁 Move</button>
-            <button @click="favoriteSelected(true)">⭐ Add</button>
-            <button @click="favoriteSelected(false)">☆ Remove</button>
-            <button @click="deleteSelected()" class="delete-btn">🗑️ Delete</button>
-            <button @click="selectAll()">✅ All</button>
-            <button @click="selectedFiles = []">❌ None</button>
+            <button @click="moveSelected()"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg> Move</button>
+            <button @click="favoriteSelected(true)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> Add Fav</button>
+            <button @click="favoriteSelected(false)"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="m16 22 4-4"/></svg> Remove Fav</button>
+            <button @click="deleteSelected()" class="delete-btn"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> Delete</button>
+            <button @click="selectAll()"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> All</button>
+            <button @click="selectedFiles = []"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> None</button>
         </div>
     </div>
-    <div id="lightbox-overlay" x-show="isLightboxOpen" @click.self="closeLightbox()" @keydown.arrow-left.window="navigateLightbox(-1)" @keydown.arrow-right.window="navigateLightbox(1)" @keydown.delete.window.prevent="deleteFromLightbox()" x-transition:enter="transition ease-out duration-400" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-400" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+    <div id="lightbox-overlay" x-show="isLightboxOpen" @click.self="closeLightbox()" @keydown.arrow-left.window="navigateLightbox(-1)" @keydown.arrow-right.window="navigateLightbox(1)" @keydown.delete.window.prevent="deleteFromLightbox()" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
         <div id="lightbox-header">
             <div id="lightbox-title" x-text="currentLightboxFile ? `${currentLightboxFile.name} (${Math.round(currentZoom * 100)}%)` : ''"></div>
             <div id="lightbox-toolbar">
-                <button @click="zoomLightbox(-0.2)" title="Zoom Out">-</button>
-                <button @click="zoomLightbox(0.2)" title="Zoom In">+</button>
-                <a :href="currentLightboxFile ? `/galleryout/download/${currentLightboxFile.id}` : '#'" title="Download File">💾</a>
-                <button @click="renameFileFromLightbox()" title="Rename File">✏️</button>
-                <button x-show="currentLightboxFile && currentLightboxFile.has_workflow" @click="showNodeSummary(currentLightboxFile.id)" title="Node Summary">📝</button>
-                <a x-show="currentLightboxFile && currentLightboxFile.has_workflow" :href="currentLightboxFile ? `/galleryout/workflow/${currentLightboxFile.id}` : '#'" class="workflow-btn" title="Download Workflow">⚙️</a>
-                <button @click="deleteFromLightbox()" title="Delete File">🗑️</button>
-                <a :href="currentLightboxFile ? `/galleryout/file/${currentLightboxFile.id}` : '#'" target="_blank" title="Open in New Tab">↗️</a>
-                <button @click="closeLightbox()" title="Close">×</button>
+                <button @click="zoomLightbox(-0.2)" title="Zoom Out" aria-label="Zoom Out"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                <button @click="zoomLightbox(0.2)" title="Zoom In" aria-label="Zoom In"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></button>
+                <a :href="currentLightboxFile ? `/galleryout/download/${currentLightboxFile.id}` : '#'" title="Download File" aria-label="Download File"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></a>
+                <button @click="renameFileFromLightbox()" title="Rename File" aria-label="Rename File"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
+                <button x-show="currentLightboxFile && currentLightboxFile.has_workflow" @click="showNodeSummary(currentLightboxFile.id)" title="Node Summary" aria-label="Node Summary"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg></button>
+                <a x-show="currentLightboxFile && currentLightboxFile.has_workflow" :href="currentLightboxFile ? `/galleryout/workflow/${currentLightboxFile.id}` : '#'" class="workflow-btn" title="Download Workflow" aria-label="Download Workflow"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"></path></svg></a>
+                <button @click="deleteFromLightbox()" title="Delete File" aria-label="Delete File"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                <a :href="currentLightboxFile ? `/galleryout/file/${currentLightboxFile.id}` : '#'" target="_blank" title="Open in New Tab" aria-label="Open in New Tab"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>
+                <button @click="closeLightbox()" title="Close" aria-label="Close"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
             </div>
         </div>
         <!-- Sampler Details Panel -->

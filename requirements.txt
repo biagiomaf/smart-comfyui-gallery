@@ -1,0 +1,16 @@
+# SmartGallery - Standalone AI Media Gallery
+# Python Dependencies
+
+# Web Framework
+Flask>=3.0.0
+
+# Image Processing
+Pillow>=10.0.0
+
+# Video Processing
+opencv-python>=4.8.0
+
+# Progress Bars
+tqdm>=4.66.0
+
+# Note: flask-cors removed in v2.0.0 (not needed for standalone version)

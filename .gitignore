@@ -119,3 +119,4 @@ IMPLEMENTATION_PLAN_v1.41.0.md
 DROPDOWN_EMPTY_ISSUE_ANALYSIS.md
 .github/
 audit_dom_manipulation.py
+test_config.py

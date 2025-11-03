@@ -1,6 +1,34 @@
 {
-    "base_output_path": "",
-    "base_input_path": "",
+    "_comment": "SmartGallery - Standalone Configuration File",
+    "_comment_usage": "Copy this file to config.json and configure your paths",
+    "_comment_paths": "Use forward slashes (/) even on Windows, or double backslashes (\\\\)",
+    
+    "base_output_path": "/path/to/your/ai/output",
+    "base_input_path": "/path/to/your/ai/input",
     "server_port": 8008,
-    "ffprobe_manual_path": ""
+    
+    "enable_upload": true,
+    "max_upload_size_mb": 100,
+    
+    "thumbnail_quality": 85,
+    
+    "ffprobe_manual_path": "",
+    
+    "_comment_comfyui": "To use with ComfyUI folders (example paths):",
+    "_example_output": "C:/ComfyUI/output",
+    "_example_input": "C:/ComfyUI/input",
+    
+    "_comment_standalone": "Or use any other folder with AI-generated files:",
+    "_example_standalone_output": "D:/MyAIArt/output",
+    "_example_standalone_input": "D:/MyAIArt/input",
+    
+    "_comment_notes": [
+        "base_output_path: Where your AI-generated files are stored",
+        "base_input_path: Where your input files/workflows are stored",
+        "server_port: Port for the web server (default: 8008)",
+        "enable_upload: Allow file uploads through the web interface",
+        "max_upload_size_mb: Maximum file size for uploads",
+        "thumbnail_quality: JPEG quality for thumbnails (1-100)",
+        "ffprobe_manual_path: Path to ffprobe if not in system PATH"
+    ]
 }
