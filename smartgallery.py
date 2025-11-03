@@ -447,7 +447,7 @@ class ComfyUIWorkflowParser:
             return sampler_data
             
         except Exception as e:
-            print(f"DEBUG: Failed to process sampler node {sampler_node.get('id')}: {e}")
+            logging.debug(f"Failed to process sampler node {sampler_node.get('id')}: {e}")
             return None
 
     def _find_source_node(self, start_node_id: str, input_name: str, 
@@ -718,7 +718,7 @@ def debug_save_workflow_stage(file_path: Path, stage: str, data: Any, format_inf
                 f.write(f"Preview: {data[:200]}...\n")
     
     except Exception as e:
-        print(f"DEBUG: Failed to save debug workflow stage: {e}")
+        logging.debug(f"Failed to save debug workflow stage: {e}")
 
 
 def extract_workflow_metadata(workflow_str: str, file_path: Path, debug_dir: str = None) -> List[Dict[str, Any]]:
@@ -797,7 +797,7 @@ def extract_workflow_metadata(workflow_str: str, file_path: Path, debug_dir: str
         
         # Validation: Ensure we have valid parser data
         if parser_data is None:
-            print(f"DEBUG: Could not detect valid workflow format for {file_path.name}")
+            logging.debug(f"Could not detect valid workflow format for {file_path.name}")
             return []
         
         # DEBUG: Save data that will be passed to parser
@@ -911,16 +911,14 @@ app.config['ALL_MEDIA_EXTENSIONS'] = (
 )
 
 # Thread-safe caches with locks for concurrent access
-gallery_view_cache = []
-gallery_view_cache_lock = threading.Lock()
+# Note: gallery_view_cache removed in v1.41.0 - using SQL pagination instead
 folder_config_cache = None
 folder_config_cache_lock = threading.Lock()
 
-# --- NEW: In-Memory Cache for Filter Options ---
+# --- In-Memory Cache for Filter Options ---
 _filter_options_cache = {}
 _cache_lock = threading.Lock()
 CACHE_DURATION_SECONDS = 300  # 5 minutes
-# ---------------------------------------------
 
 # Request counter for stats
 request_counter = {'count': 0, 'lock': threading.Lock()}
@@ -1084,12 +1082,11 @@ def _validate_and_get_workflow(json_string):
         
         return None
     except json.JSONDecodeError as e:
-        print(f"DEBUG: Invalid JSON in workflow: {e}")
+        logging.debug(f"Invalid JSON in workflow: {e}")
         return None
     except Exception as e:
-        print(f"DEBUG: Failed to validate workflow JSON: {e}")
-        import traceback
-        traceback.print_exc()
+        logging.debug(f"Failed to validate workflow JSON: {e}")
+        logging.debug("Traceback:", exc_info=True)
         return None
 
 def _scan_bytes_for_workflow(content_bytes):
@@ -1110,7 +1107,7 @@ def _scan_bytes_for_workflow(content_bytes):
                 json.loads(candidate)
                 return candidate
     except Exception as e:
-        print(f"DEBUG: Error scanning bytes for workflow: {e}")
+        logging.debug(f"Error scanning bytes for workflow: {e}")
     return None
 
 def extract_workflow(filepath):
@@ -1130,7 +1127,7 @@ def extract_workflow(filepath):
                             workflow = _validate_and_get_workflow(value)
                             if workflow: return workflow
             except Exception as e:
-                print(f"DEBUG: Error extracting workflow from video metadata: {e}")
+                logging.debug(f"Error extracting workflow from video metadata: {e}")
     else:
         try:
             with Image.open(filepath) as img:
@@ -1147,7 +1144,7 @@ def extract_workflow(filepath):
                         workflow = _validate_and_get_workflow(json_str)
                         if workflow: return workflow
         except Exception as e:
-            print(f"DEBUG: Error extracting workflow from image metadata: {e}")
+            logging.debug(f"Error extracting workflow from image metadata: {e}")
 
     try:
         with open(filepath, 'rb') as f:
@@ -1157,7 +1154,7 @@ def extract_workflow(filepath):
             workflow = _validate_and_get_workflow(json_str)
             if workflow: return workflow
     except Exception as e:
-        print(f"DEBUG: Error scanning file content for workflow: {e}")
+        logging.debug(f"Error scanning file content for workflow: {e}")
 
     try:
         base_filename = os.path.basename(filepath)
@@ -1169,7 +1166,7 @@ def extract_workflow(filepath):
                 workflow = _validate_and_get_workflow(f.read())
                 if workflow: return workflow
     except Exception as e:
-        print(f"DEBUG: Error searching for workflow log file: {e}")
+        logging.debug(f"Error searching for workflow log file: {e}")
                 
     return None
 
@@ -1178,7 +1175,7 @@ def is_webp_animated(filepath):
     try:
         with Image.open(filepath) as img: return getattr(img, 'is_animated', False)
     except Exception as e:
-        print(f"DEBUG: Error checking if WebP is animated: {e}")
+        logging.debug(f"Error checking if WebP is animated: {e}")
         return False
 
 def format_duration(seconds):
@@ -1213,7 +1210,7 @@ def analyze_file_metadata(filepath):
         try:
             with Image.open(filepath) as img: details['dimensions'] = f"{img.width}x{img.height}"
         except Exception as e:
-            print(f"DEBUG: Error getting image dimensions for {filepath}: {e}")
+            logging.debug(f"Error getting image dimensions for {filepath}: {e}")
     if extract_workflow(filepath): details['has_workflow'] = 1
     total_duration_sec = 0
     if details['type'] == 'video':
@@ -1225,7 +1222,7 @@ def analyze_file_metadata(filepath):
                 details['dimensions'] = f"{int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))}x{int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))}"
                 cap.release()
         except Exception as e:
-            print(f"DEBUG: Error analyzing video metadata for {filepath}: {e}")
+            logging.debug(f"Error analyzing video metadata for {filepath}: {e}")
     elif details['type'] == 'animated_image':
         try:
             with Image.open(filepath) as img:
@@ -1233,7 +1230,7 @@ def analyze_file_metadata(filepath):
                     if ext_lower == '.gif': total_duration_sec = sum(frame.info.get('duration', 100) for frame in ImageSequence.Iterator(img)) / 1000
                     elif ext_lower == '.webp': total_duration_sec = getattr(img, 'n_frames', 1) / app.config['WEBP_ANIMATED_FPS']
         except Exception as e:
-            print(f"DEBUG: Error analyzing animated image duration for {filepath}: {e}")
+            logging.debug(f"Error analyzing animated image duration for {filepath}: {e}")
     if total_duration_sec > 0: details['duration'] = format_duration(total_duration_sec)
     return details
 
@@ -1504,7 +1501,7 @@ def close_db(e=None):
     if db is not None:
         db.close()
 
-def build_metadata_filter_subquery(filters):
+def build_metadata_filter_subquery(filters: Dict[str, Any]) -> Tuple[str, List[Any]]:
     """
     Build an EXISTS subquery for filtering files by workflow metadata.
     
@@ -1518,8 +1515,8 @@ def build_metadata_filter_subquery(filters):
     Returns:
         Tuple of (subquery_sql_string, [params_list])
     """
-    conditions = []
-    params = []
+    conditions: List[str] = []
+    params: List[Any] = []
     
     # Exact string matches
     if filters.get('model'):
@@ -1575,7 +1572,7 @@ def build_metadata_filter_subquery(filters):
     else:
         return ("", [])
 
-def _build_filter_conditions(args):
+def _build_filter_conditions(args) -> Tuple[List[str], List[Any]]:
     """
     Builds a list of SQL conditions and parameters based on request arguments.
     This centralizes the filtering logic for gallery_view and load_more.
@@ -1586,11 +1583,11 @@ def _build_filter_conditions(args):
     Returns:
         A tuple of (conditions_list, params_list).
     """
-    conditions = []
-    params = []
+    conditions: List[str] = []
+    params: List[Any] = []
 
     # Gather workflow metadata filters
-    metadata_filters = {}
+    metadata_filters: Dict[str, Any] = {}
     if args.get('filter_model', '').strip():
         metadata_filters['model'] = args.get('filter_model').strip()
     if args.get('filter_sampler', '').strip():
@@ -2062,7 +2059,7 @@ def sync_folder_internal(folder_path):
                                 unique_samplers = sorted(list({s.get('sampler_name') for s in workflow_meta_list if s and s.get('sampler_name')}))
                                 sampler_names = ', '.join(unique_samplers)
                     except Exception as e:
-                        print(f"DEBUG: Error extracting workflow metadata for {os.path.basename(path)}: {e}")
+                        logging.debug(f"Error extracting workflow metadata for {os.path.basename(path)}: {e}")
                 # --- End new logic ---
 
                 data_to_upsert.append((file_id, path, disk_files[path], os.path.basename(path), metadata['type'], metadata['duration'], metadata['dimensions'], metadata['has_workflow'], prompt_preview, sampler_names))
@@ -2090,7 +2087,7 @@ def sync_folder_internal(folder_path):
                                         sampler_meta.get('height')
                                     ))
                     except Exception as e:
-                        print(f"DEBUG: Error extracting workflow metadata for {os.path.basename(path)}: {e}")
+                        logging.debug(f"Error extracting workflow metadata for {os.path.basename(path)}: {e}")
                 
             if data_to_upsert: 
                 conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, prompt_preview, sampler_names) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", data_to_upsert)
@@ -2420,7 +2417,7 @@ def sync_status(folder_key):
 @app.route('/galleryout/view/<string:folder_key>')
 @require_initialization
 def gallery_view(folder_key):
-    global gallery_view_cache  # Module-level cache shared across requests (thread-safe via lock)
+    # Note: gallery_view_cache removed in v1.41.0 - using SQL pagination instead
     folders = get_dynamic_folder_config(force_refresh=True)
     if folder_key not in folders:
         return redirect(url_for('gallery_view', folder_key='_root_'))
