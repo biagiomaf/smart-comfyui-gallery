@@ -123,6 +123,31 @@ files = db.execute("SELECT * FROM files WHERE ... LIMIT ? OFFSET ?",
 3. **Enable debug mode** and check `workflow_debug/` output
 4. **Verify SQL queries** using `EXPLAIN QUERY PLAN` for performance
 
+### Monitoring & Debugging
+
+**Performance Monitoring** (added in recent updates):
+- Request timing automatically logged via `@require_initialization` decorator
+- Slow requests (>1s) generate warnings in logs
+- Last 1000 requests kept in memory for analysis
+
+**Health Check Endpoint**:
+```bash
+curl http://localhost:8008/galleryout/health
+# Returns: database status, file counts, cache stats, avg response time
+```
+
+**Statistics Endpoint**:
+```bash
+curl http://localhost:8008/galleryout/stats
+# Returns: file type breakdown, workflow stats, performance metrics (p95)
+```
+
+**Cache Monitoring**:
+```python
+# Cache now tracks hits per entry
+cache_stats = get_cache_stats()  # Returns entries count and total hits
+```
+
 ## Project-Specific Conventions
 
 ### Code Organization
@@ -186,6 +211,7 @@ SmartGallery reads workflows from:
 - **Modern browsers only** (ES6+, CSS Grid, Intersection Observer API)
 - **Mobile responsive** - Sidebar collapses, bottom sheet filters
 - **No IE11 support** - Uses `async/await`, `fetch`, template literals
+- **Keyboard shortcuts** - Press `?` to view help modal with all shortcuts (Ctrl+A, Esc, ←/→, etc.)
 
 ## Known Limitations & Gotchas
 
