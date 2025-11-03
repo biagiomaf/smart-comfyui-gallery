@@ -1448,8 +1448,8 @@ def process_single_file(filepath, thumbnail_cache_dir, thumbnail_width, video_ex
                     else:
                         prompt_preview = preview_text
 
-                # For sampler names, collect all unique names
-                unique_samplers = sorted(list({s.get('sampler_name') for s in workflow_metadata_list if s and s.get('sampler_name')}))
+                # For sampler names, collect all unique names (optimized: no need for list())
+                unique_samplers = sorted({s.get('sampler_name') for s in workflow_metadata_list if s and s.get('sampler_name')})
                 sampler_names = ', '.join(unique_samplers)
         except Exception:
             # Keep defaults if anything goes wrong
@@ -1487,12 +1487,22 @@ def get_db():
         if not os.path.exists(db_dir):
             try:
                 os.makedirs(db_dir, exist_ok=True)
-                print(f"INFO: Created database directory: {db_dir}")
+                logging.info(f"Created database directory: {db_dir}")
             except (OSError, PermissionError) as e:
                 raise RuntimeError(f"Cannot create database directory {db_dir}: {e}")
         
-        g.db = sqlite3.connect(db_file, detect_types=sqlite3.PARSE_DECLTYPES)
+        # Open database connection with optimizations
+        g.db = sqlite3.connect(db_file, detect_types=sqlite3.PARSE_DECLTYPES, timeout=30.0)
         g.db.row_factory = sqlite3.Row
+        
+        # Enable performance optimizations
+        cursor = g.db.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging for better concurrency
+        cursor.execute("PRAGMA synchronous=NORMAL")  # Balance between safety and speed
+        cursor.execute("PRAGMA cache_size=-64000")  # 64MB cache (negative means KB)
+        cursor.execute("PRAGMA temp_store=MEMORY")  # Store temp tables in memory
+        cursor.close()
+        
     return g.db
 
 def close_db(e=None):
@@ -1696,6 +1706,7 @@ def init_db(conn=None):
     if close_conn: conn.close()
     
 def get_dynamic_folder_config(force_refresh=False):
+    """Get folder configuration with caching (optimized)."""
     global folder_config_cache
     
     with folder_config_cache_lock:
@@ -1703,14 +1714,14 @@ def get_dynamic_folder_config(force_refresh=False):
         if folder_config_cache is not None and not force_refresh:
             return folder_config_cache
 
-        print("INFO: Refreshing folder configuration by scanning directory tree...")
+        logging.info("Refreshing folder configuration by scanning directory tree...")
         
         # CRITICAL: All folder scanning must happen inside the lock to prevent race conditions
         base_path = app.config['BASE_OUTPUT_PATH']
         
         # Validation: Ensure BASE_OUTPUT_PATH is initialized (fixes Issue #2)
         if not base_path or base_path.strip() == '':
-            print("ERROR: BASE_OUTPUT_PATH is not initialized. Call initialize_gallery() first.")
+            logging.error("BASE_OUTPUT_PATH is not initialized. Call initialize_gallery() first.")
             return {'_root_': {
                 'display_name': 'Main',
                 'path': '',
@@ -1725,7 +1736,7 @@ def get_dynamic_folder_config(force_refresh=False):
         try:
             root_mtime = os.path.getmtime(base_path)
         except (OSError, PermissionError) as e:
-            print(f"WARNING: Could not get mtime for base path: {e}")
+            logging.warning(f"Could not get mtime for base path: {e}")
             root_mtime = time.time()
 
         dynamic_config = {
@@ -1739,17 +1750,21 @@ def get_dynamic_folder_config(force_refresh=False):
             }
         }
 
+        # Optimization: Pre-compile exclusion set
+        excluded_dirs = {app.config['THUMBNAIL_CACHE_FOLDER_NAME'], app.config['SQLITE_CACHE_FOLDER_NAME']}
+        
         try:
             all_folders = {}
             for dirpath, dirnames, _ in os.walk(base_path):
-                dirnames[:] = [d for d in dirnames if d not in [app.config['THUMBNAIL_CACHE_FOLDER_NAME'], app.config['SQLITE_CACHE_FOLDER_NAME']]]
+                # Filter out excluded directories in-place (more efficient)
+                dirnames[:] = [d for d in dirnames if d not in excluded_dirs]
                 for dirname in dirnames:
                     full_path = os.path.normpath(os.path.join(dirpath, dirname)).replace('\\', '/')
                     relative_path = os.path.relpath(full_path, base_path).replace('\\', '/')
                     try:
                         mtime = os.path.getmtime(full_path)
                     except (OSError, PermissionError) as e:
-                        print(f"WARNING: Could not get mtime for {full_path}: {e}")
+                        logging.warning(f"Could not get mtime for {full_path}: {e}")
                         mtime = time.time()
                     
                     all_folders[relative_path] = {
@@ -1758,13 +1773,14 @@ def get_dynamic_folder_config(force_refresh=False):
                         'mtime': mtime
                     }
 
+            # Sort by depth (number of path separators)
             sorted_paths = sorted(all_folders.keys(), key=lambda x: x.count('/'))
 
             for rel_path in sorted_paths:
                 folder_data = all_folders[rel_path]
                 key = path_to_key(rel_path)
                 parent_rel_path = os.path.dirname(rel_path).replace('\\', '/')
-                parent_key = '_root_' if parent_rel_path == '.' or parent_rel_path == '' else path_to_key(parent_rel_path)
+                parent_key = '_root_' if parent_rel_path in ('.', '') else path_to_key(parent_rel_path)
 
                 if parent_key in dynamic_config:
                     dynamic_config[parent_key]['children'].append(key)
@@ -2248,16 +2264,24 @@ def sync_folder_on_demand(folder_path):
         yield f"data: {json.dumps({'message': error_message, 'current': 1, 'total': 1, 'error': True})}\n\n"
 
 def scan_folder_and_extract_options(folder_path):
+    """Scan folder for file extensions and prefixes (optimized)."""
     extensions, prefixes = set(), set()
     try:
-        if not os.path.isdir(folder_path): return None, [], []
+        if not os.path.isdir(folder_path): 
+            return None, [], []
+        
         for filename in os.listdir(folder_path):
-            if os.path.isfile(os.path.join(folder_path, filename)):
+            filepath = os.path.join(folder_path, filename)
+            if os.path.isfile(filepath):
                 ext = os.path.splitext(filename)[1]
-                if ext and ext.lower() not in ['.json', '.sqlite']: extensions.add(ext.lstrip('.').lower())
-                if '_' in filename: prefixes.add(filename.split('_')[0])
-    except Exception as e: print(f"ERROR: Could not scan folder '{folder_path}': {e}")
-    return None, sorted(list(extensions)), sorted(list(prefixes))
+                if ext and ext.lower() not in ('.json', '.sqlite'):
+                    extensions.add(ext.lstrip('.').lower())
+                if '_' in filename: 
+                    prefixes.add(filename.split('_', 1)[0])  # Only split once
+    except Exception as e: 
+        logging.error(f"Could not scan folder '{folder_path}': {e}")
+    
+    return None, sorted(extensions), sorted(prefixes)  # sorted() works on sets directly
 
 def initialize_gallery(flask_app):
     """Initializes the gallery by setting up derived paths and the database."""
