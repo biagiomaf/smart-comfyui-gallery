@@ -51,14 +51,14 @@
         .notification.show { opacity: 1; transform: translateX(0); }
         .notification.success { background-color: var(--success-color); color: white; border-color: #1a9c77; }
         .notification.error { background-color: var(--danger-color); color: white; border-color: #b32a38; }
-        .notification.warning { background-color: var(--favorite-color); color: #000; border-color: #d39e00;}
-        .notification.info { background-color: var(--primary-color); color: white; border-color: #0056b3; }
+        .notification.warning { background-color: var(--accent-yellow); color: var(--bg-color); border-color: #d39e00; font-weight: 700; }
+        .notification.info { background-color: var(--surface-hover); color: var(--text-color); border-color: var(--accent-yellow); }
 
         .sidebar { width: var(--sidebar-width); min-width: var(--sidebar-width); background: var(--surface-color); border-right: 1px solid var(--border-color); padding: 1.5rem; display: flex; flex-direction: column; height: 100vh; position: sticky; top: 0; transition: min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1000; }
         body.sidebar-expanded .sidebar { min-width: 600px; } /* This is unused now but left for potential future features */
         .main-content { flex-grow: 1; padding-bottom: 80px; transition: margin-left 200ms ease-out;}
         .sidebar-header { margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-shrink: 0;}
-        .sidebar-header h1 { margin: 0; font-size: 1.8rem; font-weight: 700; background: var(--gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .sidebar-header h1 { margin: 0; font-size: 1.8rem; font-weight: 700; color: var(--text-color); }
         #sidebar-toggle-btn { display: none; background: var(--surface-hover); color: var(--text-color); border: 1px solid var(--border-color); padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.9rem; font-weight: 600; align-items: center; gap: 0.5rem; }
         .folder-controls { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem; flex-shrink: 0;}
         .folder-search-input { width: 100%; background: var(--bg-color); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 4px; padding: 0.5rem 0.75rem; font-size: 0.9rem; }
@@ -132,9 +132,9 @@
         /* Results Count Indicator */
         .results-count { 
             padding: 0.5rem 1rem; 
-            background: var(--glass-background); 
-            border: 1px solid var(--glass-border); 
-            border-radius: 8px; 
+            background: var(--surface-color); 
+            border: 1px solid var(--border-color); 
+            border-radius: 4px; 
             font-size: 0.85rem;
             color: var(--text-muted);
             flex-shrink: 0;
@@ -202,8 +202,8 @@
             margin-bottom: 2px;
         }
         .filter-panel-content select[multiple] option:checked {
-            background: var(--primary-color) linear-gradient(0deg, var(--primary-color) 0%, var(--primary-color) 100%);
-            color: white;
+            background: var(--accent-yellow);
+            color: var(--bg-color);
             font-weight: 600;
         }
         .filter-panel-content input[type="text"]:focus, 
@@ -661,20 +661,20 @@
         .workflow-badge { position: absolute; top: 8px; right: 8px; background: var(--success-color); color: var(--bg-color); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; text-decoration: none; font-weight: 700; transition: all 150ms ease-out; display: flex; align-items: center; gap: 0.25rem; }
         .workflow-badge:hover { filter: brightness(1.2); }
         .workflow-badge[data-sampler-count="2"],
-        .workflow-badge[data-sampler-count="3"] { background: linear-gradient(135deg, var(--workflow-color) 0%, #3498db 100%); }
+        .workflow-badge[data-sampler-count="3"] { background: #2196F3; }
         .workflow-badge[data-sampler-count="4"],
-        .workflow-badge[data-sampler-count="5"] { background: linear-gradient(135deg, #3498db 0%, #9b59b6 100%); }
+        .workflow-badge[data-sampler-count="5"] { background: #9C27B0; }
         .workflow-badge[data-sampler-count="6"],
         .workflow-badge[data-sampler-count="7"],
         .workflow-badge[data-sampler-count="8"],
-        .workflow-badge[data-sampler-count="9"] { background: linear-gradient(135deg, #9b59b6 0%, #e74c3c 100%); }
+        .workflow-badge[data-sampler-count="9"] { background: #F44336; }
         /* Sampler Panel Styles */
         .lightbox-sampler-panel { position: absolute; top: 120px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 800px; z-index: 2003; background: rgba(0, 0, 0, 0.85); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 12px; backdrop-filter: blur(20px); overflow: hidden; }
         .sampler-toggle-btn { width: 100%; padding: 1rem 1.5rem; background: transparent; border: none; color: white; display: flex; align-items: center; gap: 0.75rem; cursor: pointer; font-size: 1rem; font-weight: 600; transition: background 0.3s; }
         .sampler-toggle-btn:hover { background: rgba(255, 255, 255, 0.1); }
         .toggle-icon { font-size: 0.9rem; transition: transform 0.3s; }
         .sampler-toggle-btn.expanded .toggle-icon { transform: rotate(180deg); }
-        .sampler-badge { margin-left: auto; background: var(--primary-color); padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.85rem; }
+        .sampler-badge { margin-left: auto; background: var(--accent-yellow); color: var(--bg-color); padding: 0.25rem 0.75rem; border-radius: 4px; font-size: 0.85rem; font-weight: 700; }
         .sampler-content { max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1); padding: 0 1.5rem; }
         .sampler-content.expanded { max-height: min(500px, calc(100vh - 250px)); overflow-y: auto; padding: 0 1.5rem 1.5rem; }
         .sampler-item { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 1rem; margin-bottom: 0.75rem; }
@@ -845,7 +845,7 @@
         </template>
     </div>
     <!-- Hidden, Alpine-managed drag image element for native Drag & Drop API -->
-    <div x-ref="dragImage" x-text="dragImageLabel" aria-hidden="true" style="position: absolute; top: -1000px; left: -1000px; background: var(--primary-color); color: white; padding: 8px 16px; border-radius: 8px; font-weight: 600; pointer-events: none;"> </div>
+    <div x-ref="dragImage" x-text="dragImageLabel" aria-hidden="true" style="position: absolute; top: -1000px; left: -1000px; background: var(--accent-yellow); color: var(--bg-color); padding: 8px 16px; border-radius: 4px; font-weight: 700; pointer-events: none;"> </div>
     <aside class="sidebar" :class="{ 'nav-collapsed': isMobileView && isMobileNavCollapsed }">
         <div class="sidebar-header">
             <a href="{{ url_for('gallery_view', folder_key='_root_') }}" style="text-decoration: none;"><h1>SmartGallery</h1></a>
@@ -1157,13 +1157,23 @@
 
                         <!-- File Metadata -->
                         <div class="item-metadata">
-                            <template x-if="file.dimensions"><span class="label">Size</span><span class="value" x-text="file.dimensions"></span></template>
-                            <template x-if="file.mtime"><span class="label">Date</span><span class="value" x-text="new Date(file.mtime * 1000).toLocaleDateString()"></span></template>
-                            <template x-if="file.prompt_preview">
-                                <span class="label">Prompt</span> <span class="value" style="color: var(--text-color);">Yes</span>
+                            <template x-if="file.dimensions">
+                                <div style="display: contents;">
+                                    <span class="label">Size</span>
+                                    <span class="value" x-text="file.dimensions"></span>
+                                </div>
+                            </template>
+                            <template x-if="file.mtime">
+                                <div style="display: contents;">
+                                    <span class="label">Date</span>
+                                    <span class="value" x-text="new Date(file.mtime * 1000).toLocaleDateString()"></span>
+                                </div>
                             </template>
                             <template x-if="file.sampler_names">
-                                <span class="label">Samplers:</span> <span class="value" x-text="file.sampler_names.substring(0, 25) + (file.sampler_names.length > 25 ? '...' : '')" :title="file.sampler_names"></span>
+                                <div style="display: contents;">
+                                    <span class="label">Samplers</span>
+                                    <span class="value" x-text="file.sampler_names.substring(0, 25) + (file.sampler_names.length > 25 ? '...' : '')" :title="file.sampler_names"></span>
+                                </div>
                             </template>
                         </div>
                         
