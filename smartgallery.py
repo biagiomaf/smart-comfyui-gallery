@@ -938,10 +938,20 @@ class CacheEntry:
 def get_cache_stats():
     """Return cache statistics for monitoring."""
     with _cache_lock:
+        # Calculate hits from CacheEntry objects
+        total_hits = 0
+        for entry in _filter_options_cache.values():
+            if isinstance(entry, dict) and 'data' in entry:
+                # Old cache format (for backward compatibility)
+                total_hits += 0
+            elif hasattr(entry, 'hits'):
+                # New CacheEntry format
+                total_hits += entry.hits
+        
         stats = {
             'filter_options': {
                 'entries': len(_filter_options_cache),
-                'hits': sum(entry.hits for entry in _filter_options_cache.values() if isinstance(entry, dict) and 'data' in entry)
+                'hits': total_hits
             },
             'folder_config': {
                 'cached': folder_config_cache is not None
@@ -2955,12 +2965,6 @@ def get_stats():
         return jsonify({
             'status': 'error',
             'message': str(e)
-        }), 500
-        return jsonify({
-            'status': 'error',
-            'message': str(e),
-            'sampler_count': 0,
-            'samplers': []
         }), 500
 
 @app.route('/galleryout/load_more')
