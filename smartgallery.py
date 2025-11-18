@@ -108,7 +108,7 @@ def key_to_path(key):
     except Exception: return None
 
 # --- DERIVED SETTINGS ---
-DB_SCHEMA_VERSION = 21
+DB_SCHEMA_VERSION = 22
 BASE_INPUT_PATH_WORKFLOW = os.path.join(BASE_SMARTGALLERY_PATH, WORKFLOW_FOLDER_NAME)
 THUMBNAIL_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, THUMBNAIL_CACHE_FOLDER_NAME)
 SQLITE_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, SQLITE_CACHE_FOLDER_NAME)
@@ -421,10 +421,11 @@ def process_single_file(filepath):
             create_thumbnail(filepath, file_hash_for_thumbnail, metadata['type'])
         
         file_id = hashlib.md5(filepath.encode()).hexdigest()
+        file_size = os.path.getsize(filepath)
         
         return (
             file_id, filepath, mtime, os.path.basename(filepath),
-            metadata['type'], metadata['duration'], metadata['dimensions'], metadata['has_workflow']
+            metadata['type'], metadata['duration'], metadata['dimensions'], metadata['has_workflow'], file_size
         )
     except Exception as e:
         print(f"ERROR: Failed to process file {os.path.basename(filepath)} in worker: {e}")
@@ -444,7 +445,7 @@ def init_db(conn=None):
         CREATE TABLE IF NOT EXISTS files (
             id TEXT PRIMARY KEY, path TEXT NOT NULL UNIQUE, mtime REAL NOT NULL,
             name TEXT NOT NULL, type TEXT, duration TEXT, dimensions TEXT,
-            has_workflow INTEGER, is_favorite INTEGER DEFAULT 0
+            has_workflow INTEGER, is_favorite INTEGER DEFAULT 0, size INTEGER DEFAULT 0
         )
     ''')
     conn.commit()
@@ -572,7 +573,7 @@ def full_sync_database(conn):
             for i in range(0, len(results), BATCH_SIZE):
                 batch = results[i:i + BATCH_SIZE]
                 conn.executemany(
-                    "INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     batch
                 )
                 conn.commit()
@@ -635,7 +636,7 @@ def sync_folder_on_demand(folder_path):
                         yield f"data: {json.dumps(progress_data)}\n\n"
 
                 if data_to_upsert: 
-                    conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", data_to_upsert)
+                    conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", data_to_upsert)
 
             if files_to_delete:
                 conn.executemany("DELETE FROM files WHERE path IN (?)", [(p,) for p in files_to_delete])
