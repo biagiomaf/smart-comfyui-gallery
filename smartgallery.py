@@ -1086,6 +1086,10 @@ def serve_thumbnail(file_id):
     if cache_path and os.path.exists(cache_path): return send_file(cache_path)
     return "Thumbnail generation failed", 404
 
+@app.route('/favicon.ico')
+def favicon():
+    return send_file('static/galleryout/favicon.ico')
+
 if __name__ == '__main__':
     initialize_gallery()
     print(f"Gallery started! Open: http://127.0.0.1:{SERVER_PORT}/galleryout/")
