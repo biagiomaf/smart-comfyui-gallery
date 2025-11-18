@@ -3,7 +3,7 @@ FROM python:3.12-slim
 # Install system packages
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -y --fix-missing\
-  && apt-get install -y \
+    && apt-get install -y \
     apt-utils \
     locales \
     ca-certificates \
@@ -18,7 +18,7 @@ ENV LC_ALL=C
 
 # Install ffprobe
 RUN apt-get update && apt-get install -y ffmpeg \
-  && test -x /usr/bin/ffprobe
+    && test -x /usr/bin/ffprobe
 ENV FFPROBE_MANUAL_PATH=/usr/bin/ffprobe
 
 # Set environment variables
@@ -54,6 +54,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY smartgallery.py /app/smartgallery.py
 COPY templates/* /app/templates/
+COPY static /app/static
 
 EXPOSE 8189
 
