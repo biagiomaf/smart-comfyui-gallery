@@ -19,6 +19,8 @@ import glob
 import sys
 import subprocess
 import base64
+import zipfile
+import io
 from flask import Flask, render_template, send_from_directory, abort, send_file, url_for, redirect, request, jsonify, Response
 from PIL import Image, ImageSequence
 import colorsys
@@ -798,12 +800,49 @@ def create_folder():
     if parent_key not in folders: return jsonify({'status': 'error', 'message': 'Parent folder not found.'}), 404
     parent_path = folders[parent_key]['path']
     new_folder_path = os.path.join(parent_path, folder_name)
-    if os.path.exists(new_folder_path): return jsonify({'status': 'error', 'message': 'A folder with this name already exists here.'}), 400
     try:
-        os.makedirs(new_folder_path)
-        get_dynamic_folder_config(force_refresh=True)
-        return jsonify({'status': 'success', 'message': 'Folder created successfully.'})
-    except Exception as e: return jsonify({'status': 'error', 'message': f'Error creating folder: {e}'}), 500
+        os.makedirs(new_folder_path, exist_ok=False)
+        sync_folder_on_demand(parent_path)
+        return jsonify({'status': 'success', 'message': f'Folder "{folder_name}" created successfully.'})
+    except FileExistsError: return jsonify({'status': 'error', 'message': 'Folder already exists.'}), 400
+    except Exception as e: return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/galleryout/download_batch_zip', methods=['POST'])
+def download_batch_zip():
+    data = request.json
+    file_ids = data.get('file_ids', [])
+    if not file_ids:
+        return jsonify({'status': 'error', 'message': 'No files specified.'}), 400
+
+    try:
+        with get_db_connection() as conn:
+            placeholders = ','.join(['?'] * len(file_ids))
+            query = f"SELECT path, name FROM files WHERE id IN ({placeholders})"
+            files_to_zip = conn.execute(query, file_ids).fetchall()
+
+        if not files_to_zip:
+            return jsonify({'status': 'error', 'message': 'No valid files found.'}), 404
+
+        memory_file = io.BytesIO()
+        with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for file_row in files_to_zip:
+                file_path = file_row['path']
+                file_name = file_row['name']
+                if os.path.exists(file_path):
+                    zf.write(file_path, file_name)
+        
+        memory_file.seek(0)
+        return send_file(
+            memory_file,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name='smartgallery_selection.zip'
+        )
+
+    except Exception as e:
+        print(f"ERROR: Zip generation failed: {e}")
+        return jsonify({'status': 'error', 'message': f'Zip generation failed: {str(e)}'}), 500
+
 
 @app.route('/galleryout/rename_folder/<string:folder_key>', methods=['POST'])
 def rename_folder(folder_key):
