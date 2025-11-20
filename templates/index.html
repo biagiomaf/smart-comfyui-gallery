@@ -1879,6 +1879,8 @@
                         All</span></div>
                 <div class="shortcut-item"><span class="key">M</span> <span class="desc">Move Selected Files</span>
                 </div>
+                <div class="shortcut-item"><span class="key">N</span> <span class="desc">Node Summary (Lightbox)</span>
+                </div>
             </div>
         </div>
     </div>
@@ -2433,6 +2435,17 @@
                         case 'O':
                             if (currentLightboxFile) {
                                 window.open(`/galleryout/file/${currentLightboxFile.id}`, '_blank');
+                            }
+                            break;
+                        case 'n':
+                        case 'N':
+                            if (currentLightboxFile && currentLightboxFile.has_workflow) {
+                                const summaryBtn = document.getElementById('lightbox-summary-btn');
+                                if (summaryBtn && summaryBtn.style.display !== 'none') {
+                                    summaryBtn.click();
+                                }
+                            } else {
+                                showNotification('No node summary available for this file.', 'info');
                             }
                             break;
                         case '?':
