@@ -1886,6 +1886,7 @@
                         Diagonally/Up/Down/Left/Right</span></div>
                 <div class="shortcut-item"><span class="key">0</span> <span class="desc">Reset Zoom/Pan</span></div>
                 <div class="shortcut-item"><span class="key">.</span> <span class="desc">Cycle Pan Step</span></div>
+                <div class="shortcut-item"><span class="key">H</span> <span class="desc">Hide Toolbar (5s)</span></div>
             </div>
         </div>
     </div>
@@ -2187,6 +2188,19 @@
             updateMediaTransform();
         }
         function cyclePanStep() { panStep += 50; if (panStep > 200) panStep = 50; showNotification(`Pan step: ${panStep}px`, 'info'); }
+        let toolbarTimeout;
+        function hideToolbarTemporary() {
+            const header = document.getElementById('lightbox-header');
+            if (!header) return;
+            header.style.transition = 'opacity 0.3s';
+            header.style.opacity = '0';
+            header.style.pointerEvents = 'none';
+            if (toolbarTimeout) clearTimeout(toolbarTimeout);
+            toolbarTimeout = setTimeout(() => {
+                header.style.opacity = '1';
+                header.style.pointerEvents = 'auto';
+            }, 5000);
+        }
         function deleteFromLightbox(noConfirm = false) { if (currentLightboxIndex < 0 || currentLightboxIndex >= galleryItems.length) return; const itemToDelete = galleryItems[currentLightboxIndex]; const fileId = itemToDelete.dataset.fileId; const deleteBtn = document.getElementById('lightbox-delete-btn'); const proceedWithDelete = () => { deleteBtn.disabled = true; fetch(`/galleryout/delete/${fileId}`, { method: 'POST' }).then(res => res.json().then(data => ({ ok: res.ok, data }))).then(({ ok, data }) => { if (ok && data.status === 'success') { showNotification(data.message || 'File deleted!', 'success'); itemToDelete.remove(); galleryItems.splice(currentLightboxIndex, 1); allFilesData = allFilesData.filter(f => f.id !== fileId); currentItemCount--; if (galleryItems.length === 0) { closeLightbox(); showEmptyState(); } else { if (currentLightboxIndex >= galleryItems.length) { currentLightboxIndex = galleryItems.length - 1; } showItemAtIndex(currentLightboxIndex); } } else { throw new Error(data.message || 'Deletion failed on the server.'); } }).catch(handleError).finally(() => { if (deleteBtn) { deleteBtn.disabled = false; } }); }; if (noConfirm || confirm('🗑️ Are you sure you want to delete this file? This cannot be undone.')) { proceedWithDelete(); } }
 
         // --- NEW FEATURE: RENAME FILE FROM LIGHTBOX ---
@@ -2516,6 +2530,10 @@
                             break;
                         case '3': // Down-Right
                             panLightbox(-panStep, -panStep);
+                            break;
+                        case 'h':
+                        case 'H':
+                            hideToolbarTemporary();
                             break;
                         case '?':
                             showShortcutsHelp();
