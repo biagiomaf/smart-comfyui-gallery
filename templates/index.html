@@ -1783,9 +1783,9 @@
     <div id="selection-bar">
         <span id="selection-counter">0 files selected</span>
         <div class="actions-grid"><button id="move-selected-btn">📁 Move</button><button id="favorite-selected-btn">⭐
-                Add</button><button id="unfavorite-selected-btn">☆ Remove</button><button id="delete-selected-btn"
-                class="delete-btn">🗑️ Delete</button><button id="select-all-btn">✅ All</button><button
-                id="deselect-all-btn">❌ None</button></div>
+                Add</button><button id="unfavorite-selected-btn">☆ Remove</button><button id="download-zip-btn">📦
+                Zip</button><button id="delete-selected-btn" class="delete-btn">🗑️ Delete</button><button
+                id="select-all-btn">✅ All</button><button id="deselect-all-btn">❌ None</button></div>
     </div>
     <div id="lightbox-overlay">
         <div id="lightbox-header">
@@ -1872,6 +1872,8 @@
                 <div class="shortcut-item"><span class="key">O</span> <span class="desc">Open in New Tab
                         (Lightbox)</span></div>
                 <div class="shortcut-item"><span class="key">R</span> <span class="desc">Rename File</span></div>
+                <div class="shortcut-item"><span class="key">Z</span> <span class="desc">Download Zip (Selected)</span>
+                </div>
                 <div class="shortcut-item"><span class="key">D</span> <span class="desc">Delete File</span></div>
                 <div class="shortcut-item"><span class="key">Esc</span> <span class="desc">Close Lightbox / Deselect
                         All</span></div>
@@ -2120,6 +2122,33 @@
         function deleteSelected() { const count = selectedFiles.size; if (count > 0 && confirm(`🗑️ Delete ${count} files? This cannot be undone.`)) { performBatchAction('/galleryout/delete_batch', { file_ids: [...selectedFiles] }); } }
         function favoriteSelected(status) { if (selectedFiles.size === 0) return; performBatchAction('/galleryout/favorite_batch', { file_ids: [...selectedFiles], status: status }); }
         function performBatchAction(url, body) { fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(handleGenericResponse).catch(handleError); }
+        function downloadSelectedZip() {
+            if (selectedFiles.size === 0) return;
+            const fileIds = [...selectedFiles];
+            showNotification('Preparing zip file...', 'info');
+
+            fetch('/galleryout/download_batch_zip', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ file_ids: fileIds })
+            })
+                .then(response => {
+                    if (response.ok) return response.blob();
+                    return response.json().then(data => { throw new Error(data.message || 'Zip generation failed'); });
+                })
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'smartgallery_selection.zip';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                    showNotification('Zip file downloaded!', 'success');
+                })
+                .catch(handleError);
+        }
         const lightboxOverlay = document.getElementById('lightbox-overlay'); const lightboxMedia = document.getElementById('lightbox-media'); const lightboxTitle = document.getElementById('lightbox-title'); const lightboxDownload = document.getElementById('lightbox-download'); const lightboxWorkflow = document.getElementById('lightbox-workflow'); const lightboxNewTab = document.getElementById('lightbox-new-tab'); let currentLightboxIndex = -1; let currentLightboxFile = null; let currentZoom = 1;
         function updateLightboxTitle() { if (!currentLightboxFile) return; const zoomPercentage = Math.round(currentZoom * 100); lightboxTitle.textContent = `${currentLightboxFile.name} (${zoomPercentage}%)`; }
         function openLightbox(event, fileId) { if (event.target.closest('a, button')) return; event.stopPropagation(); currentLightboxIndex = galleryItems.findIndex(item => item.dataset.fileId === fileId); if (currentLightboxIndex === -1) return; currentZoom = 1; document.body.classList.add('lightbox-open'); lightboxOverlay.classList.add('visible'); showItemAtIndex(currentLightboxIndex); }
@@ -2313,6 +2342,7 @@
             document.getElementById('select-all-btn').addEventListener('click', selectAll);
             document.getElementById('deselect-all-btn').addEventListener('click', deselectAll);
             document.getElementById('move-selected-btn').addEventListener('click', moveSelected);
+            document.getElementById('download-zip-btn').addEventListener('click', downloadSelectedZip);
             document.getElementById('delete-selected-btn').addEventListener('click', deleteSelected);
             document.getElementById('favorite-selected-btn').addEventListener('click', () => favoriteSelected(true));
             document.getElementById('unfavorite-selected-btn').addEventListener('click', () => favoriteSelected(false));
@@ -2409,6 +2439,10 @@
                     }
                 } else {
                     // Main View Shortcuts
+                    if (e.key === 'z' || e.key === 'Z') {
+                        downloadSelectedZip();
+                    }
+
                     if (e.key === '?') {
                         showShortcutsHelp();
                         return;
