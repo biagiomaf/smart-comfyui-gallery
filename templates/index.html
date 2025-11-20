@@ -1877,6 +1877,8 @@
                 <div class="shortcut-item"><span class="key">D</span> <span class="desc">Delete File</span></div>
                 <div class="shortcut-item"><span class="key">Esc</span> <span class="desc">Close Lightbox / Deselect
                         All</span></div>
+                <div class="shortcut-item"><span class="key">M</span> <span class="desc">Move Selected Files</span>
+                </div>
             </div>
         </div>
     </div>
@@ -2542,6 +2544,10 @@
                                     showNotification('No workflow available for this file.', 'info');
                                 }
                             }
+                            break;
+                        case 'm':
+                        case 'M':
+                            moveSelected();
                             break;
                     }
                 }
