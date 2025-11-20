@@ -1751,8 +1751,9 @@
                     <div class="filter-actions-row desktop-actions-only"><button type="submit">🔍 Filter</button><a
                             href="{{ url_for('gallery_view', folder_key=current_folder_key) }}">🔄 Reset</a></div>
                     <button type="button" id="main-select-all-btn">✅ Select All</button><button type="button"
-                        id="show-upload-modal-btn">☁️ Upload</button><button type="button" id="refresh-btn"
-                        class="refresh-btn">♻️ Refresh</button>
+                        id="show-upload-modal-btn">☁️ Upload</button><button type="button" id="rescan-folder-btn"
+                        style="background:var(--workflow-color);border-color:var(--workflow-color);">♻️
+                        Rescan</button><button type="button" id="refresh-btn" class="refresh-btn">♻️ Refresh</button>
                 </div>
             </form>
         </div>
@@ -1844,6 +1845,25 @@
             <h3 id="sync-message">Scanning...</h3>
             <div id="sync-progress-bar">
                 <div id="sync-progress-fill"></div>
+            </div>
+        </div>
+    </div>
+    <div id="rescan-modal-overlay"
+        style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.8);backdrop-filter:blur(10px);z-index:2400;display:flex;justify-content:center;align-items:center;opacity:0;pointer-events:none;transition:opacity 0.3s;">
+        <div
+            style="background:var(--surface-color);border:1px solid var(--border-color);border-radius:16px;box-shadow:var(--shadow-lg);padding:2rem;max-width:400px;text-align:center;">
+            <h3 style="margin-top:0;">♻️ Rescan Folder</h3>
+            <p style="color:var(--text-muted);margin-bottom:1.5rem;">Choose how you want to rescan files in this folder.
+            </p>
+            <div style="display:flex;flex-direction:column;gap:1rem;">
+                <button id="rescan-recent-btn"
+                    style="background:var(--primary-color);color:white;border:none;padding:0.75rem;border-radius:8px;cursor:pointer;font-weight:600;">Rescan
+                    Outdated (> 1h)</button>
+                <button id="rescan-all-btn"
+                    style="background:var(--danger-color);color:white;border:none;padding:0.75rem;border-radius:8px;cursor:pointer;font-weight:600;">Rescan
+                    All Files</button>
+                <button id="rescan-cancel-btn"
+                    style="background:var(--surface-hover);color:var(--text-color);border:1px solid var(--border-color);padding:0.75rem;border-radius:8px;cursor:pointer;font-weight:600;">Cancel</button>
             </div>
         </div>
     </div>
@@ -2096,7 +2116,44 @@
         function startSyncProcess(isManualRefresh = false) { const syncOverlay = document.getElementById('sync-overlay'); const syncMessage = document.getElementById('sync-message'); const syncProgressFill = document.getElementById('sync-progress-fill'); const eventSource = new EventSource(`/galleryout/sync_status/${currentFolderKey}`); let hasChanges = false; if (isManualRefresh) { syncOverlay.style.display = 'flex'; syncMessage.textContent = 'Checking for changes...'; syncProgressFill.style.width = '0%'; syncProgressFill.style.backgroundColor = 'var(--primary-color)'; } const cleanupAndClose = (shouldReload = false) => { eventSource.close(); if (shouldReload) { setTimeout(() => window.location.reload(), 1200); } else { setTimeout(() => { syncOverlay.style.display = 'none'; }, isManualRefresh ? 1200 : 0); } }; eventSource.onmessage = function (event) { try { const data = JSON.parse(event.data); if (!hasChanges && data.status !== 'no_changes') { syncOverlay.style.display = 'flex'; hasChanges = true; } if (syncOverlay.style.display === 'flex') { syncMessage.textContent = data.message; if (data.total > 0) { syncProgressFill.style.width = `${(data.current / data.total) * 100}%`; } } if (data.status === 'no_changes') { if (isManualRefresh) { syncProgressFill.style.width = '100%'; showNotification("Folder is up to date.", "info"); } cleanupAndClose(false); } else if (data.status === 'reloading') { cleanupAndClose(true); } else if (data.error) { syncProgressFill.style.backgroundColor = 'var(--danger-color)'; cleanupAndClose(false); } } catch (e) { console.error("Error parsing SSE data:", e); cleanupAndClose(false); } }; eventSource.onerror = function () { eventSource.close(); }; }
         function formatBytes(bytes, decimals = 1) { if (!bytes) return '0 B'; const k = 1024; const dm = decimals < 0 ? 0 : decimals; const sizes = ['B', 'KB', 'MB', 'GB', 'TB']; const i = Math.floor(Math.log(bytes) / Math.log(k)); return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]; }
         function appendFiles(files) { if (!files || files.length === 0) { if (currentItemCount === 0) showEmptyState(); updateLoadMoreVisibility(); return; } const fragment = document.createDocumentFragment(); const newLazyElements = []; files.forEach(file => { allFilesData.push(file); const item = createGalleryItem(file); fragment.appendChild(item); galleryItems.push(item); const lazyEl = item.querySelector('.lazy'); if (lazyEl) newLazyElements.push(lazyEl); }); galleryContainer.appendChild(fragment); initializeLazyLoading(newLazyElements); currentItemCount += files.length; updateLoadMoreVisibility(); }
-        function createGalleryItem(file) { const item = document.createElement('div'); item.className = 'gallery-item'; item.dataset.fileId = file.id; item.dataset.fileType = file.type; item.setAttribute('draggable', 'true'); item.addEventListener('dragstart', (event) => dragStart(event, file.id)); let mediaHTML = ''; if (file.type === 'audio') { mediaHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:4rem;color:#1ed760;">🎵</div>`; } else if (['image', 'animated_image'].includes(file.type)) { mediaHTML = `<img class="lazy" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E" data-src="/galleryout/thumbnail/${file.id}" alt="${file.name}" loading="lazy">`; } else if (file.type === 'video') { mediaHTML = `<video autoplay muted loop playsinline class="lazy" data-src="/galleryout/file/${file.id}" poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E"></video>`; } else { mediaHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:3rem;color:var(--text-muted);">📄</div>`; } const summaryButtonHTML = file.has_workflow ? `<button title="Node Summary" onclick="showNodeSummary(event, '${file.id}')">📝</button>` : ''; let metadataHTML = ''; if (file.dimensions || file.mtime || file.size) { const date = new Date(file.mtime * 1000); const formattedDate = date.toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }); const dimensionsPart = file.dimensions ? `<span>📐 ${file.dimensions}</span>` : ''; const datePart = file.mtime ? `<span>📅 ${formattedDate}</span>` : ''; const sizePart = file.size ? `<span>💾 ${formatBytes(file.size)}</span>` : ''; metadataHTML = `<div class="file-metadata">${dimensionsPart}${sizePart}${datePart}</div>`; } item.innerHTML = `<div class="selection-checkmark" onclick="toggleSelection(event, '${file.id}', this.closest('.gallery-item'))">✓</div><div class="thumbnail-link" onclick="openLightbox(event, '${file.id}'); event.stopPropagation();" draggable="false"><div class="thumbnail-wrapper">${mediaHTML}${file.has_workflow ? `<a href="/galleryout/workflow/${file.id}" class="workflow-badge" onclick="event.stopPropagation()">⚙️ Workflow</a>` : ''}${file.duration ? `<span class="duration-overlay">⏱️ ${file.duration}</span>` : ''}</div></div><div class="item-info"><div><p title="${file.name}"><strong>${file.name}</strong></p>${metadataHTML}</div><div class="item-actions">${summaryButtonHTML}<button class="favorite-btn ${file.is_favorite ? 'favorited' : ''}" title="Favorite" onclick="toggleFavorite(event, '${file.id}', this)">${file.is_favorite ? '⭐' : '☆'}</button><a href="/galleryout/download/${file.id}" onclick="event.stopPropagation()" title="Download">💾</a><button class="delete-btn" onclick="deleteFile(event, '${file.id}', this)">🗑️</button></div></div>`; return item; }
+        function createGalleryItem(file) {
+            const item = document.createElement('div');
+            item.className = 'gallery-item';
+            item.dataset.fileId = file.id;
+            item.dataset.fileType = file.type;
+            item.setAttribute('draggable', 'true');
+            item.addEventListener('dragstart', (event) => dragStart(event, file.id));
+            let mediaHTML = '';
+            if (file.type === 'audio') {
+                mediaHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:4rem;color:#1ed760;">🎵</div>`;
+            } else if (['image', 'animated_image'].includes(file.type)) {
+                mediaHTML = `<img class="lazy" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E" data-src="/galleryout/thumbnail/${file.id}" alt="${file.name}" loading="lazy">`;
+            } else if (file.type === 'video') {
+                mediaHTML = `<video autoplay muted loop playsinline class="lazy" data-src="/galleryout/file/${file.id}" poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E"></video>`;
+            } else {
+                mediaHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:3rem;color:var(--text-muted);">📄</div>`;
+            }
+            const summaryButtonHTML = file.has_workflow ? `<button title="Node Summary" onclick="showNodeSummary(event, '${file.id}')">📝</button>` : '';
+            let metadataHTML = '';
+            if (file.dimensions || file.mtime || file.size) {
+                const date = new Date(file.mtime * 1000);
+                const formattedDate = date.toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+                const dimensionsPart = file.dimensions ? `<span>📐 ${file.dimensions}</span>` : '';
+                const datePart = file.mtime ? `<span>📅 ${formattedDate}</span>` : '';
+                const sizePart = file.size ? `<span>💾 ${formatBytes(file.size)}</span>` : '';
+                metadataHTML = `<div class="file-metadata">${dimensionsPart}${sizePart}${datePart}</div>`;
+            }
+
+            let scannedHTML = '';
+            if (file.last_scanned) {
+                const scannedDate = new Date(file.last_scanned * 1000);
+                const formattedScannedDate = scannedDate.toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+                scannedHTML = `<div class="file-scanned-time" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; opacity: 0.8;">🔍 Scanned: ${formattedScannedDate}</div>`;
+            }
+
+            item.innerHTML = `<div class="selection-checkmark" onclick="toggleSelection(event, '${file.id}', this.closest('.gallery-item'))">✓</div><div class="thumbnail-link" onclick="openLightbox(event, '${file.id}'); event.stopPropagation();" draggable="false"><div class="thumbnail-wrapper">${mediaHTML}${file.has_workflow ? `<a href="/galleryout/workflow/${file.id}" class="workflow-badge" onclick="event.stopPropagation()">⚙️ Workflow</a>` : ''}${file.duration ? `<span class="duration-overlay">⏱️ ${file.duration}</span>` : ''}</div></div><div class="item-info"><div><p title="${file.name}"><strong>${file.name}</strong></p>${metadataHTML}${scannedHTML}</div><div class="item-actions">${summaryButtonHTML}<button class="favorite-btn ${file.is_favorite ? 'favorited' : ''}" title="Favorite" onclick="toggleFavorite(event, '${file.id}', this)">${file.is_favorite ? '⭐' : '☆'}</button><a href="/galleryout/download/${file.id}" onclick="event.stopPropagation()" title="Download">💾</a><button class="delete-btn" onclick="deleteFile(event, '${file.id}', this)">🗑️</button></div></div>`;
+            return item;
+        }
         function updateLoadMoreVisibility() { const loadMoreContainer = document.getElementById('load-more-container'); if (!loadMoreContainer) return; const shouldHide = currentItemCount >= totalFiles || totalFiles === 0; loadMoreContainer.style.display = shouldHide ? 'none' : 'block'; }
         function showEmptyState() { galleryContainer.innerHTML = `<div class="empty-state" style="grid-column: 1/-1;"><h3>📭 No files found</h3><p>There are no files matching your criteria in this folder.</p></div>`; }
         function initializeLazyLoading(elements) { const observer = new IntersectionObserver((entries, obs) => { entries.forEach(entry => { if (entry.isIntersecting) { const el = entry.target; if (el.dataset.src) { el.src = el.dataset.src; if (el.tagName === "VIDEO") el.load(); } el.classList.remove("lazy"); obs.unobserve(el); } }); }, { rootMargin: '50px' }); elements.forEach(el => observer.observe(el)); }
@@ -2297,6 +2354,48 @@
         function performUpload() { if (filesToUpload.length === 0) { showNotification('Please select files to upload.', 'warning'); return; } const formData = new FormData(); formData.append('folder_key', currentFolderKey); filesToUpload.forEach(file => { formData.append('files', file); }); const xhr = new XMLHttpRequest(); xhr.open('POST', '/galleryout/upload', true); uploadProgressContainer.style.display = 'block'; uploadSubmitBtn.disabled = true; uploadSubmitBtn.textContent = 'Uploading...'; xhr.upload.onprogress = function (event) { if (event.lengthComputable) { const percentComplete = (event.loaded / event.total) * 100; uploadProgressFill.style.width = percentComplete + '%'; } }; xhr.onload = function () { if (xhr.status >= 200 && xhr.status < 300) { const response = JSON.parse(xhr.responseText); showNotification(response.message || 'Upload successful!', 'success'); setTimeout(() => window.location.reload(), 1000); } else { try { const response = JSON.parse(xhr.responseText); showNotification(`Upload failed: ${response.message}`, 'error'); } catch (e) { showNotification(`Upload failed with status: ${xhr.status}`, 'error'); } uploadSubmitBtn.disabled = false; uploadSubmitBtn.textContent = 'Upload'; } }; xhr.onerror = function () { showNotification('An error occurred during the upload.', 'error'); uploadSubmitBtn.disabled = false; uploadSubmitBtn.textContent = 'Upload'; }; xhr.send(formData); }
         function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
+        // --- RESCAN FOLDER LOGIC ---
+        const rescanModalOverlay = document.getElementById('rescan-modal-overlay');
+        const rescanRecentBtn = document.getElementById('rescan-recent-btn');
+        const rescanAllBtn = document.getElementById('rescan-all-btn');
+        const rescanCancelBtn = document.getElementById('rescan-cancel-btn');
+
+        function showRescanModal() {
+            rescanModalOverlay.style.opacity = '1';
+            rescanModalOverlay.style.pointerEvents = 'auto';
+        }
+
+        function hideRescanModal() {
+            rescanModalOverlay.style.opacity = '0';
+            rescanModalOverlay.style.pointerEvents = 'none';
+        }
+
+        function performRescan(mode) {
+            hideRescanModal();
+            showNotification('Starting rescan...', 'info');
+
+            // Show sync overlay
+            const syncOverlay = document.getElementById('sync-overlay');
+            const syncMessage = document.getElementById('sync-message');
+            const syncProgressFill = document.getElementById('sync-progress-fill');
+            syncOverlay.style.display = 'flex';
+            syncMessage.textContent = 'Rescanning files...';
+            syncProgressFill.style.width = '100%';
+            syncProgressFill.style.backgroundColor = 'var(--primary-color)';
+            syncProgressFill.classList.add('indeterminate'); // You might want to add CSS animation for this
+
+            fetch('/galleryout/rescan_folder', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ folder_key: currentFolderKey, mode: mode })
+            })
+                .then(handleGenericResponse)
+                .catch(error => {
+                    handleError(error);
+                    syncOverlay.style.display = 'none';
+                });
+        }
+
         // --- MAIN INITIALIZATION FUNCTION ---
         document.addEventListener('DOMContentLoaded', () => {
             loaderOverlay.style.opacity = '0';
@@ -2382,6 +2481,10 @@
             });
 
             document.getElementById('refresh-btn').addEventListener('click', (e) => { e.preventDefault(); startSyncProcess(true); });
+            document.getElementById('rescan-folder-btn').addEventListener('click', showRescanModal);
+            rescanRecentBtn.addEventListener('click', () => performRescan('recent'));
+            rescanAllBtn.addEventListener('click', () => performRescan('all'));
+            rescanCancelBtn.addEventListener('click', hideRescanModal);
             document.getElementById('main-select-all-btn').addEventListener('click', selectAll);
             document.getElementById('create-folder-btn').addEventListener('click', createFolder);
             document.getElementById('cancel-drop-btn').addEventListener('click', hideDropZone);
