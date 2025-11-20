@@ -1,6 +1,6 @@
 DOCKERFILE = Dockerfile
 DOCKER_TAG_PRE = smartgallery
-DOCKER_TAG = latest
+DOCKER_TAG = test1
 SMARTGALLERY_CONTAINER_NAME = ${DOCKER_TAG_PRE}:${DOCKER_TAG}
 SMARTGALLERY_NAME = $(shell echo ${SMARTGALLERY_CONTAINER_NAME} | tr -cd '[:alnum:]-_.')
 
@@ -44,6 +44,7 @@ build:
 	@echo "  -f ${DOCKERFILE} \\" >> ${VAR_NT}.cmd
 	@echo "  --load \\" >> ${VAR_NT}.cmd
 	@echo "  ." >> ${VAR_NT}.cmd
+	@echo "docker buildx use default" >> ${VAR_NT}.cmd
 	@cat ${VAR_NT}.cmd | tee ${VAR_NT}.log.temp
 	@echo "" | tee -a ${VAR_NT}.log.temp
 	@echo "Press Ctl+c within 5 seconds to cancel"
