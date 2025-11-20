@@ -44,6 +44,7 @@ build:
 	@echo "  -f ${DOCKERFILE} \\" >> ${VAR_NT}.cmd
 	@echo "  --load \\" >> ${VAR_NT}.cmd
 	@echo "  ." >> ${VAR_NT}.cmd
+	@echo "docker buildx use default" >> ${VAR_NT}.cmd
 	@cat ${VAR_NT}.cmd | tee ${VAR_NT}.log.temp
 	@echo "" | tee -a ${VAR_NT}.log.temp
 	@echo "Press Ctl+c within 5 seconds to cancel"
