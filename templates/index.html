@@ -1872,7 +1872,8 @@
                 <div class="shortcut-item"><span class="key">R</span> <span class="desc">Rename File</span></div>
                 <div class="shortcut-item"><span class="key">Z</span> <span class="desc">Download Zip (Selected)</span>
                 </div>
-                <div class="shortcut-item"><span class="key">D</span> <span class="desc">Delete File</span></div>
+                <div class="shortcut-item"><span class="key">D</span> <span class="desc">Delete (Selected)
+                        File(s)</span></div>
                 <div class="shortcut-item"><span class="key">Esc</span> <span class="desc">Close Lightbox / Deselect
                         All</span></div>
                 <div class="shortcut-item"><span class="key">M</span> <span class="desc">Move Selected Files</span>
@@ -2585,7 +2586,9 @@
                             break;
                         case 'd':
                         case 'D':
-                            if (focusedItemIndex !== -1) {
+                            if (selectedFiles.size > 0) {
+                                deleteSelected();
+                            } else if (focusedItemIndex !== -1) {
                                 const item = galleryItems[focusedItemIndex];
                                 deleteFile(e, item.dataset.fileId, item.querySelector('.delete-btn'));
                             }
