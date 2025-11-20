@@ -1869,8 +1869,6 @@
                 <div class="shortcut-item"><span class="key">S</span> <span class="desc">Download Image</span></div>
                 <div class="shortcut-item"><span class="key">W</span> <span class="desc">Download Workflow (if
                         available)</span></div>
-                <div class="shortcut-item"><span class="key">O</span> <span class="desc">Open in New Tab
-                        (Lightbox)</span></div>
                 <div class="shortcut-item"><span class="key">R</span> <span class="desc">Rename File</span></div>
                 <div class="shortcut-item"><span class="key">Z</span> <span class="desc">Download Zip (Selected)</span>
                 </div>
@@ -1879,8 +1877,15 @@
                         All</span></div>
                 <div class="shortcut-item"><span class="key">M</span> <span class="desc">Move Selected Files</span>
                 </div>
-                <div class="shortcut-item"><span class="key">N</span> <span class="desc">Node Summary (Lightbox)</span>
-                </div>
+                <div class="shortcut-item"><span class="desc">Lightbox view:</span></div>
+                <div class="shortcut-item"><span class="key">O</span> <span class="desc">Open in New Tab</span></div>
+                <div class="shortcut-item"><span class="key">N</span> <span class="desc">Node Summary</span></div>
+                <div class="shortcut-item"><span class="key">+</span> <span class="key">-</span> <span class="desc">Zoom
+                        In/Out</span></div>
+                <div class="shortcut-item"><span class="key">Keypad (Num 789/456/123)</span> <span class="desc">Pan
+                        Diagonally/Up/Down/Left/Right</span></div>
+                <div class="shortcut-item"><span class="key">0</span> <span class="desc">Reset Zoom/Pan</span></div>
+                <div class="shortcut-item"><span class="key">.</span> <span class="desc">Cycle Pan Step</span></div>
             </div>
         </div>
     </div>
@@ -2153,13 +2158,16 @@
                 })
                 .catch(handleError);
         }
-        const lightboxOverlay = document.getElementById('lightbox-overlay'); const lightboxMedia = document.getElementById('lightbox-media'); const lightboxTitle = document.getElementById('lightbox-title'); const lightboxDownload = document.getElementById('lightbox-download'); const lightboxWorkflow = document.getElementById('lightbox-workflow'); const lightboxNewTab = document.getElementById('lightbox-new-tab'); let currentLightboxIndex = -1; let currentLightboxFile = null; let currentZoom = 1;
+        const lightboxOverlay = document.getElementById('lightbox-overlay'); const lightboxMedia = document.getElementById('lightbox-media'); const lightboxTitle = document.getElementById('lightbox-title'); const lightboxDownload = document.getElementById('lightbox-download'); const lightboxWorkflow = document.getElementById('lightbox-workflow'); const lightboxNewTab = document.getElementById('lightbox-new-tab'); let currentLightboxIndex = -1; let currentLightboxFile = null; let currentZoom = 1; let currentTranslateX = 0; let currentTranslateY = 0; let panStep = 50;
         function updateLightboxTitle() { if (!currentLightboxFile) return; const zoomPercentage = Math.round(currentZoom * 100); lightboxTitle.textContent = `${currentLightboxFile.name} (${zoomPercentage}%)`; }
-        function openLightbox(event, fileId) { if (event.target.closest('a, button')) return; event.stopPropagation(); currentLightboxIndex = galleryItems.findIndex(item => item.dataset.fileId === fileId); if (currentLightboxIndex === -1) return; currentZoom = 1; document.body.classList.add('lightbox-open'); lightboxOverlay.classList.add('visible'); showItemAtIndex(currentLightboxIndex); }
+        function updateMediaTransform() { const mediaEl = lightboxMedia.querySelector('img, video'); if (!mediaEl) return; mediaEl.style.transform = `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentZoom})`; updateLightboxTitle(); }
+        function openLightbox(event, fileId) { if (event.target.closest('a, button')) return; event.stopPropagation(); currentLightboxIndex = galleryItems.findIndex(item => item.dataset.fileId === fileId); if (currentLightboxIndex === -1) return; currentZoom = 1; currentTranslateX = 0; currentTranslateY = 0; panStep = 50; document.body.classList.add('lightbox-open'); lightboxOverlay.classList.add('visible'); showItemAtIndex(currentLightboxIndex); }
         function closeLightbox() { const mediaElement = lightboxMedia.querySelector('video, audio'); if (mediaElement) mediaElement.pause(); document.body.classList.remove('lightbox-open'); lightboxOverlay.classList.remove('visible'); lightboxMedia.innerHTML = ''; currentLightboxIndex = -1; currentLightboxFile = null; }
-        function showItemAtIndex(index) { const item = galleryItems[index]; if (!item) return; const file = allFilesData.find(f => f.id === item.dataset.fileId); if (!file) return; currentLightboxFile = file; updateLightboxTitle(); lightboxMedia.innerHTML = ''; let mediaEl; if (file.type === 'audio') { mediaEl = document.createElement('audio'); mediaEl.src = `/galleryout/file/${file.id}`; mediaEl.controls = true; mediaEl.autoplay = true; } else if (['image', 'animated_image'].includes(file.type)) { mediaEl = document.createElement('img'); mediaEl.src = `/galleryout/file/${file.id}`; mediaEl.alt = file.name; } else if (file.type === 'video') { mediaEl = document.createElement('video'); mediaEl.src = `/galleryout/file/${file.id}`; mediaEl.controls = true; mediaEl.autoplay = true; mediaEl.loop = true; } if (mediaEl) { if (mediaEl.style) { mediaEl.style.transform = `scale(${currentZoom})`; } lightboxMedia.appendChild(mediaEl); } else { lightboxMedia.innerHTML = `<div style="color:white;font-size:1.2rem;text-align:center;">📄<br>Preview not available</div>`; } lightboxDownload.href = `/galleryout/download/${file.id}`; lightboxNewTab.href = `/galleryout/file/${file.id}`; const summaryBtn = document.getElementById('lightbox-summary-btn'); if (file.has_workflow) { lightboxWorkflow.href = `/galleryout/workflow/${file.id}`; lightboxWorkflow.style.display = 'flex'; summaryBtn.style.display = 'flex'; summaryBtn.onclick = (event) => { event.stopPropagation(); showNodeSummary(event, file.id); }; } else { lightboxWorkflow.style.display = 'none'; summaryBtn.style.display = 'none'; summaryBtn.onclick = null; } }
+        function showItemAtIndex(index) { const item = galleryItems[index]; if (!item) return; const file = allFilesData.find(f => f.id === item.dataset.fileId); if (!file) return; currentLightboxFile = file; currentZoom = 1; currentTranslateX = 0; currentTranslateY = 0; updateLightboxTitle(); lightboxMedia.innerHTML = ''; let mediaEl; if (file.type === 'audio') { mediaEl = document.createElement('audio'); mediaEl.src = `/galleryout/file/${file.id}`; mediaEl.controls = true; mediaEl.autoplay = true; } else if (['image', 'animated_image'].includes(file.type)) { mediaEl = document.createElement('img'); mediaEl.src = `/galleryout/file/${file.id}`; mediaEl.alt = file.name; } else if (file.type === 'video') { mediaEl = document.createElement('video'); mediaEl.src = `/galleryout/file/${file.id}`; mediaEl.controls = true; mediaEl.autoplay = true; mediaEl.loop = true; } if (mediaEl) { updateMediaTransform(); lightboxMedia.appendChild(mediaEl); } else { lightboxMedia.innerHTML = `<div style="color:white;font-size:1.2rem;text-align:center;">📄<br>Preview not available</div>`; } lightboxDownload.href = `/galleryout/download/${file.id}`; lightboxNewTab.href = `/galleryout/file/${file.id}`; const summaryBtn = document.getElementById('lightbox-summary-btn'); if (file.has_workflow) { lightboxWorkflow.href = `/galleryout/workflow/${file.id}`; lightboxWorkflow.style.display = 'flex'; summaryBtn.style.display = 'flex'; summaryBtn.onclick = (event) => { event.stopPropagation(); showNodeSummary(event, file.id); }; } else { lightboxWorkflow.style.display = 'none'; summaryBtn.style.display = 'none'; summaryBtn.onclick = null; } }
         function navigateLightbox(direction) { if (galleryItems.length === 0) return; currentLightboxIndex = (currentLightboxIndex + direction + galleryItems.length) % galleryItems.length; showItemAtIndex(currentLightboxIndex); }
-        function zoomLightbox(amount) { const mediaEl = lightboxMedia.querySelector('img, video'); if (!mediaEl) return; currentZoom = Math.max(0.5, Math.min(3, currentZoom + amount)); mediaEl.style.transform = `scale(${currentZoom})`; updateLightboxTitle(); }
+        function zoomLightbox(amount) { const mediaEl = lightboxMedia.querySelector('img, video'); if (!mediaEl) return; currentZoom = Math.max(0.1, Math.min(10, currentZoom + amount)); updateMediaTransform(); }
+        function panLightbox(dx, dy) { currentTranslateX += dx; currentTranslateY += dy; updateMediaTransform(); }
+        function cyclePanStep() { panStep += 50; if (panStep > 200) panStep = 50; showNotification(`Pan step: ${panStep}px`, 'info'); }
         function deleteFromLightbox(noConfirm = false) { if (currentLightboxIndex < 0 || currentLightboxIndex >= galleryItems.length) return; const itemToDelete = galleryItems[currentLightboxIndex]; const fileId = itemToDelete.dataset.fileId; const deleteBtn = document.getElementById('lightbox-delete-btn'); const proceedWithDelete = () => { deleteBtn.disabled = true; fetch(`/galleryout/delete/${fileId}`, { method: 'POST' }).then(res => res.json().then(data => ({ ok: res.ok, data }))).then(({ ok, data }) => { if (ok && data.status === 'success') { showNotification(data.message || 'File deleted!', 'success'); itemToDelete.remove(); galleryItems.splice(currentLightboxIndex, 1); allFilesData = allFilesData.filter(f => f.id !== fileId); currentItemCount--; if (galleryItems.length === 0) { closeLightbox(); showEmptyState(); } else { if (currentLightboxIndex >= galleryItems.length) { currentLightboxIndex = galleryItems.length - 1; } showItemAtIndex(currentLightboxIndex); } } else { throw new Error(data.message || 'Deletion failed on the server.'); } }).catch(handleError).finally(() => { if (deleteBtn) { deleteBtn.disabled = false; } }); }; if (noConfirm || confirm('🗑️ Are you sure you want to delete this file? This cannot be undone.')) { proceedWithDelete(); } }
 
         // --- NEW FEATURE: RENAME FILE FROM LIGHTBOX ---
@@ -2447,6 +2455,48 @@
                             } else {
                                 showNotification('No node summary available for this file.', 'info');
                             }
+                            break;
+                        case '+':
+                        case '=':
+                            zoomLightbox(0.1);
+                            break;
+                        case '-':
+                        case '_':
+                            zoomLightbox(-0.1);
+                            break;
+                        case '0':
+                            currentZoom = 1;
+                            currentTranslateX = 0;
+                            currentTranslateY = 0;
+                            updateMediaTransform();
+                            break;
+                        case '.':
+                            cyclePanStep();
+                            break;
+                        // Numpad support
+                        case '8': // Up
+                            panLightbox(0, panStep);
+                            break;
+                        case '2': // Down
+                            panLightbox(0, -panStep);
+                            break;
+                        case '4': // Left
+                            panLightbox(panStep, 0);
+                            break;
+                        case '6': // Right
+                            panLightbox(-panStep, 0);
+                            break;
+                        case '7': // Up-Left
+                            panLightbox(panStep, panStep);
+                            break;
+                        case '9': // Up-Right
+                            panLightbox(-panStep, panStep);
+                            break;
+                        case '1': // Down-Left
+                            panLightbox(panStep, -panStep);
+                            break;
+                        case '3': // Down-Right
+                            panLightbox(-panStep, -panStep);
                             break;
                         case '?':
                             showShortcutsHelp();
