@@ -2165,8 +2165,27 @@
         function closeLightbox() { const mediaElement = lightboxMedia.querySelector('video, audio'); if (mediaElement) mediaElement.pause(); document.body.classList.remove('lightbox-open'); lightboxOverlay.classList.remove('visible'); lightboxMedia.innerHTML = ''; currentLightboxIndex = -1; currentLightboxFile = null; }
         function showItemAtIndex(index) { const item = galleryItems[index]; if (!item) return; const file = allFilesData.find(f => f.id === item.dataset.fileId); if (!file) return; currentLightboxFile = file; currentZoom = 1; currentTranslateX = 0; currentTranslateY = 0; updateLightboxTitle(); lightboxMedia.innerHTML = ''; let mediaEl; if (file.type === 'audio') { mediaEl = document.createElement('audio'); mediaEl.src = `/galleryout/file/${file.id}`; mediaEl.controls = true; mediaEl.autoplay = true; } else if (['image', 'animated_image'].includes(file.type)) { mediaEl = document.createElement('img'); mediaEl.src = `/galleryout/file/${file.id}`; mediaEl.alt = file.name; } else if (file.type === 'video') { mediaEl = document.createElement('video'); mediaEl.src = `/galleryout/file/${file.id}`; mediaEl.controls = true; mediaEl.autoplay = true; mediaEl.loop = true; } if (mediaEl) { updateMediaTransform(); lightboxMedia.appendChild(mediaEl); } else { lightboxMedia.innerHTML = `<div style="color:white;font-size:1.2rem;text-align:center;">📄<br>Preview not available</div>`; } lightboxDownload.href = `/galleryout/download/${file.id}`; lightboxNewTab.href = `/galleryout/file/${file.id}`; const summaryBtn = document.getElementById('lightbox-summary-btn'); if (file.has_workflow) { lightboxWorkflow.href = `/galleryout/workflow/${file.id}`; lightboxWorkflow.style.display = 'flex'; summaryBtn.style.display = 'flex'; summaryBtn.onclick = (event) => { event.stopPropagation(); showNodeSummary(event, file.id); }; } else { lightboxWorkflow.style.display = 'none'; summaryBtn.style.display = 'none'; summaryBtn.onclick = null; } }
         function navigateLightbox(direction) { if (galleryItems.length === 0) return; currentLightboxIndex = (currentLightboxIndex + direction + galleryItems.length) % galleryItems.length; showItemAtIndex(currentLightboxIndex); }
-        function zoomLightbox(amount) { const mediaEl = lightboxMedia.querySelector('img, video'); if (!mediaEl) return; currentZoom = Math.max(0.1, Math.min(10, currentZoom + amount)); updateMediaTransform(); }
-        function panLightbox(dx, dy) { currentTranslateX += dx; currentTranslateY += dy; updateMediaTransform(); }
+        function zoomLightbox(amount) { const mediaEl = lightboxMedia.querySelector('img, video'); if (!mediaEl) return; currentZoom = Math.max(0.1, Math.min(10, currentZoom + amount)); panLightbox(0, 0); }
+        function panLightbox(dx, dy) {
+            const mediaEl = lightboxMedia.querySelector('img, video');
+            if (!mediaEl) return;
+
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            const iw = mediaEl.offsetWidth * currentZoom;
+            const ih = mediaEl.offsetHeight * currentZoom;
+
+            const maxTx = Math.max(0, (iw - vw) / 2);
+            const maxTy = Math.max(0, (ih - vh) / 2);
+
+            let newTx = currentTranslateX + dx;
+            let newTy = currentTranslateY + dy;
+
+            currentTranslateX = Math.max(-maxTx, Math.min(maxTx, newTx));
+            currentTranslateY = Math.max(-maxTy, Math.min(maxTy, newTy));
+
+            updateMediaTransform();
+        }
         function cyclePanStep() { panStep += 50; if (panStep > 200) panStep = 50; showNotification(`Pan step: ${panStep}px`, 'info'); }
         function deleteFromLightbox(noConfirm = false) { if (currentLightboxIndex < 0 || currentLightboxIndex >= galleryItems.length) return; const itemToDelete = galleryItems[currentLightboxIndex]; const fileId = itemToDelete.dataset.fileId; const deleteBtn = document.getElementById('lightbox-delete-btn'); const proceedWithDelete = () => { deleteBtn.disabled = true; fetch(`/galleryout/delete/${fileId}`, { method: 'POST' }).then(res => res.json().then(data => ({ ok: res.ok, data }))).then(({ ok, data }) => { if (ok && data.status === 'success') { showNotification(data.message || 'File deleted!', 'success'); itemToDelete.remove(); galleryItems.splice(currentLightboxIndex, 1); allFilesData = allFilesData.filter(f => f.id !== fileId); currentItemCount--; if (galleryItems.length === 0) { closeLightbox(); showEmptyState(); } else { if (currentLightboxIndex >= galleryItems.length) { currentLightboxIndex = galleryItems.length - 1; } showItemAtIndex(currentLightboxIndex); } } else { throw new Error(data.message || 'Deletion failed on the server.'); } }).catch(handleError).finally(() => { if (deleteBtn) { deleteBtn.disabled = false; } }); }; if (noConfirm || confirm('🗑️ Are you sure you want to delete this file? This cannot be undone.')) { proceedWithDelete(); } }
 
