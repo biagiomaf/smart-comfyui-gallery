@@ -1869,6 +1869,8 @@
                 <div class="shortcut-item"><span class="key">S</span> <span class="desc">Download Image</span></div>
                 <div class="shortcut-item"><span class="key">W</span> <span class="desc">Download Workflow (if
                         available)</span></div>
+                <div class="shortcut-item"><span class="key">O</span> <span class="desc">Open in New Tab
+                        (Lightbox)</span></div>
                 <div class="shortcut-item"><span class="key">R</span> <span class="desc">Rename File</span></div>
                 <div class="shortcut-item"><span class="key">D</span> <span class="desc">Delete File</span></div>
                 <div class="shortcut-item"><span class="key">Esc</span> <span class="desc">Close Lightbox / Deselect
@@ -2393,6 +2395,12 @@
                                 document.body.removeChild(link);
                             } else {
                                 showNotification('No workflow available for this file.', 'info');
+                            }
+                            break;
+                        case 'o':
+                        case 'O':
+                            if (currentLightboxFile) {
+                                window.open(`/galleryout/file/${currentLightboxFile.id}`, '_blank');
                             }
                             break;
                         case '?':
