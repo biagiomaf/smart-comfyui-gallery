@@ -2180,7 +2180,33 @@
         function confirmMoveToFolder(folderKey) { if (!selectedFiles || selectedFiles.size === 0) { showNotification('No files selected.', 'warning'); return; } performBatchAction('/galleryout/move_batch', { file_ids: [...selectedFiles], destination_folder: folderKey }); hideDropZone(); }
         function hideDropZone() { document.getElementById('drag-drop-overlay').classList.remove('visible'); document.getElementById('drop-zone-panel').classList.remove('visible'); }
         function dragStart(event, fileId) { event.stopPropagation(); if (!selectedFiles.has(fileId)) { deselectAll(); selectedFiles.add(fileId); updateSelectionUI(); } const dragImage = document.createElement('div'); dragImage.style.cssText = `position:absolute;top:-100px;background:var(--primary-color);color:white;padding:8px 16px;border-radius:8px;font-weight:600;`; dragImage.textContent = `📦 ${selectedFiles.size} file${selectedFiles.size !== 1 ? 's' : ''}`; document.body.appendChild(dragImage); event.dataTransfer.setDragImage(dragImage, 0, 0); setTimeout(() => document.body.removeChild(dragImage), 0); event.dataTransfer.setData('text/plain', [...selectedFiles].join(',')); populateAndShowDropPanel(); }
-        function toggleSelection(event, fileId, item) { event.stopPropagation(); const isShift = event.shiftKey; if (isShift && lastSelectedItem) { const lastIndex = galleryItems.findIndex(i => i.dataset.fileId === lastSelectedItem.dataset.fileId); const currentIndex = galleryItems.findIndex(i => i.dataset.fileId === fileId); const [start, end] = [lastIndex, currentIndex].sort((a, b) => a - b); for (let i = start; i <= end; i++) { selectedFiles.add(galleryItems[i].dataset.fileId); } } else { selectedFiles.has(fileId) ? selectedFiles.delete(fileId) : selectedFiles.add(fileId); lastSelectedItem = item; } updateSelectionUI(); }
+        function toggleSelection(event, fileId, item) {
+            event.stopPropagation();
+
+            // Sync keyboard focus with mouse selection
+            const newIndex = galleryItems.indexOf(item);
+            if (newIndex !== -1) {
+                if (focusedItemIndex !== -1 && galleryItems[focusedItemIndex]) {
+                    galleryItems[focusedItemIndex].classList.remove('focused');
+                }
+                focusedItemIndex = newIndex;
+                galleryItems[focusedItemIndex].classList.add('focused');
+            }
+
+            const isShift = event.shiftKey;
+            if (isShift && lastSelectedItem) {
+                const lastIndex = galleryItems.findIndex(i => i.dataset.fileId === lastSelectedItem.dataset.fileId);
+                const currentIndex = galleryItems.findIndex(i => i.dataset.fileId === fileId);
+                const [start, end] = [lastIndex, currentIndex].sort((a, b) => a - b);
+                for (let i = start; i <= end; i++) {
+                    selectedFiles.add(galleryItems[i].dataset.fileId);
+                }
+            } else {
+                selectedFiles.has(fileId) ? selectedFiles.delete(fileId) : selectedFiles.add(fileId);
+                lastSelectedItem = item;
+            }
+            updateSelectionUI();
+        }
         function updateSelectionUI() { galleryItems.forEach(item => { item.classList.toggle('selected', selectedFiles.has(item.dataset.fileId)); }); const count = selectedFiles.size; selectionCounter.textContent = `📊 ${count} file${count !== 1 ? 's' : ''} selected`; selectionBar.classList.toggle('visible', count > 0); }
         function selectAll() { galleryItems.forEach(item => selectedFiles.add(item.dataset.fileId)); lastSelectedItem = galleryItems.length > 0 ? galleryItems[galleryItems.length - 1] : null; updateSelectionUI(); }
         function deselectAll() { selectedFiles.clear(); lastSelectedItem = null; updateSelectionUI(); }
