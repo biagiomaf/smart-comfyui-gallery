@@ -1,6 +1,6 @@
 DOCKERFILE = Dockerfile
 DOCKER_TAG_PRE = smartgallery
-DOCKER_TAG = test
+DOCKER_TAG = latest
 SMARTGALLERY_CONTAINER_NAME = ${DOCKER_TAG_PRE}:${DOCKER_TAG}
 SMARTGALLERY_NAME = $(shell echo ${SMARTGALLERY_CONTAINER_NAME} | tr -cd '[:alnum:]-_.')
 
