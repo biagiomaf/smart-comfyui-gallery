@@ -2221,7 +2221,29 @@
         function updateLightboxTitle() { if (!currentLightboxFile) return; const zoomPercentage = Math.round(currentZoom * 100); lightboxTitle.textContent = `${currentLightboxFile.name} (${zoomPercentage}%)`; }
         function updateMediaTransform() { const mediaEl = lightboxMedia.querySelector('img, video'); if (!mediaEl) return; mediaEl.style.transform = `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentZoom})`; updateLightboxTitle(); }
         function openLightbox(event, fileId) { if (event.target.closest('a, button')) return; event.stopPropagation(); currentLightboxIndex = galleryItems.findIndex(item => item.dataset.fileId === fileId); if (currentLightboxIndex === -1) return; currentZoom = 1; currentTranslateX = 0; currentTranslateY = 0; panStep = 50; document.body.classList.add('lightbox-open'); lightboxOverlay.classList.add('visible'); showItemAtIndex(currentLightboxIndex); }
-        function closeLightbox() { const mediaElement = lightboxMedia.querySelector('video, audio'); if (mediaElement) mediaElement.pause(); document.body.classList.remove('lightbox-open'); lightboxOverlay.classList.remove('visible'); lightboxMedia.innerHTML = ''; currentLightboxIndex = -1; currentLightboxFile = null; }
+        function closeLightbox() {
+            const mediaElement = lightboxMedia.querySelector('video, audio');
+            if (mediaElement) mediaElement.pause();
+
+            // Sync grid focus with lightbox position
+            if (currentLightboxIndex !== -1 && galleryItems.length > 0) {
+                if (focusedItemIndex !== -1 && galleryItems[focusedItemIndex]) {
+                    galleryItems[focusedItemIndex].classList.remove('focused');
+                }
+                focusedItemIndex = currentLightboxIndex;
+                const newItem = galleryItems[focusedItemIndex];
+                if (newItem) {
+                    newItem.classList.add('focused');
+                    newItem.scrollIntoView({ behavior: 'auto', block: 'center' });
+                }
+            }
+
+            document.body.classList.remove('lightbox-open');
+            lightboxOverlay.classList.remove('visible');
+            lightboxMedia.innerHTML = '';
+            currentLightboxIndex = -1;
+            currentLightboxFile = null;
+        }
         function showItemAtIndex(index) { const item = galleryItems[index]; if (!item) return; const file = allFilesData.find(f => f.id === item.dataset.fileId); if (!file) return; currentLightboxFile = file; currentZoom = 1; currentTranslateX = 0; currentTranslateY = 0; updateLightboxTitle(); lightboxMedia.innerHTML = ''; let mediaEl; if (file.type === 'audio') { mediaEl = document.createElement('audio'); mediaEl.src = `/galleryout/file/${file.id}`; mediaEl.controls = true; mediaEl.autoplay = true; } else if (['image', 'animated_image'].includes(file.type)) { mediaEl = document.createElement('img'); mediaEl.src = `/galleryout/file/${file.id}`; mediaEl.alt = file.name; } else if (file.type === 'video') { mediaEl = document.createElement('video'); mediaEl.src = `/galleryout/file/${file.id}`; mediaEl.controls = true; mediaEl.autoplay = true; mediaEl.loop = true; } if (mediaEl) { updateMediaTransform(); lightboxMedia.appendChild(mediaEl); } else { lightboxMedia.innerHTML = `<div style="color:white;font-size:1.2rem;text-align:center;">📄<br>Preview not available</div>`; } lightboxDownload.href = `/galleryout/download/${file.id}`; lightboxNewTab.href = `/galleryout/file/${file.id}`; const summaryBtn = document.getElementById('lightbox-summary-btn'); if (file.has_workflow) { lightboxWorkflow.href = `/galleryout/workflow/${file.id}`; lightboxWorkflow.style.display = 'flex'; summaryBtn.style.display = 'flex'; summaryBtn.onclick = (event) => { event.stopPropagation(); showNodeSummary(event, file.id); }; } else { lightboxWorkflow.style.display = 'none'; summaryBtn.style.display = 'none'; summaryBtn.onclick = null; } }
         function navigateLightbox(direction) { if (galleryItems.length === 0) return; currentLightboxIndex = (currentLightboxIndex + direction + galleryItems.length) % galleryItems.length; showItemAtIndex(currentLightboxIndex); }
         function zoomLightbox(amount) { const mediaEl = lightboxMedia.querySelector('img, video'); if (!mediaEl) return; currentZoom = Math.max(0.1, Math.min(10, currentZoom + amount)); panLightbox(0, 0); }
