@@ -1786,7 +1786,8 @@
         <div class="actions-grid"><button id="move-selected-btn">📁 Move</button><button id="favorite-selected-btn">⭐
                 Add</button><button id="unfavorite-selected-btn">☆ Remove</button><button id="download-zip-btn">📦
                 Zip</button><button id="delete-selected-btn" class="delete-btn">🗑️ Delete</button><button
-                id="select-all-btn">✅ All</button><button id="deselect-all-btn">❌ None</button></div>
+                id="range-select-btn" style="display:none;">↔️ Range</button><button id="select-all-btn">✅
+                All</button><button id="deselect-all-btn">❌ None</button></div>
     </div>
     <div id="lightbox-overlay">
         <div id="lightbox-header">
@@ -2207,7 +2208,38 @@
             }
             updateSelectionUI();
         }
-        function updateSelectionUI() { galleryItems.forEach(item => { item.classList.toggle('selected', selectedFiles.has(item.dataset.fileId)); }); const count = selectedFiles.size; selectionCounter.textContent = `📊 ${count} file${count !== 1 ? 's' : ''} selected`; selectionBar.classList.toggle('visible', count > 0); }
+        function updateSelectionUI() {
+            galleryItems.forEach(item => { item.classList.toggle('selected', selectedFiles.has(item.dataset.fileId)); });
+            const count = selectedFiles.size;
+            selectionCounter.textContent = `📊 ${count} file${count !== 1 ? 's' : ''} selected`;
+            selectionBar.classList.toggle('visible', count > 0);
+
+            // Range button logic
+            const rangeBtn = document.getElementById('range-select-btn');
+            if (count === 2) {
+                const selectedIds = Array.from(selectedFiles);
+                const index1 = galleryItems.findIndex(item => item.dataset.fileId === selectedIds[0]);
+                const index2 = galleryItems.findIndex(item => item.dataset.fileId === selectedIds[1]);
+                if (index1 !== -1 && index2 !== -1 && Math.abs(index1 - index2) > 1) {
+                    rangeBtn.style.display = 'inline-block';
+                    rangeBtn.onclick = () => selectRange(index1, index2);
+                } else {
+                    rangeBtn.style.display = 'none';
+                }
+            } else {
+                rangeBtn.style.display = 'none';
+            }
+        }
+        function selectRange(index1, index2) {
+            const start = Math.min(index1, index2);
+            const end = Math.max(index1, index2);
+            for (let i = start + 1; i < end; i++) {
+                if (galleryItems[i]) {
+                    selectedFiles.add(galleryItems[i].dataset.fileId);
+                }
+            }
+            updateSelectionUI();
+        }
         function selectAll() { galleryItems.forEach(item => selectedFiles.add(item.dataset.fileId)); lastSelectedItem = galleryItems.length > 0 ? galleryItems[galleryItems.length - 1] : null; updateSelectionUI(); }
         function deselectAll() { selectedFiles.clear(); lastSelectedItem = null; updateSelectionUI(); }
         function toggleFavorite(event, fileId, element) { event.stopPropagation(); const originalContent = element.innerHTML; element.innerHTML = '⏳'; element.disabled = true; fetch(`/galleryout/toggle_favorite/${fileId}`, { method: 'POST' }).then(res => res.json()).then(data => { if (data.status === 'success') { element.classList.toggle('favorited', data.is_favorite); element.innerHTML = data.is_favorite ? '⭐' : '☆'; showNotification(data.is_favorite ? 'Added to favorites!' : 'Removed from favorites!', 'success'); } else { element.innerHTML = originalContent; showNotification('Error toggling favorite', 'error'); } }).catch(error => { element.innerHTML = originalContent; handleError(error); }).finally(() => element.disabled = false); }
