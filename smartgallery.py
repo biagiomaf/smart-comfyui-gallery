@@ -110,7 +110,7 @@ def key_to_path(key):
     except Exception: return None
 
 # --- DERIVED SETTINGS ---
-DB_SCHEMA_VERSION = 22
+DB_SCHEMA_VERSION = 23
 BASE_INPUT_PATH_WORKFLOW = os.path.join(BASE_SMARTGALLERY_PATH, WORKFLOW_FOLDER_NAME)
 THUMBNAIL_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, THUMBNAIL_CACHE_FOLDER_NAME)
 SQLITE_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, SQLITE_CACHE_FOLDER_NAME)
@@ -195,35 +195,76 @@ def generate_node_summary(workflow_json_string):
     """
     Analyzes a workflow JSON, extracts details of active nodes, and returns them
     in a structured format (list of dictionaries).
+    Supports both UI format (with 'nodes' list) and API format (dict of nodes).
     """
     try:
         workflow_data = json.loads(workflow_json_string)
     except json.JSONDecodeError:
         return None # Parsing error
 
-    active_workflow = filter_enabled_nodes(workflow_data)
-    nodes = active_workflow.get('nodes', [])
+    nodes = []
+    is_api_format = False
+
+    # Determine format
+    if 'nodes' in workflow_data and isinstance(workflow_data['nodes'], list):
+        # UI Format
+        active_workflow = filter_enabled_nodes(workflow_data)
+        nodes = active_workflow.get('nodes', [])
+    else:
+        # Assume API Format
+        is_api_format = True
+        # API format doesn't have "enabled" flag usually, assume all are active
+        for node_id, node_data in workflow_data.items():
+            if isinstance(node_data, dict) and 'class_type' in node_data:
+                node_entry = node_data.copy()
+                node_entry['id'] = node_id
+                node_entry['type'] = node_data['class_type']
+                # API format inputs are the parameters
+                node_entry['inputs'] = node_data.get('inputs', {})
+                nodes.append(node_entry)
+
     if not nodes:
         return []
 
     # Sort nodes by logical category and then by ID
+    # Helper to safely get ID as int if possible
+    def get_id_safe(n):
+        try: 
+            return int(n.get('id', 0))
+        except: 
+            return str(n.get('id', 0))
+
     sorted_nodes = sorted(nodes, key=lambda n: (
         NODE_CATEGORIES_ORDER.index(NODE_CATEGORIES.get(n.get('type'), 'others')),
-        n.get('id', 0)
+        get_id_safe(n)
     ))
     
     summary_list = []
     for node in sorted_nodes:
         node_type = node.get('type', 'Unknown')
-        
-        # Extract parameters
         params_list = []
-        widgets_values = node.get('widgets_values', [])
-        param_names_list = NODE_PARAM_NAMES.get(node_type, [])
         
-        for i, value in enumerate(widgets_values):
-            param_name = param_names_list[i] if i < len(param_names_list) else f"param_{i+1}"
-            params_list.append({"name": param_name, "value": value})
+        if is_api_format:
+            # Extract parameters from 'inputs' dict
+            inputs = node.get('inputs', {})
+            for name, value in inputs.items():
+                # Skip connection references (lists like ["5", 0]) if we only want scalar params
+                # But showing them might be useful. Let's show everything for now.
+                # Maybe format lists nicely?
+                display_value = value
+                if isinstance(value, list) and len(value) == 2 and isinstance(value[0], str):
+                     # Likely a link [node_id, slot_index]
+                     display_value = f"(Link to {value[0]})"
+                
+                params_list.append({"name": name, "value": display_value})
+        else:
+            # UI Format: Extract parameters from 'widgets_values' list using mapping
+            widgets_values = node.get('widgets_values', [])
+            param_names_list = NODE_PARAM_NAMES.get(node_type, [])
+            
+            for i, value in enumerate(widgets_values):
+                param_name = param_names_list[i] if i < len(param_names_list) else f"param_{i+1}"
+                params_list.append({"name": param_name, "value": value})
 
         summary_list.append({
             "id": node.get('id', 'N/A'),
@@ -255,36 +296,85 @@ def find_ffprobe_path():
 def _validate_and_get_workflow(json_string):
     try:
         data = json.loads(json_string)
+        # Check for UI format (has 'nodes')
         workflow_data = data.get('workflow', data.get('prompt', data))
-        if isinstance(workflow_data, dict) and 'nodes' in workflow_data: return json.dumps(workflow_data)
-    except Exception: pass
-    return None
+        
+        if isinstance(workflow_data, dict):
+            if 'nodes' in workflow_data:
+                return json.dumps(workflow_data), 'ui'
+            
+            # Check for API format (keys are IDs, values have class_type)
+            # Heuristic: Check if it looks like a dict of nodes
+            is_api = False
+            for k, v in workflow_data.items():
+                if isinstance(v, dict) and 'class_type' in v:
+                    is_api = True
+                    break
+            if is_api:
+                return json.dumps(workflow_data), 'api'
+
+    except Exception: 
+        pass
+
+    return None, None
 
 def _scan_bytes_for_workflow(content_bytes):
-    open_braces, start_index = 0, -1
+    """
+    Generator that yields all valid JSON objects found in the byte stream.
+    Searches for matching curly braces.
+    """
     try:
         stream_str = content_bytes.decode('utf-8', errors='ignore')
-        first_brace = stream_str.find('{')
-        if first_brace == -1: return None
-        stream_subset = stream_str[first_brace:]
-        for i, char in enumerate(stream_subset):
+    except Exception:
+        return
+
+    start_pos = 0
+    while True:
+        first_brace = stream_str.find('{', start_pos)
+        if first_brace == -1:
+            break
+        
+        open_braces = 0
+        start_index = first_brace
+        
+        for i in range(start_index, len(stream_str)):
+            char = stream_str[i]
             if char == '{':
-                if start_index == -1: start_index = i
                 open_braces += 1
             elif char == '}':
-                if start_index != -1: open_braces -= 1
-            if start_index != -1 and open_braces == 0:
-                candidate = stream_subset[start_index : i + 1]
-                json.loads(candidate)
-                return candidate
-    except Exception:
-        return None
-    return None
+                open_braces -= 1
+            
+            if open_braces == 0:
+                candidate = stream_str[start_index : i + 1]
+                try:
+                    # Verify it's valid JSON
+                    json.loads(candidate)
+                    yield candidate
+                except json.JSONDecodeError:
+                    pass
+                
+                # Move start_pos to after this candidate to find the next one
+                start_pos = i + 1
+                break
+        else:
+            # If loop finishes without open_braces hitting 0, no more valid JSON here
+            break
 
 def extract_workflow(filepath):
     ext = os.path.splitext(filepath)[1].lower()
     video_exts = ['.mp4', '.mkv', '.webm', '.mov', '.avi']
     
+    best_workflow = None
+    
+    def update_best(wf, wf_type):
+        nonlocal best_workflow
+        if wf_type == 'ui':
+            best_workflow = wf
+            return True # Found best, stop searching
+        if wf_type == 'api' and best_workflow is None:
+            best_workflow = wf
+        return False
+
     if ext in video_exts:
         if FFPROBE_EXECUTABLE_PATH:
             try:
@@ -294,33 +384,56 @@ def extract_workflow(filepath):
                 if 'format' in data and 'tags' in data['format']:
                     for value in data['format']['tags'].values():
                         if isinstance(value, str) and value.strip().startswith('{'):
-                            workflow = _validate_and_get_workflow(value)
-                            if workflow: return workflow
+                            wf, wf_type = _validate_and_get_workflow(value)
+                            if wf:
+                                if update_best(wf, wf_type): return best_workflow
             except Exception: pass
     else:
         try:
             with Image.open(filepath) as img:
-                workflow_str = img.info.get('workflow') or img.info.get('prompt')
-                if workflow_str:
-                    workflow = _validate_and_get_workflow(workflow_str)
-                    if workflow: return workflow
+                # Check standard keys first
+                for key in ['workflow', 'prompt']:
+                    val = img.info.get(key)
+                    if val:
+                        wf, wf_type = _validate_and_get_workflow(val)
+                        if wf:
+                            if update_best(wf, wf_type): return best_workflow
+
                 exif_data = img.info.get('exif')
                 if exif_data and isinstance(exif_data, bytes):
-                    json_str = _scan_bytes_for_workflow(exif_data)
-                    if json_str:
-                        workflow = _validate_and_get_workflow(json_str)
-                        if workflow: return workflow
+                    # Check for "workflow:" prefix which some tools use
+                    try:
+                        exif_str = exif_data.decode('utf-8', errors='ignore')
+                        if 'workflow:{' in exif_str:
+                            # Extract the JSON part after "workflow:"
+                            start = exif_str.find('workflow:{') + len('workflow:')
+                            # Try to parse this specific part first
+                            for json_candidate in _scan_bytes_for_workflow(exif_str[start:].encode('utf-8')):
+                                wf, wf_type = _validate_and_get_workflow(json_candidate)
+                                if wf:
+                                    if update_best(wf, wf_type): return best_workflow
+                                    break # Found and processed the specific workflow, no need to scan further in this specific block
+                    except Exception: pass
+                    
+                    # Fallback to standard scan of the entire exif_data if not already returned
+                    if best_workflow is None:
+                        for json_str in _scan_bytes_for_workflow(exif_data):
+                            wf, wf_type = _validate_and_get_workflow(json_str)
+                            if wf:
+                                if update_best(wf, wf_type): return best_workflow
         except Exception: pass
 
+    # Raw byte scan (fallback)
     try:
         with open(filepath, 'rb') as f:
             content = f.read()
-        json_str = _scan_bytes_for_workflow(content)
-        if json_str:
-            workflow = _validate_and_get_workflow(json_str)
-            if workflow: return workflow
+        for json_str in _scan_bytes_for_workflow(content):
+            wf, wf_type = _validate_and_get_workflow(json_str)
+            if wf:
+                if update_best(wf, wf_type): return best_workflow
     except Exception: pass
 
+    # Sidecar file (fallback)
     try:
         base_filename = os.path.basename(filepath)
         search_pattern = os.path.join(BASE_INPUT_PATH_WORKFLOW, f"{base_filename}*.json")
@@ -328,11 +441,11 @@ def extract_workflow(filepath):
         if json_files:
             latest = max(json_files, key=os.path.getmtime)
             with open(latest, 'r', encoding='utf-8') as f:
-                workflow = _validate_and_get_workflow(f.read())
-                if workflow: return workflow
+                wf, wf_type = _validate_and_get_workflow(f.read())
+                if wf: return wf # Sidecar is usually explicit, just take it
     except Exception: pass
                 
-    return None
+    return best_workflow
 
 def is_webp_animated(filepath):
     try:
@@ -427,7 +540,7 @@ def process_single_file(filepath):
         
         return (
             file_id, filepath, mtime, os.path.basename(filepath),
-            metadata['type'], metadata['duration'], metadata['dimensions'], metadata['has_workflow'], file_size
+            metadata['type'], metadata['duration'], metadata['dimensions'], metadata['has_workflow'], file_size, time.time()
         )
     except Exception as e:
         print(f"ERROR: Failed to process file {os.path.basename(filepath)} in worker: {e}")
@@ -447,7 +560,8 @@ def init_db(conn=None):
         CREATE TABLE IF NOT EXISTS files (
             id TEXT PRIMARY KEY, path TEXT NOT NULL UNIQUE, mtime REAL NOT NULL,
             name TEXT NOT NULL, type TEXT, duration TEXT, dimensions TEXT,
-            has_workflow INTEGER, is_favorite INTEGER DEFAULT 0, size INTEGER DEFAULT 0
+            has_workflow INTEGER, is_favorite INTEGER DEFAULT 0, size INTEGER DEFAULT 0,
+            last_scanned REAL DEFAULT 0
         )
     ''')
     conn.commit()
@@ -575,7 +689,7 @@ def full_sync_database(conn):
             for i in range(0, len(results), BATCH_SIZE):
                 batch = results[i:i + BATCH_SIZE]
                 conn.executemany(
-                    "INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     batch
                 )
                 conn.commit()
@@ -638,7 +752,7 @@ def sync_folder_on_demand(folder_path):
                         yield f"data: {json.dumps(progress_data)}\n\n"
 
                 if data_to_upsert: 
-                    conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", data_to_upsert)
+                    conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", data_to_upsert)
 
             if files_to_delete:
                 conn.executemany("DELETE FROM files WHERE path IN (?)", [(p,) for p in files_to_delete])
@@ -671,6 +785,14 @@ def initialize_gallery():
     os.makedirs(SQLITE_CACHE_DIR, exist_ok=True)
     with get_db_connection() as conn:
         try:
+            # Check if last_scanned column exists
+            cursor = conn.execute("PRAGMA table_info(files)")
+            columns = [row[1] for row in cursor.fetchall()]
+            if 'last_scanned' not in columns:
+                print("INFO: Adding 'last_scanned' column to database...")
+                conn.execute("ALTER TABLE files ADD COLUMN last_scanned REAL DEFAULT 0")
+                conn.commit()
+
             stored_version = conn.execute('PRAGMA user_version').fetchone()[0]
         except sqlite3.DatabaseError: stored_version = 0
         if stored_version < DB_SCHEMA_VERSION:
@@ -790,6 +912,74 @@ def upload_files():
     if errors: return jsonify({'status': 'partial_success', 'message': f'Successfully uploaded {success_count} files. The following files failed: {", ".join(errors.keys())}'}), 207
     return jsonify({'status': 'success', 'message': f'Successfully uploaded {success_count} files.'})
                            
+@app.route('/galleryout/rescan_folder', methods=['POST'])
+def rescan_folder():
+    data = request.json
+    folder_key = data.get('folder_key')
+    mode = data.get('mode', 'all') # 'all' or 'recent'
+    
+    if not folder_key: return jsonify({'status': 'error', 'message': 'No folder provided.'}), 400
+    folders = get_dynamic_folder_config()
+    if folder_key not in folders: return jsonify({'status': 'error', 'message': 'Folder not found.'}), 404
+    
+    folder_path = folders[folder_key]['path']
+    
+    try:
+        with get_db_connection() as conn:
+            # Get all files in this folder
+            query = "SELECT path, last_scanned FROM files WHERE path LIKE ?"
+            params = (folder_path + os.sep + '%',)
+            rows = conn.execute(query, params).fetchall()
+            
+            # Filter files strictly within this folder (not subfolders)
+            folder_path_norm = os.path.normpath(folder_path)
+            files_in_folder = [
+                {'path': row['path'], 'last_scanned': row['last_scanned']} 
+                for row in rows 
+                if os.path.normpath(os.path.dirname(row['path'])) == folder_path_norm
+            ]
+            
+            files_to_process = []
+            current_time = time.time()
+            
+            if mode == 'recent':
+                # Process files not scanned in the last 60 minutes (3600 seconds)
+                cutoff_time = current_time - 3600
+                files_to_process = [f['path'] for f in files_in_folder if (f['last_scanned'] or 0) < cutoff_time]
+            else:
+                # Process all files
+                files_to_process = [f['path'] for f in files_in_folder]
+            
+            if not files_to_process:
+                return jsonify({'status': 'success', 'message': 'No files needed rescanning.', 'count': 0})
+            
+            print(f"INFO: Rescanning {len(files_to_process)} files in '{folder_path}' (Mode: {mode})...")
+            
+            processed_count = 0
+            results = []
+            
+            with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_PARALLEL_WORKERS) as executor:
+                futures = {executor.submit(process_single_file, path): path for path in files_to_process}
+                for future in concurrent.futures.as_completed(futures):
+                    result = future.result()
+                    if result:
+                        results.append(result)
+                    processed_count += 1
+            
+            if results:
+                # Upsert results
+                conn.executemany(
+                    "INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    results
+                )
+                conn.commit()
+                
+        return jsonify({'status': 'success', 'message': f'Successfully rescanned {len(results)} files.', 'count': len(results)})
+        
+    except Exception as e:
+        print(f"ERROR: Rescan failed: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
 @app.route('/galleryout/create_folder', methods=['POST'])
 def create_folder():
     data = request.json

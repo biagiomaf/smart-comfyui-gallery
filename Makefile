@@ -63,3 +63,13 @@ kill:
 
 buildx_rm:
 	@docker buildx rm ${SMARTGALLERY_NAME}
+
+test:
+	@mkdir -p tests/data/input
+	@mkdir -p tests/data/output
+	@mkdir -p tests/data/smartgallery
+	@if [ ! -d "tests/data/venv" ]; then \
+		python3 -m venv tests/data/venv; \
+	fi
+	@tests/data/venv/bin/pip install -q -r requirements.txt
+	@tests/data/venv/bin/pytest
