@@ -34,6 +34,10 @@
 - 🔍 **Smart Folder Navigation**: Expandable sidebar with real-time search and bi-directional sorting (A-Z, Z-A, newest, oldest)
 - 🖼️ **Enhanced Gallery Sorting**: Toggle thumbnail sorting by date or name with visual indicators
 - 🔎 **Advanced Lightbox**: Zoom with mouse wheel, persistent zoom levels, percentage display, rename and quick delete
+- ⌨️ **Keyboard Shortcuts**: Navigate, select, and manage files with speed using extensive keyboard controls
+- 📦 **Zip Download**: Select multiple files and download them as a single zip archive
+- ✏️ **Rename & Batch Actions**: Rename files directly, and perform batch move, delete, or favorite operations
+- ♻️ **Smart Rescan**: Manually trigger folder rescans with options to check only recent files or everything
 - ⚡ **Real-time Sync**: Silent background checks with visual progress overlay when new files are detected
 - 📝 **Smart Workflow Names**: Downloaded workflows now match your image filenames
 
@@ -163,15 +167,19 @@ Visit **`http://127.0.0.1:8189/galleryout`** and watch the magic happen!
 
 ## 🛠️ Advanced Configuration
 
-Want to customize your experience? Here are the key settings you can tweak:
+Want to customize your experience? Here are the key settings you can tweak (those can also be passed as environment variables):
 
 | Setting | Description | Default |
 |---------|-------------|---------|
+| `BASE_OUTPUT_PATH` | Path to ComfyUI output inside container |
+| `BASE_INPUT_PATH` | Path to ComfyUI input inside container |
+| `BASE_SMARTGALLERY_PATH` | Path for gallery data inside container |
 | `THUMBNAIL_WIDTH` | Thumbnail size in pixels | `300` |
 | `PAGE_SIZE` | Files to load initially | `100` |
 | `WEBP_ANIMATED_FPS` | Frame rate for WebP animations | `16.0` |
 | `SPECIAL_FOLDERS` | Custom folder names in menu | `['video', 'audio']` |
 | `MAX_UPLOAD_SIZE` | Maximum file size for uploads | `100MB` |
+| `MAX_PARALLEL_WORKERS` | Number of CPU cores to use (None = all) | `None` |
 
 ---
 
@@ -184,20 +192,76 @@ http://127.0.0.1:8189/galleryout
 
 ---
 
-## Docker Setup
+## ⌨️ Keyboard Shortcuts
 
-A `Dockerfile` is provided and will perform a simple build using a `python:3.12-slim` base image. 
+| Key | Action |
+|-----|--------|
+| `?` | Show help overlay |
+| `←` `→` `↑` `↓` | Navigate images |
+| `V` | View image (Lightbox) |
+| `X` | Select / Deselect image |
+| `F` | Favorite / Unfavorite |
+| `S` | Download Image |
+| `W` | Download Workflow |
+| `R` | Rename File |
+| `Z` | Download Zip (Selected) |
+| `D` | Delete (Selected) |
+| `M` | Move Selected |
+| `Esc` | Close Lightbox / Deselect All |
 
-The `Makefile` contains a `build`, `run` and `kill` targets to ease the process of building and running the container.
-Adapt the variables in the `Makefile` to match your setup before performing a `make run`.
+**Lightbox Specific:**
+- `O`: Open in New Tab
+- `N`: Node Summary
+- `+` / `-`: Zoom In/Out
+- `NumPad`: Pan
+- `0`: Reset Zoom/Pan
+- `H`: Hide Toolbar
 
-Those environment variables are also compatible with a `compose.yaml` usage as can be seen in the example file.
+---
 
-Two variables were added to support a `WANTED_UID` and `WANTED_GID` to match the user running the container and create files with the correct permissions. Find those values by running `id -u` and `id -g` respectively and replace the variables in the corresponding environment variables in the `Makefile` or `compose.yaml`.
+## 🐳 Docker Setup
 
-**Important**: make sure to create the folder referred to by `BASE_SMARTGALLERY_PATH` with the `WANTED_UID` and `WANTED_GID` permissions before running the container or it will fail to write files such as thumbnail or databases.
+A `Dockerfile` and `Makefile` are provided for easy deployment.
 
-**Note**: the build step will create a `buildx` builder if it doesn't exist. Delete it after succesful build using `make buildx_rm`.
+### Using Make (Recommended)
+
+1. **Configure**: Edit the `Makefile` variables to match your system paths:
+   - `BASE_OUTPUT_PATH_REAL`: Path to your ComfyUI output folder
+   - `BASE_INPUT_PATH_REAL`: Path to your ComfyUI input folder
+   - `BASE_SMARTGALLERY_PATH_REAL`: Path for SmartGallery database/thumbnails
+   - `WANTED_UID` / `WANTED_GID`: Your user ID/Group ID (run `id` to find these)
+
+2. **Build**:
+   ```bash
+   make build
+   ```
+
+3. **Run**:
+   ```bash
+   make run
+   ```
+
+4. **Stop**:
+   ```bash
+   make kill
+   ```
+
+### Environment Variables
+
+The following additional environment variables can be passed to the container (instead of modifying `smartgallery.py`):
+
+| Variable | Description |
+|----------|-------------|
+| `WANTED_UID` | User ID for file permissions |
+| `WANTED_GID` | Group ID for file permissions |
+| `SERVER_PORT` | Port to run the server on (default 8189) |
+
+**Note**: The build step will create a `buildx` builder if it doesn't exist. Delete it after successful build using `make buildx_rm`.
+
+### compose.yaml
+
+A `compose.yaml` file is provided for easy deployment.
+Adapt the environment variables to match your system paths and other settings.
 
 ---
 
