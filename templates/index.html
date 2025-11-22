@@ -1659,7 +1659,93 @@
             color: var(--text-muted);
             font-size: 0.95rem;
         }
-    </style>
+        
+        /* --- LIGHTBOX SHORTCUTS BAR --- */
+        #lightbox-shortcuts {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px; /* Ridotto per far stare tutto */
+            align-items: center;
+            background: rgba(0, 0, 0, 0.75); /* Leggermente più scuro per contrasto */
+            backdrop-filter: blur(12px);
+            padding: 8px 20px;
+            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            z-index: 2005;
+            pointer-events: none;
+            white-space: nowrap;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+        }
+
+        .kb-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.75rem; /* Testo leggermente più piccolo */
+            font-weight: 500;
+        }
+
+        /* Classe speciale per evidenziare Quick Delete */
+        .kb-danger {
+            color: #ff6b6b; /* Rosso chiaro */
+            font-weight: 700;
+        }
+
+        .kb-key {
+            background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            padding: 1px 5px;
+            min-width: 18px;
+            text-align: center;
+            font-family: monospace;
+            font-weight: 700;
+            color: #fff;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+            box-shadow: 0 2px 0 rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+            font-size: 0.75rem;
+        }
+
+        .kb-separator {
+            width: 1px;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.2);
+            margin: 0 2px;
+        }
+
+        @media (max-width: 1024px) {
+            #lightbox-shortcuts { display: none !important; }
+        }
+        
+        /* --- LIGHTBOX LOADER --- */
+        .lightbox-loader {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.1);
+            border-bottom-color: var(--primary-color); /* Usa il colore blu del tema */
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            /* Centramento perfetto considerando la trasformazione */
+            margin-top: -25px; 
+            margin-left: -25px;
+            z-index: 15; /* Sopra l'immagine mentre carica */
+        }
+
+        @keyframes rotation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }        
+        
+        </style>
 </head>
 
 <body>
@@ -1811,6 +1897,68 @@
         </div>
         <button id="lightbox-prev" class="lightbox-nav">‹</button><button id="lightbox-next"
             class="lightbox-nav">›</button>
+
+        <!-- Keyboard Shortcuts Bar (Desktop Only) -->
+        <div id="lightbox-shortcuts">
+            <!-- Nav -->
+            <div class="kb-group">
+                <span class="kb-key">←</span>
+                <span class="kb-key">→</span>
+                <span>Nav</span>
+            </div>
+            <div class="kb-separator"></div>
+
+            <!-- Zoom -->
+            <div class="kb-group">
+                <span class="kb-key">+</span>
+                <span class="kb-key">-</span>
+                <span>Zoom</span>
+            </div>
+            <div class="kb-separator"></div>
+
+            <!-- Node Summary -->
+            <div class="kb-group">
+                <span class="kb-key">N</span>
+                <span>Nodes</span>
+            </div>
+            <div class="kb-separator"></div>
+
+            <!-- Workflow -->
+            <div class="kb-group">
+                <span class="kb-key">W</span>
+                <span>Workflow</span>
+            </div>
+            <div class="kb-separator"></div>
+
+            <!-- Open New Tab -->
+            <div class="kb-group">
+                <span class="kb-key">O</span>
+                <span>New Tab</span>
+            </div>
+            <div class="kb-separator"></div>
+
+            <!-- Rename -->
+            <div class="kb-group">
+                <span class="kb-key">R</span>
+                <span>Rename</span>
+            </div>
+            <div class="kb-separator"></div>
+
+            <!-- Quick Delete -->
+            <div class="kb-group">
+                <span class="kb-key">D</span>
+                <span class="kb-key">Del</span>
+                <span class="kb-danger">Quick Delete</span>
+            </div>
+            <div class="kb-separator"></div>
+
+            <!-- Esc -->
+            <div class="kb-group">
+                <span class="kb-key">Esc</span>
+                <span>Close</span>
+            </div>
+        </div>
+        
     </div>
     <div id="node-summary-overlay">
         <div class="node-summary-panel">
@@ -2114,7 +2262,7 @@
             });
         }
 
-        function startSyncProcess(isManualRefresh = false) { const syncOverlay = document.getElementById('sync-overlay'); const syncMessage = document.getElementById('sync-message'); const syncProgressFill = document.getElementById('sync-progress-fill'); const eventSource = new EventSource(`/galleryout/sync_status/${currentFolderKey}`); let hasChanges = false; if (isManualRefresh) { syncOverlay.style.display = 'flex'; syncMessage.textContent = 'Checking for changes...'; syncProgressFill.style.width = '0%'; syncProgressFill.style.backgroundColor = 'var(--primary-color)'; } const cleanupAndClose = (shouldReload = false) => { eventSource.close(); if (shouldReload) { setTimeout(() => window.location.reload(), 1200); } else { setTimeout(() => { syncOverlay.style.display = 'none'; }, isManualRefresh ? 1200 : 0); } }; eventSource.onmessage = function (event) { try { const data = JSON.parse(event.data); if (!hasChanges && data.status !== 'no_changes') { syncOverlay.style.display = 'flex'; hasChanges = true; } if (syncOverlay.style.display === 'flex') { syncMessage.textContent = data.message; if (data.total > 0) { syncProgressFill.style.width = `${(data.current / data.total) * 100}%`; } } if (data.status === 'no_changes') { if (isManualRefresh) { syncProgressFill.style.width = '100%'; showNotification("Folder is up to date.", "info"); } cleanupAndClose(false); } else if (data.status === 'reloading') { cleanupAndClose(true); } else if (data.error) { syncProgressFill.style.backgroundColor = 'var(--danger-color)'; cleanupAndClose(false); } } catch (e) { console.error("Error parsing SSE data:", e); cleanupAndClose(false); } }; eventSource.onerror = function () { eventSource.close(); }; }
+        function startSyncProcess(isManualRefresh = false) { const syncOverlay = document.getElementById('sync-overlay'); const syncMessage = document.getElementById('sync-message'); const syncProgressFill = document.getElementById('sync-progress-fill'); const eventSource = new EventSource(`/galleryout/sync_status/${currentFolderKey}`); let hasChanges = false; if (isManualRefresh) { syncOverlay.style.display = 'flex'; syncMessage.textContent = 'Checking for changes...'; syncProgressFill.style.width = '0%'; syncProgressFill.style.backgroundColor = 'var(--primary-color)'; } const cleanupAndClose = (shouldReload = false) => { eventSource.close(); if (shouldReload) { setTimeout(() => window.location.reload(), 1200); } else { setTimeout(() => { syncOverlay.style.display = 'none'; }, isManualRefresh ? 1200 : 0); } }; eventSource.onmessage = function (event) { try { const data = JSON.parse(event.data); if (!hasChanges && data.status !== 'no_changes') { syncOverlay.style.display = 'flex'; hasChanges = true; } if (syncOverlay.style.display === 'flex') { syncMessage.textContent = data.message; if (data.total > 0) { syncProgressFill.style.width = `${(data.current / data.total) * 100}%`; } } if (data.status === 'no_changes') { if (isManualRefresh) { syncProgressFill.style.width = '100%'; cleanupAndClose(true); } else {cleanupAndClose(false); }} else if (data.status === 'reloading') { cleanupAndClose(true); } else if (data.error) { syncProgressFill.style.backgroundColor = 'var(--danger-color)'; cleanupAndClose(false); } } catch (e) { console.error("Error parsing SSE data:", e); cleanupAndClose(false); } }; eventSource.onerror = function () { eventSource.close(); }; }
         function formatBytes(bytes, decimals = 1) { if (!bytes) return '0 B'; const k = 1024; const dm = decimals < 0 ? 0 : decimals; const sizes = ['B', 'KB', 'MB', 'GB', 'TB']; const i = Math.floor(Math.log(bytes) / Math.log(k)); return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]; }
         function appendFiles(files) { if (!files || files.length === 0) { if (currentItemCount === 0) showEmptyState(); updateLoadMoreVisibility(); return; } const fragment = document.createDocumentFragment(); const newLazyElements = []; files.forEach(file => { allFilesData.push(file); const item = createGalleryItem(file); fragment.appendChild(item); galleryItems.push(item); const lazyEl = item.querySelector('.lazy'); if (lazyEl) newLazyElements.push(lazyEl); }); galleryContainer.appendChild(fragment); initializeLazyLoading(newLazyElements); currentItemCount += files.length; updateLoadMoreVisibility(); }
         function createGalleryItem(file) {
@@ -2251,29 +2399,96 @@
         function downloadSelectedZip() {
             if (selectedFiles.size === 0) return;
             const fileIds = [...selectedFiles];
-            showNotification('Preparing zip file...', 'info');
+            
+            showNotification('Generating zip file in background...', 'info');
 
-            fetch('/galleryout/download_batch_zip', {
+            fetch('/galleryout/prepare_batch_zip', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ file_ids: fileIds })
             })
-                .then(response => {
-                    if (response.ok) return response.blob();
-                    return response.json().then(data => { throw new Error(data.message || 'Zip generation failed'); });
-                })
-                .then(blob => {
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'smartgallery_selection.zip';
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                    a.remove();
-                    showNotification('Zip file downloaded!', 'success');
-                })
-                .catch(handleError);
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    pollZipStatus(data.job_id);
+                } else {
+                    showNotification('Error starting zip: ' + data.message, 'error');
+                }
+            })
+            .catch(handleError);
+        }
+
+        function pollZipStatus(jobId) {
+            const interval = setInterval(() => {
+                fetch(`/galleryout/check_zip_status/${jobId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'ready') {
+                            clearInterval(interval);
+                            // Creiamo una notifica speciale persistente con il link
+                            showDownloadNotification(data.download_url, data.filename);
+                        } else if (data.status === 'error') {
+                            clearInterval(interval);
+                            showNotification('Zip generation failed: ' + data.message, 'error');
+                        }
+                        // if 'processing', keep waiting
+                    })
+                    .catch(err => {
+                        clearInterval(interval);
+                        console.error(err);
+                    });
+            }, 2000); // Check every 2 secs
+        }
+
+        function showDownloadNotification(url, filename) {
+            const container = document.getElementById('notification-container');
+            if (!container) return;
+            
+            const notification = document.createElement('div');
+            notification.className = 'notification success';
+            notification.style.display = 'flex';
+            notification.style.flexDirection = 'column';
+            notification.style.gap = '10px';
+            
+            const text = document.createElement('span');
+            text.textContent = '📦 Zip archive is ready!';
+            
+            const btn = document.createElement('a');
+            btn.href = url;
+            btn.textContent = 'Download Now';
+            btn.style.backgroundColor = 'white';
+            btn.style.color = 'var(--success-color)';
+            btn.style.padding = '5px 10px';
+            btn.style.borderRadius = '4px';
+            btn.style.textDecoration = 'none';
+            btn.style.fontWeight = 'bold';
+            btn.style.textAlign = 'center';
+            btn.style.cursor = 'pointer';
+            
+            // By clicking onload and close the notification after a bit
+            btn.onclick = (e) => {
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                    setTimeout(() => notification.remove(), 500);
+                }, 1000);
+            };
+
+            notification.appendChild(text);
+            notification.appendChild(btn);
+            
+            container.appendChild(notification);
+            
+            // Animation entry
+            setTimeout(() => notification.classList.add('show'), 10);
+            
+            // Does not disappear automaticly after 3 seconds, 
+            // stays till the user downloads or closes it
+            setTimeout(() => {
+                if(document.body.contains(notification)) {
+                    notification.classList.remove('show');
+                    setTimeout(() => notification.remove(), 500);
+                }
+            }, 60000); // Disappear after 60 secs if ignored
         }
         const lightboxOverlay = document.getElementById('lightbox-overlay'); const lightboxMedia = document.getElementById('lightbox-media'); const lightboxTitle = document.getElementById('lightbox-title'); const lightboxDownload = document.getElementById('lightbox-download'); const lightboxWorkflow = document.getElementById('lightbox-workflow'); const lightboxNewTab = document.getElementById('lightbox-new-tab'); let currentLightboxIndex = -1; let currentLightboxFile = null; let currentZoom = 1; let currentTranslateX = 0; let currentTranslateY = 0; let panStep = 50;
         function updateLightboxTitle() { if (!currentLightboxFile) return; const zoomPercentage = Math.round(currentZoom * 100); lightboxTitle.textContent = `${currentLightboxFile.name} (${zoomPercentage}%)`; }
@@ -2302,7 +2517,97 @@
             currentLightboxIndex = -1;
             currentLightboxFile = null;
         }
-        function showItemAtIndex(index) { const item = galleryItems[index]; if (!item) return; const file = allFilesData.find(f => f.id === item.dataset.fileId); if (!file) return; currentLightboxFile = file; currentZoom = 1; currentTranslateX = 0; currentTranslateY = 0; updateLightboxTitle(); lightboxMedia.innerHTML = ''; let mediaEl; if (file.type === 'audio') { mediaEl = document.createElement('audio'); mediaEl.src = `/galleryout/file/${file.id}`; mediaEl.controls = true; mediaEl.autoplay = true; } else if (['image', 'animated_image'].includes(file.type)) { mediaEl = document.createElement('img'); mediaEl.src = `/galleryout/file/${file.id}`; mediaEl.alt = file.name; } else if (file.type === 'video') { mediaEl = document.createElement('video'); mediaEl.src = `/galleryout/file/${file.id}`; mediaEl.controls = true; mediaEl.autoplay = true; mediaEl.loop = true; } if (mediaEl) { updateMediaTransform(); lightboxMedia.appendChild(mediaEl); } else { lightboxMedia.innerHTML = `<div style="color:white;font-size:1.2rem;text-align:center;">📄<br>Preview not available</div>`; } lightboxDownload.href = `/galleryout/download/${file.id}`; lightboxNewTab.href = `/galleryout/file/${file.id}`; const summaryBtn = document.getElementById('lightbox-summary-btn'); if (file.has_workflow) { lightboxWorkflow.href = `/galleryout/workflow/${file.id}`; lightboxWorkflow.style.display = 'flex'; summaryBtn.style.display = 'flex'; summaryBtn.onclick = (event) => { event.stopPropagation(); showNodeSummary(event, file.id); }; } else { lightboxWorkflow.style.display = 'none'; summaryBtn.style.display = 'none'; summaryBtn.onclick = null; } }
+
+function showItemAtIndex(index) {
+            const item = galleryItems[index];
+            if (!item) return;
+            
+            const file = allFilesData.find(f => f.id === item.dataset.fileId);
+            if (!file) return;
+            
+            currentLightboxFile = file;
+            
+            // NOTE: Do not reset currentZoom/Translate to keep same zoom level between media 
+            
+            updateLightboxTitle();
+            
+            // 1. Clear and show the loader
+            lightboxMedia.innerHTML = '<div class="lightbox-loader"></div>';
+            
+            let mediaEl;
+            
+            if (file.type === 'audio') {
+                mediaEl = document.createElement('audio');
+                mediaEl.src = `/galleryout/file/${file.id}`;
+                mediaEl.controls = true;
+                mediaEl.autoplay = true;
+            } else if (['image', 'animated_image'].includes(file.type)) {
+                mediaEl = document.createElement('img');
+                mediaEl.src = `/galleryout/file/${file.id}`;
+                mediaEl.alt = file.name;
+            } else if (file.type === 'video') {
+                mediaEl = document.createElement('video');
+                mediaEl.src = `/galleryout/file/${file.id}`;
+                mediaEl.controls = true;
+                mediaEl.autoplay = true;
+                mediaEl.loop = true;
+            }
+            
+            if (mediaEl) {
+                // 2. Hide at start 
+                mediaEl.style.opacity = '0';
+                mediaEl.style.transition = 'opacity 0.3s ease';
+                
+                // called when loading completed
+                const onMediaLoaded = () => {
+                    const loader = lightboxMedia.querySelector('.lightbox-loader');
+                    if (loader) loader.remove(); // Rimuovi lo spinner
+                    mediaEl.style.opacity = '1'; // Mostra il media
+                    updateMediaTransform();      // Applica zoom/pan
+                };
+
+                // 3. Assign listeners for loading 
+                if (['image', 'animated_image'].includes(file.type)) {
+                    mediaEl.onload = onMediaLoaded;
+                    // Se l'immagine è già in cache, onload potrebbe non scattare, quindi controlliamo:
+                    if (mediaEl.complete) onMediaLoaded();
+                } else {
+                    // video and audio
+                    mediaEl.onloadeddata = onMediaLoaded;
+                    mediaEl.onerror = () => {
+                         // Gestione errore se il video fallisce
+                         const loader = lightboxMedia.querySelector('.lightbox-loader');
+                         if (loader) loader.remove();
+                         lightboxMedia.innerHTML = `<div style="color:var(--danger-color);">Error loading media</div>`;
+                    };
+                }
+
+                lightboxMedia.appendChild(mediaEl);
+                updateMediaTransform(); 
+            } else {
+                lightboxMedia.innerHTML = `<div style="color:white;font-size:1.2rem;text-align:center;">📄<br>Preview not available</div>`;
+            }
+            
+            lightboxDownload.href = `/galleryout/download/${file.id}`;
+            lightboxNewTab.href = `/galleryout/file/${file.id}`;
+            
+            const summaryBtn = document.getElementById('lightbox-summary-btn');
+            
+            if (file.has_workflow) {
+                lightboxWorkflow.href = `/galleryout/workflow/${file.id}`;
+                lightboxWorkflow.style.display = 'flex';
+                summaryBtn.style.display = 'flex';
+                summaryBtn.onclick = (event) => {
+                    event.stopPropagation();
+                    showNodeSummary(event, file.id);
+                };
+            } else {
+                lightboxWorkflow.style.display = 'none';
+                summaryBtn.style.display = 'none';
+                summaryBtn.onclick = null;
+            }
+        }
+        
         function navigateLightbox(direction) { if (galleryItems.length === 0) return; currentLightboxIndex = (currentLightboxIndex + direction + galleryItems.length) % galleryItems.length; showItemAtIndex(currentLightboxIndex); }
         function zoomLightbox(amount) { const mediaEl = lightboxMedia.querySelector('img, video'); if (!mediaEl) return; currentZoom = Math.max(0.1, Math.min(10, currentZoom + amount)); panLightbox(0, 0); }
         function panLightbox(dx, dy) {
@@ -2616,7 +2921,8 @@
                             break;
                         case 'd':
                         case 'D':
-                            deleteFromLightbox();
+                        case 'Delete':
+                             deleteFromLightbox(true); // true = no confirmation
                             break;
                         case 'f':
                         case 'F':

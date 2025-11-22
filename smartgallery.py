@@ -1,7 +1,7 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025 — MIT License (free to use and modify)
 #
-# Version: 1.31 - October 27, 2025
+# Version: 1.40 - November 22, 2025
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -27,6 +27,10 @@ import colorsys
 from werkzeug.utils import secure_filename
 import concurrent.futures
 from tqdm import tqdm
+import threading
+import uuid
+
+
 
 
 # --- USER CONFIGURATION ---
@@ -97,6 +101,7 @@ THUMBNAIL_CACHE_FOLDER_NAME = '.thumbnails_cache'
 SQLITE_CACHE_FOLDER_NAME = '.sqlite_cache'
 DATABASE_FILENAME = 'gallery_cache.sqlite'
 WORKFLOW_FOLDER_NAME = 'workflow_logs_success'
+ZIP_CACHE_FOLDER_NAME = 'zip_downloads'  
 
 # --- HELPER FUNCTIONS (DEFINED FIRST) ---
 def path_to_key(relative_path):
@@ -115,6 +120,7 @@ BASE_INPUT_PATH_WORKFLOW = os.path.join(BASE_SMARTGALLERY_PATH, WORKFLOW_FOLDER_
 THUMBNAIL_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, THUMBNAIL_CACHE_FOLDER_NAME)
 SQLITE_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, SQLITE_CACHE_FOLDER_NAME)
 DATABASE_FILE = os.path.join(SQLITE_CACHE_DIR, DATABASE_FILENAME)
+ZIP_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, ZIP_CACHE_FOLDER_NAME)
 PROTECTED_FOLDER_KEYS = {path_to_key(f) for f in SPECIAL_FOLDERS}
 PROTECTED_FOLDER_KEYS.add('_root_')
 
@@ -997,42 +1003,90 @@ def create_folder():
     except FileExistsError: return jsonify({'status': 'error', 'message': 'Folder already exists.'}), 400
     except Exception as e: return jsonify({'status': 'error', 'message': str(e)}), 500
 
-@app.route('/galleryout/download_batch_zip', methods=['POST'])
-def download_batch_zip():
-    data = request.json
-    file_ids = data.get('file_ids', [])
-    if not file_ids:
-        return jsonify({'status': 'error', 'message': 'No files specified.'}), 400
-
+# --- ZIP BACKGROUND JOB MANAGEMENT ---
+zip_jobs = {}
+def background_zip_task(job_id, file_ids):
     try:
+        if not os.path.exists(ZIP_CACHE_DIR):
+            try:
+                os.makedirs(ZIP_CACHE_DIR, exist_ok=True)
+            except Exception as e:
+                print(f"ERROR: Could not create zip directory: {e}")
+                zip_jobs[job_id] = {'status': 'error', 'message': f'Server permission error: {e}'}
+                return
+        
+        zip_filename = f"smartgallery_{job_id}.zip"
+        zip_filepath = os.path.join(ZIP_CACHE_DIR, zip_filename)
+        
         with get_db_connection() as conn:
             placeholders = ','.join(['?'] * len(file_ids))
             query = f"SELECT path, name FROM files WHERE id IN ({placeholders})"
             files_to_zip = conn.execute(query, file_ids).fetchall()
 
         if not files_to_zip:
-            return jsonify({'status': 'error', 'message': 'No valid files found.'}), 404
+            zip_jobs[job_id] = {'status': 'error', 'message': 'No valid files found.'}
+            return
 
-        memory_file = io.BytesIO()
-        with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+        with zipfile.ZipFile(zip_filepath, 'w', zipfile.ZIP_DEFLATED) as zf:
             for file_row in files_to_zip:
                 file_path = file_row['path']
                 file_name = file_row['name']
+                # Check the file esists 
                 if os.path.exists(file_path):
+                    # Add file to zip
                     zf.write(file_path, file_name)
         
-        memory_file.seek(0)
-        return send_file(
-            memory_file,
-            mimetype='application/zip',
-            as_attachment=True,
-            download_name='smartgallery_selection.zip'
-        )
+        # Job completed succesfully
+        zip_jobs[job_id] = {
+            'status': 'ready', 
+            'filename': zip_filename
+        }
+        
+        # Clean automatic: delete zip older than 24 hours
+        try:
+            now = time.time()
+            for f in os.listdir(ZIP_CACHE_DIR):
+                fp = os.path.join(ZIP_CACHE_DIR, f)
+                if os.path.isfile(fp) and os.stat(fp).st_mtime < now - 86400:
+                    os.remove(fp)
+        except Exception: 
+            pass
 
     except Exception as e:
-        print(f"ERROR: Zip generation failed: {e}")
-        return jsonify({'status': 'error', 'message': f'Zip generation failed: {str(e)}'}), 500
+        print(f"Zip Error: {e}")
+        zip_jobs[job_id] = {'status': 'error', 'message': str(e)}
+        
+@app.route('/galleryout/prepare_batch_zip', methods=['POST'])
+def prepare_batch_zip():
+    data = request.json
+    file_ids = data.get('file_ids', [])
+    if not file_ids:
+        return jsonify({'status': 'error', 'message': 'No files specified.'}), 400
 
+    job_id = str(uuid.uuid4())
+    zip_jobs[job_id] = {'status': 'processing'}
+    
+    thread = threading.Thread(target=background_zip_task, args=(job_id, file_ids))
+    thread.daemon = True
+    thread.start()
+    
+    return jsonify({'status': 'success', 'job_id': job_id, 'message': 'Zip generation started.'})
+
+@app.route('/galleryout/check_zip_status/<job_id>')
+def check_zip_status(job_id):
+    job = zip_jobs.get(job_id)
+    if not job:
+        return jsonify({'status': 'error', 'message': 'Job not found'}), 404
+    response_data = job.copy()
+    if job['status'] == 'ready' and 'filename' in job:
+        response_data['download_url'] = url_for('serve_zip_file', filename=job['filename'])
+        
+    return jsonify(response_data)
+    
+@app.route('/galleryout/serve_zip/<filename>')
+def serve_zip_file(filename):
+    return send_from_directory(ZIP_CACHE_DIR, filename, as_attachment=True)
+    
 
 @app.route('/galleryout/rename_folder/<string:folder_key>', methods=['POST'])
 def rename_folder(folder_key):
