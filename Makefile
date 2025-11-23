@@ -33,7 +33,7 @@ BATCH_SIZE=500
 all: 
 	@echo "Available targets: build run kill buildx_rm"
 
-build:
+build: test
 	@echo ""; echo ""; echo "===== Building ${SMARTGALLERY_CONTAINER_NAME}"
 	@$(eval VAR_NT="${SMARTGALLERY_NAME}")
 	@echo "-- Docker command to be run:"
