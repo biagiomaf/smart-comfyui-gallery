@@ -591,63 +591,118 @@ def get_dynamic_folder_config(force_refresh=False):
 
     print("INFO: Refreshing folder configuration by scanning directory tree...")
 
-    base_path_normalized = os.path.normpath(BASE_OUTPUT_PATH).replace('\\', '/')
-    
-    try:
-        root_mtime = os.path.getmtime(BASE_OUTPUT_PATH)
-    except OSError:
-        root_mtime = time.time()
+    # Define our roots
+    roots = [
+        {'key': 'output', 'path': BASE_OUTPUT_PATH, 'display_name': 'Output'},
+        {'key': 'input', 'path': BASE_INPUT_PATH, 'display_name': 'Input'}
+    ]
 
+    # Virtual Root
     dynamic_config = {
         '_root_': {
             'display_name': 'Main',
-            'path': base_path_normalized,
+            'path': '', # Virtual
             'relative_path': '',
             'parent': None,
-            'children': [],
-            'mtime': root_mtime 
+            'children': ['output', 'input'],
+            'mtime': time.time() 
         }
     }
 
-    try:
-        all_folders = {}
-        for dirpath, dirnames, _ in os.walk(BASE_OUTPUT_PATH):
-            dirnames[:] = [d for d in dirnames if d not in [THUMBNAIL_CACHE_FOLDER_NAME, SQLITE_CACHE_FOLDER_NAME, ZIP_CACHE_FOLDER_NAME, DELETE_CACHE_FOLDER_NAME]]
-            for dirname in dirnames:
-                full_path = os.path.normpath(os.path.join(dirpath, dirname)).replace('\\', '/')
-                relative_path = os.path.relpath(full_path, BASE_OUTPUT_PATH).replace('\\', '/')
-                try:
-                    mtime = os.path.getmtime(full_path)
-                except OSError:
-                    mtime = time.time()
-                
-                all_folders[relative_path] = {
-                    'full_path': full_path,
-                    'display_name': dirname,
-                    'mtime': mtime
-                }
+    for root_info in roots:
+        root_key = root_info['key']
+        base_path = root_info['path']
+        display_name = root_info['display_name']
 
-        sorted_paths = sorted(all_folders.keys(), key=lambda x: x.count('/'))
-
-        for rel_path in sorted_paths:
-            folder_data = all_folders[rel_path]
-            key = path_to_key(rel_path)
-            parent_rel_path = os.path.dirname(rel_path).replace('\\', '/')
-            parent_key = '_root_' if parent_rel_path == '.' or parent_rel_path == '' else path_to_key(parent_rel_path)
-
-            if parent_key in dynamic_config:
-                dynamic_config[parent_key]['children'].append(key)
-
-            dynamic_config[key] = {
-                'display_name': folder_data['display_name'],
-                'path': folder_data['full_path'],
-                'relative_path': rel_path,
-                'parent': parent_key,
+        if not os.path.exists(base_path):
+            print(f"WARNING: The base directory '{base_path}' for {display_name} was not found.")
+            # Still add the entry so the UI doesn't break, but it will be empty
+            dynamic_config[root_key] = {
+                'display_name': display_name,
+                'path': base_path,
+                'relative_path': root_key, # Use key as relative path base
+                'parent': '_root_',
                 'children': [],
-                'mtime': folder_data['mtime']
+                'mtime': 0
             }
-    except FileNotFoundError:
-        print(f"WARNING: The base directory '{BASE_OUTPUT_PATH}' was not found.")
+            continue
+
+        base_path_normalized = os.path.normpath(base_path).replace('\\', '/')
+        
+        try:
+            root_mtime = os.path.getmtime(base_path)
+        except OSError:
+            root_mtime = time.time()
+
+        # Add the root entry itself
+        dynamic_config[root_key] = {
+            'display_name': display_name,
+            'path': base_path_normalized,
+            'relative_path': root_key,
+            'parent': '_root_',
+            'children': [],
+            'mtime': root_mtime
+        }
+
+        try:
+            all_folders = {}
+            for dirpath, dirnames, _ in os.walk(base_path):
+                dirnames[:] = [d for d in dirnames if d not in [THUMBNAIL_CACHE_FOLDER_NAME, SQLITE_CACHE_FOLDER_NAME, ZIP_CACHE_FOLDER_NAME, DELETE_CACHE_FOLDER_NAME]]
+                for dirname in dirnames:
+                    full_path = os.path.normpath(os.path.join(dirpath, dirname)).replace('\\', '/')
+                    # Calculate relative path from the specific root's base path
+                    rel_from_base = os.path.relpath(full_path, base_path).replace('\\', '/')
+                    
+                    # Prefix with root key to ensure uniqueness in the global config
+                    # e.g. "output/subfolder" or "input/workflows"
+                    config_rel_path = f"{root_key}/{rel_from_base}"
+                    
+                    try:
+                        mtime = os.path.getmtime(full_path)
+                    except OSError:
+                        mtime = time.time()
+                    
+                    all_folders[config_rel_path] = {
+                        'full_path': full_path,
+                        'display_name': dirname,
+                        'mtime': mtime,
+                        'rel_from_base': rel_from_base
+                    }
+
+            sorted_paths = sorted(all_folders.keys(), key=lambda x: x.count('/'))
+
+            for config_rel_path in sorted_paths:
+                folder_data = all_folders[config_rel_path]
+                
+                # Generate key from the unique config_rel_path
+                key = path_to_key(config_rel_path)
+                
+                # Determine parent
+                # If rel_from_base has no slashes, parent is the root_key
+                # Otherwise, parent is the dirname of config_rel_path
+                
+                rel_from_base = folder_data['rel_from_base']
+                parent_dir = os.path.dirname(rel_from_base)
+                
+                if parent_dir == '' or parent_dir == '.':
+                    parent_key = root_key
+                else:
+                    parent_config_rel_path = f"{root_key}/{parent_dir}".replace('\\', '/')
+                    parent_key = path_to_key(parent_config_rel_path)
+
+                if parent_key in dynamic_config:
+                    dynamic_config[parent_key]['children'].append(key)
+
+                dynamic_config[key] = {
+                    'display_name': folder_data['display_name'],
+                    'path': folder_data['full_path'],
+                    'relative_path': config_rel_path,
+                    'parent': parent_key,
+                    'children': [],
+                    'mtime': folder_data['mtime']
+                }
+        except Exception as e:
+            print(f"ERROR scanning {display_name}: {e}")
     
     folder_config_cache = dynamic_config
     return dynamic_config
@@ -828,7 +883,7 @@ def initialize_gallery():
 @app.route('/galleryout/')
 @app.route('/')
 def gallery_redirect_base():
-    return redirect(url_for('gallery_view', folder_key='_root_'))
+    return redirect(url_for('gallery_view', folder_key='output'))
 
 @app.route('/galleryout/sync_status/<string:folder_key>')
 def sync_status(folder_key):
@@ -843,7 +898,7 @@ def gallery_view(folder_key):
     global gallery_view_cache
     folders = get_dynamic_folder_config(force_refresh=True)
     if folder_key not in folders:
-        return redirect(url_for('gallery_view', folder_key='_root_'))
+        return redirect(url_for('gallery_view', folder_key='output'))
     
     current_folder_info = folders[folder_key]
     folder_path = current_folder_info['path']
@@ -1111,6 +1166,7 @@ def background_cleanup_task():
         # Sleep for 6 hours
         time.sleep(6 * 3600)
 
+# Manual trigger for cleanup (adaapt url for your server): curl -X POST http://localhost:8189/galleryout/trigger_cleanup
 @app.route('/galleryout/trigger_cleanup', methods=['POST'])
 def trigger_cleanup():
     try:
