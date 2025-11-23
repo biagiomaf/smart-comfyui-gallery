@@ -4,7 +4,7 @@ def test_index_redirect(client):
     """Test that the root URL redirects to the gallery view."""
     response = client.get('/')
     assert response.status_code == 302
-    assert '/galleryout/view/_root_' in response.headers['Location']
+    assert '/galleryout/view/output' in response.headers['Location']
 
 def test_gallery_view_root(client):
     """Test that the main gallery view loads."""

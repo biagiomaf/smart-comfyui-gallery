@@ -15,7 +15,7 @@ def test_create_folder(client):
         shutil.rmtree(new_folder_path)
         
     response = client.post('/galleryout/create_folder', json={
-        'parent_key': '_root_',
+        'parent_key': 'output',
         'folder_name': new_folder_name
     })
     
@@ -35,7 +35,7 @@ def test_create_duplicate_folder(client):
     os.makedirs(folder_path, exist_ok=True)
     
     response = client.post('/galleryout/create_folder', json={
-        'parent_key': '_root_',
+        'parent_key': 'output',
         'folder_name': folder_name
     })
     
