@@ -93,6 +93,12 @@ MAX_PARALLEL_WORKERS = os.environ.get('MAX_PARALLEL_WORKERS', None)
 if MAX_PARALLEL_WORKERS is not None:
     MAX_PARALLEL_WORKERS = int(MAX_PARALLEL_WORKERS)
 
+# If True, deleted files are moved to a "Deleted" folder instead of being permanently removed.
+DELETE_MOVES = os.environ.get('DELETE_MOVES', 'false').lower() == 'true'
+
+# Number of days to keep files in the temporary folders (Deleted, zip_downloads) before automatic cleanup.
+CLEAR_TEMP_DAYS = int(os.environ.get('CLEAR_TEMP_DAYS', 7))
+
 # ------- END OF USER CONFIGURATION -------
 
 
@@ -101,7 +107,8 @@ THUMBNAIL_CACHE_FOLDER_NAME = '.thumbnails_cache'
 SQLITE_CACHE_FOLDER_NAME = '.sqlite_cache'
 DATABASE_FILENAME = 'gallery_cache.sqlite'
 WORKFLOW_FOLDER_NAME = 'workflow_logs_success'
-ZIP_CACHE_FOLDER_NAME = 'zip_downloads'  
+ZIP_CACHE_FOLDER_NAME = 'zip_downloads'
+DELETE_CACHE_FOLDER_NAME = 'Deleted'  
 
 # --- HELPER FUNCTIONS (DEFINED FIRST) ---
 def path_to_key(relative_path):
@@ -121,6 +128,7 @@ THUMBNAIL_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, THUMBNAIL_CACHE_FOLDE
 SQLITE_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, SQLITE_CACHE_FOLDER_NAME)
 DATABASE_FILE = os.path.join(SQLITE_CACHE_DIR, DATABASE_FILENAME)
 ZIP_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, ZIP_CACHE_FOLDER_NAME)
+DELETE_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, DELETE_CACHE_FOLDER_NAME)
 PROTECTED_FOLDER_KEYS = {path_to_key(f) for f in SPECIAL_FOLDERS}
 PROTECTED_FOLDER_KEYS.add('_root_')
 
@@ -140,6 +148,9 @@ print("BASE_INPUT_PATH_WORKFLOW: ", BASE_INPUT_PATH_WORKFLOW)
 print("THUMBNAIL_CACHE_DIR: ", THUMBNAIL_CACHE_DIR)
 print("SQLITE_CACHE_DIR: ", SQLITE_CACHE_DIR)
 print("DATABASE_FILE: ", DATABASE_FILE)
+print("DELETE_MOVES: ", DELETE_MOVES)
+print("CLEAR_TEMP_DAYS: ", CLEAR_TEMP_DAYS)
+print("DELETE_CACHE_DIR: ", DELETE_CACHE_DIR)
 print("PROTECTED_FOLDER_KEYS: ", PROTECTED_FOLDER_KEYS)
 
 
@@ -601,7 +612,7 @@ def get_dynamic_folder_config(force_refresh=False):
     try:
         all_folders = {}
         for dirpath, dirnames, _ in os.walk(BASE_OUTPUT_PATH):
-            dirnames[:] = [d for d in dirnames if d not in [THUMBNAIL_CACHE_FOLDER_NAME, SQLITE_CACHE_FOLDER_NAME]]
+            dirnames[:] = [d for d in dirnames if d not in [THUMBNAIL_CACHE_FOLDER_NAME, SQLITE_CACHE_FOLDER_NAME, ZIP_CACHE_FOLDER_NAME, DELETE_CACHE_FOLDER_NAME]]
             for dirname in dirnames:
                 full_path = os.path.normpath(os.path.join(dirpath, dirname)).replace('\\', '/')
                 relative_path = os.path.relpath(full_path, BASE_OUTPUT_PATH).replace('\\', '/')
@@ -1055,6 +1066,61 @@ def background_zip_task(job_id, file_ids):
     except Exception as e:
         print(f"Zip Error: {e}")
         zip_jobs[job_id] = {'status': 'error', 'message': str(e)}
+
+def cleanup_temp_files():
+    """
+    Deletes files and folders in DELETE_CACHE_DIR and ZIP_CACHE_DIR 
+    that are older than CLEAR_TEMP_DAYS.
+    """
+    print("INFO: Starting cleanup of temporary files...")
+    cutoff_time = time.time() - (CLEAR_TEMP_DAYS * 86400)
+    
+    dirs_to_clean = [DELETE_CACHE_DIR, ZIP_CACHE_DIR]
+    
+    cleaned_count = 0
+    errors = []
+
+    for directory in dirs_to_clean:
+        if not os.path.exists(directory):
+            continue
+            
+        for name in os.listdir(directory):
+            path = os.path.join(directory, name)
+            try:
+                mtime = os.path.getmtime(path)
+                if mtime < cutoff_time:
+                    if os.path.isfile(path) or os.path.islink(path):
+                        os.remove(path)
+                        cleaned_count += 1
+                    elif os.path.isdir(path):
+                        shutil.rmtree(path)
+                        cleaned_count += 1
+            except Exception as e:
+                errors.append(f"Failed to delete {name}: {e}")
+                print(f"ERROR: Cleanup failed for {path}: {e}")
+
+    print(f"INFO: Cleanup complete. Removed {cleaned_count} items.")
+    return cleaned_count, errors
+
+def background_cleanup_task():
+    while True:
+        try:
+            cleanup_temp_files()
+        except Exception as e:
+            print(f"ERROR: Background cleanup task failed: {e}")
+        # Sleep for 6 hours
+        time.sleep(6 * 3600)
+
+@app.route('/galleryout/trigger_cleanup', methods=['POST'])
+def trigger_cleanup():
+    try:
+        count, errors = cleanup_temp_files()
+        message = f"Cleanup complete. Removed {count} items."
+        if errors:
+            message += f" Errors: {'; '.join(errors)}"
+        return jsonify({'status': 'success', 'message': message, 'removed_count': count})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
         
 @app.route('/galleryout/prepare_batch_zip', methods=['POST'])
 def prepare_batch_zip():
@@ -1121,10 +1187,23 @@ def delete_folder(folder_key):
     if folder_key not in folders: return jsonify({'status': 'error', 'message': 'Folder not found.'}), 404
     try:
         folder_path = folders[folder_key]['path']
+        
+        # If DELETE_MOVES is enabled, move the folder instead of deleting it
+        if DELETE_MOVES:
+            try:
+                os.makedirs(DELETE_CACHE_DIR, exist_ok=True)
+                folder_name = os.path.basename(folder_path)
+                dest_path = _get_unique_filepath(DELETE_CACHE_DIR, folder_name)
+                shutil.move(folder_path, dest_path)
+            except Exception as e:
+                return jsonify({'status': 'error', 'message': f'Error moving folder to trash: {e}'}), 500
+        else:
+            shutil.rmtree(folder_path)
+
         with get_db_connection() as conn:
             conn.execute("DELETE FROM files WHERE path LIKE ?", (folder_path + os.sep + '%',))
             conn.commit()
-        shutil.rmtree(folder_path)
+            
         get_dynamic_folder_config(force_refresh=True)
         return jsonify({'status': 'success', 'message': 'Folder deleted.'})
     except Exception as e: return jsonify({'status': 'error', 'message': f'Error: {e}'}), 500
@@ -1201,7 +1280,13 @@ def delete_batch():
         ids_to_remove_from_db = []
         for row in files_to_delete:
             try:
-                if os.path.exists(row['path']): os.remove(row['path'])
+                if os.path.exists(row['path']):
+                    if DELETE_MOVES:
+                        os.makedirs(DELETE_CACHE_DIR, exist_ok=True)
+                        dest_path = _get_unique_filepath(DELETE_CACHE_DIR, os.path.basename(row['path']))
+                        shutil.move(row['path'], dest_path)
+                    else:
+                        os.remove(row['path'])
                 ids_to_remove_from_db.append(row['id'])
                 deleted_count += 1
             except Exception as e: 
@@ -1248,7 +1333,12 @@ def delete_file(file_id):
         
         try:
             if os.path.exists(filepath):
-                os.remove(filepath)
+                if DELETE_MOVES:
+                    os.makedirs(DELETE_CACHE_DIR, exist_ok=True)
+                    dest_path = _get_unique_filepath(DELETE_CACHE_DIR, os.path.basename(filepath))
+                    shutil.move(filepath, dest_path)
+                else:
+                    os.remove(filepath)
             # If file doesn't exist on disk, we still proceed to remove the DB entry, which is the desired state.
         except OSError as e:
             # A real OS error occurred (e.g., permissions).
@@ -1375,5 +1465,10 @@ def favicon():
 
 if __name__ == '__main__':
     initialize_gallery()
+    
+    # Start background cleanup task
+    cleanup_thread = threading.Thread(target=background_cleanup_task, daemon=True)
+    cleanup_thread.start()
+    
     print(f"Gallery started! Open: http://127.0.0.1:{SERVER_PORT}/galleryout/")
     app.run(host='0.0.0.0', port=SERVER_PORT, debug=False)
