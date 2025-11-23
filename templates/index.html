@@ -1633,7 +1633,7 @@
         .shortcuts-content {
             padding: 1.5rem;
             display: grid;
-            gap: 1rem;
+            gap: 0.5rem;
         }
 
         .shortcut-item {
@@ -2038,6 +2038,8 @@
                 <div class="shortcut-item"><span class="key">S</span> <span class="desc">Download Image</span></div>
                 <div class="shortcut-item"><span class="key">W</span> <span class="desc">Download Workflow (if
                         available)</span></div>
+                <div class="shortcut-item"><span class="key">L</span> <span class="desc">Refresh View</span></div>
+                <div class="shortcut-item"><span class="key">K</span> <span class="desc">Rescan Folder</span></div>
                 <div class="shortcut-item"><span class="key">R</span> <span class="desc">Rename File</span></div>
                 <div class="shortcut-item"><span class="key">Z</span> <span class="desc">Download Zip (Selected)</span>
                 </div>
@@ -2902,6 +2904,25 @@ function showItemAtIndex(index) {
             document.addEventListener('keydown', (e) => {
                 // Ignore shortcuts if user is typing in an input or if a modal is open (except lightbox)
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+
+                // Handle Escape for modals (must be before modal-open check)
+                if (e.key === 'Escape') {
+                    const shortcutsHelp = document.getElementById('shortcuts-help-overlay');
+                    if (shortcutsHelp.classList.contains('visible')) {
+                        closeShortcutsHelp();
+                        return;
+                    }
+                    if (uploadOverlay.classList.contains('visible')) {
+                        closeUploadModal();
+                        return;
+                    }
+                    if (summaryOverlay.classList.contains('visible')) {
+                        closeNodeSummary();
+                        return;
+                    }
+                    hideDropZone();
+                }
+
                 if (document.body.classList.contains('modal-open')) return;
 
                 const isLightboxOpen = document.body.classList.contains('lightbox-open');
@@ -3035,8 +3056,21 @@ function showItemAtIndex(index) {
                         downloadSelectedZip();
                     }
 
+                    if (e.key === 'l' || e.key === 'L') {
+                        startSyncProcess(true);
+                    }
+
+                    if (e.key === 'k' || e.key === 'K') {
+                        showRescanModal();
+                    }
+
                     if (e.key === '?') {
                         showShortcutsHelp();
+                        return;
+                    }
+
+                    if (e.key === 'Escape') {
+                        if (selectedFiles.size > 0) deselectAll();
                         return;
                     }
 
@@ -3174,10 +3208,15 @@ function showItemAtIndex(index) {
             uploadSubmitBtn.addEventListener('click', performUpload);
             const loadMoreBtn = document.getElementById('load-more-btn');
             if (loadMoreBtn) { loadMoreBtn.addEventListener('click', async function () { this.disabled = true; this.innerHTML = '📂 Loading...'; try { const response = await fetch(`/galleryout/load_more?offset=${currentItemCount}&folder_key=${currentFolderKey}&${new URLSearchParams(new FormData(document.querySelector('.filter-bar form')))}`); const data = await response.json(); if (data.files && data.files.length > 0) appendFiles(data.files); else { showNotification('No more files to load.', 'info'); this.style.display = 'none'; } } catch (error) { handleError(error); } if (currentItemCount < totalFiles) { this.disabled = false; this.innerHTML = '📂 Load More'; } }); }
-            document.addEventListener('keydown', (event) => { if ((event.ctrlKey || event.metaKey) && event.key === 'a') { event.preventDefault(); selectAll(); } if (event.key === 'Escape') { if (uploadOverlay.classList.contains('visible')) closeUploadModal(); else if (summaryOverlay.classList.contains('visible')) closeNodeSummary(); else if (document.getElementById('shortcuts-help-overlay').classList.contains('visible')) closeShortcutsHelp(); else if (selectedFiles.size > 0) deselectAll(); hideDropZone(); } });
 
-            function showShortcutsHelp() { document.getElementById('shortcuts-help-overlay').classList.add('visible'); }
-            function closeShortcutsHelp() { document.getElementById('shortcuts-help-overlay').classList.remove('visible'); }
+            function showShortcutsHelp() {
+                document.getElementById('shortcuts-help-overlay').classList.add('visible');
+                document.body.classList.add('modal-open');
+            }
+            function closeShortcutsHelp() {
+                document.getElementById('shortcuts-help-overlay').classList.remove('visible');
+                document.body.classList.remove('modal-open');
+            }
             document.getElementById('shortcuts-help-overlay').addEventListener('click', (e) => { if (e.target.id === 'shortcuts-help-overlay') closeShortcutsHelp(); });
 
             window.onscroll = () => { if (backToTopBtn) { backToTopBtn.style.display = (window.scrollY > 300) ? 'block' : 'none'; } };
