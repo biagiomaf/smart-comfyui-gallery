@@ -72,4 +72,5 @@ test:
 		python3 -m venv tests/data/venv; \
 	fi
 	@tests/data/venv/bin/pip install -q -r requirements.txt
+	@tests/data/venv/bin/python3 tests/verify_config_structure.py
 	@tests/data/venv/bin/pytest
