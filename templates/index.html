@@ -426,6 +426,19 @@
             border-color: var(--primary-color);
         }
 
+        .file-count-badge {
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+            background: var(--surface-hover);
+            color: var(--text-muted);
+            font-weight: 600;
+            border-radius: 8px;
+            border: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+        }
+
         .filter-bar {
             padding: 1.5rem 2rem;
         }
@@ -1785,6 +1798,9 @@
                 {% endfor %}
             </div>
             <div class="gallery-sort-controls">
+                <span class="file-count-badge">
+                    📂 {{ total_files }} Files {% if total_files != total_folder_files %}({{ total_folder_files }} Total){% endif %}
+                </span>
                 {% set current_sort_by = request.args.get('sort_by', 'date') %}
                 {% set current_sort_order = request.args.get('sort_order', 'desc') %}
                 {% set date_is_active = current_sort_by == 'date' %}

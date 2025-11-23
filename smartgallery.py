@@ -839,15 +839,18 @@ def sync_folder_on_demand(folder_path):
         
 def scan_folder_and_extract_options(folder_path):
     extensions, prefixes = set(), set()
+    file_count = 0
     try:
-        if not os.path.isdir(folder_path): return None, [], []
+        if not os.path.isdir(folder_path): return 0, [], []
         for filename in os.listdir(folder_path):
             if os.path.isfile(os.path.join(folder_path, filename)):
                 ext = os.path.splitext(filename)[1]
-                if ext and ext.lower() not in ['.json', '.sqlite']: extensions.add(ext.lstrip('.').lower())
+                if ext and ext.lower() not in ['.json', '.sqlite']: 
+                    extensions.add(ext.lstrip('.').lower())
+                    file_count += 1
                 if '_' in filename: prefixes.add(filename.split('_')[0])
     except Exception as e: print(f"ERROR: Could not scan folder '{folder_path}': {e}")
-    return None, sorted(list(extensions)), sorted(list(prefixes))
+    return file_count, sorted(list(extensions)), sorted(list(prefixes))
 
 def initialize_gallery():
     print("INFO: Initializing gallery...")
@@ -939,7 +942,7 @@ def gallery_view(folder_key):
     all_files_filtered = [dict(row) for row in all_files_raw if os.path.normpath(os.path.dirname(row['path'])) == folder_path_norm]
     gallery_view_cache = all_files_filtered
     initial_files = gallery_view_cache[:PAGE_SIZE]
-    _, extensions, prefixes = scan_folder_and_extract_options(folder_path)
+    total_folder_files, extensions, prefixes = scan_folder_and_extract_options(folder_path)
     breadcrumbs, ancestor_keys = [], set()
     curr_key = folder_key
     while curr_key is not None and curr_key in folders:
@@ -951,7 +954,8 @@ def gallery_view(folder_key):
     
     return render_template('index.html', 
                            files=initial_files, 
-                           total_files=len(gallery_view_cache), 
+                           total_files=len(gallery_view_cache),
+                           total_folder_files=total_folder_files, 
                            folders=folders,
                            current_folder_key=folder_key, 
                            current_folder_info=current_folder_info,
