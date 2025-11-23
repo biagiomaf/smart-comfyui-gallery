@@ -16,3 +16,5 @@ services:
       # Adapt to wanted values (use id -u and id -g to obtain values)
       - WANTED_UID=1000
       - WANTED_GID=1000
+#      - DELETE_MOVES=true
+#      - CLEAR_TEMP_DAYS=3
