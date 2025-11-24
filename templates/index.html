@@ -2097,6 +2097,7 @@
         let currentItemCount = 0;
         let galleryItems = [];
         let allFilesData = [];
+        let totalFolderFiles = {{ total_folder_files }};
         const selectedFiles = new Set();
         let lastSelectedItem = null;
         let currentSearch = { nav: '', move: '' };
@@ -2115,6 +2116,17 @@
         function showNotification(message, type = 'info') { const container = document.getElementById('notification-container'); if (!container) return; const notification = document.createElement('div'); notification.className = `notification ${type}`; notification.textContent = message; container.appendChild(notification); setTimeout(() => { notification.classList.add('show'); }, 10); setTimeout(() => { notification.classList.remove('show'); notification.addEventListener('transitionend', () => notification.remove()); }, 3000); }
         function handleError(error) { console.error('API Error:', error); showNotification(error.message || 'An unexpected network error occurred.', 'error'); }
         function handleGenericResponse(response) { return response.json().then(data => { if (!response.ok) { throw new Error(data.message || `HTTP error! status: ${response.status}`); } if (data.status === 'success' || data.status === 'partial_success') { showNotification(data.message || 'Action completed successfully!', 'success'); setTimeout(() => window.location.reload(), 1200); } else { throw new Error(data.message || 'An unspecified error occurred.'); } }).catch(handleError); }
+
+        function updateFileCountBadge() {
+            const badge = document.querySelector('.file-count-badge');
+            if (!badge) return;
+            const currentCount = allFilesData.length;
+            badge.textContent = `📂 ${currentCount} Files${currentCount !== totalFolderFiles ? ` (${totalFolderFiles} Total)` : ''}`;
+        }
+
+        function decrementTotalFileCount() {
+            totalFolderFiles--;
+        }
 
         function sortChildren(folder, sortKey, direction) {
             if (!folder.children || folder.children.length === 0) return [];
@@ -2409,7 +2421,7 @@
         function selectAll() { galleryItems.forEach(item => selectedFiles.add(item.dataset.fileId)); lastSelectedItem = galleryItems.length > 0 ? galleryItems[galleryItems.length - 1] : null; updateSelectionUI(); }
         function deselectAll() { selectedFiles.clear(); lastSelectedItem = null; updateSelectionUI(); }
         function toggleFavorite(event, fileId, element) { event.stopPropagation(); const originalContent = element.innerHTML; element.innerHTML = '⏳'; element.disabled = true; fetch(`/galleryout/toggle_favorite/${fileId}`, { method: 'POST' }).then(res => res.json()).then(data => { if (data.status === 'success') { element.classList.toggle('favorited', data.is_favorite); element.innerHTML = data.is_favorite ? '⭐' : '☆'; showNotification(data.is_favorite ? 'Added to favorites!' : 'Removed from favorites!', 'success'); } else { element.innerHTML = originalContent; showNotification('Error toggling favorite', 'error'); } }).catch(error => { element.innerHTML = originalContent; handleError(error); }).finally(() => element.disabled = false); }
-        function deleteFile(event, fileId, element) { event.stopPropagation(); if (!confirm('🗑️ Delete this file? This cannot be undone.')) return; const item = element.closest('.gallery-item'); element.disabled = true; fetch(`/galleryout/delete/${fileId}`, { method: 'POST' }).then(res => res.json()).then(data => { if (data.status === 'success') { item.style.transition = 'all 0.4s ease'; item.style.opacity = '0'; item.style.transform = 'scale(0.8)'; showNotification('File deleted!', 'success'); setTimeout(() => { item.remove(); galleryItems = galleryItems.filter(gi => gi !== item); allFilesData = allFilesData.filter(f => f.id !== fileId); selectedFiles.delete(fileId); updateSelectionUI(); currentItemCount--; updateLoadMoreVisibility(); }, 400); } else { showNotification(`Error: ${data.message || 'Deletion failed'}`, 'error'); element.disabled = false; } }).catch(error => { handleError(error); element.disabled = false; }); }
+        function deleteFile(event, fileId, element) { event.stopPropagation(); if (!confirm('🗑️ Delete this file? This cannot be undone.')) return; const item = element.closest('.gallery-item'); element.disabled = true; fetch(`/galleryout/delete/${fileId}`, { method: 'POST' }).then(res => res.json()).then(data => { if (data.status === 'success') { item.style.transition = 'all 0.4s ease'; item.style.opacity = '0'; item.style.transform = 'scale(0.8)'; showNotification('File deleted!', 'success'); setTimeout(() => { item.remove(); galleryItems = galleryItems.filter(gi => gi !== item); allFilesData = allFilesData.filter(f => f.id !== fileId); selectedFiles.delete(fileId); updateSelectionUI(); currentItemCount--; updateLoadMoreVisibility(); decrementTotalFileCount(); updateFileCountBadge(); }, 400); } else { showNotification(`Error: ${data.message || 'Deletion failed'}`, 'error'); element.disabled = false; } }).catch(error => { handleError(error); element.disabled = false; }); }
         function moveSelected() { if (selectedFiles.size > 0) populateAndShowDropPanel(); }
         function deleteSelected() { const count = selectedFiles.size; if (count > 0 && confirm(`🗑️ Delete ${count} files? This cannot be undone.`)) { performBatchAction('/galleryout/delete_batch', { file_ids: [...selectedFiles] }); } }
         function favoriteSelected(status) { if (selectedFiles.size === 0) return; performBatchAction('/galleryout/favorite_batch', { file_ids: [...selectedFiles], status: status }); }
@@ -2662,7 +2674,7 @@ function showItemAtIndex(index) {
                 header.style.pointerEvents = 'auto';
             }, 5000);
         }
-        function deleteFromLightbox(noConfirm = false) { if (currentLightboxIndex < 0 || currentLightboxIndex >= galleryItems.length) return; const itemToDelete = galleryItems[currentLightboxIndex]; const fileId = itemToDelete.dataset.fileId; const deleteBtn = document.getElementById('lightbox-delete-btn'); const proceedWithDelete = () => { deleteBtn.disabled = true; fetch(`/galleryout/delete/${fileId}`, { method: 'POST' }).then(res => res.json().then(data => ({ ok: res.ok, data }))).then(({ ok, data }) => { if (ok && data.status === 'success') { showNotification(data.message || 'File deleted!', 'success'); itemToDelete.remove(); galleryItems.splice(currentLightboxIndex, 1); allFilesData = allFilesData.filter(f => f.id !== fileId); currentItemCount--; if (galleryItems.length === 0) { closeLightbox(); showEmptyState(); } else { if (currentLightboxIndex >= galleryItems.length) { currentLightboxIndex = galleryItems.length - 1; } showItemAtIndex(currentLightboxIndex); } } else { throw new Error(data.message || 'Deletion failed on the server.'); } }).catch(handleError).finally(() => { if (deleteBtn) { deleteBtn.disabled = false; } }); }; if (noConfirm || confirm('🗑️ Are you sure you want to delete this file? This cannot be undone.')) { proceedWithDelete(); } }
+        function deleteFromLightbox(noConfirm = false) { if (currentLightboxIndex < 0 || currentLightboxIndex >= galleryItems.length) return; const itemToDelete = galleryItems[currentLightboxIndex]; const fileId = itemToDelete.dataset.fileId; const deleteBtn = document.getElementById('lightbox-delete-btn'); const proceedWithDelete = () => { deleteBtn.disabled = true; fetch(`/galleryout/delete/${fileId}`, { method: 'POST' }).then(res => res.json().then(data => ({ ok: res.ok, data }))).then(({ ok, data }) => { if (ok && data.status === 'success') { showNotification(data.message || 'File deleted!', 'success'); itemToDelete.remove(); galleryItems.splice(currentLightboxIndex, 1); allFilesData = allFilesData.filter(f => f.id !== fileId); currentItemCount--; decrementTotalFileCount(); updateFileCountBadge(); if (galleryItems.length === 0) { closeLightbox(); showEmptyState(); } else { if (currentLightboxIndex >= galleryItems.length) { currentLightboxIndex = galleryItems.length - 1; } showItemAtIndex(currentLightboxIndex); } } else { throw new Error(data.message || 'Deletion failed on the server.'); } }).catch(handleError).finally(() => { if (deleteBtn) { deleteBtn.disabled = false; } }); }; if (noConfirm || confirm('🗑️ Are you sure you want to delete this file? This cannot be undone.')) { proceedWithDelete(); } }
 
         // --- NEW FEATURE: RENAME FILE FROM LIGHTBOX ---
 
