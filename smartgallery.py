@@ -1,7 +1,7 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025 — MIT License (free to use and modify)
 #
-# Version: 1.31 - October 27, 2025
+# Version: 1.41 - November 24, 2025
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -19,55 +19,155 @@ import glob
 import sys
 import subprocess
 import base64
+import zipfile
+import io
 from flask import Flask, render_template, send_from_directory, abort, send_file, url_for, redirect, request, jsonify, Response
 from PIL import Image, ImageSequence
 import colorsys
 from werkzeug.utils import secure_filename
 import concurrent.futures
 from tqdm import tqdm
+import threading
+import uuid
+import tkinter as tk
+from tkinter import messagebox
+import urllib.request 
 
 
-# --- USER CONFIGURATION ---
-# Adjust the parameters in this section to customize the gallery.
+# ============================================================================
+# CONFIGURATION GUIDE - PLEASE READ BEFORE SETTING UP
+# ============================================================================
 #
-# IMPORTANT:
-# - Even on Windows, always use forward slashes ( / ) in paths, 
-#   not backslashes ( \ ), to ensure compatibility.
+# CONFIGURATION PRIORITY:
+# All settings below first check for environment variables. If an environment 
+# variable is set, its value will be used automatically. 
+# If you have NOT set environment variables, you only need to modify the 
+# values AFTER the comma in the os.environ.get() statements.
+#
+# Example: os.environ.get('BASE_OUTPUT_PATH', 'C:/your/path/here')
+#          - If BASE_OUTPUT_PATH environment variable exists → it will be used
+#          - If NOT → the value 'C:/your/path/here' will be used instead
+#          - ONLY CHANGE 'C:/your/path/here' if you haven't set environment variables
+#
+# ----------------------------------------------------------------------------
+# HOW TO SET ENVIRONMENT VARIABLES (before running python smartgallery.py):
+# ----------------------------------------------------------------------------
+#
+# IMPORTANT: If your paths contain SPACES, you MUST use quotes around them!
+#            Replace the example paths below with YOUR actual paths!
+#
+# Windows (Command Prompt):
+#   call venv\Scripts\activate.bat
+#   set "BASE_OUTPUT_PATH=C:/ComfyUI/output"
+#   set BASE_INPUT_PATH=C:/sm/Data/Packages/ComfyUI/input
+#   set "BASE_SMARTGALLERY_PATH=C:/ComfyUI/output"
+#   set "FFPROBE_MANUAL_PATH=C:/ffmpeg/bin/ffprobe.exe"
+#   set SERVER_PORT=8189
+#   set THUMBNAIL_WIDTH=300
+#   set WEBP_ANIMATED_FPS=16.0
+#   set PAGE_SIZE=100
+#   set BATCH_SIZE=500
+#   REM Leave MAX_PARALLEL_WORKERS empty to use all CPU cores (recommended)
+#   set "MAX_PARALLEL_WORKERS="
+#   REM Or set a specific number to limit CPU usage: set MAX_PARALLEL_WORKERS=4
+#   python smartgallery.py
+#
+# Windows (PowerShell):
+#   venv\Scripts\Activate.ps1
+#   $env:BASE_OUTPUT_PATH="C:/ComfyUI/output"
+#   $env:BASE_INPUT_PATH="C:/sm/Data/Packages/ComfyUI/input"
+#   $env:BASE_SMARTGALLERY_PATH="C:/ComfyUI/output"
+#   $env:FFPROBE_MANUAL_PATH="C:/ffmpeg/bin/ffprobe.exe"
+#   $env:SERVER_PORT="8189"
+#   $env:THUMBNAIL_WIDTH="300"
+#   $env:WEBP_ANIMATED_FPS="16.0"
+#   $env:PAGE_SIZE="100"
+#   $env:BATCH_SIZE="500"
+#   # Leave MAX_PARALLEL_WORKERS empty to use all CPU cores (recommended)
+#   $env:MAX_PARALLEL_WORKERS=""
+#   # Or set a specific number to limit CPU usage: $env:MAX_PARALLEL_WORKERS="4"
+#   python smartgallery.py
+#
+# Linux/Mac (bash/zsh):
+#   source venv/bin/activate
+#   export BASE_OUTPUT_PATH="$HOME/ComfyUI/output"
+#   export BASE_INPUT_PATH="/path/to/ComfyUI/input"
+#   export BASE_SMARTGALLERY_PATH="$HOME/ComfyUI/output"
+#   export FFPROBE_MANUAL_PATH="/usr/bin/ffprobe"
+#   export SERVER_PORT=8189
+#   export THUMBNAIL_WIDTH=300
+#   export WEBP_ANIMATED_FPS=16.0
+#   export PAGE_SIZE=100
+#   export BATCH_SIZE=500
+#   # Leave MAX_PARALLEL_WORKERS empty to use all CPU cores (recommended)
+#   export MAX_PARALLEL_WORKERS=""
+#   # Or set a specific number to limit CPU usage: export MAX_PARALLEL_WORKERS=4
+#   python smartgallery.py
+#
+#
+# IMPORTANT NOTES:
+# - Even on Windows, always use forward slashes (/) in paths, 
+#   not backslashes (\), to ensure compatibility.
+# - Use QUOTES around paths containing spaces to avoid errors.
+# - Replace example paths (C:/ComfyUI/, $HOME/ComfyUI/) with YOUR actual paths!
+# - Set MAX_PARALLEL_WORKERS="" (empty string) to use all available CPU cores.
+#   Set it to a number (e.g., 4) to limit CPU usage.
+# - It is strongly recommended to have ffmpeg installed, 
+#   since some features depend on it.
+#
+# ============================================================================
 
-# - It is strongly recommended to have ffmpeg installed, since some features depend on it.
+
+# ============================================================================
+# USER CONFIGURATION
+# ============================================================================
+# Adjust the parameters below to customize the gallery.
+# Remember: environment variables take priority over these default values.
+# ============================================================================
 
 # Path to the ComfyUI 'output' folder.
-BASE_OUTPUT_PATH = 'C:/sm/Data/Packages/ComfyUI/output'
+# Common locations:
+#   Windows: C:/ComfyUI/output or C:/Users/YourName/ComfyUI/output
+#   Linux/Mac: /home/username/ComfyUI/output or ~/ComfyUI/output
+BASE_OUTPUT_PATH = os.environ.get('BASE_OUTPUT_PATH', 'C:/ComfyUI/output')
 
-# Path to the ComfyUI 'input' folder (used for locating .json workflows).
-BASE_INPUT_PATH = 'C:/sm/Data/Packages/ComfyUI/input'
+# Path to the ComfyUI 'input' folder 
+BASE_INPUT_PATH = os.environ.get('BASE_INPUT_PATH', 'C:/ComfyUI/input')
 
-# Path to the ffmpeg utility "ffprobe.exe" (Windows). 
-# On Linux, adjust the filename accordingly. 
-# This is required for extracting workflows from .mp4 files.  
-# NOTE: Having a full ffmpeg installation is highly recommended.
-FFPROBE_MANUAL_PATH = "C:/omgp10/ffmpeg2/bin/ffprobe.exe"
-# - Even on Windows, always use forward slashes ( / ) in paths, 
-#   not backslashes ( \ ), to ensure compatibility.
+# Path for service folders (database, cache, zip files). 
+# If not specified, the ComfyUI output path will be used. 
+# These sub-folders won't appear in the gallery.
+# Change this if you want the cache stored separately for better performance
+# or to keep system files separate from gallery content.
+# Leave as-is if you are unsure. 
+BASE_SMARTGALLERY_PATH = os.environ.get('BASE_SMARTGALLERY_PATH', BASE_OUTPUT_PATH)
 
+# Path to ffprobe executable (part of ffmpeg).
+# Common locations:
+#   Windows: C:/ffmpeg/bin/ffprobe.exe or C:/Program Files/ffmpeg/bin/ffprobe.exe
+#   Linux: /usr/bin/ffprobe or /usr/local/bin/ffprobe
+#   Mac: /usr/local/bin/ffprobe or /opt/homebrew/bin/ffprobe
+# Required for extracting workflows from .mp4 files.
+# NOTE: A full ffmpeg installation is highly recommended.
+FFPROBE_MANUAL_PATH = os.environ.get('FFPROBE_MANUAL_PATH', "C:/ffmpeg/bin/ffprobe.exe")
 
 # Port on which the gallery web server will run. 
-# Must be different from the ComfyUI port.  
-# Note: the gallery does not require ComfyUI to be running; it works independently.
-SERVER_PORT = 8189
+# Must be different from the ComfyUI port (usually 8188).
+# The gallery does not require ComfyUI to be running; it works independently.
+SERVER_PORT = int(os.environ.get('SERVER_PORT', 8189))
 
 # Width (in pixels) of the generated thumbnails.
-THUMBNAIL_WIDTH = 300
+THUMBNAIL_WIDTH = int(os.environ.get('THUMBNAIL_WIDTH', 300))
 
 # Assumed frame rate for animated WebP files.  
 # Many tools, including ComfyUI, generate WebP animations at ~16 FPS.  
 # Adjust this value if your WebPs use a different frame rate,  
 # so that animation durations are calculated correctly.
-WEBP_ANIMATED_FPS = 16.0
+WEBP_ANIMATED_FPS = float(os.environ.get('WEBP_ANIMATED_FPS', 16.0))
 
 # Maximum number of files to load initially before showing a "Load more" button.  
 # Use a very large number (e.g., 9999999) for "infinite" loading.
-PAGE_SIZE = 100 
+PAGE_SIZE = int(os.environ.get('PAGE_SIZE', 100))
 
 # Names of special folders (e.g., 'video', 'audio').  
 # These folders will appear in the menu only if they exist inside BASE_OUTPUT_PATH.  
@@ -75,23 +175,37 @@ PAGE_SIZE = 100
 SPECIAL_FOLDERS = ['video', 'audio']
 
 # Number of files to process at once during database sync. 
-# Higher values use more memory but may be faster. Lower this if you run out of memory.
-BATCH_SIZE = 500
+# Higher values use more memory but may be faster. 
+# Lower this if you run out of memory.
+BATCH_SIZE = int(os.environ.get('BATCH_SIZE', 500))
 
 # Number of parallel processes to use for thumbnail and metadata generation.
-# - Set to None to use all available CPU cores (fastest, but uses more CPU).
-# - Set to 1 to disable parallel processing (slowest, like in the previous versions).
-# - Set to a specific number of cores (e.g., 4) to limit CPU usage on a multi-core machine.
-MAX_PARALLEL_WORKERS = None
+# - None or empty string: use all available CPU cores (fastest, recommended)
+# - 1: disable parallel processing (slowest, like in previous versions)
+# - Specific number (e.g., 4): limit CPU usage on multi-core machines
+MAX_PARALLEL_WORKERS = os.environ.get('MAX_PARALLEL_WORKERS', None)
+if MAX_PARALLEL_WORKERS is not None and MAX_PARALLEL_WORKERS != "":
+    MAX_PARALLEL_WORKERS = int(MAX_PARALLEL_WORKERS)
+else:
+    MAX_PARALLEL_WORKERS = None
 
-# ------- END OF USER CONFIGURATION -------
+# ============================================================================
+# END OF USER CONFIGURATION
+# ============================================================================
 
 
 # --- CACHE AND FOLDER NAMES ---
 THUMBNAIL_CACHE_FOLDER_NAME = '.thumbnails_cache'
 SQLITE_CACHE_FOLDER_NAME = '.sqlite_cache'
 DATABASE_FILENAME = 'gallery_cache.sqlite'
-WORKFLOW_FOLDER_NAME = 'workflow_logs_success'
+ZIP_CACHE_FOLDER_NAME = '.zip_downloads'  
+
+# --- APP INFO ---
+APP_VERSION = 1.41
+APP_VERSION_DATE = "November 24, 2025"
+GITHUB_REPO_URL = "https://github.com/biagiomaf/smart-comfyui-gallery"
+GITHUB_RAW_URL = "https://raw.githubusercontent.com/biagiomaf/smart-comfyui-gallery/main/smartgallery.py"
+
 
 # --- HELPER FUNCTIONS (DEFINED FIRST) ---
 def path_to_key(relative_path):
@@ -105,13 +219,46 @@ def key_to_path(key):
     except Exception: return None
 
 # --- DERIVED SETTINGS ---
-DB_SCHEMA_VERSION = 21
-BASE_INPUT_PATH_WORKFLOW = os.path.join(BASE_INPUT_PATH, WORKFLOW_FOLDER_NAME)
-THUMBNAIL_CACHE_DIR = os.path.join(BASE_OUTPUT_PATH, THUMBNAIL_CACHE_FOLDER_NAME)
-SQLITE_CACHE_DIR = os.path.join(BASE_OUTPUT_PATH, SQLITE_CACHE_FOLDER_NAME)
+DB_SCHEMA_VERSION = 24
+THUMBNAIL_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, THUMBNAIL_CACHE_FOLDER_NAME)
+SQLITE_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, SQLITE_CACHE_FOLDER_NAME)
 DATABASE_FILE = os.path.join(SQLITE_CACHE_DIR, DATABASE_FILENAME)
+ZIP_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, ZIP_CACHE_FOLDER_NAME)
 PROTECTED_FOLDER_KEYS = {path_to_key(f) for f in SPECIAL_FOLDERS}
 PROTECTED_FOLDER_KEYS.add('_root_')
+
+
+# --- CONSOLE STYLING ---
+class Colors:
+    HEADER = '\033[95m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    RESET = '\033[0m'
+    BOLD = '\033[1m'
+
+def print_configuration():
+    """Prints the current configuration in a neat, aligned table."""
+    print(f"\n{Colors.HEADER}{Colors.BOLD}--- CURRENT CONFIGURATION ---{Colors.RESET}")
+    
+    # Helper for aligned printing
+    def print_row(key, value, is_path=False):
+        color = Colors.CYAN if is_path else Colors.GREEN
+        print(f" {Colors.BOLD}{key:<25}{Colors.RESET} : {color}{value}{Colors.RESET}")
+
+    print_row("Server Port", SERVER_PORT)
+    print_row("Base Output Path", BASE_OUTPUT_PATH, True)
+    print_row("Base Input Path", BASE_INPUT_PATH, True)
+    print_row("SmartGallery Path", BASE_SMARTGALLERY_PATH, True)
+    print_row("FFprobe Path", FFPROBE_MANUAL_PATH, True)
+    print_row("Thumbnail Width", f"{THUMBNAIL_WIDTH}px")
+    print_row("WebP Animated FPS", WEBP_ANIMATED_FPS)
+    print_row("Page Size", PAGE_SIZE)
+    print_row("Batch Size", BATCH_SIZE)
+    print_row("Max Parallel Workers", MAX_PARALLEL_WORKERS if MAX_PARALLEL_WORKERS else "All Cores")
+    print(f"{Colors.HEADER}-----------------------------{Colors.RESET}\n")
 
 # --- FLASK APP INITIALIZATION ---
 app = Flask(__name__)
@@ -140,6 +287,11 @@ NODE_PARAM_NAMES = {
     "LatentUpscale": ["upscale_method", "width", "height"],
     "SaveImage": ["filename_prefix"],
     "ModelMerger": ["ckpt_name1", "ckpt_name2", "ratio"],
+    "Load Image": ["image"],         
+    "LoadImageMask": ["image"],      
+    "VHS_LoadVideo": ["video"],
+    "LoadAudio": ["audio"],
+    "AudioLoader": ["audio"]
 }
 
 # Cache for node colors
@@ -169,37 +321,94 @@ def filter_enabled_nodes(workflow_data):
 
 def generate_node_summary(workflow_json_string):
     """
-    Analyzes a workflow JSON, extracts details of active nodes, and returns them
-    in a structured format (list of dictionaries).
+    Analyzes a workflow JSON, extracts active nodes, and identifies input media.
     """
     try:
         workflow_data = json.loads(workflow_json_string)
     except json.JSONDecodeError:
-        return None # Parsing error
+        return None
 
-    active_workflow = filter_enabled_nodes(workflow_data)
-    nodes = active_workflow.get('nodes', [])
+    nodes = []
+    is_api_format = False
+
+    if 'nodes' in workflow_data and isinstance(workflow_data['nodes'], list):
+        active_workflow = filter_enabled_nodes(workflow_data)
+        nodes = active_workflow.get('nodes', [])
+    else:
+        is_api_format = True
+        for node_id, node_data in workflow_data.items():
+            if isinstance(node_data, dict) and 'class_type' in node_data:
+                node_entry = node_data.copy()
+                node_entry['id'] = node_id
+                node_entry['type'] = node_data['class_type']
+                node_entry['inputs'] = node_data.get('inputs', {})
+                nodes.append(node_entry)
+
     if not nodes:
         return []
 
-    # Sort nodes by logical category and then by ID
+    def get_id_safe(n):
+        try: return int(n.get('id', 0))
+        except: return str(n.get('id', 0))
+
     sorted_nodes = sorted(nodes, key=lambda n: (
         NODE_CATEGORIES_ORDER.index(NODE_CATEGORIES.get(n.get('type'), 'others')),
-        n.get('id', 0)
+        get_id_safe(n)
     ))
     
     summary_list = []
+    
+    valid_media_exts = {
+        # Images
+        '.png', '.jpg', '.jpeg', '.webp', '.gif', '.jfif', '.bmp', '.tiff',
+        # Video
+        '.mp4', '.mov', '.webm', '.mkv', '.avi',
+        # Audio
+        '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.aac'
+    }
+
     for node in sorted_nodes:
         node_type = node.get('type', 'Unknown')
-        
-        # Extract parameters
         params_list = []
-        widgets_values = node.get('widgets_values', [])
-        param_names_list = NODE_PARAM_NAMES.get(node_type, [])
         
-        for i, value in enumerate(widgets_values):
-            param_name = param_names_list[i] if i < len(param_names_list) else f"param_{i+1}"
-            params_list.append({"name": param_name, "value": value})
+        raw_params = {}
+        if is_api_format:
+            raw_params = node.get('inputs', {})
+        else:
+            widgets_values = node.get('widgets_values', [])
+            param_names_list = NODE_PARAM_NAMES.get(node_type, [])
+            for i, value in enumerate(widgets_values):
+                name = param_names_list[i] if i < len(param_names_list) else f"param_{i+1}"
+                raw_params[name] = value
+
+        for name, value in raw_params.items():
+            display_value = value
+            is_input_file = False
+            input_url = None
+            
+            if isinstance(value, list):
+                if len(value) == 2 and isinstance(value[0], str):
+                     display_value = f"(Link to {value[0]})"
+                else:
+                     display_value = str(value)
+            
+            # CHECK: Is this value a file in the Input folder?
+            if isinstance(value, str) and value.strip():
+                _, ext = os.path.splitext(value)
+                if ext.lower() in valid_media_exts:
+                    possible_path = os.path.normpath(os.path.join(BASE_INPUT_PATH, value))
+                    
+                    if os.path.commonprefix([possible_path, os.path.normpath(BASE_INPUT_PATH)]) == os.path.normpath(BASE_INPUT_PATH) and os.path.isfile(possible_path):
+                        is_input_file = True
+                        # Generate URL for the frontend
+                        input_url = f"/galleryout/input_file/{value}"
+
+            params_list.append({
+                "name": name, 
+                "value": display_value,
+                "is_input_file": is_input_file,
+                "input_url": input_url
+            })
 
         summary_list.append({
             "id": node.get('id', 'N/A'),
@@ -210,8 +419,7 @@ def generate_node_summary(workflow_json_string):
         })
         
     return summary_list
-
-
+    
 # --- ALL UTILITY AND HELPER FUNCTIONS ARE DEFINED HERE, BEFORE ANY ROUTES ---
 
 def find_ffprobe_path():
@@ -231,85 +439,153 @@ def find_ffprobe_path():
 def _validate_and_get_workflow(json_string):
     try:
         data = json.loads(json_string)
+        # Check for UI format (has 'nodes')
         workflow_data = data.get('workflow', data.get('prompt', data))
-        if isinstance(workflow_data, dict) and 'nodes' in workflow_data: return json.dumps(workflow_data)
-    except Exception: pass
-    return None
+        
+        if isinstance(workflow_data, dict):
+            if 'nodes' in workflow_data:
+                return json.dumps(workflow_data), 'ui'
+            
+            # Check for API format (keys are IDs, values have class_type)
+            # Heuristic: Check if it looks like a dict of nodes
+            is_api = False
+            for k, v in workflow_data.items():
+                if isinstance(v, dict) and 'class_type' in v:
+                    is_api = True
+                    break
+            if is_api:
+                return json.dumps(workflow_data), 'api'
+
+    except Exception: 
+        pass
+
+    return None, None
 
 def _scan_bytes_for_workflow(content_bytes):
-    open_braces, start_index = 0, -1
+    """
+    Generator that yields all valid JSON objects found in the byte stream.
+    Searches for matching curly braces.
+    """
     try:
         stream_str = content_bytes.decode('utf-8', errors='ignore')
-        first_brace = stream_str.find('{')
-        if first_brace == -1: return None
-        stream_subset = stream_str[first_brace:]
-        for i, char in enumerate(stream_subset):
+    except Exception:
+        return
+
+    start_pos = 0
+    while True:
+        first_brace = stream_str.find('{', start_pos)
+        if first_brace == -1:
+            break
+        
+        open_braces = 0
+        start_index = first_brace
+        
+        for i in range(start_index, len(stream_str)):
+            char = stream_str[i]
             if char == '{':
-                if start_index == -1: start_index = i
                 open_braces += 1
             elif char == '}':
-                if start_index != -1: open_braces -= 1
-            if start_index != -1 and open_braces == 0:
-                candidate = stream_subset[start_index : i + 1]
-                json.loads(candidate)
-                return candidate
-    except Exception:
-        return None
-    return None
+                open_braces -= 1
+            
+            if open_braces == 0:
+                candidate = stream_str[start_index : i + 1]
+                try:
+                    # Verify it's valid JSON
+                    json.loads(candidate)
+                    yield candidate
+                except json.JSONDecodeError:
+                    pass
+                
+                # Move start_pos to after this candidate to find the next one
+                start_pos = i + 1
+                break
+        else:
+            # If loop finishes without open_braces hitting 0, no more valid JSON here
+            break
 
 def extract_workflow(filepath):
     ext = os.path.splitext(filepath)[1].lower()
     video_exts = ['.mp4', '.mkv', '.webm', '.mov', '.avi']
     
+    best_workflow = None
+    
+    def update_best(wf, wf_type):
+        nonlocal best_workflow
+        if wf_type == 'ui':
+            best_workflow = wf
+            return True # Found best, stop searching
+        if wf_type == 'api' and best_workflow is None:
+            best_workflow = wf
+        return False
+
     if ext in video_exts:
-        if FFPROBE_EXECUTABLE_PATH:
+        # --- FIX: Risoluzione del path anche nei processi Worker ---
+        # Se la variabile globale è vuota (succede nel multiprocessing), la cerchiamo ora.
+        current_ffprobe_path = FFPROBE_EXECUTABLE_PATH
+        if not current_ffprobe_path:
+             current_ffprobe_path = find_ffprobe_path()
+        # -----------------------------------------------------------
+
+        if current_ffprobe_path:
             try:
-                cmd = [FFPROBE_EXECUTABLE_PATH, '-v', 'quiet', '-print_format', 'json', '-show_format', filepath]
+                # Usiamo current_ffprobe_path invece della globale
+                cmd = [current_ffprobe_path, '-v', 'quiet', '-print_format', 'json', '-show_format', filepath]
                 result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True, creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
                 data = json.loads(result.stdout)
                 if 'format' in data and 'tags' in data['format']:
                     for value in data['format']['tags'].values():
                         if isinstance(value, str) and value.strip().startswith('{'):
-                            workflow = _validate_and_get_workflow(value)
-                            if workflow: return workflow
+                            wf, wf_type = _validate_and_get_workflow(value)
+                            if wf:
+                                if update_best(wf, wf_type): return best_workflow
             except Exception: pass
     else:
         try:
             with Image.open(filepath) as img:
-                workflow_str = img.info.get('workflow') or img.info.get('prompt')
-                if workflow_str:
-                    workflow = _validate_and_get_workflow(workflow_str)
-                    if workflow: return workflow
+                # Check standard keys first
+                for key in ['workflow', 'prompt']:
+                    val = img.info.get(key)
+                    if val:
+                        wf, wf_type = _validate_and_get_workflow(val)
+                        if wf:
+                            if update_best(wf, wf_type): return best_workflow
+
                 exif_data = img.info.get('exif')
                 if exif_data and isinstance(exif_data, bytes):
-                    json_str = _scan_bytes_for_workflow(exif_data)
-                    if json_str:
-                        workflow = _validate_and_get_workflow(json_str)
-                        if workflow: return workflow
+                    # Check for "workflow:" prefix which some tools use
+                    try:
+                        exif_str = exif_data.decode('utf-8', errors='ignore')
+                        if 'workflow:{' in exif_str:
+                            # Extract the JSON part after "workflow:"
+                            start = exif_str.find('workflow:{') + len('workflow:')
+                            # Try to parse this specific part first
+                            for json_candidate in _scan_bytes_for_workflow(exif_str[start:].encode('utf-8')):
+                                wf, wf_type = _validate_and_get_workflow(json_candidate)
+                                if wf:
+                                    if update_best(wf, wf_type): return best_workflow
+                                    break 
+                    except Exception: pass
+                    
+                    # Fallback to standard scan of the entire exif_data if not already returned
+                    if best_workflow is None:
+                        for json_str in _scan_bytes_for_workflow(exif_data):
+                            wf, wf_type = _validate_and_get_workflow(json_str)
+                            if wf:
+                                if update_best(wf, wf_type): return best_workflow
         except Exception: pass
 
+    # Raw byte scan (fallback for any file type)
     try:
         with open(filepath, 'rb') as f:
             content = f.read()
-        json_str = _scan_bytes_for_workflow(content)
-        if json_str:
-            workflow = _validate_and_get_workflow(json_str)
-            if workflow: return workflow
-    except Exception: pass
-
-    try:
-        base_filename = os.path.basename(filepath)
-        search_pattern = os.path.join(BASE_INPUT_PATH_WORKFLOW, f"{base_filename}*.json")
-        json_files = glob.glob(search_pattern)
-        if json_files:
-            latest = max(json_files, key=os.path.getmtime)
-            with open(latest, 'r', encoding='utf-8') as f:
-                workflow = _validate_and_get_workflow(f.read())
-                if workflow: return workflow
+        for json_str in _scan_bytes_for_workflow(content):
+            wf, wf_type = _validate_and_get_workflow(json_str)
+            if wf:
+                if update_best(wf, wf_type): return best_workflow
     except Exception: pass
                 
-    return None
-
+    return best_workflow
+    
 def is_webp_animated(filepath):
     try:
         with Image.open(filepath) as img: return getattr(img, 'is_animated', False)
@@ -399,10 +675,11 @@ def process_single_file(filepath):
             create_thumbnail(filepath, file_hash_for_thumbnail, metadata['type'])
         
         file_id = hashlib.md5(filepath.encode()).hexdigest()
+        file_size = os.path.getsize(filepath)
         
         return (
             file_id, filepath, mtime, os.path.basename(filepath),
-            metadata['type'], metadata['duration'], metadata['dimensions'], metadata['has_workflow']
+            metadata['type'], metadata['duration'], metadata['dimensions'], metadata['has_workflow'], file_size, time.time()
         )
     except Exception as e:
         print(f"ERROR: Failed to process file {os.path.basename(filepath)} in worker: {e}")
@@ -422,7 +699,8 @@ def init_db(conn=None):
         CREATE TABLE IF NOT EXISTS files (
             id TEXT PRIMARY KEY, path TEXT NOT NULL UNIQUE, mtime REAL NOT NULL,
             name TEXT NOT NULL, type TEXT, duration TEXT, dimensions TEXT,
-            has_workflow INTEGER, is_favorite INTEGER DEFAULT 0
+            has_workflow INTEGER, is_favorite INTEGER DEFAULT 0, size INTEGER DEFAULT 0,
+            last_scanned REAL DEFAULT 0
         )
     ''')
     conn.commit()
@@ -456,7 +734,7 @@ def get_dynamic_folder_config(force_refresh=False):
     try:
         all_folders = {}
         for dirpath, dirnames, _ in os.walk(BASE_OUTPUT_PATH):
-            dirnames[:] = [d for d in dirnames if d not in [THUMBNAIL_CACHE_FOLDER_NAME, SQLITE_CACHE_FOLDER_NAME]]
+            dirnames[:] = [d for d in dirnames if d not in [THUMBNAIL_CACHE_FOLDER_NAME, SQLITE_CACHE_FOLDER_NAME, ZIP_CACHE_FOLDER_NAME]]
             for dirname in dirnames:
                 full_path = os.path.normpath(os.path.join(dirpath, dirname)).replace('\\', '/')
                 relative_path = os.path.relpath(full_path, BASE_OUTPUT_PATH).replace('\\', '/')
@@ -550,7 +828,7 @@ def full_sync_database(conn):
             for i in range(0, len(results), BATCH_SIZE):
                 batch = results[i:i + BATCH_SIZE]
                 conn.executemany(
-                    "INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     batch
                 )
                 conn.commit()
@@ -613,7 +891,7 @@ def sync_folder_on_demand(folder_path):
                         yield f"data: {json.dumps(progress_data)}\n\n"
 
                 if data_to_upsert: 
-                    conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", data_to_upsert)
+                    conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", data_to_upsert)
 
             if files_to_delete:
                 conn.executemany("DELETE FROM files WHERE path IN (?)", [(p,) for p in files_to_delete])
@@ -628,15 +906,18 @@ def sync_folder_on_demand(folder_path):
         
 def scan_folder_and_extract_options(folder_path):
     extensions, prefixes = set(), set()
+    file_count = 0
     try:
-        if not os.path.isdir(folder_path): return None, [], []
+        if not os.path.isdir(folder_path): return 0, [], []
         for filename in os.listdir(folder_path):
             if os.path.isfile(os.path.join(folder_path, filename)):
                 ext = os.path.splitext(filename)[1]
-                if ext and ext.lower() not in ['.json', '.sqlite']: extensions.add(ext.lstrip('.').lower())
+                if ext and ext.lower() not in ['.json', '.sqlite']: 
+                    extensions.add(ext.lstrip('.').lower())
+                    file_count += 1
                 if '_' in filename: prefixes.add(filename.split('_')[0])
     except Exception as e: print(f"ERROR: Could not scan folder '{folder_path}': {e}")
-    return None, sorted(list(extensions)), sorted(list(prefixes))
+    return file_count, sorted(list(extensions)), sorted(list(prefixes))
 
 def initialize_gallery():
     print("INFO: Initializing gallery...")
@@ -646,6 +927,14 @@ def initialize_gallery():
     os.makedirs(SQLITE_CACHE_DIR, exist_ok=True)
     with get_db_connection() as conn:
         try:
+            # Check if last_scanned column exists
+            cursor = conn.execute("PRAGMA table_info(files)")
+            columns = [row[1] for row in cursor.fetchall()]
+            if 'last_scanned' not in columns:
+                print("INFO: Adding 'last_scanned' column to database...")
+                conn.execute("ALTER TABLE files ADD COLUMN last_scanned REAL DEFAULT 0")
+                conn.commit()
+
             stored_version = conn.execute('PRAGMA user_version').fetchone()[0]
         except sqlite3.DatabaseError: stored_version = 0
         if stored_version < DB_SCHEMA_VERSION:
@@ -720,7 +1009,7 @@ def gallery_view(folder_key):
     all_files_filtered = [dict(row) for row in all_files_raw if os.path.normpath(os.path.dirname(row['path'])) == folder_path_norm]
     gallery_view_cache = all_files_filtered
     initial_files = gallery_view_cache[:PAGE_SIZE]
-    _, extensions, prefixes = scan_folder_and_extract_options(folder_path)
+    total_folder_files, extensions, prefixes = scan_folder_and_extract_options(folder_path)
     breadcrumbs, ancestor_keys = [], set()
     curr_key = folder_key
     while curr_key is not None and curr_key in folders:
@@ -732,7 +1021,8 @@ def gallery_view(folder_key):
     
     return render_template('index.html', 
                            files=initial_files, 
-                           total_files=len(gallery_view_cache), 
+                           total_files=len(gallery_view_cache),
+                           total_folder_files=total_folder_files, 
                            folders=folders,
                            current_folder_key=folder_key, 
                            current_folder_info=current_folder_info,
@@ -765,6 +1055,74 @@ def upload_files():
     if errors: return jsonify({'status': 'partial_success', 'message': f'Successfully uploaded {success_count} files. The following files failed: {", ".join(errors.keys())}'}), 207
     return jsonify({'status': 'success', 'message': f'Successfully uploaded {success_count} files.'})
                            
+@app.route('/galleryout/rescan_folder', methods=['POST'])
+def rescan_folder():
+    data = request.json
+    folder_key = data.get('folder_key')
+    mode = data.get('mode', 'all') # 'all' or 'recent'
+    
+    if not folder_key: return jsonify({'status': 'error', 'message': 'No folder provided.'}), 400
+    folders = get_dynamic_folder_config()
+    if folder_key not in folders: return jsonify({'status': 'error', 'message': 'Folder not found.'}), 404
+    
+    folder_path = folders[folder_key]['path']
+    
+    try:
+        with get_db_connection() as conn:
+            # Get all files in this folder
+            query = "SELECT path, last_scanned FROM files WHERE path LIKE ?"
+            params = (folder_path + os.sep + '%',)
+            rows = conn.execute(query, params).fetchall()
+            
+            # Filter files strictly within this folder (not subfolders)
+            folder_path_norm = os.path.normpath(folder_path)
+            files_in_folder = [
+                {'path': row['path'], 'last_scanned': row['last_scanned']} 
+                for row in rows 
+                if os.path.normpath(os.path.dirname(row['path'])) == folder_path_norm
+            ]
+            
+            files_to_process = []
+            current_time = time.time()
+            
+            if mode == 'recent':
+                # Process files not scanned in the last 60 minutes (3600 seconds)
+                cutoff_time = current_time - 3600
+                files_to_process = [f['path'] for f in files_in_folder if (f['last_scanned'] or 0) < cutoff_time]
+            else:
+                # Process all files
+                files_to_process = [f['path'] for f in files_in_folder]
+            
+            if not files_to_process:
+                return jsonify({'status': 'success', 'message': 'No files needed rescanning.', 'count': 0})
+            
+            print(f"INFO: Rescanning {len(files_to_process)} files in '{folder_path}' (Mode: {mode})...")
+            
+            processed_count = 0
+            results = []
+            
+            with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_PARALLEL_WORKERS) as executor:
+                futures = {executor.submit(process_single_file, path): path for path in files_to_process}
+                for future in concurrent.futures.as_completed(futures):
+                    result = future.result()
+                    if result:
+                        results.append(result)
+                    processed_count += 1
+            
+            if results:
+                # Upsert results
+                conn.executemany(
+                    "INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    results
+                )
+                conn.commit()
+                
+        return jsonify({'status': 'success', 'message': f'Successfully rescanned {len(results)} files.', 'count': len(results)})
+        
+    except Exception as e:
+        print(f"ERROR: Rescan failed: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
 @app.route('/galleryout/create_folder', methods=['POST'])
 def create_folder():
     data = request.json
@@ -775,12 +1133,97 @@ def create_folder():
     if parent_key not in folders: return jsonify({'status': 'error', 'message': 'Parent folder not found.'}), 404
     parent_path = folders[parent_key]['path']
     new_folder_path = os.path.join(parent_path, folder_name)
-    if os.path.exists(new_folder_path): return jsonify({'status': 'error', 'message': 'A folder with this name already exists here.'}), 400
     try:
-        os.makedirs(new_folder_path)
-        get_dynamic_folder_config(force_refresh=True)
-        return jsonify({'status': 'success', 'message': 'Folder created successfully.'})
-    except Exception as e: return jsonify({'status': 'error', 'message': f'Error creating folder: {e}'}), 500
+        os.makedirs(new_folder_path, exist_ok=False)
+        sync_folder_on_demand(parent_path)
+        return jsonify({'status': 'success', 'message': f'Folder "{folder_name}" created successfully.'})
+    except FileExistsError: return jsonify({'status': 'error', 'message': 'Folder already exists.'}), 400
+    except Exception as e: return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# --- ZIP BACKGROUND JOB MANAGEMENT ---
+zip_jobs = {}
+def background_zip_task(job_id, file_ids):
+    try:
+        if not os.path.exists(ZIP_CACHE_DIR):
+            try:
+                os.makedirs(ZIP_CACHE_DIR, exist_ok=True)
+            except Exception as e:
+                print(f"ERROR: Could not create zip directory: {e}")
+                zip_jobs[job_id] = {'status': 'error', 'message': f'Server permission error: {e}'}
+                return
+        
+        zip_filename = f"smartgallery_{job_id}.zip"
+        zip_filepath = os.path.join(ZIP_CACHE_DIR, zip_filename)
+        
+        with get_db_connection() as conn:
+            placeholders = ','.join(['?'] * len(file_ids))
+            query = f"SELECT path, name FROM files WHERE id IN ({placeholders})"
+            files_to_zip = conn.execute(query, file_ids).fetchall()
+
+        if not files_to_zip:
+            zip_jobs[job_id] = {'status': 'error', 'message': 'No valid files found.'}
+            return
+
+        with zipfile.ZipFile(zip_filepath, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for file_row in files_to_zip:
+                file_path = file_row['path']
+                file_name = file_row['name']
+                # Check the file esists 
+                if os.path.exists(file_path):
+                    # Add file to zip
+                    zf.write(file_path, file_name)
+        
+        # Job completed succesfully
+        zip_jobs[job_id] = {
+            'status': 'ready', 
+            'filename': zip_filename
+        }
+        
+        # Clean automatic: delete zip older than 24 hours
+        try:
+            now = time.time()
+            for f in os.listdir(ZIP_CACHE_DIR):
+                fp = os.path.join(ZIP_CACHE_DIR, f)
+                if os.path.isfile(fp) and os.stat(fp).st_mtime < now - 86400:
+                    os.remove(fp)
+        except Exception: 
+            pass
+
+    except Exception as e:
+        print(f"Zip Error: {e}")
+        zip_jobs[job_id] = {'status': 'error', 'message': str(e)}
+        
+@app.route('/galleryout/prepare_batch_zip', methods=['POST'])
+def prepare_batch_zip():
+    data = request.json
+    file_ids = data.get('file_ids', [])
+    if not file_ids:
+        return jsonify({'status': 'error', 'message': 'No files specified.'}), 400
+
+    job_id = str(uuid.uuid4())
+    zip_jobs[job_id] = {'status': 'processing'}
+    
+    thread = threading.Thread(target=background_zip_task, args=(job_id, file_ids))
+    thread.daemon = True
+    thread.start()
+    
+    return jsonify({'status': 'success', 'job_id': job_id, 'message': 'Zip generation started.'})
+
+@app.route('/galleryout/check_zip_status/<job_id>')
+def check_zip_status(job_id):
+    job = zip_jobs.get(job_id)
+    if not job:
+        return jsonify({'status': 'error', 'message': 'Job not found'}), 404
+    response_data = job.copy()
+    if job['status'] == 'ready' and 'filename' in job:
+        response_data['download_url'] = url_for('serve_zip_file', filename=job['filename'])
+        
+    return jsonify(response_data)
+    
+@app.route('/galleryout/serve_zip/<filename>')
+def serve_zip_file(filename):
+    return send_from_directory(ZIP_CACHE_DIR, filename, as_attachment=True)
+    
 
 @app.route('/galleryout/rename_folder/<string:folder_key>', methods=['POST'])
 def rename_folder(folder_key):
@@ -1063,7 +1506,138 @@ def serve_thumbnail(file_id):
     if cache_path and os.path.exists(cache_path): return send_file(cache_path)
     return "Thumbnail generation failed", 404
 
+@app.route('/favicon.ico')
+def favicon():
+    return send_file('static/galleryout/favicon.ico')
+
+@app.route('/galleryout/input_file/<path:filename>')
+def serve_input_file(filename):
+    """Serves input files directly from the ComfyUI Input folder."""
+    try:
+        # For webp, frocing the correct mimetype
+        if filename.lower().endswith('.webp'):
+            return send_from_directory(BASE_INPUT_PATH, filename, mimetype='image/webp', as_attachment=False)
+        
+        # For all the other files, I let Flask guessing the mimetype, but disable the attachment, just a lil trick
+        return send_from_directory(BASE_INPUT_PATH, filename, as_attachment=False)
+    except Exception as e:
+        abort(404)
+          
+def print_startup_banner():
+    banner = rf"""
+{Colors.GREEN}{Colors.BOLD}   _____                      _      _____       _ _                 
+  / ____|                    | |    / ____|     | | |                
+ | (___  _ __ ___   __ _ _ __| |_  | |  __  __ _| | | ___ _ __ _   _ 
+  \___ \| '_ ` _ \ / _` | '__| __| | | |_ |/ _` | | |/ _ \ '__| | | |
+  ____) | | | | | | (_| | |  | |_  | |__| | (_| | | |  __/ |  | |_| |
+ |_____/|_| |_| |_|\__,_|_|   \__|  \_____|\__,_|_|_|\___|_|   \__, |
+                                                                __/ |
+                                                               |___/ {Colors.RESET}
+    """
+    print(banner)
+    print(f"   {Colors.BOLD}Smart Gallery for ComfyUI{Colors.RESET}")
+    print(f"   Author     : {Colors.BLUE}Biagio Maffettone{Colors.RESET}")
+    print(f"   Version    : {Colors.YELLOW}{APP_VERSION}{Colors.RESET} ({APP_VERSION_DATE})")
+    print(f"   GitHub     : {Colors.CYAN}{GITHUB_REPO_URL}{Colors.RESET}")
+    print(f"   Contributor: {Colors.CYAN}Martial Michel (Docker & Codebase){Colors.RESET}")
+    print("")
+    
+def check_for_updates():
+    """Checks the GitHub repo for a newer version without external libs."""
+    print("Checking for updates...", end=" ", flush=True)
+    try:
+        # Timeout (3s) not blocking start if no internet connection
+        with urllib.request.urlopen(GITHUB_RAW_URL, timeout=3) as response:
+            content = response.read().decode('utf-8')
+            # Finding string "Version: X.XX" 
+            match = re.search(r'Version:\s*([0-9.]+)', content)
+            
+            if match:
+                remote_version = float(match.group(1))
+                if remote_version > APP_VERSION:
+                    print(f"\n\033[93m{'\033[1m'}NOTICE: A new version ({remote_version}) is available!{'\033[0m'}")
+                    print(f"Please update from: {GITHUB_REPO_URL}\n")
+                else:
+                    print("You are up to date.")
+            else:
+                print("Could not parse remote version.")
+                
+    except Exception:
+        print("Skipped (Offline or GitHub unreachable).")
+
+# --- STARTUP CHECKS AND MAIN ENTRY POINT ---
+def show_startup_error_and_exit(path):
+    """Shows a blocking error message for invalid path and exits."""
+    root = tk.Tk()
+    root.withdraw()  # Hides the main tkinter window
+    root.attributes('-topmost', True) # Ensure it's on top
+    
+    msg = (
+        f"CRITICAL ERROR: Invalid Output Path\n\n"
+        f"The directory configured for 'BASE_OUTPUT_PATH' does not exist:\n"
+        f"👉 {path}\n\n"
+        f"INSTRUCTIONS:\n"
+        f"1. If you are launching via a script (e.g., .bat file), please edit it and set the correct 'BASE_OUTPUT_PATH' variable.\n"
+        f"2. Or edit 'smartgallery.py' (USER CONFIGURATION section) and ensure the path points to an existing folder.\n\n"
+        f"The program cannot continue and will now exit."
+    )
+    
+    messagebox.showerror("SmartGallery - Configuration Error", msg)
+    root.destroy()
+    sys.exit(1)
+
+def show_ffmpeg_warning():
+    """Shows a non-blocking warning message for missing FFmpeg."""
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes('-topmost', True)
+    
+    msg = (
+        "WARNING: FFmpeg/FFprobe not found\n\n"
+        "The system uses the 'ffprobe' utility to analyze video files. "
+        "It seems it is missing or not configured correctly.\n\n"
+        "CONSEQUENCES:\n"
+        "❌ You will NOT be able to extract ComfyUI workflows from video files (.mp4, .mov, etc).\n"
+        "✅ Gallery browsing, playback, and image features will still work perfectly.\n\n"
+        "To fix this, install FFmpeg or check the 'FFPROBE_MANUAL_PATH' in the configuration."
+    )
+    
+    messagebox.showwarning("SmartGallery - Feature Limitation", msg)
+    root.destroy()
+
 if __name__ == '__main__':
+
+    print_startup_banner()
+    check_for_updates()
+    print_configuration()
+
+    # --- CHECK: CRITICAL OUTPUT PATH CHECK (Blocking) ---
+    if not os.path.exists(BASE_OUTPUT_PATH):
+        show_startup_error_and_exit(BASE_OUTPUT_PATH)
+
+    # --- CHECK: INPUT PATH CHECK (Non-Blocking / Warning) ---
+    if not os.path.exists(BASE_INPUT_PATH):
+        print(f"{Colors.YELLOW}{Colors.BOLD}WARNING: Input Path not found!{Colors.RESET}")
+        print(f"{Colors.YELLOW}   The path '{BASE_INPUT_PATH}' does not exist.{Colors.RESET}")
+        print(f"{Colors.YELLOW}   > Source media visualization in Node Summary will be DISABLED.{Colors.RESET}")
+        print(f"{Colors.YELLOW}   > The gallery will still function normally for output files.{Colors.RESET}\n")
+    
+    # Initialize the gallery
     initialize_gallery()
-    print(f"Gallery started! Open: http://127.0.0.1:{SERVER_PORT}/galleryout/")
+    
+    # --- CHECK: FFMPEG WARNING ---
+    if not FFPROBE_EXECUTABLE_PATH:
+        # Check if we are in a headless environment (like Docker) where tk might fail
+        if os.environ.get('DISPLAY') or os.name == 'nt':
+            try:
+                show_ffmpeg_warning()
+            except:
+                print(f"{Colors.RED}WARNING: FFmpeg not found. Video workflows extraction disabled.{Colors.RESET}")
+        else:
+            print(f"{Colors.RED}WARNING: FFmpeg not found. Video workflows extraction disabled.{Colors.RESET}")
+
+    print(f"{Colors.GREEN}{Colors.BOLD}🚀 Gallery started successfully!{Colors.RESET}")
+    print(f"👉 Access URL: {Colors.CYAN}{Colors.BOLD}http://127.0.0.1:{SERVER_PORT}/galleryout/{Colors.RESET}")
+    print(f"   (Press CTRL+C to stop)")
+    
     app.run(host='0.0.0.0', port=SERVER_PORT, debug=False)

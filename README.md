@@ -14,8 +14,10 @@
 </p>
 
 <p align="center">
-  <img src="assets/node_summary.png" alt="Node Summary" width="500">
+  <img src="assets/node_summary_with_image.png" alt="Source image inside the Node Summary" width="450"/>
+  <img src="assets/node_summary.png" alt="Node Summary" width="350"/>
 </p>
+
 <p align="center">
   <em>🔍 Instant workflow insights - Node Summary</em>
 </p>
@@ -28,16 +30,27 @@
 
 ---
 
-## 🆕 What's New in Version 1.31?
+## 🆕 What's New in Version 1.41?
 
-- ⚡ Parallel processing: Initial scan now 10-20x faster (minutes → seconds)
-- 🔍 **Smart Folder Navigation**: Expandable sidebar with real-time search and bi-directional sorting (A-Z, Z-A, newest, oldest)
-- 🖼️ **Enhanced Gallery Sorting**: Toggle thumbnail sorting by date or name with visual indicators
-- 🔎 **Advanced Lightbox**: Zoom with mouse wheel, persistent zoom levels, percentage display, rename and quick delete
-- ⚡ **Real-time Sync**: Silent background checks with visual progress overlay when new files are detected
-- 📝 **Smart Workflow Names**: Downloaded workflows now match your image filenames
+- 🎨 **Source Media in Node Summary**: View input images, videos, and listen to audio files directly inside the Node Summary. Automatically shows media files referenced in your workflow nodes from the ComfyUI input directory
+- 📂 **Input Folder Integration**: Automatically detects, validates, and links files referenced in your workflow nodes from your input directory
+- 📦 **Batch Zip Download**: Select multiple files and download them as a single archive with background generation
+- 🐳 **Full Docker Support**: Run in an isolated container with easy deployment (Credits: Martial Michel)
+- 🔢 **Smart File Counter**: Instantly see how many files are currently filtered versus the total folder count
+- 📱 **Mobile Optimization**: Improved UI layout, padding, and controls specifically for mobile devices
+- 🔧 **Environment Variables**: Configure everything via OS variables for easier deployment
+- 🚨 **Startup Diagnostics**: Beautiful console output and visual alerts for configuration errors
+- 🎮 **Advanced Controls**: Range selection (`↔️`), Numpad panning, and a visual shortcuts bar (press `?`)
+- 🔄 **Automatic Update Check**: Get notified when a new version is available
+- 📋 **Enhanced Node Summary**: Now supports both ComfyUI UI and API format JSONs
+- ↔️ **Range Selection**: Select all files between two selections with one click
+- ⌨️ **Keyboard Shortcuts Help**: Press `?` to see all available shortcuts
+- 🎮 **Advanced Lightbox Controls**: Numpad panning, adjustable pan speed, and visual shortcut bar
+
+See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 
 ---
+
 
 ## 🚀 The Problem Every ComfyUI User Faces
 
@@ -61,30 +74,27 @@ SmartGallery isn't just another image viewer. It's a **time machine for your cre
 
 - 🏃‍♂️ **Blazing Fast**: SQLite database + smart caching = instant loading even with thousands of files
 - 📱 **Mobile Perfect**: Gorgeous interface that works flawlessly on any device
-- 🔍 **Node Summary Magic**: See model, seed, and key parameters at a glance
-- 📁 **Smart Organization** 🆕: Expandable sidebar with real-time search, bi-directional sorting (name/date), and intuitive folder management
-- 🖼️ **Enhanced Gallery View** 🆕: Sort thumbnails by date or name with instant toggle between ascending/descending order
-- 🔎 **Advanced Lightbox** 🆕: Zoom with mouse wheel, persistent zoom levels across images, and quick delete functionality
+- 🔍 **Node Summary Magic**: See model, seed, and key parameters at a glance (supports UI & API formats)
+- 🎨 **Source Media in Node Summary**: View input images, videos, and listen to audio files directly inside the Node Summary. Automatically shows media files referenced in your workflow nodes from the ComfyUI input directory.
+- 📁 **Smart Organization**: Expandable sidebar with real-time search, bi-directional sorting (name/date), and intuitive folder management
+- 🖼️ **Enhanced Gallery View**: Sort thumbnails by date or name with instant toggle between ascending/descending order
+- 🔎 **Advanced Lightbox**: Zoom with mouse wheel, numpad panning, persistent zoom levels, and quick delete functionality
+- 📦 **Batch Operations**: Select multiple files and download as ZIP, or use range selection for bulk actions
 - 🆕 **Universal Upload Magic**: Upload ANY ComfyUI-generated image/video from your PC or phone and instantly discover its workflow!
-- 🔄 **Real-time Sync** 🆕: Silent background checks with visual progress overlay when new files are detected
-- 🔧 **Standalone Power**: Works independently—manage your gallery even when ComfyUI is off
-- ⚡ **2-File Installation**: Just two files to transform your entire workflow
-
-### 🔥 Upload & Discover Feature
-
-**Game-changing addition!** You can upload images and videos from anywhere:
-
-- 📤 **Drag & Drop Upload**: From your PC, phone, or any device
-- 🔍 **Instant Workflow Detection**: Automatically extracts and displays the original ComfyUI workflow (if available)
 - 🌍 **Community Sharing**: Someone shared an amazing creation? Upload it and see exactly how they made it!
-- 💾 **Expand Your Collection**: Add AI art from other sources to your organized gallery
-- 🔄 **Cross-Platform Sync**: Upload from mobile, manage from desktop—seamlessly
+- 🔄 **Real-time Sync**: Silent background checks with visual progress overlay when new files are detected
+- 🚨 **Smart Diagnostics**: Visual alerts for configuration issues and missing dependencies
+- ⌨️ **Keyboard Shortcuts**: Full keyboard navigation with built-in help (press `?`)
+- 🔄 **Auto-Update Check**: Stay informed about new versions automatically
+- 🔧 **Standalone Power**: Works independently—manage your gallery even when ComfyUI is off
+- ⚡ **Lightning Setup**: Simple configuration with environment variables or direct file editing
+- 🐳 **Docker Ready**: Full containerization support for advanced deployment scenarios
 
 <div align="center">
-  <img src="assets/gallery_from_mobile_screen.png" alt="Mobile View" width="300"">
+  <img src="assets/gallery_from_mobile_screen.png" alt="Mobile View" width="300">
 </div>
 <p align="center">
-  <em>📱 Perfect mobile experience - now with upload!</em>
+  <em>📱 Perfect mobile experience</em>
 </p>
 
 ---
@@ -103,7 +113,7 @@ cd smart-comfyui-gallery
 python -m venv venv
 
 # Activate it
-# Windows: venv\Scripts\activate
+# Windows Command Prompt: call venv\Scripts\activate.bat
 # Mac/Linux: source venv/bin/activate
 
 # Install dependencies
@@ -112,22 +122,55 @@ pip install -r requirements.txt
 
 ### Step 3: Configure Your Paths
 
-Open `smartgallery.py` and find the **User Configuration** section. Just update these paths to match your setup:
-```python
-# 🎯 Point to your ComfyUI folders
-BASE_OUTPUT_PATH = 'C:/your/path/to/ComfyUI/output'
-BASE_INPUT_PATH = 'C:/your/path/to/ComfyUI/input'
+You have **two easy options** to configure SmartGallery:
 
-# 🔧 Optional: FFmpeg path (for video workflow extraction)
-FFPROBE_MANUAL_PATH = "C:/path/to/ffprobe.exe"
+#### 🅰️ Option A: Environment Variables (Recommended for Advanced Users)
 
-# 🌐 Choose your port (different from ComfyUI)
-SERVER_PORT = 8189
+Perfect if you want to keep your settings separate or run multiple configurations.
+
+**Windows (Command Prompt):**
+```cmd
+call venv\Scripts\activate.bat
+set "BASE_OUTPUT_PATH=C:/ComfyUI/output"
+set "BASE_INPUT_PATH=C:/ComfyUI/input"
+set "FFPROBE_MANUAL_PATH=C:/ffmpeg/bin/ffprobe.exe"
+set SERVER_PORT=8189
+REM Leave MAX_PARALLEL_WORKERS empty to use all CPU cores (recommended)
+set "MAX_PARALLEL_WORKERS="
+python smartgallery.py
 ```
 
-> **💡 Pro Tip**: Use forward slashes (`/`) even on Windows for best compatibility!
+**Linux/Mac:**
+```bash
+source venv/bin/activate
+export BASE_OUTPUT_PATH="$HOME/ComfyUI/output"
+export BASE_INPUT_PATH="$HOME/ComfyUI/input"
+export FFPROBE_MANUAL_PATH="/usr/bin/ffprobe"
+export SERVER_PORT=8189
+# Leave MAX_PARALLEL_WORKERS empty to use all CPU cores (recommended)
+export MAX_PARALLEL_WORKERS=""
+python smartgallery.py
+```
 
-> **📹 Note**: FFmpeg installation is recommended for complete workflow discovery from MP4 files. Download from [ffmpeg.org](https://ffmpeg.org/) if needed.
+> 💡 **Tip**: See the complete configuration guide at the top of `smartgallery.py` for all available settings and detailed examples!
+
+#### 🅱️ Option B: Direct File Edit 
+
+Open `smartgallery.py` and find the **USER CONFIGURATION** section. A detailed guide is included at the top of the file. Update just the paths after the commas:
+```python
+# Find this section and change ONLY the values after the commas:
+BASE_OUTPUT_PATH = os.environ.get('BASE_OUTPUT_PATH', 'C:/ComfyUI/output')
+BASE_INPUT_PATH = os.environ.get('BASE_INPUT_PATH', 'C:/ComfyUI/input')
+FFPROBE_MANUAL_PATH = os.environ.get('FFPROBE_MANUAL_PATH', "C:/ffmpeg/bin/ffprobe.exe")
+SERVER_PORT = int(os.environ.get('SERVER_PORT', 8189))
+```
+
+> 💡 **Important**: Always use forward slashes (`/`) even on Windows! If your paths contain spaces, use quotes.
+
+> 📹 **FFmpeg Note**: Recommended for extracting workflows from MP4 files. Download from [ffmpeg.org](https://ffmpeg.org/) if needed. Common locations:
+> - Windows: `C:/ffmpeg/bin/ffprobe.exe` or `C:/Program Files/ffmpeg/bin/ffprobe.exe`
+> - Linux: `/usr/bin/ffprobe` or `/usr/local/bin/ffprobe`
+> - Mac: `/usr/local/bin/ffprobe` or `/opt/homebrew/bin/ffprobe`
 
 ### Step 4: Launch & Enjoy
 ```bash
@@ -136,50 +179,50 @@ python smartgallery.py
 
 Visit **`http://127.0.0.1:8189/galleryout`** and watch the magic happen!
 
-> **⏱️ First Run**: The initial launch takes a few minutes as SmartGallery builds your database and generates thumbnails. After that? Lightning fast!
+> **⏱️ First Run**: The initial launch scans your files and generates thumbnails. Thanks to parallel processing, this is now incredibly fast (seconds to a few minutes depending on your collection size). After that? Lightning fast! ⚡
 
 ---
 
-## 🆕 How to Use the Upload Feature
 
-### 🖱️ Desktop Upload
-1. **Drag & Drop**: Simply drag images/videos directly into the gallery
-2. **Upload Button**: Click the upload button and select files
-3. **Instant Analysis**: SmartGallery automatically scans for embedded workflows
-4. **Organize**: Uploaded files appear in your gallery with full workflow info (if available)
 
-### 📱 Mobile Upload
-1. **Touch Upload**: Tap the upload button on mobile
-2. **Camera/Gallery**: Choose from camera roll or take new photos
-3. **Seamless Integration**: Uploads integrate perfectly with your existing gallery
+## 🐳 Docker Deployment (Advanced Users)
 
-### 🔍 Workflow Detection
-- **Automatic**: Works with any ComfyUI-generated image/video containing metadata
-- **Intelligent**: Recognizes various metadata formats and embedding methods
-- **Visual Feedback**: Clear indicators show when workflows are detected
-- **Fallback**: Files without workflows still get organized beautifully
+Want to run SmartGallery in a containerized environment? We've got you covered!
 
----
+> 🎖️ **Special Thanks**: A huge shout-out to **[Martial Michel](https://github.com/mmartial)** for orchestrating the Docker support and contributing significant improvements to the core application logic.
 
-## 🛠️ Advanced Configuration
 
-Want to customize your experience? Here are the key settings you can tweak:
+> **Note for Windows Users**: The standard installation (Steps 1-4 above) is much simpler and works perfectly on Windows! Docker is completely optional and mainly useful for Linux servers or advanced deployment scenarios.
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| `THUMBNAIL_WIDTH` | Thumbnail size in pixels | `300` |
-| `PAGE_SIZE` | Files to load initially | `100` |
-| `WEBP_ANIMATED_FPS` | Frame rate for WebP animations | `16.0` |
-| `SPECIAL_FOLDERS` | Custom folder names in menu | `['video', 'audio']` |
-| `MAX_UPLOAD_SIZE` | Maximum file size for uploads | `100MB` |
+Docker deployment provides isolation, easier deployment, and consistent environments across different systems. However, it requires some familiarity with Docker concepts.
+
+**📚 [Complete Docker Setup Guide →](DOCKER_HELP.md)**
+
+Our comprehensive Docker guide covers:
+- 🏗️ Building the Docker image
+- 🚀 Running with Docker Compose (recommended for beginners)
+- ⚙️ Using Makefile (For advanced control and automation)
+- 🔐 Understanding permissions and volume mapping
+- 🛠️ Troubleshooting common Docker issues
+- 📋 All available environment variables
+
 
 ---
-
 ## 🌐 Reverse Proxy Setup
 
 Running behind Nginx or Apache? Point your proxy to:
 ```
 http://127.0.0.1:8189/galleryout
+```
+
+**Example Nginx configuration:**
+```nginx
+location /gallery/ {
+    proxy_pass http://127.0.0.1:8189/galleryout/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+}
 ```
 
 ---
@@ -200,7 +243,29 @@ Let's build something incredible together! 🚀
 
 ---
 
-## 🔥 License & Disclaimer
+## 📚 Troubleshooting
+
+### Gallery won't start?
+- **Check Python version**: `python --version` (needs 3.9+)
+- **Verify paths**: Use forward slashes (`/`) even on Windows, and quotes if paths contain spaces
+- **Check startup alerts**: SmartGallery now shows visual diagnostics for common issues
+- **Ensure folder exists**: The ComfyUI output folder must exist and be accessible
+
+### Thumbnails not generating?
+- **For MP4 files**: Install FFmpeg and set `FFPROBE_MANUAL_PATH` correctly (you'll see a startup alert if missing)
+- **Check permissions**: Folder must be readable and writable
+- **Memory issues?**: Try reducing `MAX_PARALLEL_WORKERS` to limit CPU usage (e.g., set to 4)
+
+### Port already in use?
+- Change `SERVER_PORT` to a different number (e.g., 8190, 8191)
+- Make sure it's different from ComfyUI's port (usually 8188)
+
+
+**Still stuck?** [Open an issue](../../issues) with details about your setup and any error messages from the startup diagnostics!
+
+---
+
+## 🔥 License
 
 SmartGallery is released under the **MIT License** - see [LICENSE](LICENSE) for details.
 
@@ -218,6 +283,15 @@ It takes 2 seconds but means the world to me and helps other creators discover t
 
 ---
 
+## 📋 Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
+
+---
+
 <p align="center">
   <em>Made with ❤️ for the ComfyUI community</em>
+</p>
+<p align="center">
+  <em>Supporting both beginners and power users since 2024</em>
 </p>
