@@ -124,7 +124,7 @@ pip install -r requirements.txt
 
 You have **two easy options** to configure SmartGallery:
 
-#### 🅰️ Option A: Environment Variables (Recommended for Advanced Users)
+#### 🅰️ Option A: Environment Variables (recommended)
 
 Perfect if you want to keep your settings separate or run multiple configurations.
 
