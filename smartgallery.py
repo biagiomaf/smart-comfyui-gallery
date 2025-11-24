@@ -93,6 +93,12 @@ MAX_PARALLEL_WORKERS = os.environ.get('MAX_PARALLEL_WORKERS', None)
 if MAX_PARALLEL_WORKERS is not None:
     MAX_PARALLEL_WORKERS = int(MAX_PARALLEL_WORKERS)
 
+# If True, deleted files are moved to a "Deleted" folder instead of being permanently removed.
+DELETE_MOVES = os.environ.get('DELETE_MOVES', 'false').lower() == 'true'
+
+# Number of days to keep files in the temporary folders (Deleted, zip_downloads) before automatic cleanup.
+CLEAR_TEMP_DAYS = int(os.environ.get('CLEAR_TEMP_DAYS', 7))
+
 # ------- END OF USER CONFIGURATION -------
 
 
@@ -101,7 +107,8 @@ THUMBNAIL_CACHE_FOLDER_NAME = '.thumbnails_cache'
 SQLITE_CACHE_FOLDER_NAME = '.sqlite_cache'
 DATABASE_FILENAME = 'gallery_cache.sqlite'
 WORKFLOW_FOLDER_NAME = 'workflow_logs_success'
-ZIP_CACHE_FOLDER_NAME = 'zip_downloads'  
+ZIP_CACHE_FOLDER_NAME = 'zip_downloads'
+DELETE_CACHE_FOLDER_NAME = 'Deleted'  
 
 # --- HELPER FUNCTIONS (DEFINED FIRST) ---
 def path_to_key(relative_path):
@@ -121,6 +128,7 @@ THUMBNAIL_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, THUMBNAIL_CACHE_FOLDE
 SQLITE_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, SQLITE_CACHE_FOLDER_NAME)
 DATABASE_FILE = os.path.join(SQLITE_CACHE_DIR, DATABASE_FILENAME)
 ZIP_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, ZIP_CACHE_FOLDER_NAME)
+DELETE_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, DELETE_CACHE_FOLDER_NAME)
 PROTECTED_FOLDER_KEYS = {path_to_key(f) for f in SPECIAL_FOLDERS}
 PROTECTED_FOLDER_KEYS.add('_root_')
 
@@ -140,6 +148,9 @@ print("BASE_INPUT_PATH_WORKFLOW: ", BASE_INPUT_PATH_WORKFLOW)
 print("THUMBNAIL_CACHE_DIR: ", THUMBNAIL_CACHE_DIR)
 print("SQLITE_CACHE_DIR: ", SQLITE_CACHE_DIR)
 print("DATABASE_FILE: ", DATABASE_FILE)
+print("DELETE_MOVES: ", DELETE_MOVES)
+print("CLEAR_TEMP_DAYS: ", CLEAR_TEMP_DAYS)
+print("DELETE_CACHE_DIR: ", DELETE_CACHE_DIR)
 print("PROTECTED_FOLDER_KEYS: ", PROTECTED_FOLDER_KEYS)
 
 
@@ -580,63 +591,118 @@ def get_dynamic_folder_config(force_refresh=False):
 
     print("INFO: Refreshing folder configuration by scanning directory tree...")
 
-    base_path_normalized = os.path.normpath(BASE_OUTPUT_PATH).replace('\\', '/')
-    
-    try:
-        root_mtime = os.path.getmtime(BASE_OUTPUT_PATH)
-    except OSError:
-        root_mtime = time.time()
+    # Define our roots
+    roots = [
+        {'key': 'output', 'path': BASE_OUTPUT_PATH, 'display_name': 'Output'},
+        {'key': 'input', 'path': BASE_INPUT_PATH, 'display_name': 'Input'}
+    ]
 
+    # Virtual Root
     dynamic_config = {
         '_root_': {
             'display_name': 'Main',
-            'path': base_path_normalized,
+            'path': '', # Virtual
             'relative_path': '',
             'parent': None,
-            'children': [],
-            'mtime': root_mtime 
+            'children': ['output', 'input'],
+            'mtime': time.time() 
         }
     }
 
-    try:
-        all_folders = {}
-        for dirpath, dirnames, _ in os.walk(BASE_OUTPUT_PATH):
-            dirnames[:] = [d for d in dirnames if d not in [THUMBNAIL_CACHE_FOLDER_NAME, SQLITE_CACHE_FOLDER_NAME]]
-            for dirname in dirnames:
-                full_path = os.path.normpath(os.path.join(dirpath, dirname)).replace('\\', '/')
-                relative_path = os.path.relpath(full_path, BASE_OUTPUT_PATH).replace('\\', '/')
-                try:
-                    mtime = os.path.getmtime(full_path)
-                except OSError:
-                    mtime = time.time()
-                
-                all_folders[relative_path] = {
-                    'full_path': full_path,
-                    'display_name': dirname,
-                    'mtime': mtime
-                }
+    for root_info in roots:
+        root_key = root_info['key']
+        base_path = root_info['path']
+        display_name = root_info['display_name']
 
-        sorted_paths = sorted(all_folders.keys(), key=lambda x: x.count('/'))
-
-        for rel_path in sorted_paths:
-            folder_data = all_folders[rel_path]
-            key = path_to_key(rel_path)
-            parent_rel_path = os.path.dirname(rel_path).replace('\\', '/')
-            parent_key = '_root_' if parent_rel_path == '.' or parent_rel_path == '' else path_to_key(parent_rel_path)
-
-            if parent_key in dynamic_config:
-                dynamic_config[parent_key]['children'].append(key)
-
-            dynamic_config[key] = {
-                'display_name': folder_data['display_name'],
-                'path': folder_data['full_path'],
-                'relative_path': rel_path,
-                'parent': parent_key,
+        if not os.path.exists(base_path):
+            print(f"WARNING: The base directory '{base_path}' for {display_name} was not found.")
+            # Still add the entry so the UI doesn't break, but it will be empty
+            dynamic_config[root_key] = {
+                'display_name': display_name,
+                'path': base_path,
+                'relative_path': root_key, # Use key as relative path base
+                'parent': '_root_',
                 'children': [],
-                'mtime': folder_data['mtime']
+                'mtime': 0
             }
-    except FileNotFoundError:
-        print(f"WARNING: The base directory '{BASE_OUTPUT_PATH}' was not found.")
+            continue
+
+        base_path_normalized = os.path.normpath(base_path).replace('\\', '/')
+        
+        try:
+            root_mtime = os.path.getmtime(base_path)
+        except OSError:
+            root_mtime = time.time()
+
+        # Add the root entry itself
+        dynamic_config[root_key] = {
+            'display_name': display_name,
+            'path': base_path_normalized,
+            'relative_path': root_key,
+            'parent': '_root_',
+            'children': [],
+            'mtime': root_mtime
+        }
+
+        try:
+            all_folders = {}
+            for dirpath, dirnames, _ in os.walk(base_path):
+                dirnames[:] = [d for d in dirnames if d not in [THUMBNAIL_CACHE_FOLDER_NAME, SQLITE_CACHE_FOLDER_NAME, ZIP_CACHE_FOLDER_NAME, DELETE_CACHE_FOLDER_NAME]]
+                for dirname in dirnames:
+                    full_path = os.path.normpath(os.path.join(dirpath, dirname)).replace('\\', '/')
+                    # Calculate relative path from the specific root's base path
+                    rel_from_base = os.path.relpath(full_path, base_path).replace('\\', '/')
+                    
+                    # Prefix with root key to ensure uniqueness in the global config
+                    # e.g. "output/subfolder" or "input/workflows"
+                    config_rel_path = f"{root_key}/{rel_from_base}"
+                    
+                    try:
+                        mtime = os.path.getmtime(full_path)
+                    except OSError:
+                        mtime = time.time()
+                    
+                    all_folders[config_rel_path] = {
+                        'full_path': full_path,
+                        'display_name': dirname,
+                        'mtime': mtime,
+                        'rel_from_base': rel_from_base
+                    }
+
+            sorted_paths = sorted(all_folders.keys(), key=lambda x: x.count('/'))
+
+            for config_rel_path in sorted_paths:
+                folder_data = all_folders[config_rel_path]
+                
+                # Generate key from the unique config_rel_path
+                key = path_to_key(config_rel_path)
+                
+                # Determine parent
+                # If rel_from_base has no slashes, parent is the root_key
+                # Otherwise, parent is the dirname of config_rel_path
+                
+                rel_from_base = folder_data['rel_from_base']
+                parent_dir = os.path.dirname(rel_from_base)
+                
+                if parent_dir == '' or parent_dir == '.':
+                    parent_key = root_key
+                else:
+                    parent_config_rel_path = f"{root_key}/{parent_dir}".replace('\\', '/')
+                    parent_key = path_to_key(parent_config_rel_path)
+
+                if parent_key in dynamic_config:
+                    dynamic_config[parent_key]['children'].append(key)
+
+                dynamic_config[key] = {
+                    'display_name': folder_data['display_name'],
+                    'path': folder_data['full_path'],
+                    'relative_path': config_rel_path,
+                    'parent': parent_key,
+                    'children': [],
+                    'mtime': folder_data['mtime']
+                }
+        except Exception as e:
+            print(f"ERROR scanning {display_name}: {e}")
     
     folder_config_cache = dynamic_config
     return dynamic_config
@@ -773,15 +839,18 @@ def sync_folder_on_demand(folder_path):
         
 def scan_folder_and_extract_options(folder_path):
     extensions, prefixes = set(), set()
+    file_count = 0
     try:
-        if not os.path.isdir(folder_path): return None, [], []
+        if not os.path.isdir(folder_path): return 0, [], []
         for filename in os.listdir(folder_path):
             if os.path.isfile(os.path.join(folder_path, filename)):
                 ext = os.path.splitext(filename)[1]
-                if ext and ext.lower() not in ['.json', '.sqlite']: extensions.add(ext.lstrip('.').lower())
+                if ext and ext.lower() not in ['.json', '.sqlite']: 
+                    extensions.add(ext.lstrip('.').lower())
+                    file_count += 1
                 if '_' in filename: prefixes.add(filename.split('_')[0])
     except Exception as e: print(f"ERROR: Could not scan folder '{folder_path}': {e}")
-    return None, sorted(list(extensions)), sorted(list(prefixes))
+    return file_count, sorted(list(extensions)), sorted(list(prefixes))
 
 def initialize_gallery():
     print("INFO: Initializing gallery...")
@@ -817,7 +886,7 @@ def initialize_gallery():
 @app.route('/galleryout/')
 @app.route('/')
 def gallery_redirect_base():
-    return redirect(url_for('gallery_view', folder_key='_root_'))
+    return redirect(url_for('gallery_view', folder_key='output'))
 
 @app.route('/galleryout/sync_status/<string:folder_key>')
 def sync_status(folder_key):
@@ -832,7 +901,7 @@ def gallery_view(folder_key):
     global gallery_view_cache
     folders = get_dynamic_folder_config(force_refresh=True)
     if folder_key not in folders:
-        return redirect(url_for('gallery_view', folder_key='_root_'))
+        return redirect(url_for('gallery_view', folder_key='output'))
     
     current_folder_info = folders[folder_key]
     folder_path = current_folder_info['path']
@@ -873,7 +942,7 @@ def gallery_view(folder_key):
     all_files_filtered = [dict(row) for row in all_files_raw if os.path.normpath(os.path.dirname(row['path'])) == folder_path_norm]
     gallery_view_cache = all_files_filtered
     initial_files = gallery_view_cache[:PAGE_SIZE]
-    _, extensions, prefixes = scan_folder_and_extract_options(folder_path)
+    total_folder_files, extensions, prefixes = scan_folder_and_extract_options(folder_path)
     breadcrumbs, ancestor_keys = [], set()
     curr_key = folder_key
     while curr_key is not None and curr_key in folders:
@@ -885,7 +954,8 @@ def gallery_view(folder_key):
     
     return render_template('index.html', 
                            files=initial_files, 
-                           total_files=len(gallery_view_cache), 
+                           total_files=len(gallery_view_cache),
+                           total_folder_files=total_folder_files, 
                            folders=folders,
                            current_folder_key=folder_key, 
                            current_folder_info=current_folder_info,
@@ -1055,6 +1125,62 @@ def background_zip_task(job_id, file_ids):
     except Exception as e:
         print(f"Zip Error: {e}")
         zip_jobs[job_id] = {'status': 'error', 'message': str(e)}
+
+def cleanup_temp_files():
+    """
+    Deletes files and folders in DELETE_CACHE_DIR and ZIP_CACHE_DIR 
+    that are older than CLEAR_TEMP_DAYS.
+    """
+    print("INFO: Starting cleanup of temporary files...")
+    cutoff_time = time.time() - (CLEAR_TEMP_DAYS * 86400)
+    
+    dirs_to_clean = [DELETE_CACHE_DIR, ZIP_CACHE_DIR]
+    
+    cleaned_count = 0
+    errors = []
+
+    for directory in dirs_to_clean:
+        if not os.path.exists(directory):
+            continue
+            
+        for name in os.listdir(directory):
+            path = os.path.join(directory, name)
+            try:
+                mtime = os.path.getmtime(path)
+                if mtime < cutoff_time:
+                    if os.path.isfile(path) or os.path.islink(path):
+                        os.remove(path)
+                        cleaned_count += 1
+                    elif os.path.isdir(path):
+                        shutil.rmtree(path)
+                        cleaned_count += 1
+            except Exception as e:
+                errors.append(f"Failed to delete {name}: {e}")
+                print(f"ERROR: Cleanup failed for {path}: {e}")
+
+    print(f"INFO: Cleanup complete. Removed {cleaned_count} items.")
+    return cleaned_count, errors
+
+def background_cleanup_task():
+    while True:
+        try:
+            cleanup_temp_files()
+        except Exception as e:
+            print(f"ERROR: Background cleanup task failed: {e}")
+        # Sleep for 6 hours
+        time.sleep(6 * 3600)
+
+# Manual trigger for cleanup (adaapt url for your server): curl -X POST http://localhost:8189/galleryout/trigger_cleanup
+@app.route('/galleryout/trigger_cleanup', methods=['POST'])
+def trigger_cleanup():
+    try:
+        count, errors = cleanup_temp_files()
+        message = f"Cleanup complete. Removed {count} items."
+        if errors:
+            message += f" Errors: {'; '.join(errors)}"
+        return jsonify({'status': 'success', 'message': message, 'removed_count': count})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
         
 @app.route('/galleryout/prepare_batch_zip', methods=['POST'])
 def prepare_batch_zip():
@@ -1121,10 +1247,23 @@ def delete_folder(folder_key):
     if folder_key not in folders: return jsonify({'status': 'error', 'message': 'Folder not found.'}), 404
     try:
         folder_path = folders[folder_key]['path']
+        
+        # If DELETE_MOVES is enabled, move the folder instead of deleting it
+        if DELETE_MOVES:
+            try:
+                os.makedirs(DELETE_CACHE_DIR, exist_ok=True)
+                folder_name = os.path.basename(folder_path)
+                dest_path = _get_unique_filepath(DELETE_CACHE_DIR, folder_name)
+                shutil.move(folder_path, dest_path)
+            except Exception as e:
+                return jsonify({'status': 'error', 'message': f'Error moving folder to trash: {e}'}), 500
+        else:
+            shutil.rmtree(folder_path)
+
         with get_db_connection() as conn:
             conn.execute("DELETE FROM files WHERE path LIKE ?", (folder_path + os.sep + '%',))
             conn.commit()
-        shutil.rmtree(folder_path)
+            
         get_dynamic_folder_config(force_refresh=True)
         return jsonify({'status': 'success', 'message': 'Folder deleted.'})
     except Exception as e: return jsonify({'status': 'error', 'message': f'Error: {e}'}), 500
@@ -1201,7 +1340,13 @@ def delete_batch():
         ids_to_remove_from_db = []
         for row in files_to_delete:
             try:
-                if os.path.exists(row['path']): os.remove(row['path'])
+                if os.path.exists(row['path']):
+                    if DELETE_MOVES:
+                        os.makedirs(DELETE_CACHE_DIR, exist_ok=True)
+                        dest_path = _get_unique_filepath(DELETE_CACHE_DIR, os.path.basename(row['path']))
+                        shutil.move(row['path'], dest_path)
+                    else:
+                        os.remove(row['path'])
                 ids_to_remove_from_db.append(row['id'])
                 deleted_count += 1
             except Exception as e: 
@@ -1248,7 +1393,12 @@ def delete_file(file_id):
         
         try:
             if os.path.exists(filepath):
-                os.remove(filepath)
+                if DELETE_MOVES:
+                    os.makedirs(DELETE_CACHE_DIR, exist_ok=True)
+                    dest_path = _get_unique_filepath(DELETE_CACHE_DIR, os.path.basename(filepath))
+                    shutil.move(filepath, dest_path)
+                else:
+                    os.remove(filepath)
             # If file doesn't exist on disk, we still proceed to remove the DB entry, which is the desired state.
         except OSError as e:
             # A real OS error occurred (e.g., permissions).
@@ -1375,5 +1525,10 @@ def favicon():
 
 if __name__ == '__main__':
     initialize_gallery()
+    
+    # Start background cleanup task
+    cleanup_thread = threading.Thread(target=background_cleanup_task, daemon=True)
+    cleanup_thread.start()
+    
     print(f"Gallery started! Open: http://127.0.0.1:{SERVER_PORT}/galleryout/")
     app.run(host='0.0.0.0', port=SERVER_PORT, debug=False)

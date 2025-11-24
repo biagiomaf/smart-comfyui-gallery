@@ -180,6 +180,8 @@ Want to customize your experience? Here are the key settings you can tweak (thos
 | `SPECIAL_FOLDERS` | Custom folder names in menu | `['video', 'audio']` |
 | `MAX_UPLOAD_SIZE` | Maximum file size for uploads | `100MB` |
 | `MAX_PARALLEL_WORKERS` | Number of CPU cores to use (None = all) | `None` |
+| `DELETE_MOVES` | Move deleted files to "BASE_SMARTGALLERY_PATH/Deleted" folder instead of permanent delete | `false` |
+| `CLEAR_TEMP_DAYS` | Days to keep files in "BASE_SMARTGALLERY_PATH/Deleted" and "BASE_SMARTGALLERY_PATH/zip_downloads" before cleanup | `7` |
 
 ---
 

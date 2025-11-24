@@ -2,3 +2,4 @@ Flask
 Pillow
 opencv-python
 tqdm
+pytest
