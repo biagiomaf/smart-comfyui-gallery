@@ -29,9 +29,16 @@ import concurrent.futures
 from tqdm import tqdm
 import threading
 import uuid
-import tkinter as tk
-from tkinter import messagebox
+# Try to import tkinter for GUI dialogs, but make it optional for Docker/headless environments
+try:
+    import tkinter as tk
+    from tkinter import messagebox
+    TKINTER_AVAILABLE = True
+except ImportError:
+    TKINTER_AVAILABLE = False
+    # tkinter not available (e.g., in Docker containers) - will fall back to console output
 import urllib.request 
+import secrets
 
 
 # ============================================================================
@@ -189,6 +196,11 @@ if MAX_PARALLEL_WORKERS is not None and MAX_PARALLEL_WORKERS != "":
 else:
     MAX_PARALLEL_WORKERS = None
 
+# Flask secret key
+# You can set it in the environment variable SECRET_KEY
+# If not set, it will be generated randomly
+SECRET_KEY = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+
 # ============================================================================
 # END OF USER CONFIGURATION
 # ============================================================================
@@ -262,6 +274,7 @@ def print_configuration():
 
 # --- FLASK APP INITIALIZATION ---
 app = Flask(__name__)
+app.secret_key = SECRET_KEY
 gallery_view_cache = []
 folder_config_cache = None
 FFPROBE_EXECUTABLE_PATH = None
@@ -1538,6 +1551,12 @@ def favicon():
 def serve_input_file(filename):
     """Serves input files directly from the ComfyUI Input folder."""
     try:
+        # Prevent path traversal
+        filename = secure_filename(filename)
+        filepath = os.path.abspath(os.path.join(BASE_INPUT_PATH, filename))
+        if not filepath.startswith(os.path.abspath(BASE_INPUT_PATH)):
+            abort(403)
+        
         # For webp, frocing the correct mimetype
         if filename.lower().endswith('.webp'):
             return send_from_directory(BASE_INPUT_PATH, filename, mimetype='image/webp', as_attachment=False)
@@ -1590,15 +1609,10 @@ def check_for_updates():
         print("Skipped (Offline or GitHub unreachable).")
 
 # --- STARTUP CHECKS AND MAIN ENTRY POINT ---
-def show_startup_error_and_exit(path):
-    """Shows a blocking error message for invalid path and exits."""
-    root = tk.Tk()
-    root.withdraw()  # Hides the main tkinter window
-    root.attributes('-topmost', True) # Ensure it's on top
-    
+def show_config_error_and_exit(path):
+    """Shows a critical error message and exits the program."""
     msg = (
-        f"CRITICAL ERROR: Invalid Output Path\n\n"
-        f"The directory configured for 'BASE_OUTPUT_PATH' does not exist:\n"
+        f"❌ CRITICAL ERROR: The specified path does not exist or is not accessible:\n\n"
         f"👉 {path}\n\n"
         f"INSTRUCTIONS:\n"
         f"1. If you are launching via a script (e.g., .bat file), please edit it and set the correct 'BASE_OUTPUT_PATH' variable.\n"
@@ -1606,16 +1620,22 @@ def show_startup_error_and_exit(path):
         f"The program cannot continue and will now exit."
     )
     
-    messagebox.showerror("SmartGallery - Configuration Error", msg)
-    root.destroy()
+    if TKINTER_AVAILABLE:
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes('-topmost', True)
+        messagebox.showerror("SmartGallery - Configuration Error", msg)
+        root.destroy()
+    else:
+        # Fallback for headless environments (Docker, etc.)
+        print(f"\n{Colors.RED}{Colors.BOLD}" + "="*70 + f"{Colors.RESET}")
+        print(f"{Colors.RED}{Colors.BOLD}{msg}{Colors.RESET}")
+        print(f"{Colors.RED}{Colors.BOLD}" + "="*70 + f"{Colors.RESET}\n")
+    
     sys.exit(1)
 
 def show_ffmpeg_warning():
     """Shows a non-blocking warning message for missing FFmpeg."""
-    root = tk.Tk()
-    root.withdraw()
-    root.attributes('-topmost', True)
-    
     msg = (
         "WARNING: FFmpeg/FFprobe not found\n\n"
         "The system uses the 'ffprobe' utility to analyze video files. "
@@ -1626,8 +1646,17 @@ def show_ffmpeg_warning():
         "To fix this, install FFmpeg or check the 'FFPROBE_MANUAL_PATH' in the configuration."
     )
     
-    messagebox.showwarning("SmartGallery - Feature Limitation", msg)
-    root.destroy()
+    if TKINTER_AVAILABLE:
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes('-topmost', True)
+        messagebox.showwarning("SmartGallery - Feature Limitation", msg)
+        root.destroy()
+    else:
+        # Fallback for headless environments (Docker, etc.)
+        print(f"\n{Colors.YELLOW}{Colors.BOLD}" + "="*70 + f"{Colors.RESET}")
+        print(f"{Colors.YELLOW}{msg}{Colors.RESET}")
+        print(f"{Colors.YELLOW}{Colors.BOLD}" + "="*70 + f"{Colors.RESET}\n")
 
 if __name__ == '__main__':
 
@@ -1637,7 +1666,7 @@ if __name__ == '__main__':
 
     # --- CHECK: CRITICAL OUTPUT PATH CHECK (Blocking) ---
     if not os.path.exists(BASE_OUTPUT_PATH):
-        show_startup_error_and_exit(BASE_OUTPUT_PATH)
+        show_config_error_and_exit(BASE_OUTPUT_PATH)
 
     # --- CHECK: INPUT PATH CHECK (Non-Blocking / Warning) ---
     if not os.path.exists(BASE_INPUT_PATH):
