@@ -22,7 +22,7 @@ Your output gallery is overflowing with generations.<br>You need to **organize t
 
 <p align="center">
   <img src="assets/node_summary_with_image.png" alt="Source image inside the Node Summary" width="450"/>
-  <img src="assets/node_summary.png" alt="Node Summary" width="350"/>
+  
 </p>
 
 <p align="center">
@@ -83,6 +83,7 @@ See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 
 <div align="center">
   <img src="assets/gallery_from_mobile_screen.png" alt="Mobile View" width="300">
+  <img src="assets/node_summary.png" alt="Node Summary" width="350"/>
 </div>
 <p align="center">
   <em>📱 Perfect mobile experience</em>
@@ -282,7 +283,4 @@ See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 
 <p align="center">
   <em>Made with ❤️ for the ComfyUI community</em>
-</p>
-<p align="center">
-  <em>Supporting both beginners and power users since 2024</em>
 </p>
