@@ -44,4 +44,6 @@ thumbnails/
 Thumbs.db
 
 # Logs
+*.cmd
 *.log
+*.log.temp
