@@ -8,6 +8,8 @@ services:
       - /comfyui-nvidia/basedir/output:/mnt/output
       - /comfyui-nvidia/basedir/input:/mnt/input
       - /comfyui-nvidia/SmartGallery:/mnt/SmartGallery
+#      - /tmp:/deleteto
+#      - /etc/localtime:/etc/localtime:ro
     restart: unless-stopped
     environment:
       - BASE_OUTPUT_PATH=/mnt/output
@@ -16,3 +18,4 @@ services:
       # Adapt to wanted values (use id -u and id -g to obtain values)
       - WANTED_UID=1000
       - WANTED_GID=1000
+#      - DELETE_TO=/deleteto
