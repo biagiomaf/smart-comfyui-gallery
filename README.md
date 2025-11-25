@@ -1,6 +1,13 @@
 # SmartGallery for ComfyUI ✨
 ### Your Visual Hub with Universal Workflow Recall, Upload Magic & Intelligent Organization
 
+## 🎯 Every ComfyUI User's Dream: Complete Browser-Based Control
+
+Your output gallery is overflowing with generations.<br>You need to **organize them on the fly**—even when ComfyUI isn't running.<br> You want to click once and instantly see which workflow created that stunning image or video, with a visual node summary showing even the source images you started from.<br>When you launch multiple generations, you want immediate web gallery updates.<br>You need to delete files, move them between folders, create new ones—all from your browser.<br>Filter by filename, download workflows as JSON, and do it all seamlessly on Windows, Linux, or Docker.
+
+**Whether you're a tech beginner or an advanced user, do all of this from your PC browser or your smartphone.**<br>Perfect mobile visualization included. ✨
+
+---
 <p align="center">
   <img src="assets/gallery_from_pc_screen.png" alt="SmartGallery Interface" width="800">
 </p>
@@ -27,15 +34,6 @@
   <img src="https://img.shields.io/badge/Python-3.9+-blue.svg" alt="Python Version">
   <a href="https://github.com/biagiomaf/smart-comfyui-gallery/stargazers"><img src="https://img.shields.io/github/stars/biagiomaf/smart-comfyui-gallery?style=social" alt="GitHub stars"></a>
 </p>
-
----
-
-
-## 🎯 Every ComfyUI User's Dream: Complete Browser-Based Control
-
-Your output gallery is overflowing with generations.<br>You need to **organize them on the fly**—even when ComfyUI isn't running.<br> You want to click once and instantly see which workflow created that stunning image or video, with a visual node summary showing even the source images you started from.<br>When you launch multiple generations, you want immediate web gallery updates.<br>You need to delete files, move them between folders, create new ones—all from your browser.<br>Filter by filename, download workflows as JSON, and do it all seamlessly on Windows, Linux, or Docker.
-
-**Whether you're a tech beginner or an advanced user, do all of this from your PC browser or your smartphone.** Perfect mobile visualization included. ✨
 
 ---
 
