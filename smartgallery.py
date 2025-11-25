@@ -101,6 +101,7 @@ import secrets
 #   export BASE_INPUT_PATH="/path/to/ComfyUI/input"
 #   export BASE_SMARTGALLERY_PATH="$HOME/ComfyUI/output"
 #   export FFPROBE_MANUAL_PATH="/usr/bin/ffprobe"
+#   export DELETE_TO="/path/to/trash" # Optional, set to disable permanent delete
 #   export SERVER_PORT=8189
 #   export THUMBNAIL_WIDTH=300
 #   export WEBP_ANIMATED_FPS=16.0
@@ -201,6 +202,42 @@ else:
 # If not set, it will be generated randomly
 SECRET_KEY = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 
+# Optional path where deleted files will be moved instead of being permanently deleted.
+# If set, files will be moved to DELETE_TO/SmartGallery/<timestamp>_<filename>
+# If not set (None or empty string), files will be permanently deleted as before.
+# The path MUST exist and be writable, or the application will exit with an error.
+# Example: /path/to/trash or C:/Trash
+DELETE_TO = os.environ.get('DELETE_TO', None)
+if DELETE_TO and DELETE_TO.strip():
+    DELETE_TO = DELETE_TO.strip()
+    TRASH_FOLDER = os.path.join(DELETE_TO, 'SmartGallery')
+    
+    # Validate that DELETE_TO path exists
+    if not os.path.exists(DELETE_TO):
+        print(f"{Colors.RED}{Colors.BOLD}CRITICAL ERROR: DELETE_TO path does not exist: {DELETE_TO}{Colors.RESET}")
+        print(f"{Colors.RED}Please create the directory or unset the DELETE_TO environment variable.{Colors.RESET}")
+        sys.exit(1)
+    
+    # Validate that DELETE_TO is writable
+    if not os.access(DELETE_TO, os.W_OK):
+        print(f"{Colors.RED}{Colors.BOLD}CRITICAL ERROR: DELETE_TO path is not writable: {DELETE_TO}{Colors.RESET}")
+        print(f"{Colors.RED}Please check permissions or unset the DELETE_TO environment variable.{Colors.RESET}")
+        sys.exit(1)
+    
+    # Validate that SmartGallery subfolder exists or can be created
+    if not os.path.exists(TRASH_FOLDER):
+        try:
+            os.makedirs(TRASH_FOLDER)
+            print(f"{Colors.GREEN}Created trash folder: {TRASH_FOLDER}{Colors.RESET}")
+        except OSError as e:
+            print(f"{Colors.RED}{Colors.BOLD}CRITICAL ERROR: Cannot create trash folder: {TRASH_FOLDER}{Colors.RESET}")
+            print(f"{Colors.RED}Error: {e}{Colors.RESET}")
+            sys.exit(1)
+else:
+    DELETE_TO = None
+    TRASH_FOLDER = None
+
+
 # ============================================================================
 # END OF USER CONFIGURATION
 # ============================================================================
@@ -265,6 +302,7 @@ def print_configuration():
     print_row("Base Input Path", BASE_INPUT_PATH, True)
     print_row("SmartGallery Path", BASE_SMARTGALLERY_PATH, True)
     print_row("FFprobe Path", FFPROBE_MANUAL_PATH, True)
+    print_row("Delete To (Trash)", DELETE_TO if DELETE_TO else "Disabled (Permanent Delete)", DELETE_TO is not None)
     print_row("Thumbnail Width", f"{THUMBNAIL_WIDTH}px")
     print_row("WebP Animated FPS", WEBP_ANIMATED_FPS)
     print_row("Page Size", PAGE_SIZE)
@@ -458,6 +496,38 @@ def generate_node_summary(workflow_json_string):
     return summary_list
     
 # --- ALL UTILITY AND HELPER FUNCTIONS ARE DEFINED HERE, BEFORE ANY ROUTES ---
+
+def safe_delete_file(filepath):
+    """
+    Safely delete a file by either moving it to trash (if DELETE_TO is configured)
+    or permanently deleting it.
+    
+    Args:
+        filepath: Path to the file to delete
+        
+    Raises:
+        OSError: If deletion/move fails
+    """
+    if DELETE_TO and TRASH_FOLDER:
+        # Move to trash (folder already validated at startup)
+        timestamp = time.strftime('%Y%m%d_%H%M%S')
+        filename = os.path.basename(filepath)
+        trash_filename = f"{timestamp}_{filename}"
+        trash_path = os.path.join(TRASH_FOLDER, trash_filename)
+        
+        # Handle duplicate filenames in trash
+        counter = 1
+        while os.path.exists(trash_path):
+            name_without_ext, ext = os.path.splitext(filename)
+            trash_filename = f"{timestamp}_{name_without_ext}_{counter}{ext}"
+            trash_path = os.path.join(TRASH_FOLDER, trash_filename)
+            counter += 1
+        
+        shutil.move(filepath, trash_path)
+        print(f"INFO: Moved file to trash: {trash_path}")
+    else:
+        # Permanently delete
+        os.remove(filepath)
 
 def find_ffprobe_path():
     if FFPROBE_MANUAL_PATH and os.path.isfile(FFPROBE_MANUAL_PATH):
@@ -1375,7 +1445,7 @@ def delete_batch():
         ids_to_remove_from_db = []
         for row in files_to_delete:
             try:
-                if os.path.exists(row['path']): os.remove(row['path'])
+                if os.path.exists(row['path']): safe_delete_file(row['path'])
                 ids_to_remove_from_db.append(row['id'])
                 deleted_count += 1
             except Exception as e: 
@@ -1385,7 +1455,8 @@ def delete_batch():
             db_placeholders = ','.join('?' * len(ids_to_remove_from_db))
             conn.execute(f"DELETE FROM files WHERE id IN ({db_placeholders})", ids_to_remove_from_db)
             conn.commit()
-    message = f'Successfully deleted {deleted_count} files.'
+    action = "moved to trash" if DELETE_TO else "deleted"
+    message = f'Successfully {action} {deleted_count} files.'
     if failed_files: message += f" Failed to delete {len(failed_files)} files."
     return jsonify({'status': 'partial_success' if failed_files else 'success', 'message': message})
 
@@ -1422,7 +1493,7 @@ def delete_file(file_id):
         
         try:
             if os.path.exists(filepath):
-                os.remove(filepath)
+                safe_delete_file(filepath)
             # If file doesn't exist on disk, we still proceed to remove the DB entry, which is the desired state.
         except OSError as e:
             # A real OS error occurred (e.g., permissions).
@@ -1432,7 +1503,8 @@ def delete_file(file_id):
         # Whether the file was deleted now or was already gone, we clean up the DB.
         conn.execute("DELETE FROM files WHERE id = ?", (file_id,))
         conn.commit()
-        return jsonify({'status': 'success', 'message': 'File deleted successfully.'})
+        action = "moved to trash" if DELETE_TO else "deleted"
+        return jsonify({'status': 'success', 'message': f'File {action} successfully.'})
 
 # --- NEW FEATURE: RENAME FILE ---
 @app.route('/galleryout/rename_file/<string:file_id>', methods=['POST'])
