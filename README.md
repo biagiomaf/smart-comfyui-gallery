@@ -33,7 +33,7 @@
 
 ## 🎯 Every ComfyUI User's Dream: Complete Browser-Based Control
 
-Your output gallery is overflowing with generations. You need to **organize them on the fly**—even when ComfyUI isn't running. You want to click once and instantly see which workflow created that stunning image or video, with a visual node summary showing even the source images you started from. When you launch multiple generations, you want immediate web gallery updates. You need to delete files, move them between folders, create new ones—all from your browser. Filter by filename, download workflows as JSON, and do it all seamlessly on Windows, Linux, or Docker.
+Your output gallery is overflowing with generations.<br>You need to **organize them on the fly**—even when ComfyUI isn't running.<br> You want to click once and instantly see which workflow created that stunning image or video, with a visual node summary showing even the source images you started from. When you launch multiple generations, you want immediate web gallery updates. You need to delete files, move them between folders, create new ones—all from your browser. Filter by filename, download workflows as JSON, and do it all seamlessly on Windows, Linux, or Docker.
 
 **Whether you're a tech beginner or an advanced user, do all of this from your PC browser or your smartphone.** Perfect mobile visualization included. ✨
 
