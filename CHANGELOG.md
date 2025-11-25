@@ -1,5 +1,42 @@
 # Changelog
 
+## [1.41] - 2025-11-24
+
+### Added
+
+#### Core & Configuration
+- **Batch Zip Download**: Users can now select multiple files and download them as a single `.zip` archive. The generation happens in the background to prevent timeouts, with a notification appearing when the download is ready.
+- **Environment Variable Support**: All major configuration settings (`BASE_OUTPUT_PATH`, `SERVER_PORT`, etc.) can now be set via OS environment variables, making deployment and containerization easier.
+- **Startup Diagnostics (GUI)**: Added graphical popup alerts on startup to immediately warn users about critical errors (e.g., invalid Output Path) or missing optional dependencies (FFmpeg) without needing to check the console.
+- **Automatic Update Check**: The application now checks the GitHub repository upon launch and notifies the console if a newer version of `smartgallery.py` is available.
+- **Safe Deletion (`DELETE_TO`)**: Introduced a new `DELETE_TO` environment variable. If set, deleting a file moves it to the specified path (e.g., `/tmp` or a Trash folder) instead of permanently removing it. This is ideal for Unix systems with auto-cleanup policies for temporary files.
+
+#### Gallery & File Management
+- **Workflow Input Visualization**: The Node Summary tool now intelligently detects input media (Images, Videos, Audio) used in the workflow (referenced in nodes like `Load Image`, `LoadAudio`, `VHS_LoadVideo`, etc.) located in the `BASE_INPUT_PATH`.
+- **Source Media Gallery**: Added a dedicated "Source Media" section at the top of the Node Summary overlay. It displays previews for all detected inputs in a responsive grid layout.
+- **Audio Input Support**: Added a native audio player within the Node Summary to listen to audio files used as workflow inputs.
+- **Advanced Folder Rescan**: Added a "Rescan" button with a modal dialog allowing users to choose between scanning "All Files" or only "Recent Files" (files checked > 1 hour ago). This utilizes a new `last_scanned` database column for optimization.
+- **Range Selection**: Added a "Range" button (`↔️`) to the selection bar. When exactly two files are selected, this button appears and allows selecting all files between them.
+- **Enhanced Node Summary**: The workflow parser has been updated to support both ComfyUI "UI format" and "API format" JSONs, ensuring node summaries work for a wider range of generated files.
+- **Smart File Counter**: Added a dynamic badge in the toolbar that displays the count of currently visible files. If filters are active (or viewing a subset), it explicitly shows the total number of files in the folder (e.g., "10 Files (50 Total)").
+
+#### User Interface & Lightbox
+- **Keyboard Shortcuts Help**: Added a help overlay (accessible via the `?` key) listing all available keyboard shortcuts for navigation and file management.
+- **Visual Shortcut Bar**: Added a floating shortcuts bar inside the Lightbox view to guide users on available controls (Zoom, Pan, Rename, etc.).
+- **Advanced Lightbox Navigation**: 
+    - Added **Numpad Panning**: Use Numpad keys (1-9) to pan around zoomed images.
+    - Added **Pan Step Cycling**: Press `.` to change the speed/distance of keyboard panning.
+    - Added **Smart Loader**: New visual loader for high-res images in the lightbox for a smoother experience.
+
+#### Docker & Deployment
+- **Containerization Support**: Added full Docker support to run SmartGallery in an isolated environment.
+- **Docker Compose & Makefile**: Included `compose.yaml` for easy deployment and a `Makefile` for advanced build management.
+- **Permission Handling**: Implemented `WANTED_UID` and `WANTED_GID` environment variables to ensure the container can correctly read/write files on the host system without permission errors.
+
+### Fixed
+- **Security Patch**: Implemented robust checks to prevent potential path traversal vulnerabilities.
+- **FFprobe in Multiprocessing**: Fixed an issue where the path to `ffprobe` was not correctly passed to worker processes during parallel scanning on some systems.
+
 ## [1.31] - 2025-10-27
 
 ### Performance
