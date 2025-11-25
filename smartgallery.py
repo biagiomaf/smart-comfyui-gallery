@@ -275,7 +275,8 @@ NODE_CATEGORIES = {
     "ModelMerger": "model",
     "KSampler": "processing", "KSamplerAdvanced": "processing", "VAEDecode": "processing",
     "VAEEncode": "processing", "LatentUpscale": "processing", "ConditioningCombine": "processing",
-    "PreviewImage": "output", "SaveImage": "output"
+    "PreviewImage": "output", "SaveImage": "output",
+     "LoadImageOutput": "input"
 }
 NODE_PARAM_NAMES = {
     "CLIPTextEncode": ["text"],
@@ -291,7 +292,8 @@ NODE_PARAM_NAMES = {
     "LoadImageMask": ["image"],      
     "VHS_LoadVideo": ["video"],
     "LoadAudio": ["audio"],
-    "AudioLoader": ["audio"]
+    "AudioLoader": ["audio"],
+    "LoadImageOutput": ["image"]
 }
 
 # Cache for node colors
@@ -322,6 +324,7 @@ def filter_enabled_nodes(workflow_data):
 def generate_node_summary(workflow_json_string):
     """
     Analyzes a workflow JSON, extracts active nodes, and identifies input media.
+    Robust version: handles ComfyUI specific suffixes like ' [output]'.
     """
     try:
         workflow_data = json.loads(workflow_json_string)
@@ -359,13 +362,12 @@ def generate_node_summary(workflow_json_string):
     summary_list = []
     
     valid_media_exts = {
-        # Images
         '.png', '.jpg', '.jpeg', '.webp', '.gif', '.jfif', '.bmp', '.tiff',
-        # Video
         '.mp4', '.mov', '.webm', '.mkv', '.avi',
-        # Audio
         '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.aac'
     }
+
+    base_input_norm = os.path.normpath(BASE_INPUT_PATH)
 
     for node in sorted_nodes:
         node_type = node.get('type', 'Unknown')
@@ -392,16 +394,38 @@ def generate_node_summary(workflow_json_string):
                 else:
                      display_value = str(value)
             
-            # CHECK: Is this value a file in the Input folder?
             if isinstance(value, str) and value.strip():
-                _, ext = os.path.splitext(value)
+                # 1. Pulizia aggressiva per rimuovere suffissi tipo " [output]" o " [input]"
+                clean_value = value.replace('\\', '/').strip()
+                # Rimuovi suffissi comuni tra parentesi quadre alla fine della stringa
+                clean_value = re.sub(r'\s*\[.*?\]$', '', clean_value)
+                
+                _, ext = os.path.splitext(clean_value)
+                
                 if ext.lower() in valid_media_exts:
-                    possible_path = os.path.normpath(os.path.join(BASE_INPUT_PATH, value))
+                    filename_only = os.path.basename(clean_value)
                     
-                    if os.path.commonprefix([possible_path, os.path.normpath(BASE_INPUT_PATH)]) == os.path.normpath(BASE_INPUT_PATH) and os.path.isfile(possible_path):
-                        is_input_file = True
-                        # Generate URL for the frontend
-                        input_url = f"/galleryout/input_file/{value}"
+                    candidates = [
+                        os.path.join(BASE_INPUT_PATH, clean_value),
+                        os.path.join(BASE_INPUT_PATH, filename_only),
+                        os.path.normpath(os.path.join(BASE_INPUT_PATH, clean_value))
+                    ]
+
+                    for candidate_path in candidates:
+                        try:
+                            if os.path.isfile(candidate_path):
+                                abs_candidate = os.path.abspath(candidate_path)
+                                abs_base = os.path.abspath(BASE_INPUT_PATH)
+                                
+                                if abs_candidate.startswith(abs_base):
+                                    is_input_file = True
+                                    rel_path = os.path.relpath(abs_candidate, abs_base).replace('\\', '/')
+                                    input_url = f"/galleryout/input_file/{rel_path}"
+                                    # Aggiorniamo anche il valore mostrato a video per pulirlo
+                                    display_value = clean_value 
+                                    break 
+                        except Exception:
+                            continue
 
             params_list.append({
                 "name": name, 
