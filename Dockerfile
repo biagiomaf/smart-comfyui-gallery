@@ -61,3 +61,5 @@ EXPOSE 8189
 USER smartgallerytoo
 
 CMD ["/smartgallery_init.bash"]
+
+LABEL org.opencontainers.image.source=https://github.com/biagiomaf/smart-comfyui-gallery

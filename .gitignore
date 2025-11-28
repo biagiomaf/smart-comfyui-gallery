@@ -42,3 +42,7 @@ thumbnails/
 # OS
 .DS_Store
 Thumbs.db
+
+# Build
+*.cmd
+*.log

@@ -1,6 +1,11 @@
+SMARTGALLERY_VERSION = 1.41
+
 DOCKERFILE = Dockerfile
 DOCKER_TAG_PRE = smartgallery
-DOCKER_TAG = latest
+
+DOCKER_TAG = ${SMARTGALLERY_VERSION}
+DOCKER_LATEST_TAG = latest
+
 SMARTGALLERY_CONTAINER_NAME = ${DOCKER_TAG_PRE}:${DOCKER_TAG}
 SMARTGALLERY_NAME = $(shell echo ${SMARTGALLERY_CONTAINER_NAME} | tr -cd '[:alnum:]-_.')
 
@@ -65,7 +70,37 @@ buildx_rm:
 	@docker buildx rm ${SMARTGALLERY_NAME}
 
 
+##### Docker tag (maintainers only)
+DOCKERHUB_REPO="ghcr.io/biagiomaf/smart-comfyui-gallery"
+DOCKER_PRESENT=$(shell image="${SMARTGALLERY_CONTAINER_NAME}"; if docker images --format "{{.Repository}}:{{.Tag}}" | grep -v ${DOCKERHUB_REPO} | grep -q $$image; then echo $$image; fi)
+
+docker_tag:
+	@if [ `echo ${DOCKER_PRESENT} | wc -w` -eq 0 ]; then echo "No images to tag"; exit 1; fi
+	@echo "== About to tag ${SMARTGALLERY_CONTAINER_NAME} as:"
+	@echo "${DOCKERHUB_REPO}:${DOCKER_TAG}"
+	@echo "${DOCKERHUB_REPO}:${DOCKER_LATEST_TAG}"
+	@echo ""
+	@echo "Press Ctl+c within 5 seconds to cancel"
+	@for i in 5 4 3 2 1; do echo -n "$$i "; sleep 1; done; echo ""
+	@docker tag ${SMARTGALLERY_CONTAINER_NAME} ${DOCKERHUB_REPO}:${DOCKER_TAG}
+	@docker tag ${SMARTGALLERY_CONTAINER_NAME} ${DOCKERHUB_REPO}:${DOCKER_LATEST_TAG}
+
+docker_push:
+	@echo "== About to push ${DOCKERHUB_REPO}:${DOCKER_TAG} and ${DOCKERHUB_REPO}:${DOCKER_LATEST_TAG}"
+	@echo ""
+	@echo "Press Ctl+c within 5 seconds to cancel"
+	@for i in 5 4 3 2 1; do echo -n "$$i "; sleep 1; done; echo ""
+	@docker push ${DOCKERHUB_REPO}:${DOCKER_TAG}
+	@docker push ${DOCKERHUB_REPO}:${DOCKER_LATEST_TAG}
+
 ##### Maintainer
+# - Build the images:
+#   % make build
+# - Confirm tags are correct, esp. latest (be ready to Ctrl+C before re-running)
+#   % make docker_tag
+# - Push the images (here too be ready to Ctrl+C before re-running)
+#   % make docker_push
+#
 # - on the build system, checkout main and pull the changes
 #   % git checkout main
 #   % git pull
