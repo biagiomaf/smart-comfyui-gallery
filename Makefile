@@ -1,3 +1,8 @@
+ifneq (,$(wildcard .env))
+  include .env
+  export $(shell sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p' .env)
+endif
+
 SMARTGALLERY_VERSION = 1.41
 
 DOCKERFILE = Dockerfile
@@ -85,15 +90,27 @@ docker_tag:
 	@docker tag ${SMARTGALLERY_CONTAINER_NAME} ${DOCKERHUB_REPO}:${DOCKER_TAG}
 	@docker tag ${SMARTGALLERY_CONTAINER_NAME} ${DOCKERHUB_REPO}:${DOCKER_LATEST_TAG}
 
+
+##### Docker login (maintainers only)
+docker_login:
+	@if [ -z "${GH_USER}" ] || [ -z "${CR_PAT}" ]; then echo "GH_USER or CR_PAT not set"; exit 1; fi	
+	@echo "${CR_PAT}" | docker login ghcr.io -u "${GH_USER}" --password-stdin
+
+docker_logout:
+	@docker logout ghcr.io
+
 docker_push:
-	@echo "== About to push ${DOCKERHUB_REPO}:${DOCKER_TAG} and ${DOCKERHUB_REPO}:${DOCKER_LATEST_TAG}"
+	@make docker_login
+	@echo "== Pushing ${DOCKERHUB_REPO}:${DOCKER_TAG} and ${DOCKERHUB_REPO}:${DOCKER_LATEST_TAG}"
 	@echo ""
 	@echo "Press Ctl+c within 5 seconds to cancel"
 	@for i in 5 4 3 2 1; do echo -n "$$i "; sleep 1; done; echo ""
 	@docker push ${DOCKERHUB_REPO}:${DOCKER_TAG}
 	@docker push ${DOCKERHUB_REPO}:${DOCKER_LATEST_TAG}
+	@make docker_logout
 
 ##### Maintainer
+# Docker images (ghcr.io/biagiomaf/smart-comfyui-gallery):
 # - Build the images:
 #   % make build
 # - Confirm tags are correct, esp. latest (be ready to Ctrl+C before re-running)
@@ -101,6 +118,7 @@ docker_push:
 # - Push the images (here too be ready to Ctrl+C before re-running)
 #   % make docker_push
 #
+# GitHub release:
 # - on the build system, checkout main and pull the changes
 #   % git checkout main
 #   % git pull
@@ -110,6 +128,8 @@ docker_push:
 #   % git tag 1.41
 #   % git push origin 1.41
 # - Create a release on GitHub using the 1.41 tag, add the release notes, and publish
+#
+# Cleanup:
 # - Erase build logs
 #   % rm *.log
 # - Erase the buildx builder
