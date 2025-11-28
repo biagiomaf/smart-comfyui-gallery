@@ -63,3 +63,19 @@ kill:
 
 buildx_rm:
 	@docker buildx rm ${SMARTGALLERY_NAME}
+
+
+##### Maintainer
+# - on the build system, checkout main and pull the changes
+#   % git checkout main
+#   % git pull
+# - if needed: delete the development branch
+#   % git branch -d dev_branch_name
+# - Tag the release on GitHub
+#   % git tag 1.41
+#   % git push origin 1.41
+# - Create a release on GitHub using the 1.41 tag, add the release notes, and publish
+# - Erase build logs
+#   % rm *.log
+# - Erase the buildx builder
+#   % make buildx_rm
