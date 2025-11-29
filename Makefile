@@ -75,8 +75,8 @@ buildx_rm:
 	@docker buildx rm ${SMARTGALLERY_NAME}
 
 
-##### Docker tag (maintainers only)
-DOCKERHUB_REPO="ghcr.io/biagiomaf/smart-comfyui-gallery"
+##### Docker Container registry (maintainers only)
+DOCKERHUB_REPO="mmartial/smart-comfyui-gallery"
 DOCKER_PRESENT=$(shell image="${SMARTGALLERY_CONTAINER_NAME}"; if docker images --format "{{.Repository}}:{{.Tag}}" | grep -v ${DOCKERHUB_REPO} | grep -q $$image; then echo $$image; fi)
 
 docker_tag:
@@ -90,27 +90,16 @@ docker_tag:
 	@docker tag ${SMARTGALLERY_CONTAINER_NAME} ${DOCKERHUB_REPO}:${DOCKER_TAG}
 	@docker tag ${SMARTGALLERY_CONTAINER_NAME} ${DOCKERHUB_REPO}:${DOCKER_LATEST_TAG}
 
-
-##### Docker login (maintainers only)
-docker_login:
-	@if [ -z "${GH_USER}" ] || [ -z "${CR_PAT}" ]; then echo "GH_USER or CR_PAT not set"; exit 1; fi	
-	@echo "${CR_PAT}" | docker login ghcr.io -u "${GH_USER}" --password-stdin
-
-docker_logout:
-	@docker logout ghcr.io
-
 docker_push:
-	@make docker_login
 	@echo "== Pushing ${DOCKERHUB_REPO}:${DOCKER_TAG} and ${DOCKERHUB_REPO}:${DOCKER_LATEST_TAG}"
 	@echo ""
 	@echo "Press Ctl+c within 5 seconds to cancel"
 	@for i in 5 4 3 2 1; do echo -n "$$i "; sleep 1; done; echo ""
 	@docker push ${DOCKERHUB_REPO}:${DOCKER_TAG}
 	@docker push ${DOCKERHUB_REPO}:${DOCKER_LATEST_TAG}
-	@make docker_logout
 
 ##### Maintainer
-# Docker images (ghcr.io/biagiomaf/smart-comfyui-gallery):
+# Docker images (mmartial/smart-comfyui-gallery):
 # - Build the images:
 #   % make build
 # - Confirm tags are correct, esp. latest (be ready to Ctrl+C before re-running)
