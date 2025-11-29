@@ -1,6 +1,6 @@
 services:
   comfy-smartgallery:
-    image: smartgallery:latest
+    image: mmartial/smart-comfyui-gallery:latest
     container_name: comfy-smartgallery
     ports:
       - 8189:8189

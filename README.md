@@ -183,10 +183,31 @@ Want to run SmartGallery in a containerized environment? We've got you covered!
 
 > 🎖️ **Special Thanks**: A huge shout-out to **[Martial Michel](https://github.com/mmartial)** for orchestrating the Docker support and contributing significant improvements to the core application logic.
 
-
 > **Note for Windows Users**: The standard installation (Steps 1-4 above) is much simpler and works perfectly on Windows! Docker is completely optional and mainly useful for Linux servers or advanced deployment scenarios.
 
 Docker deployment provides isolation, easier deployment, and consistent environments across different systems. However, it requires some familiarity with Docker concepts.
+
+**🗄️ Pre-built images**
+
+Pre-built images are available on DockerHub at [mmartial/smart-comfyui-gallery](https://hub.docker.com/r/mmartial/smart-comfyui-gallery) and Unraid's Community Apps. 
+
+![assets/smart-comfyui-gallery-unraidCA.png](assets/smart-comfyui-gallery-unraidCA.png)
+
+Example `docker run` command:
+
+```bash
+# Adapt the mounts and WANTED_UID/WANTED_GID variables to match your system
+docker run --name smartgallery -v /comfyui-nvidia/basedir/output:/mnt/output -v /comfyui-nvidia/basedir/input:/mnt/input -v /comfyui-nvidia/SmartGallery:/mnt/SmartGallery -e BASE_OUTPUT_PATH=/mnt/output -e BASE_INPUT_PATH=/mnt/input -e BASE_SMARTGALLERY_PATH=/mnt/SmartGallery -p 8189:8189 -e WANTED_UID=`id -u` -e WANTED_GID=`id -g` mmartial/smart-comfyui-gallery
+```
+
+> **Note**: The `id -u` and `id -g` commands return the user and group IDs of the current user, respectively. This ensures that the container runs with the same permissions as the host user, which is important for file permissions and access to mounted volumes.
+
+A [compose.yaml](compose.yaml) file is provided for ease of use. You can use it to obtain the published image and run the container with the following command after placing it in a directory of your choice and adapting the paths and environment variables to match your system:
+```bash
+docker compose up -d
+```
+
+See the following section's "All available environment variables" for a list of all available environment variables.
 
 **📚 [Complete Docker Setup Guide →](DOCKER_HELP.md)**
 

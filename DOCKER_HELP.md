@@ -44,6 +44,7 @@ docker build -t smartgallery:latest .
 
 # 3. Edit compose.yaml with your paths (see below)
 nano compose.yaml  # or use your favorite editor
+# if building your own image, replace mmartial/smart-comfyui-gallery:latest with smartgallery:latest
 
 # 4. Start the container
 docker compose up -d
@@ -292,7 +293,6 @@ make buildx_rm
 | `make run` | Start the container with configured settings |
 | `make kill` | Stop and remove the container |
 | `make buildx_rm` | Remove the buildx builder |
-| `make test` | Run tests (requires test setup) |
 
 ---
 
