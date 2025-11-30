@@ -197,7 +197,18 @@ Example `docker run` command:
 
 ```bash
 # Adapt the mounts and WANTED_UID/WANTED_GID variables to match your system
-docker run --name smartgallery -v /comfyui-nvidia/basedir/output:/mnt/output -v /comfyui-nvidia/basedir/input:/mnt/input -v /comfyui-nvidia/SmartGallery:/mnt/SmartGallery -e BASE_OUTPUT_PATH=/mnt/output -e BASE_INPUT_PATH=/mnt/input -e BASE_SMARTGALLERY_PATH=/mnt/SmartGallery -p 8189:8189 -e WANTED_UID=`id -u` -e WANTED_GID=`id -g` mmartial/smart-comfyui-gallery
+docker run \
+  --name smartgallery \
+  -v /comfyui-nvidia/basedir/output:/mnt/output \
+  -v /comfyui-nvidia/basedir/input:/mnt/input \
+  -v /comfyui-nvidia/SmartGallery:/mnt/SmartGallery \
+  -e BASE_OUTPUT_PATH=/mnt/output \
+  -e BASE_INPUT_PATH=/mnt/input \
+  -e BASE_SMARTGALLERY_PATH=/mnt/SmartGallery \
+  -p 8189:8189 \
+  -e WANTED_UID=`id -u` \
+  -e WANTED_GID=`id -g` \
+  mmartial/smart-comfyui-gallery
 ```
 
 > **Note**: The `id -u` and `id -g` commands return the user and group IDs of the current user, respectively. This ensures that the container runs with the same permissions as the host user, which is important for file permissions and access to mounted volumes.
