@@ -80,6 +80,10 @@ echo "== user ($whoami)"
 echo "  uid: $new_uid / WANTED_UID: $WANTED_UID"
 echo "  gid: $new_gid / WANTED_GID: $WANTED_GID"
 
+if [ -z "${BASE_SMARTGALLERY_PATH+x}" ]; then error_exit "BASE_SMARTGALLERY_PATH is not set"; fi
+if [ -z "${BASE_INPUT_PATH+x}" ]; then error_exit "BASE_INPUT_PATH is not set"; fi
+if [ -z "${BASE_OUTPUT_PATH+x}" ]; then error_exit "BASE_OUTPUT_PATH is not set"; fi
+
 save_env() {
   tosave=$1
   echo "-- Saving environment variables to $tosave"
@@ -166,6 +170,26 @@ fi
 
 ######## Environment variables (consume AFTER the load_env)
 
+if [ -z "${BASE_SMARTGALLERY_PATH+x}" ]; then error_exit "BASE_SMARTGALLERY_PATH is not set"; fi
+if [ -z "${BASE_INPUT_PATH+x}" ]; then error_exit "BASE_INPUT_PATH is not set"; fi
+if [ -z "${BASE_OUTPUT_PATH+x}" ]; then error_exit "BASE_OUTPUT_PATH is not set"; fi
+
+it_dir=${BASE_INPUT_PATH}
+if [ ! -d "${it_dir}" ]; then error_exit "BASE_INPUT_PATH is not a directory"; fi
+it="${it_dir}/.testfile"; touch "$it" && rm -f "$it" || echo "Failed to write to BASE_INPUT_PATH directory as the smartgallery user, we will not be able to delete files from there"
+
+it_dir=${BASE_OUTPUT_PATH}
+if [ ! -d "${it_dir}" ]; then error_exit "BASE_OUTPUT_PATH is not a directory"; fi
+it="${it_dir}/.testfile"; touch "$it" && rm -f "$it" || echo "Failed to write to BASE_OUTPUT_PATH directory as the smartgallery user, we will not be able to delete files from there"
+
+it_dir=${BASE_SMARTGALLERY_PATH}
+if [ ! -d "${it_dir}" ]; then error_exit "BASE_SMARTGALLERY_PATH is not a directory"; fi
+
+for i in .sqlite_cache .thumbnails_cache .zip_downloads; do
+  it_dir="${BASE_SMARTGALLERY_PATH}/$i"
+  if [ ! -d "${it_dir}" ]; then sudo mkdir -p "${it_dir}"; sudo chown -R smartgallery:smartgallery "${it_dir}"; fi
+  it="${it_dir}/.testfile"; touch "$it" && rm -f "$it" || error_exit "Failed to write to the required $it_dir directory as the smartgallery user"
+done
 
 echo ""; echo "==================="
 echo "== Running SmartGallery"
