@@ -18,4 +18,6 @@ services:
       # Adapt to wanted values (use id -u and id -g to obtain values)
       - WANTED_UID=1000
       - WANTED_GID=1000
+      # Set to true to force chown of the BASE_SMARTGALLERY_PATH folder only
+#      - FORCE_CHOWN=true
 #      - DELETE_TO=/deleteto

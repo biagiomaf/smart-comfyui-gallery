@@ -3,7 +3,7 @@ ifneq (,$(wildcard .env))
   export $(shell sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p' .env)
 endif
 
-SMARTGALLERY_VERSION = 1.41
+SMARTGALLERY_VERSION = 1.41.1
 
 DOCKERFILE = Dockerfile
 DOCKER_TAG_PRE = smartgallery

@@ -31,8 +31,6 @@ RUN mkdir -p /app/templates
 
 WORKDIR /app
 
-COPY --chmod=555 docker_init.bash /smartgallery_init.bash
-
 # Every sudo group user does not need a password
 RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
@@ -55,6 +53,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY smartgallery.py /app/smartgallery.py
 COPY templates/* /app/templates/
 COPY static /app/static
+
+COPY --chmod=555 docker_init.bash /smartgallery_init.bash
 
 EXPOSE 8189
 

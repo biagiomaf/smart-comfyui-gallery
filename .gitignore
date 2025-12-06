@@ -47,3 +47,5 @@ Thumbs.db
 *.cmd
 *.log
 .env
+*.temp
+
