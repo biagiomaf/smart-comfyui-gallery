@@ -166,6 +166,36 @@ fi
 
 ######## Environment variables (consume AFTER the load_env)
 
+lc() { echo "$1" | tr '[:upper:]' '[:lower:]'; }
+FORCE_CHOWN=${FORCE_CHOWN:-"false"} # any value works, empty value or false means disabled
+FORCE_CHOWN=`lc "${FORCE_CHOWN}"`
+
+if [ -z "${BASE_SMARTGALLERY_PATH+x}" ]; then error_exit "BASE_SMARTGALLERY_PATH is not set"; fi
+if [ -z "${BASE_INPUT_PATH+x}" ]; then error_exit "BASE_INPUT_PATH is not set"; fi
+if [ -z "${BASE_OUTPUT_PATH+x}" ]; then error_exit "BASE_OUTPUT_PATH is not set"; fi
+
+it_dir=${BASE_INPUT_PATH}
+if [ ! -d "${it_dir}" ]; then error_exit "BASE_INPUT_PATH is not a directory"; fi
+it="${it_dir}/.testfile"; touch "$it" && rm -f "$it" || echo "Failed to write to BASE_INPUT_PATH directory as the smartgallery user, we will not be able to delete files from there"
+
+it_dir=${BASE_OUTPUT_PATH}
+if [ ! -d "${it_dir}" ]; then error_exit "BASE_OUTPUT_PATH is not a directory"; fi
+it="${it_dir}/.testfile"; touch "$it" && rm -f "$it" || echo "Failed to write to BASE_OUTPUT_PATH directory as the smartgallery user, we will not be able to delete files from there"
+
+it_dir=${BASE_SMARTGALLERY_PATH}
+if [ ! -d "${it_dir}" ]; then error_exit "BASE_SMARTGALLERY_PATH is not a directory"; fi
+if [ "${FORCE_CHOWN}" == "false" ]; then it="${it_dir}/.testfile"; touch "$it" && rm -f "$it" || error_exit "Failed to write to the required $it_dir directory as the smartgallery user"; fi
+
+for i in .sqlite_cache .thumbnails_cache .zip_downloads; do
+  it_dir="${BASE_SMARTGALLERY_PATH}/$i"
+  if [ "${FORCE_CHOWN}" == "true" ]; then 
+    if [ ! -d "${it_dir}" ]; then sudo mkdir -p "${it_dir}"; fi
+    echo "-- FORCE_CHOWN set, forcing ownership of ${it_dir}"; sudo chown -R smartgallery:smartgallery "${it_dir}"
+  else
+    if [ ! -d "${it_dir}" ]; then mkdir -p "${it_dir}"; fi
+  fi
+  it="${it_dir}/.testfile"; touch "$it" && rm -f "$it" || error_exit "Failed to write to the required $it_dir directory as the smartgallery user"
+done
 
 echo ""; echo "==================="
 echo "== Running SmartGallery"

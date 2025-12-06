@@ -735,6 +735,7 @@ def analyze_file_metadata(filepath):
     return details
 
 def create_thumbnail(filepath, file_hash, file_type):
+    Image.MAX_IMAGE_PIXELS = None
     if file_type in ['image', 'animated_image']:
         try:
             with Image.open(filepath) as img:

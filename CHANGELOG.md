@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.41.1] - 2025-12-05
+
+### Fixed
+- **Image Size**: Fixed an issue where the image size for thumbnail generation.
+- **Docker**: Added `FORCE_CHOWN` environment variable to force chown of the BASE_SMARTGALLERY_PATH folder only. Pre-checked permissions for the BASE_SMARTGALLERY_PATH to avoid permission errors.
+
 ## [1.41] - 2025-11-24
 
 ### Added
