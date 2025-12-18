@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.51] - 2025-12-17
+
+### Added
+
+#### Search & Filtering
+### Added
+- **Prompt Keywords Search**: New filter to search for text strings directly within the generation prompt. Supports comma-separated multiple keywords (e.g., "woman, kimono").
+- **Deep Workflow Search**: Added a new `Workflow Files` search field. This searches specifically within the metadata of the generated files to find references to models, LoRAs, and input images used in the workflow (e.g., search for "sd_xl").
+- **Global Search**: Users can now toggle between searching the "Current Folder" or performing a "Global" search across the entire library.
+- **Date Range Filters**: Added `From` and `To` date pickers to filter files by their creation/modification time.
+- **"No Workflow" Filter**: A new checkbox option to quickly identify files that do not contain embedded workflow metadata.
+- **Redesigned Filter Panel**: The search and filter options have been moved to a collapsible overlay panel for a cleaner UI on both desktop and mobile.
+
+#### Backend & Database
+- **Database Migration (v26)**: Added `workflow_files` column to the database.
+- **Metadata Backfilling**: On first startup after update, the system automatically scans existing files to populate the new `workflow_files` search data for deep searching.
+- **Optimized SQL**: Improved query performance for filtered searches using `WAL` journal mode and optimized synchronous settings.
+
+### Fixed
+- **Filter Dropdown Performance**: Added a limit (`MAX_PREFIX_DROPDOWN_ITEMS`) to the Prefix dropdown to prevent UI freezing in folders with thousands of unique prefixes.
+- **Navigation Logic**: Fixed state retention issues when switching between global search results and folder navigation.
+
 ## [1.41.1] - 2025-12-05
 
 ### Fixed

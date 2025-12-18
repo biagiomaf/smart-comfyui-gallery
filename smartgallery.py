@@ -1,7 +1,7 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025 — MIT License (free to use and modify)
 #
-# Version: 1.41 - November 24, 2025
+# Version: 1.51 - December 18, 2025
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -15,6 +15,7 @@ import shutil
 import re
 import sqlite3
 import time
+from datetime import datetime
 import glob
 import sys
 import subprocess
@@ -74,9 +75,9 @@ import secrets
 #   set WEBP_ANIMATED_FPS=16.0
 #   set PAGE_SIZE=100
 #   set BATCH_SIZE=500
+#   set ENABLE_AI_SEARCH=false
 #   REM Leave MAX_PARALLEL_WORKERS empty to use all CPU cores (recommended)
 #   set "MAX_PARALLEL_WORKERS="
-#   REM Or set a specific number to limit CPU usage: set MAX_PARALLEL_WORKERS=4
 #   python smartgallery.py
 #
 # Windows (PowerShell):
@@ -90,9 +91,9 @@ import secrets
 #   $env:WEBP_ANIMATED_FPS="16.0"
 #   $env:PAGE_SIZE="100"
 #   $env:BATCH_SIZE="500"
+#   $env:ENABLE_AI_SEARCH="false"
 #   # Leave MAX_PARALLEL_WORKERS empty to use all CPU cores (recommended)
 #   $env:MAX_PARALLEL_WORKERS=""
-#   # Or set a specific number to limit CPU usage: $env:MAX_PARALLEL_WORKERS="4"
 #   python smartgallery.py
 #
 # Linux/Mac (bash/zsh):
@@ -107,9 +108,9 @@ import secrets
 #   export WEBP_ANIMATED_FPS=16.0
 #   export PAGE_SIZE=100
 #   export BATCH_SIZE=500
+#   export ENABLE_AI_SEARCH=false
 #   # Leave MAX_PARALLEL_WORKERS empty to use all CPU cores (recommended)
 #   export MAX_PARALLEL_WORKERS=""
-#   # Or set a specific number to limit CPU usage: export MAX_PARALLEL_WORKERS=4
 #   python smartgallery.py
 #
 #
@@ -202,6 +203,10 @@ else:
 # If not set, it will be generated randomly
 SECRET_KEY = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 
+# Maximum number of items allowed in the "Prefix" dropdown to prevent UI lag.
+MAX_PREFIX_DROPDOWN_ITEMS = 100
+
+
 # Optional path where deleted files will be moved instead of being permanently deleted.
 # If set, files will be moved to DELETE_TO/SmartGallery/<timestamp>_<filename>
 # If not set (None or empty string), files will be permanently deleted as before.
@@ -237,6 +242,47 @@ else:
     DELETE_TO = None
     TRASH_FOLDER = None
 
+# ============================================================================
+# WORKFLOW PROMPT EXTRACTION SETTINGS
+# ============================================================================
+# List of specific text phrases to EXCLUDE from the 'Prompt Keywords' search index.
+# Some custom nodes (e.g., Wan2.1, text boxes, primitives) come with long default
+# example prompts or placeholder text that gets saved in the workflow metadata 
+# even if not actually used in the generation.
+# Add those specific strings here to prevent them from cluttering your search results.
+WORKFLOW_PROMPT_BLACKLIST = {
+    "The white dragon warrior stands still, eyes full of determination and strength. The camera slowly moves closer or circles around the warrior, highlighting the powerful presence and heroic spirit of the character.",
+    "undefined",
+    "null",
+    "None"
+}
+
+# ============================================================================
+# AI SEARCH CONFIGURATION (FUTURE FEATURE)
+# ============================================================================
+# Enable or disable the AI Search UI features.
+#
+# IMPORTANT:
+# The SmartGallery AI Service (Optional) required for this feature
+# is currently UNDER DEVELOPMENT and HAS NOT BEEN RELEASED yet.
+#
+# SmartGallery works fully out-of-the-box without any AI components.
+#
+# Advanced features such as AI Search will be provided by a separate,
+# optional service that can be installed via Docker or in a separated dedicated Python virtual environment.
+#
+# PLEASE KEEP THIS SETTING DISABLED (default).
+# Do NOT enable this option unless the AI Service has been officially
+# released and correctly installed alongside SmartGallery.
+#
+# Check the GitHub repository for official announcements and
+# installation instructions regarding the optional AI Service.
+#
+#   Windows:     set ENABLE_AI_SEARCH=false
+#   Linux / Mac: export ENABLE_AI_SEARCH=false
+#   Docker:      -e ENABLE_AI_SEARCH=false
+#
+ENABLE_AI_SEARCH = os.environ.get('ENABLE_AI_SEARCH', 'false').lower() == 'true'
 
 # ============================================================================
 # END OF USER CONFIGURATION
@@ -247,11 +293,12 @@ else:
 THUMBNAIL_CACHE_FOLDER_NAME = '.thumbnails_cache'
 SQLITE_CACHE_FOLDER_NAME = '.sqlite_cache'
 DATABASE_FILENAME = 'gallery_cache.sqlite'
-ZIP_CACHE_FOLDER_NAME = '.zip_downloads'  
+ZIP_CACHE_FOLDER_NAME = '.zip_downloads'
+AI_MODELS_FOLDER_NAME = '.AImodels'
 
 # --- APP INFO ---
-APP_VERSION = 1.41
-APP_VERSION_DATE = "November 24, 2025"
+APP_VERSION = "1.51"
+APP_VERSION_DATE = "December 18, 2025"
 GITHUB_REPO_URL = "https://github.com/biagiomaf/smart-comfyui-gallery"
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/biagiomaf/smart-comfyui-gallery/main/smartgallery.py"
 
@@ -268,7 +315,7 @@ def key_to_path(key):
     except Exception: return None
 
 # --- DERIVED SETTINGS ---
-DB_SCHEMA_VERSION = 24
+DB_SCHEMA_VERSION = 26 
 THUMBNAIL_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, THUMBNAIL_CACHE_FOLDER_NAME)
 SQLITE_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, SQLITE_CACHE_FOLDER_NAME)
 DATABASE_FILE = os.path.join(SQLITE_CACHE_DIR, DATABASE_FILENAME)
@@ -287,6 +334,16 @@ class Colors:
     RED = '\033[91m'
     RESET = '\033[0m'
     BOLD = '\033[1m'
+    DIM = '\033[2m'
+
+def normalize_smart_path(path_str):
+    """
+    Normalizes a path string for search comparison:
+    1. Converts to lowercase.
+    2. Replaces all backslashes (\\) with forward slashes (/).
+    """
+    if not path_str: return ""
+    return str(path_str).lower().replace('\\', '/')
 
 def print_configuration():
     """Prints the current configuration in a neat, aligned table."""
@@ -308,6 +365,7 @@ def print_configuration():
     print_row("Page Size", PAGE_SIZE)
     print_row("Batch Size", BATCH_SIZE)
     print_row("Max Parallel Workers", MAX_PARALLEL_WORKERS if MAX_PARALLEL_WORKERS else "All Cores")
+    print_row("AI Search", "Enabled" if ENABLE_AI_SEARCH else "Disabled")
     print(f"{Colors.HEADER}-----------------------------{Colors.RESET}\n")
 
 # --- FLASK APP INITIALIZATION ---
@@ -596,11 +654,11 @@ def _scan_bytes_for_workflow(content_bytes):
             
             if open_braces == 0:
                 candidate = stream_str[start_index : i + 1]
+                # FIX: Use 'except Exception' to allow GeneratorExit to pass through
                 try:
-                    # Verify it's valid JSON
                     json.loads(candidate)
                     yield candidate
-                except json.JSONDecodeError:
+                except Exception:
                     pass
                 
                 # Move start_pos to after this candidate to find the next one
@@ -609,7 +667,7 @@ def _scan_bytes_for_workflow(content_bytes):
         else:
             # If loop finishes without open_braces hitting 0, no more valid JSON here
             break
-
+            
 def extract_workflow(filepath):
     ext = os.path.splitext(filepath)[1].lower()
     video_exts = ['.mp4', '.mkv', '.webm', '.mov', '.avi']
@@ -735,7 +793,7 @@ def analyze_file_metadata(filepath):
     return details
 
 def create_thumbnail(filepath, file_hash, file_type):
-    Image.MAX_IMAGE_PIXELS = None
+    Image.MAX_IMAGE_PIXELS = None 
     if file_type in ['image', 'animated_image']:
         try:
             with Image.open(filepath) as img:
@@ -769,6 +827,184 @@ def create_thumbnail(filepath, file_hash, file_type):
         except Exception as e: print(f"ERROR (OpenCV): Could not create thumbnail for {os.path.basename(filepath)}: {e}")
     return None
 
+def extract_workflow_files_string(workflow_json_string):
+    """
+    Parses workflow and returns a normalized string containing ONLY filenames 
+    (models, images, videos) used in the workflow.
+    Filters out prompts, settings, and comments based on extensions and path structure.
+    """
+    if not workflow_json_string: return ""
+    
+    try:
+        data = json.loads(workflow_json_string)
+    except:
+        return ""
+
+    # Normalize structure (UI vs API format)
+    nodes = []
+    if 'nodes' in data and isinstance(data['nodes'], list):
+        nodes = data['nodes'] # UI Format
+    else:
+        # API Format fallback
+        for nid, n in data.items():
+            if isinstance(n, dict):
+                n['id'] = nid
+                nodes.append(n)
+
+    # 1. Blocklist Nodes (Comments)
+    ignored_types = {'Note', 'NotePrimitive', 'Reroute', 'PrimitiveNode'}
+    
+    # 2. Whitelist Extensions (The most important filter)
+    valid_extensions = {
+        # Models
+        '.safetensors', '.ckpt', '.pt', '.pth', '.bin', '.gguf', '.lora', '.sft',
+        # Images
+        '.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.tiff',
+        # Video/Audio
+        '.mp4', '.mov', '.webm', '.mkv', '.avi', '.mp3', '.wav', '.ogg', '.flac', '.m4a'
+    }
+
+    found_tokens = set()
+    
+    for node in nodes:
+        node_type = node.get('type', node.get('class_type', ''))
+        
+        # Skip comment nodes
+        if node_type in ignored_types:
+            continue
+            
+        # Collect values from widgets_values (UI) or inputs (API)
+        values_to_check = []
+        
+        # UI Format values
+        if 'widgets_values' in node and isinstance(node['widgets_values'], list):
+            values_to_check.extend(node['widgets_values'])
+            
+        # API Format inputs
+        if 'inputs' in node and isinstance(node['inputs'], dict):
+            values_to_check.extend(node['inputs'].values())
+
+        for val in values_to_check:
+            if isinstance(val, str) and val.strip():
+                # Normalize immediately
+                norm_val = normalize_smart_path(val.strip())
+                
+                # --- FILTER LOGIC ---
+                
+                # Check A: Valid Extension?
+                # We check if the string ends with one of the valid extensions
+                has_valid_ext = any(norm_val.endswith(ext) for ext in valid_extensions)
+                
+                # Check B: Absolute Path? (For folders or files without standard extensions)
+                # Matches "c:/..." or "/home/..."
+                # Must be shorter than 260 chars to avoid catching long prompts starting with /
+                is_abs_path = (len(norm_val) < 260) and (
+                    (len(norm_val) > 2 and norm_val[1] == ':') or # Windows Drive (c:)
+                    norm_val.startswith('/') # Unix/Linux root
+                )
+
+                # Keep ONLY if it looks like a file/path
+                if has_valid_ext or is_abs_path:
+                    found_tokens.add(norm_val)
+
+    return " ||| ".join(sorted(list(found_tokens)))
+
+def extract_workflow_prompt_string(workflow_json_string):
+    """
+    Parses workflow and extracts ALL text prompts found in nodes.
+    
+    New Logic (Broad Extraction with Blacklist):
+    Scans all nodes for text parameters, filtering out technical values,
+    filenames, specific default prompt examples defined in global config,
+    and strictly ignoring Comment/Note nodes (including Markdown notes).
+    
+    Returns: A joined string of all found text prompts.
+    """
+    if not workflow_json_string: return ""
+    
+    try:
+        data = json.loads(workflow_json_string)
+    except:
+        return ""
+
+    nodes = []
+    
+    # Normalize Structure
+    if 'nodes' in data and isinstance(data['nodes'], list):
+        nodes = data['nodes'] # UI Format
+    else:
+        # API Format fallback
+        for nid, n in data.items():
+            if isinstance(n, dict):
+                n['id'] = nid
+                nodes.append(n)
+    
+    found_texts = set()
+    
+    # 1. Types to strictly ignore (Comments, Routing, structural nodes)
+    # Updated to include MarkdownNote and other common note types
+    ignored_types = {
+        'Note', 'NotePrimitive', 'Reroute', 'PrimitiveNode', 
+        'ShowText', 'PreviewText', 'ViewInfo', 'SaveImage', 'PreviewImage',
+        'MarkdownNote', 'Text Note', 'StickyNote'
+    }
+    
+    for node in nodes:
+        node_type = node.get('type', node.get('class_type', '')).strip()
+        
+        # Skip ignored node types
+        if node_type in ignored_types: continue
+
+        # Gather values to check
+        values_to_check = []
+        
+        # UI Format: check 'widgets_values'
+        if 'widgets_values' in node and isinstance(node['widgets_values'], list):
+            values_to_check.extend(node['widgets_values'])
+            
+        # API Format: check 'inputs' values
+        if 'inputs' in node and isinstance(node['inputs'], dict):
+            values_to_check.extend(node['inputs'].values())
+
+        # Analyze values
+        for val in values_to_check:
+            # We are only interested in Strings
+            if isinstance(val, str) and val.strip():
+                text = val.strip()
+                
+                # --- FILTERING LOGIC ---
+                
+                # A. Blacklist Check (Uses the Global Configuration Variable)
+                if text in WORKFLOW_PROMPT_BLACKLIST:
+                    continue
+                
+                # B. Ignore short strings (likely garbage or symbols)
+                if len(text) < 2: continue
+                
+                # C. Ignore numeric strings (seeds, steps, cfg, dimensions)
+                try:
+                    float(text)
+                    continue 
+                except ValueError:
+                    pass 
+                
+                # D. Ignore filenames (extensions)
+                if '.' in text and ' ' not in text:
+                    ext = os.path.splitext(text)[1].lower()
+                    if ext in ['.safetensors', '.ckpt', '.pt', '.png', '.jpg', '.webp']:
+                        continue
+
+                # E. Ignore common tech keywords
+                tech_keywords = {'euler', 'dpm', 'normal', 'karras', 'gpu', 'cpu', 'auto', 'enable', 'disable', 'fixed', 'increment', 'randomized'}
+                if text.lower() in tech_keywords:
+                    continue
+
+                # If passed all filters, it's likely a prompt
+                found_texts.add(text)
+
+    # Join with a separator
+    return " , ".join(list(found_texts))
+    
 def process_single_file(filepath):
     """
     Worker function to perform all heavy processing for a single file.
@@ -785,32 +1021,103 @@ def process_single_file(filepath):
         file_id = hashlib.md5(filepath.encode()).hexdigest()
         file_size = os.path.getsize(filepath)
         
+        # Extract workflow data
+        workflow_files_content = ""
+        workflow_prompt_content = "" 
+        
+        if metadata['has_workflow']:
+            wf_json = extract_workflow(filepath)
+            if wf_json:
+                workflow_files_content = extract_workflow_files_string(wf_json)
+                workflow_prompt_content = extract_workflow_prompt_string(wf_json) # NEW
+        
         return (
             file_id, filepath, mtime, os.path.basename(filepath),
-            metadata['type'], metadata['duration'], metadata['dimensions'], metadata['has_workflow'], file_size, time.time()
+            metadata['type'], metadata['duration'], metadata['dimensions'], 
+            metadata['has_workflow'], file_size, time.time(), 
+            workflow_files_content, 
+            workflow_prompt_content # NEW return value
         )
     except Exception as e:
         print(f"ERROR: Failed to process file {os.path.basename(filepath)} in worker: {e}")
         return None
-
+        
 def get_db_connection():
-    conn = sqlite3.connect(DATABASE_FILE)
+    # Timeout increased to 50s to be patient with the Indexer
+    conn = sqlite3.connect(DATABASE_FILE, timeout=50)
     conn.row_factory = sqlite3.Row
+    
+    # CONCURRENCY OPTIMIZATION:
+    # WAL: Allows non-blocking reads.
+    # NORMAL: Makes transactions (commits) instant, reducing lock time drastically.
+    conn.execute('PRAGMA journal_mode=WAL;') 
+    conn.execute('PRAGMA synchronous=NORMAL;') 
     return conn
-
+    
 def init_db(conn=None):
     close_conn = False
     if conn is None:
         conn = get_db_connection()
         close_conn = True
+        
+    # Main files table - UPDATED SCHEMA with all new columns
     conn.execute('''
         CREATE TABLE IF NOT EXISTS files (
-            id TEXT PRIMARY KEY, path TEXT NOT NULL UNIQUE, mtime REAL NOT NULL,
-            name TEXT NOT NULL, type TEXT, duration TEXT, dimensions TEXT,
-            has_workflow INTEGER, is_favorite INTEGER DEFAULT 0, size INTEGER DEFAULT 0,
-            last_scanned REAL DEFAULT 0
+            id TEXT PRIMARY KEY, 
+            path TEXT NOT NULL UNIQUE, 
+            mtime REAL NOT NULL,
+            name TEXT NOT NULL, 
+            type TEXT, 
+            duration TEXT, 
+            dimensions TEXT,
+            has_workflow INTEGER, 
+            is_favorite INTEGER DEFAULT 0, 
+            size INTEGER DEFAULT 0,
+            
+            -- Version 24+ Columns included natively for fresh installs
+            last_scanned REAL DEFAULT 0,
+            workflow_files TEXT DEFAULT '',
+            workflow_prompt TEXT DEFAULT '',
+            
+            -- AI Columns
+            ai_last_scanned REAL DEFAULT 0,
+            ai_caption TEXT,
+            ai_embedding BLOB,
+            ai_error TEXT
         )
     ''')
+
+    # AI Search Queue Table
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS ai_search_queue (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL UNIQUE,
+            query TEXT NOT NULL,
+            limit_results INTEGER DEFAULT 100,
+            status TEXT DEFAULT 'pending', 
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            completed_at TIMESTAMP NULL
+        );
+    ''')
+    
+    # AI Search Results Table
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS ai_search_results (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            file_id TEXT NOT NULL,
+            score REAL NOT NULL,
+            FOREIGN KEY (session_id) REFERENCES ai_search_queue(session_id)
+        );
+    ''')
+    
+    # AI Metadata Table
+    conn.execute("CREATE TABLE IF NOT EXISTS ai_metadata (key TEXT PRIMARY KEY, value TEXT, updated_at REAL)")
+    
+    # Indices
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_queue_status ON ai_search_queue(status);')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_results_session ON ai_search_results(session_id);')
+
     conn.commit()
     if close_conn: conn.close()
     
@@ -842,7 +1149,7 @@ def get_dynamic_folder_config(force_refresh=False):
     try:
         all_folders = {}
         for dirpath, dirnames, _ in os.walk(BASE_OUTPUT_PATH):
-            dirnames[:] = [d for d in dirnames if d not in [THUMBNAIL_CACHE_FOLDER_NAME, SQLITE_CACHE_FOLDER_NAME, ZIP_CACHE_FOLDER_NAME]]
+            dirnames[:] = [d for d in dirnames if d not in [THUMBNAIL_CACHE_FOLDER_NAME, SQLITE_CACHE_FOLDER_NAME, ZIP_CACHE_FOLDER_NAME, AI_MODELS_FOLDER_NAME]]
             for dirname in dirnames:
                 full_path = os.path.normpath(os.path.join(dirpath, dirname)).replace('\\', '/')
                 relative_path = os.path.relpath(full_path, BASE_OUTPUT_PATH).replace('\\', '/')
@@ -935,10 +1242,45 @@ def full_sync_database(conn):
             print(f"INFO: Inserting {len(results)} processed records into the database...")
             for i in range(0, len(results), BATCH_SIZE):
                 batch = results[i:i + BATCH_SIZE]
-                conn.executemany(
-                    "INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    batch
-                )
+                conn.executemany("""
+                    INSERT INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned, workflow_files, workflow_prompt) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(id) DO UPDATE SET
+                        path = excluded.path,
+                        name = excluded.name,
+                        type = excluded.type,
+                        duration = excluded.duration,
+                        dimensions = excluded.dimensions,
+                        has_workflow = excluded.has_workflow,
+                        size = excluded.size,
+                        last_scanned = excluded.last_scanned,
+                        workflow_files = excluded.workflow_files,
+                        workflow_prompt = excluded.workflow_prompt,
+                        
+                        -- LOGICA CONDIZIONALE:
+                        is_favorite = CASE 
+                            WHEN files.mtime != excluded.mtime THEN 0  
+                            ELSE files.is_favorite                     
+                        END,
+                        
+                        ai_caption = CASE 
+                            WHEN files.mtime != excluded.mtime THEN NULL 
+                            ELSE files.ai_caption                        
+                        END,
+                        
+                        ai_embedding = CASE 
+                            WHEN files.mtime != excluded.mtime THEN NULL 
+                            ELSE files.ai_embedding 
+                        END,
+
+                        ai_last_scanned = CASE 
+                            WHEN files.mtime != excluded.mtime THEN 0 
+                            ELSE files.ai_last_scanned 
+                        END,
+
+                        -- Aggiorna mtime alla fine
+                        mtime = excluded.mtime
+                """, batch) 
                 conn.commit()
 
     if to_delete:
@@ -999,8 +1341,46 @@ def sync_folder_on_demand(folder_path):
                         yield f"data: {json.dumps(progress_data)}\n\n"
 
                 if data_to_upsert: 
-                    conn.executemany("INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", data_to_upsert)
+                    conn.executemany("""
+                        INSERT INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned, workflow_files, workflow_prompt) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(id) DO UPDATE SET
+                            path = excluded.path,
+                            name = excluded.name,
+                            type = excluded.type,
+                            duration = excluded.duration,
+                            dimensions = excluded.dimensions,
+                            has_workflow = excluded.has_workflow,
+                            size = excluded.size,
+                            last_scanned = excluded.last_scanned,
+                            workflow_files = excluded.workflow_files,
+                            workflow_prompt = excluded.workflow_prompt,
+                        
+                            -- LOGICA CONDIZIONALE:
+                            is_favorite = CASE 
+                                WHEN files.mtime != excluded.mtime THEN 0  
+                                ELSE files.is_favorite                     
+                            END,
+                            
+                            ai_caption = CASE 
+                                WHEN files.mtime != excluded.mtime THEN NULL 
+                                ELSE files.ai_caption                        
+                            END,
+                            
+                            ai_embedding = CASE 
+                                WHEN files.mtime != excluded.mtime THEN NULL 
+                                ELSE files.ai_embedding 
+                            END,
 
+                            ai_last_scanned = CASE 
+                                WHEN files.mtime != excluded.mtime THEN 0 
+                                ELSE files.ai_last_scanned 
+                            END,
+
+                            -- Aggiorna mtime alla fine
+                            mtime = excluded.mtime
+                    """, data_to_upsert) 
+                    
             if files_to_delete:
                 conn.executemany("DELETE FROM files WHERE path IN (?)", [(p,) for p in files_to_delete])
 
@@ -1027,41 +1407,257 @@ def scan_folder_and_extract_options(folder_path):
     except Exception as e: print(f"ERROR: Could not scan folder '{folder_path}': {e}")
     return file_count, sorted(list(extensions)), sorted(list(prefixes))
 
+def _worker_extract_wf_string(filepath):
+    """
+    Worker helper for migration: Extracts just the workflow string.
+    """
+    try:
+        wf_json = extract_workflow(filepath)
+        if wf_json:
+            return extract_workflow_files_string(wf_json)
+    except Exception:
+        pass
+    return ""
+
+def _worker_extract_wf_prompt(filepath):
+    """
+    Worker helper for migration: Extracts just the workflow prompt (positive).
+    """
+    try:
+        wf_json = extract_workflow(filepath)
+        if wf_json:
+            return extract_workflow_prompt_string(wf_json)
+    except Exception:
+        pass
+    return ""
+
 def initialize_gallery():
     print("INFO: Initializing gallery...")
     global FFPROBE_EXECUTABLE_PATH
     FFPROBE_EXECUTABLE_PATH = find_ffprobe_path()
     os.makedirs(THUMBNAIL_CACHE_DIR, exist_ok=True)
     os.makedirs(SQLITE_CACHE_DIR, exist_ok=True)
+    
     with get_db_connection() as conn:
         try:
-            # Check if last_scanned column exists
+            # ==========================================
+            # SCENARIO A: FRESH INSTALL (No Database)
+            # ==========================================
+            table_check = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='files'").fetchone()
+            
+            if not table_check:
+                print(f"{Colors.GREEN}INFO: New installation detected. Creating database (v{DB_SCHEMA_VERSION})...{Colors.RESET}")
+                # 1. Create Tables (schema is already up to date in init_db)
+                init_db(conn)
+                # 2. Initial Scan
+                print(f"{Colors.BLUE}INFO: Performing initial file scan...{Colors.RESET}")
+                full_sync_database(conn)
+                # 3. Set Version
+                conn.execute(f'PRAGMA user_version = {DB_SCHEMA_VERSION}')
+                conn.commit()
+                print(f"{Colors.GREEN}INFO: Initialization complete.{Colors.RESET}")
+                return # Exit function, everything is ready.
+
+            # ==========================================
+            # SCENARIO B: UPGRADE / EXISTING DATABASE
+            # ==========================================
+            
+            # 1. Check & Add Missing Columns (Non-destructive Migration)
             cursor = conn.execute("PRAGMA table_info(files)")
             columns = [row[1] for row in cursor.fetchall()]
-            if 'last_scanned' not in columns:
-                print("INFO: Adding 'last_scanned' column to database...")
-                conn.execute("ALTER TABLE files ADD COLUMN last_scanned REAL DEFAULT 0")
-                conn.commit()
-
-            stored_version = conn.execute('PRAGMA user_version').fetchone()[0]
-        except sqlite3.DatabaseError: stored_version = 0
-        if stored_version < DB_SCHEMA_VERSION:
-            print(f"INFO: DB version outdated ({stored_version} < {DB_SCHEMA_VERSION}). Rebuilding database...")
-            conn.execute('DROP TABLE IF EXISTS files')
-            init_db(conn)
-            full_sync_database(conn)
-            conn.execute(f'PRAGMA user_version = {DB_SCHEMA_VERSION}')
+            
+            # List of columns to check/add
+            migrations = {
+                'last_scanned': 'REAL DEFAULT 0',
+                'ai_last_scanned': 'REAL DEFAULT 0',
+                'ai_caption': 'TEXT',
+                'ai_embedding': 'BLOB',
+                'ai_error': 'TEXT',
+                'workflow_files': "TEXT DEFAULT ''",
+                'workflow_prompt': "TEXT DEFAULT ''"
+            }
+            
+            for col_name, col_def in migrations.items():
+                if col_name not in columns:
+                    print(f"INFO: Migrating DB... Adding column '{col_name}'")
+                    conn.execute(f"ALTER TABLE files ADD COLUMN {col_name} {col_def}")
+            
             conn.commit()
-            print("INFO: Rebuild complete.")
-        else:
-            print(f"INFO: DB version ({stored_version}) is up to date. Starting normally.")
 
+            # 2. Data Backfill (Populate new columns for existing files)
+            
+            # Backfill: Workflow Files
+            missing_wf_data = conn.execute(
+                "SELECT id, path FROM files WHERE has_workflow = 1 AND (workflow_files IS NULL OR workflow_files = '')"
+            ).fetchall()
+            
+            if missing_wf_data:
+                count = len(missing_wf_data)
+                print(f"{Colors.YELLOW}INFO: Migrating {count} files to populate 'workflow_files'...{Colors.RESET}")
+                updates = []
+                with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_PARALLEL_WORKERS) as executor:
+                    futures = {executor.submit(_worker_extract_wf_string, row['path']): row['id'] for row in missing_wf_data}
+                    for future in tqdm(concurrent.futures.as_completed(futures), total=count, desc="Migrating Files", unit="files"):
+                        try:
+                            wf_string = future.result()
+                            if wf_string: updates.append((wf_string, futures[future]))
+                        except: pass
+                if updates:
+                    conn.executemany("UPDATE files SET workflow_files = ? WHERE id = ?", updates)
+                    conn.commit()
+
+            # Backfill: Workflow Prompt
+            missing_prompt_data = conn.execute(
+                "SELECT id, path FROM files WHERE has_workflow = 1 AND (workflow_prompt IS NULL OR workflow_prompt = '')"
+            ).fetchall()
+            
+            if missing_prompt_data:
+                count = len(missing_prompt_data)
+                print(f"{Colors.YELLOW}INFO: Migrating {count} files to populate 'workflow_prompt'...{Colors.RESET}")
+                print(f"{Colors.DIM}      This runs only once. Please wait...{Colors.RESET}")
+                updates = []
+                with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_PARALLEL_WORKERS) as executor:
+                    futures = {executor.submit(_worker_extract_wf_prompt, row['path']): row['id'] for row in missing_prompt_data}
+                    for future in tqdm(concurrent.futures.as_completed(futures), total=count, desc="Migrating Prompts", unit="files"):
+                        try:
+                            wf_prompt = future.result()
+                            updates.append((wf_prompt, futures[future]))
+                        except: pass
+                if updates:
+                    conn.executemany("UPDATE files SET workflow_prompt = ? WHERE id = ?", updates)
+                    conn.commit()
+                print(f"{Colors.GREEN}INFO: Prompt migration complete.{Colors.RESET}")
+
+            # 3. Final Version Update
+            # We update the version number only after migrations are successful
+            try: 
+                stored_version = conn.execute('PRAGMA user_version').fetchone()[0]
+            except: 
+                stored_version = 0
+                
+            if stored_version < DB_SCHEMA_VERSION:
+                print(f"INFO: Updating DB Internal Version: {stored_version} -> {DB_SCHEMA_VERSION}")
+                conn.execute(f'PRAGMA user_version = {DB_SCHEMA_VERSION}')
+                conn.commit()
+            
+            # 4. Fallback check for empty DB on existing install
+            # (In case a user has the DB file but 0 records for some reason)
+            file_count = conn.execute("SELECT COUNT(*) FROM files").fetchone()[0]
+            if file_count == 0:
+                print(f"{Colors.BLUE}INFO: Database file exists but is empty. Scanning...{Colors.RESET}")
+                full_sync_database(conn)
+
+        except sqlite3.DatabaseError as e:
+            print(f"ERROR initializing database: {e}")
+            
+def get_filter_options_from_db(conn, scope, folder_path=None):
+    """
+    Extracts available extensions and prefixes from the database based on scope.
+    Enforces a limit on prefixes to prevent UI issues.
+    """
+    extensions = set()
+    prefixes = set()
+    prefix_limit_reached = False
+    
+    try:
+        # Determine Query based on Scope
+        if scope == 'global':
+            cursor = conn.execute("SELECT name FROM files")
+        else:
+            # Local Scope: strict folder match (parent directory must match)
+            # We use Python filtering for strict parent match to align with view logic,
+            # or a precise SQL like 'path' logic.
+            # To be fast and consistent with gallery_view, we query strictly.
+            # Note: We need rows that belong strictly to this folder.
+            
+            # Efficient SQL for strict parent check is complex across OS separators.
+            # We will grab all files in the tree and filter in python for 100% accuracy
+            # or use a GLOB/LIKE and filter.
+            cursor = conn.execute("SELECT name, path FROM files WHERE path LIKE ?", (folder_path + os.sep + '%',))
+
+        # Process Results
+        for row in cursor:
+            # For local scope, ensure strict containment (no subfolders)
+            if scope != 'global':
+                file_dir = os.path.dirname(row['path'])
+                # OS-agnostic comparison
+                if os.path.normpath(file_dir) != os.path.normpath(folder_path):
+                    continue
+
+            name = row['name']
+            
+            # 1. Extensions
+            _, ext = os.path.splitext(name)
+            if ext: 
+                extensions.add(ext.lstrip('.').lower())
+            
+            # 2. Prefixes (Only if limit not reached)
+            if not prefix_limit_reached and '_' in name:
+                pfx = name.split('_')[0]
+                if pfx:
+                    prefixes.add(pfx)
+                    if len(prefixes) > MAX_PREFIX_DROPDOWN_ITEMS:
+                        prefix_limit_reached = True
+                        prefixes.clear() # Discard to save memory, UI will show fallback
+                        
+    except Exception as e:
+        print(f"Error extracting options: {e}")
+        
+    return sorted(list(extensions)), sorted(list(prefixes)), prefix_limit_reached
 
 # --- FLASK ROUTES ---
 @app.route('/galleryout/')
 @app.route('/')
 def gallery_redirect_base():
     return redirect(url_for('gallery_view', folder_key='_root_'))
+
+# AI QUEUE SUBMISSION ROUTE
+@app.route('/galleryout/ai_queue', methods=['POST'])
+def ai_queue_search():
+    """
+    Receives a search query from the frontend and adds it to the DB queue.
+    Also performs basic housekeeping (cleaning old requests).
+    """
+    data = request.json
+    query = data.get('query', '').strip()
+    # FIX: Leggi il limite dal JSON (default 100 se non presente)
+    limit = int(data.get('limit', 100)) 
+    
+    if not query:
+        return jsonify({'status': 'error', 'message': 'Query cannot be empty'}), 400
+        
+    session_id = str(uuid.uuid4())
+    
+    try:
+        with get_db_connection() as conn:
+            # 1. Housekeeping
+            conn.execute("DELETE FROM ai_search_queue WHERE created_at < datetime('now', '-1 hour')")
+            conn.execute("DELETE FROM ai_search_results WHERE session_id NOT IN (SELECT session_id FROM ai_search_queue)")
+            
+            # 2. Insert new request WITH LIMIT
+            # Assicurati che la query SQL includa la colonna limit_results
+            conn.execute('''
+                INSERT INTO ai_search_queue (session_id, query, limit_results, status)
+                VALUES (?, ?, ?, 'pending')
+            ''', (session_id, query, limit))
+            conn.commit()
+            
+        return jsonify({'status': 'queued', 'session_id': session_id})
+    except Exception as e:
+        print(f"AI Queue Error: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+        
+# AI STATUS CHECK ROUTE (POLLING)
+@app.route('/galleryout/ai_check/<session_id>', methods=['GET'])
+def ai_check_status(session_id):
+    """Checks the status of a specific search session."""
+    with get_db_connection() as conn:
+        row = conn.execute("SELECT status FROM ai_search_queue WHERE session_id = ?", (session_id,)).fetchone()
+        
+        if not row:
+            return jsonify({'status': 'not_found'})
+            
+        return jsonify({'status': row['status']})
 
 @app.route('/galleryout/sync_status/<string:folder_key>')
 def sync_status(folder_key):
@@ -1070,6 +1666,28 @@ def sync_status(folder_key):
         abort(404)
     folder_path = folders[folder_key]['path']
     return Response(sync_folder_on_demand(folder_path), mimetype='text/event-stream')
+
+@app.route('/galleryout/api/search_options')
+def api_search_options():
+    """
+    API Endpoint to fetch filter options (extensions/prefixes) dynamically
+    without reloading the page.
+    """
+    scope = request.args.get('scope', 'local')
+    folder_key = request.args.get('folder_key', '_root_')
+    
+    folders = get_dynamic_folder_config()
+    # Resolve folder path safely
+    folder_path = folders.get(folder_key, {}).get('path', BASE_OUTPUT_PATH)
+    
+    with get_db_connection() as conn:
+        exts, pfxs, limit_reached = get_filter_options_from_db(conn, scope, folder_path)
+        
+    return jsonify({
+        'extensions': exts,
+        'prefixes': pfxs,
+        'prefix_limit_reached': limit_reached
+    })
 
 @app.route('/galleryout/view/<string:folder_key>')
 def gallery_view(folder_key):
@@ -1081,43 +1699,198 @@ def gallery_view(folder_key):
     current_folder_info = folders[folder_key]
     folder_path = current_folder_info['path']
     
-    with get_db_connection() as conn:
-        conditions, params = [], []
-        conditions.append("path LIKE ?")
-        params.append(folder_path + os.sep + '%')
-        
-        sort_by = 'name' if request.args.get('sort_by') == 'name' else 'mtime'
-        sort_order = 'asc' if request.args.get('sort_order', 'desc').lower() == 'asc' else 'desc'
+    # Check if this is an AI Result View (Only if enabled)
+    ai_session_id = request.args.get('ai_session_id')
+    is_ai_search = False
+    ai_query_text = ""
+    is_global_search = False
+    
+    # AI Logic runs only if explicitly enabled
+    if ENABLE_AI_SEARCH:
+        with get_db_connection() as conn:
+            # --- PATH A: AI SEARCH RESULTS ---
+            if ai_session_id:
+                # Verify session completion
+                try:
+                    queue_info = conn.execute("SELECT query, status FROM ai_search_queue WHERE session_id = ?", (ai_session_id,)).fetchone()
+                    
+                    if queue_info and queue_info['status'] == 'completed':
+                        is_ai_search = True
+                        ai_query_text = queue_info['query']
+                        
+                        # Retrieve files joined with search results, ordered by score
+                        query_sql = '''
+                            SELECT f.*, r.score 
+                            FROM ai_search_results r
+                            JOIN files f ON r.file_id = f.id
+                            WHERE r.session_id = ?
+                            ORDER BY r.score DESC
+                        '''
+                        all_files_raw = conn.execute(query_sql, (ai_session_id,)).fetchall()
+                        
+                        # Convert to dict and clean blob
+                        files_list = []
+                        for row in all_files_raw:
+                            d = dict(row)
+                            if 'ai_embedding' in d: del d['ai_embedding']
+                            files_list.append(d)
+                        
+                        gallery_view_cache = files_list
+                except Exception as e:
+                    print(f"AI Search Error: {e}")
+                    is_ai_search = False
+    
+    # --- PATH B: STANDARD FOLDER VIEW OR GLOBAL STANDARD SEARCH ---
+    if not is_ai_search:
+        with get_db_connection() as conn:
+            conditions, params = [], []
+            
+            # Check for Global Search Scope
+            search_scope = request.args.get('scope', 'local')
+            if search_scope == 'global':
+                is_global_search = True
+            else:
+                # Local scope: filter by path
+                conditions.append("path LIKE ?")
+                params.append(folder_path + os.sep + '%')
+            
+            sort_by = 'name' if request.args.get('sort_by') == 'name' else 'mtime'
+            sort_order = 'asc' if request.args.get('sort_order', 'desc').lower() == 'asc' else 'desc'
 
-        search_term = request.args.get('search', '').strip()
-        if search_term:
-            conditions.append("name LIKE ?")
-            params.append(f"%{search_term}%")
-        if request.args.get('favorites', 'false').lower() == 'true':
-            conditions.append("is_favorite = 1")
+            # 1. Text Search
+            search_term = request.args.get('search', '').strip()
+            if search_term:
+                conditions.append("name LIKE ?")
+                params.append(f"%{search_term}%")
+            
+            # 2. Workflow Files Search
+            wf_search_raw = request.args.get('workflow_files', '').strip()
+            if wf_search_raw:
+                keywords = [k.strip() for k in wf_search_raw.split(',') if k.strip()]
+                for kw in keywords:
+                    smart_kw = normalize_smart_path(kw)
+                    conditions.append("workflow_files LIKE ?")
+                    params.append(f"%{smart_kw}%")
+            
+            # 3. Workflow PROMPT Search (NEW)
+            wf_prompt_raw = request.args.get('workflow_prompt', '').strip()
+            if wf_prompt_raw:
+                keywords = [k.strip() for k in wf_prompt_raw.split(',') if k.strip()]
+                for kw in keywords:
+                    # Use standard LIKE for text matching
+                    conditions.append("workflow_prompt LIKE ?")
+                    params.append(f"%{kw}%")
+                    
+            # 4. Boolean Options
+            # Favorites
+            if request.args.get('favorites', 'false').lower() == 'true':
+                conditions.append("is_favorite = 1")
+            
+            # No Workflow (New)
+            if request.args.get('no_workflow', 'false').lower() == 'true':
+                conditions.append("has_workflow = 0")
+            
+            # No AI Caption (New - Only if AI Enabled)
+            if ENABLE_AI_SEARCH and request.args.get('no_ai_caption', 'false').lower() == 'true':
+                conditions.append("(ai_caption IS NULL OR ai_caption = '')")
 
-        selected_prefixes = request.args.getlist('prefix')
-        if selected_prefixes:
-            prefix_conditions = [f"name LIKE ?" for p in selected_prefixes if p.strip()]
-            params.extend([f"{p.strip()}_%" for p in selected_prefixes if p.strip()])
-            if prefix_conditions: conditions.append(f"({' OR '.join(prefix_conditions)})")
+            # 5. Date Range Search (New)
+            start_date_str = request.args.get('start_date', '').strip()
+            end_date_str = request.args.get('end_date', '').strip()
 
-        selected_extensions = request.args.getlist('extension')
-        if selected_extensions:
-            ext_conditions = [f"name LIKE ?" for ext in selected_extensions if ext.strip()]
-            params.extend([f"%.{ext.lstrip('.').lower()}" for ext in selected_extensions if ext.strip()])
-            if ext_conditions: conditions.append(f"({' OR '.join(ext_conditions)})")
-        
-        sort_direction = "ASC" if sort_order == 'asc' else "DESC"
-        query = f"SELECT * FROM files WHERE {' AND '.join(conditions)} ORDER BY {sort_by} {sort_direction}"
-        
-        all_files_raw = conn.execute(query, params).fetchall()
-        
-    folder_path_norm = os.path.normpath(folder_path)
-    all_files_filtered = [dict(row) for row in all_files_raw if os.path.normpath(os.path.dirname(row['path'])) == folder_path_norm]
-    gallery_view_cache = all_files_filtered
+            if start_date_str:
+                try:
+                    # Convert 'YYYY-MM-DD' to timestamp at 00:00:00
+                    dt_start = datetime.strptime(start_date_str, '%Y-%m-%d')
+                    conditions.append("mtime >= ?")
+                    params.append(dt_start.timestamp())
+                except ValueError:
+                    pass # Ignore invalid date format
+            
+            if end_date_str:
+                try:
+                    # Convert 'YYYY-MM-DD' to timestamp at 23:59:59
+                    dt_end = datetime.strptime(end_date_str, '%Y-%m-%d')
+                    # Add almost one day (86399 seconds) to include the whole end day
+                    end_ts = dt_end.timestamp() + 86399 
+                    conditions.append("mtime <= ?")
+                    params.append(end_ts)
+                except ValueError:
+                    pass
+
+            # 6. Dropdown Filters (Prefix/Extensions)
+            selected_prefixes = request.args.getlist('prefix')
+            if selected_prefixes:
+                prefix_conditions = [f"name LIKE ?" for p in selected_prefixes if p.strip()]
+                params.extend([f"{p.strip()}_%" for p in selected_prefixes if p.strip()])
+                if prefix_conditions: conditions.append(f"({' OR '.join(prefix_conditions)})")
+
+            selected_extensions = request.args.getlist('extension')
+            if selected_extensions:
+                ext_conditions = [f"name LIKE ?" for ext in selected_extensions if ext.strip()]
+                params.extend([f"%.{ext.lstrip('.').lower()}" for ext in selected_extensions if ext.strip()])
+                if ext_conditions: conditions.append(f"({' OR '.join(ext_conditions)})")
+            
+            sort_direction = "ASC" if sort_order == 'asc' else "DESC"
+            
+            where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+            query = f"SELECT * FROM files {where_clause} ORDER BY {sort_by} {sort_direction}"
+            
+            all_files_raw = conn.execute(query, params).fetchall()
+            
+            # Local Scope strict filtering
+            if not is_global_search:
+                folder_path_norm = os.path.normpath(folder_path)
+                all_files_filtered = [dict(row) for row in all_files_raw if os.path.normpath(os.path.dirname(row['path'])) == folder_path_norm]
+            else:
+                all_files_filtered = [dict(row) for row in all_files_raw]
+
+            # Cleanup blobs
+            for f in all_files_filtered:
+                if 'ai_embedding' in f: del f['ai_embedding']
+                
+            gallery_view_cache = all_files_filtered
+
+    # Count active filters for UI Feedback
+    active_filters_count = 0
+    if request.args.get('search', '').strip(): active_filters_count += 1
+    if request.args.get('workflow_files', '').strip(): active_filters_count += 1
+    if request.args.get('workflow_prompt', '').strip(): active_filters_count += 1
+    if request.args.get('favorites', 'false').lower() == 'true': active_filters_count += 1
+    if request.args.get('no_workflow', 'false').lower() == 'true': active_filters_count += 1
+    if request.args.get('no_ai_caption', 'false').lower() == 'true': active_filters_count += 1
+    if request.args.get('start_date', '').strip(): active_filters_count += 1 
+    if request.args.getlist('extension'): active_filters_count += 1
+    if request.args.getlist('prefix'): active_filters_count += 1
+    if request.args.get('scope', 'local') == 'global': active_filters_count += 1
+
+    # Pagination Logic (Shared)
     initial_files = gallery_view_cache[:PAGE_SIZE]
-    total_folder_files, extensions, prefixes = scan_folder_and_extract_options(folder_path)
+    
+    # --- Metadata and Options Logic ---
+    
+    # 1. Get total files count for the badge (Standard Local Scan)
+    # We ignore the list-based options from the scan (using _) because we get them from DB now
+    total_folder_files, _, _ = scan_folder_and_extract_options(folder_path)
+    
+    # 2. Get Filter Dropdown Options (DB Based, Scope Aware, Limited)
+    scope_for_options = 'global' if is_global_search else 'local'
+    
+    # Initialize variables to ensure they exist even if branches are skipped
+    extensions = []
+    prefixes = []
+    prefix_limit_reached = False
+
+    # Check if 'conn' variable exists and is open from previous blocks (PATH B)
+    if 'conn' in locals() and not is_ai_search:
+        # Re-use existing connection
+        extensions, prefixes, prefix_limit_reached = get_filter_options_from_db(conn, scope_for_options, folder_path)
+    else:
+        # Open temp connection (e.g. inside AI path or error cases)
+        with get_db_connection() as db_conn_for_opts:
+            extensions, prefixes, prefix_limit_reached = get_filter_options_from_db(db_conn_for_opts, scope_for_options, folder_path)
+    
+    # --- Breadcrumbs Logic ---
     breadcrumbs, ancestor_keys = [], set()
     curr_key = folder_key
     while curr_key is not None and curr_key in folders:
@@ -1138,11 +1911,18 @@ def gallery_view(folder_key):
                            ancestor_keys=list(ancestor_keys),
                            available_extensions=extensions, 
                            available_prefixes=prefixes,
+                           prefix_limit_reached=prefix_limit_reached,  
                            selected_extensions=request.args.getlist('extension'), 
                            selected_prefixes=request.args.getlist('prefix'),
                            show_favorites=request.args.get('favorites', 'false').lower() == 'true', 
-                           protected_folder_keys=list(PROTECTED_FOLDER_KEYS))
-
+                           protected_folder_keys=list(PROTECTED_FOLDER_KEYS),
+                           enable_ai_search=ENABLE_AI_SEARCH,
+                           is_ai_search=is_ai_search,
+                           ai_query=ai_query_text,
+                           is_global_search=is_global_search,
+                           active_filters_count=active_filters_count,
+                           current_scope=request.args.get('scope', 'local'))
+                           
 @app.route('/galleryout/upload', methods=['POST'])
 def upload_files():
     folder_key = request.form.get('folder_key')
@@ -1218,11 +1998,45 @@ def rescan_folder():
                     processed_count += 1
             
             if results:
-                # Upsert results
-                conn.executemany(
-                    "INSERT OR REPLACE INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    results
-                )
+                conn.executemany("""
+                    INSERT INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned, workflow_files, workflow_prompt) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(id) DO UPDATE SET
+                        path = excluded.path,
+                        name = excluded.name,
+                        type = excluded.type,
+                        duration = excluded.duration,
+                        dimensions = excluded.dimensions,
+                        has_workflow = excluded.has_workflow,
+                        size = excluded.size,
+                        last_scanned = excluded.last_scanned,
+                        workflow_files = excluded.workflow_files,
+                        workflow_prompt = excluded.workflow_prompt,
+                        
+                        -- LOGICA CONDIZIONALE:
+                        is_favorite = CASE 
+                            WHEN files.mtime != excluded.mtime THEN 0  
+                            ELSE files.is_favorite                     
+                        END,
+                        
+                        ai_caption = CASE 
+                            WHEN files.mtime != excluded.mtime THEN NULL 
+                            ELSE files.ai_caption                        
+                        END,
+                        
+                        ai_embedding = CASE 
+                            WHEN files.mtime != excluded.mtime THEN NULL 
+                            ELSE files.ai_embedding 
+                        END,
+
+                        ai_last_scanned = CASE 
+                            WHEN files.mtime != excluded.mtime THEN 0 
+                            ELSE files.ai_last_scanned 
+                        END,
+
+                        -- Aggiorna mtime alla fine
+                        mtime = excluded.mtime
+                """, results) 
                 conn.commit()
                 
         return jsonify({'status': 'success', 'message': f'Successfully rescanned {len(results)} files.', 'count': len(results)})
@@ -1235,8 +2049,13 @@ def rescan_folder():
 def create_folder():
     data = request.json
     parent_key = data.get('parent_key', '_root_')
-    folder_name = re.sub(r'[^a-zA-Z0-9_-]', '', data.get('folder_name', '')).strip()
-    if not folder_name: return jsonify({'status': 'error', 'message': 'Invalid folder name provided.'}), 400
+
+    raw_name = data.get('folder_name', '').strip()
+    folder_name = re.sub(r'[\\/:*?"<>|]', '', raw_name)
+    
+    if not folder_name or folder_name in ['.', '..']: 
+        return jsonify({'status': 'error', 'message': 'Invalid folder name provided.'}), 400
+        
     folders = get_dynamic_folder_config()
     if parent_key not in folders: return jsonify({'status': 'error', 'message': 'Parent folder not found.'}), 404
     parent_path = folders[parent_key]['path']
@@ -1247,7 +2066,7 @@ def create_folder():
         return jsonify({'status': 'success', 'message': f'Folder "{folder_name}" created successfully.'})
     except FileExistsError: return jsonify({'status': 'error', 'message': 'Folder already exists.'}), 400
     except Exception as e: return jsonify({'status': 'error', 'message': str(e)}), 500
-
+    
 # --- ZIP BACKGROUND JOB MANAGEMENT ---
 zip_jobs = {}
 def background_zip_task(job_id, file_ids):
@@ -1332,12 +2151,16 @@ def check_zip_status(job_id):
 def serve_zip_file(filename):
     return send_from_directory(ZIP_CACHE_DIR, filename, as_attachment=True)
     
-
 @app.route('/galleryout/rename_folder/<string:folder_key>', methods=['POST'])
 def rename_folder(folder_key):
     if folder_key in PROTECTED_FOLDER_KEYS: return jsonify({'status': 'error', 'message': 'This folder cannot be renamed.'}), 403
-    new_name = re.sub(r'[^a-zA-Z0-9_-]', '', request.json.get('new_name', '')).strip()
-    if not new_name: return jsonify({'status': 'error', 'message': 'Invalid name.'}), 400
+    
+    raw_name = request.json.get('new_name', '').strip()
+    new_name = re.sub(r'[\\/:*?"<>|]', '', raw_name)
+    
+    if not new_name or new_name in ['.', '..']: 
+        return jsonify({'status': 'error', 'message': 'Invalid name.'}), 400
+        
     folders = get_dynamic_folder_config()
     if folder_key not in folders: return jsonify({'status': 'error', 'message': 'Folder not found.'}), 400
     old_path = folders[folder_key]['path']
@@ -1358,7 +2181,7 @@ def rename_folder(folder_key):
         get_dynamic_folder_config(force_refresh=True)
         return jsonify({'status': 'success', 'message': 'Folder renamed.'})
     except Exception as e: return jsonify({'status': 'error', 'message': f'Error: {e}'}), 500
-
+    
 @app.route('/galleryout/delete_folder/<string:folder_key>', methods=['POST'])
 def delete_folder(folder_key):
     if folder_key in PROTECTED_FOLDER_KEYS: return jsonify({'status': 'error', 'message': 'This folder cannot be deleted.'}), 403
@@ -1387,80 +2210,222 @@ def get_file_info_from_db(file_id, column='*'):
     return dict(row) if column == '*' else row[0]
 
 def _get_unique_filepath(destination_folder, filename):
+    """
+    Generates a unique filepath using the NATIVE OS separator.
+    This ensures that the path matches exactly what the Scanner generates,
+    preventing duplicate records in the database.
+    """
     base, ext = os.path.splitext(filename)
     counter = 1
-    new_filepath = os.path.join(destination_folder, filename)
-    while os.path.exists(new_filepath):
-        new_filename = f"{base}({counter}){ext}"
-        new_filepath = os.path.join(destination_folder, new_filename)
-        counter += 1
-    return new_filepath
+    
+    # Use standard os.path.join. 
+    # On Windows with base path "C:/A", it produces "C:/A\file.txt" (Matches your DB).
+    # On Linux, it produces "C:/A/file.txt" (Matches Linux DB).
+    full_path = os.path.join(destination_folder, filename)
 
+    while os.path.exists(full_path):
+        new_filename = f"{base}({counter}){ext}"
+        full_path = os.path.join(destination_folder, new_filename)
+        counter += 1
+        
+    return full_path
+    
 @app.route('/galleryout/move_batch', methods=['POST'])
 def move_batch():
     data = request.json
-    file_ids, dest_key = data.get('file_ids', []), data.get('destination_folder')
+    file_ids = data.get('file_ids', [])
+    dest_key = data.get('destination_folder')
+    
     folders = get_dynamic_folder_config()
+    
     if not all([file_ids, dest_key, dest_key in folders]):
         return jsonify({'status': 'error', 'message': 'Invalid data provided.'}), 400
-    moved_count, renamed_count, failed_files, dest_path_folder = 0, 0, [], folders[dest_key]['path']
+    
+    moved_count, renamed_count, skipped_count = 0, 0, 0
+    failed_files = []
+    
+    # Get destination path from config
+    dest_path_raw = folders[dest_key]['path']
+    
     with get_db_connection() as conn:
         for file_id in file_ids:
             source_path = None
             try:
-                file_info = conn.execute("SELECT path, name FROM files WHERE id = ?", (file_id,)).fetchone()
+                # 1. Fetch Source Data + AI Metadata
+                query_fetch = """
+                    SELECT 
+                        path, name, size, has_workflow, is_favorite, type, duration, dimensions,
+                        ai_last_scanned, ai_caption, ai_embedding, ai_error, workflow_files, workflow_prompt 
+                    FROM files WHERE id = ?
+                """
+                file_info = conn.execute(query_fetch, (file_id,)).fetchone()
+                
                 if not file_info:
                     failed_files.append(f"ID {file_id} not found in DB")
                     continue
-                source_path, source_filename = file_info['path'], file_info['name']
+                
+                source_path = file_info['path']
+                source_filename = file_info['name']
+                
+                # Metadata Pack
+                meta = {
+                    'size': file_info['size'],
+                    'has_workflow': file_info['has_workflow'],
+                    'is_favorite': file_info['is_favorite'],
+                    'type': file_info['type'],
+                    'duration': file_info['duration'],
+                    'dimensions': file_info['dimensions'],
+                    'ai_last_scanned': file_info['ai_last_scanned'],
+                    'ai_caption': file_info['ai_caption'],
+                    'ai_embedding': file_info['ai_embedding'],
+                    'ai_error': file_info['ai_error'],
+                    'workflow_files': file_info['workflow_files'],
+                    'workflow_prompt': file_info['workflow_prompt']
+                }
+                
+                # Check Source vs Dest (OS Agnostic comparison)
+                source_dir_norm = os.path.normpath(os.path.dirname(source_path))
+                dest_dir_norm = os.path.normpath(dest_path_raw)
+                is_same_folder = (source_dir_norm.lower() == dest_dir_norm.lower()) if os.name == 'nt' else (source_dir_norm == dest_dir_norm)
+                
+                if is_same_folder:
+                    skipped_count += 1
+                    continue 
+
                 if not os.path.exists(source_path):
                     failed_files.append(f"{source_filename} (not found on disk)")
                     conn.execute("DELETE FROM files WHERE id = ?", (file_id,))
                     continue
-                final_dest_path = _get_unique_filepath(dest_path_folder, source_filename)
+                
+                # 2. Calculate unique path NATIVELY (No separator forcing)
+                # This guarantees the path string matches what the Scanner will see.
+                final_dest_path = _get_unique_filepath(dest_path_raw, source_filename)
                 final_filename = os.path.basename(final_dest_path)
-                if final_filename != source_filename: renamed_count += 1
+                
+                if final_filename != source_filename: 
+                    renamed_count += 1
+                
+                # 3. Move file on disk
                 shutil.move(source_path, final_dest_path)
+                
+                # 4. Calculate New ID based on the NATIVE path
                 new_id = hashlib.md5(final_dest_path.encode()).hexdigest()
-                conn.execute("UPDATE files SET id = ?, path = ?, name = ? WHERE id = ?", (new_id, final_dest_path, final_filename, file_id))
+                
+                # 5. DB Update / Merge Logic
+                existing_target = conn.execute("SELECT id FROM files WHERE id = ?", (new_id,)).fetchone()
+                
+                if existing_target:
+                    # MERGE: Target exists (e.g. ghost record). Overwrite with source metadata.
+                    query_merge = """
+                        UPDATE files 
+                        SET path = ?, name = ?, mtime = ?,
+                            size = ?, has_workflow = ?, is_favorite = ?, 
+                            type = ?, duration = ?, dimensions = ?,
+                            ai_last_scanned = ?, ai_caption = ?, ai_embedding = ?, ai_error = ?,
+                            workflow_files = ?, workflow_prompt = ?
+                        WHERE id = ?
+                    """
+                    conn.execute(query_merge, (
+                        final_dest_path, final_filename, time.time(),
+                        meta['size'], meta['has_workflow'], meta['is_favorite'],
+                        meta['type'], meta['duration'], meta['dimensions'],
+                        meta['ai_last_scanned'], meta['ai_caption'], meta['ai_embedding'], meta['ai_error'],
+                        meta['workflow_files'], 
+                        meta['workflow_prompt'],
+                        new_id
+                    ))
+                    conn.execute("DELETE FROM files WHERE id = ?", (file_id,))
+                else:
+                    # STANDARD: Update existing record path/name.
+                    conn.execute("UPDATE files SET id = ?, path = ?, name = ? WHERE id = ?", 
+                                (new_id, final_dest_path, final_filename, file_id))
+                    
                 moved_count += 1
+                
             except Exception as e:
                 filename_for_error = os.path.basename(source_path) if source_path else f"ID {file_id}"
                 failed_files.append(filename_for_error)
                 print(f"ERROR: Failed to move file {filename_for_error}. Reason: {e}")
                 continue
         conn.commit()
+    
     message = f"Successfully moved {moved_count} file(s)."
-    if renamed_count > 0: message += f" {renamed_count} were renamed to avoid conflicts."
-    if failed_files: message += f" Failed to move {len(failed_files)} file(s)."
-    return jsonify({'status': 'partial_success' if failed_files else 'success', 'message': message})
-
+    if skipped_count > 0: message += f" {skipped_count} skipped (same folder)."
+    if renamed_count > 0: message += f" {renamed_count} renamed."
+    if failed_files: message += f" Failed: {len(failed_files)}."
+    
+    status = 'success'
+    if failed_files or (skipped_count > 0 and moved_count == 0): status = 'partial_success'
+        
+    return jsonify({'status': status, 'message': message})
+    
 @app.route('/galleryout/delete_batch', methods=['POST'])
 def delete_batch():
-    file_ids = request.json.get('file_ids', [])
-    if not file_ids: return jsonify({'status': 'error', 'message': 'No files selected.'}), 400
-    deleted_count, failed_files = 0, []
-    with get_db_connection() as conn:
-        placeholders = ','.join('?' * len(file_ids))
-        files_to_delete = conn.execute(f"SELECT id, path FROM files WHERE id IN ({placeholders})", file_ids).fetchall()
+    try:
+        # Preveniamo il crash gestendo tutto in un blocco try/except
+        data = request.json
+        file_ids = data.get('file_ids', [])
+        
+        if not file_ids: 
+            return jsonify({'status': 'error', 'message': 'No files selected.'}), 400
+        
+        deleted_count = 0
+        failed_files = []
         ids_to_remove_from_db = []
-        for row in files_to_delete:
-            try:
-                if os.path.exists(row['path']): safe_delete_file(row['path'])
-                ids_to_remove_from_db.append(row['id'])
-                deleted_count += 1
-            except Exception as e: 
-                failed_files.append(os.path.basename(row['path']))
-                print(f"ERROR: Could not delete {row['path']}: {e}")
-        if ids_to_remove_from_db:
-            db_placeholders = ','.join('?' * len(ids_to_remove_from_db))
-            conn.execute(f"DELETE FROM files WHERE id IN ({db_placeholders})", ids_to_remove_from_db)
-            conn.commit()
-    action = "moved to trash" if DELETE_TO else "deleted"
-    message = f'Successfully {action} {deleted_count} files.'
-    if failed_files: message += f" Failed to delete {len(failed_files)} files."
-    return jsonify({'status': 'partial_success' if failed_files else 'success', 'message': message})
 
+        with get_db_connection() as conn:
+            # 1. Generazione corretta e sicura dei placeholder SQL (?,?,?)
+            # Usiamo una lista esplicita per evitare errori di sintassi python
+            placeholders = ','.join(['?'] * len(file_ids))
+            
+            # Selezioniamo i file per verificare i percorsi
+            query_select = f"SELECT id, path FROM files WHERE id IN ({placeholders})"
+            files_to_delete = conn.execute(query_select, file_ids).fetchall()
+            
+            for row in files_to_delete:
+                file_path = row['path']
+                file_id = row['id']
+                
+                try:
+                    # Cancellazione Fisica (o spostamento nel cestino)
+                    if os.path.exists(file_path):
+                        safe_delete_file(file_path)
+                    
+                    # Se l'operazione su disco riesce (o il file non c'era già più),
+                    # segniamo l'ID per la rimozione dal DB
+                    ids_to_remove_from_db.append(file_id)
+                    deleted_count += 1
+                    
+                except Exception as e:
+                    # Se fallisce la cancellazione fisica di un file, lo annotiamo ma continuiamo
+                    print(f"ERROR: Could not delete {file_path}: {e}")
+                    failed_files.append(os.path.basename(file_path))
+            
+            # 2. Pulizia Database (Massiva)
+            if ids_to_remove_from_db:
+                # Generiamo nuovi placeholder solo per gli ID effettivamente cancellati
+                db_placeholders = ','.join(['?'] * len(ids_to_remove_from_db))
+                query_delete = f"DELETE FROM files WHERE id IN ({db_placeholders})"
+                conn.execute(query_delete, ids_to_remove_from_db)
+                conn.commit()
+    
+        # Costruzione messaggio finale
+        action = "moved to trash" if DELETE_TO else "deleted"
+        message = f'Successfully {action} {deleted_count} files.'
+        
+        status = 'success'
+        if failed_files: 
+            message += f" Failed to delete {len(failed_files)} files."
+            status = 'partial_success'
+            
+        return jsonify({'status': status, 'message': message})
+
+    except Exception as e:
+        # QUESTO risolve il "doctype is not json":
+        # Se c'è un errore grave, restituiamo un JSON di errore invece di una pagina HTML rotta.
+        print(f"CRITICAL ERROR in delete_batch: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+        
 @app.route('/galleryout/favorite_batch', methods=['POST'])
 def favorite_batch():
     data = request.json
@@ -1507,64 +2472,111 @@ def delete_file(file_id):
         action = "moved to trash" if DELETE_TO else "deleted"
         return jsonify({'status': 'success', 'message': f'File {action} successfully.'})
 
-# --- NEW FEATURE: RENAME FILE ---
+# --- RENAME FILE ---
 @app.route('/galleryout/rename_file/<string:file_id>', methods=['POST'])
 def rename_file(file_id):
     data = request.json
     new_name = data.get('new_name', '').strip()
 
-    # Basic validation for the new name
     if not new_name or len(new_name) > 250:
-        return jsonify({'status': 'error', 'message': 'The provided filename is invalid or too long.'}), 400
+        return jsonify({'status': 'error', 'message': 'Invalid filename.'}), 400
     if re.search(r'[\\/:"*?<>|]', new_name):
-        return jsonify({'status': 'error', 'message': 'Filename contains invalid characters.'}), 400
+        return jsonify({'status': 'error', 'message': 'Invalid characters.'}), 400
 
     try:
         with get_db_connection() as conn:
-            file_info = conn.execute("SELECT path, name FROM files WHERE id = ?", (file_id,)).fetchone()
+            # 1. Fetch All Metadata
+            query_fetch = """
+                SELECT 
+                    path, name, size, has_workflow, is_favorite, type, duration, dimensions,
+                    ai_last_scanned, ai_caption, ai_embedding, ai_error, workflow_files, workflow_prompt  
+                FROM files WHERE id = ?
+            """
+            file_info = conn.execute(query_fetch, (file_id,)).fetchone()
+            
             if not file_info:
-                return jsonify({'status': 'error', 'message': 'File not found in the database.'}), 404
+                return jsonify({'status': 'error', 'message': 'File not found.'}), 404
 
             old_path = file_info['path']
             old_name = file_info['name']
             
-            # Preserve the original extension
+            # Metadata Pack
+            meta = {
+                'size': file_info['size'],
+                'has_workflow': file_info['has_workflow'],
+                'is_favorite': file_info['is_favorite'],
+                'type': file_info['type'],
+                'duration': file_info['duration'],
+                'dimensions': file_info['dimensions'],
+                'ai_last_scanned': file_info['ai_last_scanned'],
+                'ai_caption': file_info['ai_caption'],
+                'ai_embedding': file_info['ai_embedding'],
+                'ai_error': file_info['ai_error'],
+                'workflow_files': file_info['workflow_files'],
+                'workflow_prompt': file_info['workflow_prompt']
+            }
+            
+            # Extension logic
             _, old_ext = os.path.splitext(old_name)
             new_name_base, new_ext = os.path.splitext(new_name)
-            if not new_ext: # If user didn't provide an extension, use the old one
-                final_new_name = new_name + old_ext
-            else:
-                final_new_name = new_name
+            final_new_name = new_name if new_ext else new_name + old_ext
 
             if final_new_name == old_name:
-                return jsonify({'status': 'error', 'message': 'The new name is the same as the old one.'}), 400
+                return jsonify({'status': 'error', 'message': 'Name unchanged.'}), 400
 
-            file_dir = os.path.dirname(old_path)
-            new_path = os.path.join(file_dir, final_new_name)
+            # 2. Construct Path NATIVELY using os.path.join
+            # This respects the OS separator (Mixed on Win, Forward on Linux)
+            # ensuring the Hash ID matches future Scans.
+            dir_name = os.path.dirname(old_path)
+            new_path = os.path.join(dir_name, final_new_name)
 
             if os.path.exists(new_path):
-                return jsonify({'status': 'error', 'message': f'A file named "{final_new_name}" already exists in this folder.'}), 409
+                 return jsonify({'status': 'error', 'message': f'File "{final_new_name}" already exists.'}), 409
 
-            # Perform the rename and database update
-            os.rename(old_path, new_path)
             new_id = hashlib.md5(new_path.encode()).hexdigest()
-            conn.execute("UPDATE files SET id = ?, path = ?, name = ? WHERE id = ?", (new_id, new_path, final_new_name, file_id))
+            existing_db = conn.execute("SELECT id FROM files WHERE id = ?", (new_id,)).fetchone()
+
+            os.rename(old_path, new_path)
+
+            if existing_db:
+                # MERGE SCENARIO
+                query_merge = """
+                    UPDATE files 
+                    SET path = ?, name = ?, mtime = ?,
+                        size = ?, has_workflow = ?, is_favorite = ?, 
+                        type = ?, duration = ?, dimensions = ?,
+                        ai_last_scanned = ?, ai_caption = ?, ai_embedding = ?, ai_error = ?,
+                        workflow_files = ?, workflow_prompt = ?
+                    WHERE id = ?
+                """
+                conn.execute(query_merge, (
+                    final_dest_path, final_filename, time.time(),
+                    meta['size'], meta['has_workflow'], meta['is_favorite'],
+                    meta['type'], meta['duration'], meta['dimensions'],
+                    meta['ai_last_scanned'], meta['ai_caption'], meta['ai_embedding'], meta['ai_error'],
+                    meta['workflow_files'], 
+                    meta['workflow_prompt'],
+                    new_id
+                ))
+                conn.execute("DELETE FROM files WHERE id = ?", (file_id,))
+            else:
+                # STANDARD SCENARIO
+                conn.execute("UPDATE files SET id = ?, path = ?, name = ? WHERE id = ?", 
+                            (new_id, new_path, final_new_name, file_id))
+
             conn.commit()
 
             return jsonify({
                 'status': 'success',
-                'message': 'File renamed successfully.',
+                'message': 'File renamed.',
                 'new_name': final_new_name,
                 'new_id': new_id
             })
 
-    except OSError as e:
-        print(f"ERROR: OS error during file rename for {file_id}: {e}")
-        return jsonify({'status': 'error', 'message': f'A system error occurred during rename: {e}'}), 500
     except Exception as e:
-        print(f"ERROR: Generic error during file rename for {file_id}: {e}")
-        return jsonify({'status': 'error', 'message': f'An unexpected error occurred: {e}'}), 500
-
+        print(f"ERROR: Rename failed: {e}")
+        return jsonify({'status': 'error', 'message': f'Error: {e}'}), 500
+        
 @app.route('/galleryout/file/<string:file_id>')
 def serve_file(file_id):
     filepath = get_file_info_from_db(file_id, 'path')
@@ -1638,6 +2650,29 @@ def serve_input_file(filename):
         return send_from_directory(BASE_INPUT_PATH, filename, as_attachment=False)
     except Exception as e:
         abort(404)
+
+@app.route('/galleryout/check_metadata/<string:file_id>')
+def check_metadata(file_id):
+    """
+    Lightweight endpoint to check real-time status of metadata 
+    (Workflow and AI Caption) for the Lightbox.
+    """
+    try:
+        with get_db_connection() as conn:
+            row = conn.execute("SELECT has_workflow, ai_caption FROM files WHERE id = ?", (file_id,)).fetchone()
+            
+        if not row:
+            return jsonify({'status': 'error', 'message': 'File not found'}), 404
+            
+        return jsonify({
+            'status': 'success',
+            'has_workflow': bool(row['has_workflow']),
+            'has_ai_caption': bool(row['ai_caption']),
+            'ai_caption': row['ai_caption'] or "" # Return actual text to update cache
+        })
+    except Exception as e:
+        print(f"Metadata Check Error: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
           
 def print_startup_banner():
     banner = rf"""
@@ -1657,7 +2692,7 @@ def print_startup_banner():
     print(f"   GitHub     : {Colors.CYAN}{GITHUB_REPO_URL}{Colors.RESET}")
     print(f"   Contributor: {Colors.CYAN}Martial Michel (Docker & Codebase){Colors.RESET}")
     print("")
-    
+
 def check_for_updates():
     """Checks the GitHub repo for a newer version without external libs."""
     print("Checking for updates...", end=" ", flush=True)
@@ -1665,13 +2700,49 @@ def check_for_updates():
         # Timeout (3s) not blocking start if no internet connection
         with urllib.request.urlopen(GITHUB_RAW_URL, timeout=3) as response:
             content = response.read().decode('utf-8')
-            # Finding string "Version: X.XX" 
-            match = re.search(r'Version:\s*([0-9.]+)', content)
             
+            # Regex modified to handle APP_VERSION="1.41" (string) or APP_VERSION=1.41 (number)
+            match = re.search(r'APP_VERSION\s*=\s*["\']?([0-9.]+)["\']?', content)
+            
+            remote_version_str = None
             if match:
-                remote_version = float(match.group(1))
-                if remote_version > APP_VERSION:
-                    print(f"\n\033[93m{'\033[1m'}NOTICE: A new version ({remote_version}) is available!{'\033[0m'}")
+                remote_version_str = match.group(1)
+            else:
+                # Fallback: Check header comment if variable not found
+                match_header = re.search(r'#\s*Version:\s*([0-9.]+)', content)
+                if match_header:
+                    remote_version_str = match_header.group(1)
+
+            if remote_version_str:
+                # --- HYBRID COMPARISON LOGIC ---
+                # 1. Clean both versions from non-numeric chars (except dots)
+                local_clean = re.sub(r'[^0-9.]', '', str(APP_VERSION))
+                remote_clean = re.sub(r'[^0-9.]', '', str(remote_version_str))
+
+                # 2. Check if they are Legacy Float style (max 1 dot, e.g. "1.41", "1.4099")
+                #    or Modern SemVer style (2+ dots, e.g. "1.51.01")
+                local_dots = local_clean.count('.')
+                remote_dots = remote_clean.count('.')
+                
+                is_update_available = False
+                
+                if local_dots <= 1 and remote_dots <= 1:
+                    # Use Float logic (Legacy) to support 1.41 > 1.4099
+                    try:
+                        is_update_available = float(remote_clean) > float(local_clean)
+                    except ValueError:
+                        # Fallback to tuple comparison if float conversion fails
+                        pass
+
+                if not is_update_available:
+                    # Use Semantic Tuple logic (Modern) if float check failed or didn't apply
+                    # Examples: 1.51.1 > 1.51
+                    local_v = tuple(map(int, local_clean.split('.'))) if local_clean else (0,)
+                    remote_v = tuple(map(int, remote_clean.split('.'))) if remote_clean else (0,)
+                    is_update_available = remote_v > local_v
+                
+                if is_update_available:
+                    print(f"\n\033[93m{'\033[1m'}NOTICE: A new version ({remote_version_str}) is available!{'\033[0m'}")
                     print(f"Please update from: {GITHUB_REPO_URL}\n")
                 else:
                     print("You are up to date.")

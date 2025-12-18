@@ -22,6 +22,12 @@
             --favorite-color: #ffc107;
             --workflow-color: #28a745;
             --success-color: #20c997;
+            
+            /* AI Colors */
+            --ai-color: #ff00ff; /* Fuxia */
+            --ai-gradient: linear-gradient(135deg, #ff00ff 0%, #00ffff 100%);
+            --ai-surface: rgba(255, 0, 255, 0.1);
+            
             --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
             --glass-bg: rgba(255, 255, 255, 0.05);
@@ -449,16 +455,88 @@
             gap: 1.5rem;
         }
 
+        /* NEW DESKTOP SEARCH PANEL STYLES */
+        .search-overlay-panel {
+            display: none;
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 10px;
+            box-shadow: var(--shadow-lg);
+            animation: slideDown 0.3s ease-out;
+            position: relative;
+            z-index: 900;
+        }
+
+        .search-overlay-panel.visible {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         .filter-form-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1.5rem;
-            align-items: end;
+            align-items: start;
         }
 
         .filter-group {
             display: flex;
             flex-direction: column;
+        }
+        
+        /* SEARCH SCOPE STYLES */
+        .search-scope-wrapper {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 0.5rem;
+        }
+        
+        .scope-options {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        
+        /* --- SCOPE SELECTOR VISUALS --- */
+        .scope-label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            padding: 8px 12px; /* Slightly larger for touch */
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            transition: all 0.2s ease;
+            flex: 1; /* Distribute space evenly */
+            justify-content: center;
+        }
+
+        .scope-label:hover {
+            background: var(--surface-hover);
+            color: var(--text-color);
+        }
+
+        .scope-label.active {
+            border-color: var(--primary-color);
+            background: rgba(0, 123, 255, 0.2); /* Stronger visible color */
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 0 8px rgba(0, 123, 255, 0.3);
+        }
+                
+        .scope-label input[type="radio"] {
+            margin: 0;
+            accent-color: var(--primary-color);
         }
 
         .filter-bar label {
@@ -470,6 +548,7 @@
             letter-spacing: 0.5px;
         }
 
+        /* Regola generale per testo e bottoni */
         .filter-bar select,
         .filter-bar input[type="text"],
         .filter-bar button,
@@ -484,7 +563,21 @@
             backdrop-filter: blur(10px);
         }
 
-        .filter-bar input[type="text"]:focus {
+        .filter-bar input[type="date"] {
+            background: var(--glass-bg);
+            color: var(--text-color);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 0.75rem 0.25rem; 
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+            color-scheme: dark; 
+            width: 100%; 
+        }
+
+        .filter-bar input[type="text"]:focus,
+        .filter-bar input[type="date"]:focus {   
             outline: none;
             border-color: var(--primary-color);
             box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
@@ -503,9 +596,47 @@
             transform: translateY(-1px);
         }
 
+        /* Styling for the new Desktop Toggle Button */
+        #search-toggle-desktop {
+            background: var(--glass-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+        }
+        
+        #search-toggle-desktop:hover {
+            background: var(--surface-hover);
+        }
+        
+        #search-toggle-desktop.active-filters {
+            background: rgba(0, 123, 255, 0.15);
+            border-color: var(--primary-color);
+            color: white;
+            box-shadow: 0 0 10px rgba(0,123,255,0.2);
+        }
+
         .filter-bar button.refresh-btn {
             background: var(--workflow-color);
             border-color: var(--workflow-color);
+        }
+
+        /* AI Button Style */
+        .filter-bar button.ai-btn {
+            background: transparent;
+            border: 1px solid var(--ai-color);
+            color: white;
+            font-size: 1.5rem;
+            padding: 0 1rem;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .filter-bar button.ai-btn:hover {
+            background: var(--ai-surface);
+            transform: scale(1.1);
+            box-shadow: 0 0 10px var(--ai-color);
         }
 
         .filter-bar a {
@@ -594,6 +725,135 @@
             visibility: hidden;
         }
 
+        /* AI Mode Banner & Standard Global Search Banner */
+        .ai-banner, .global-search-banner {
+            background: var(--ai-surface);
+            border-bottom: 1px solid var(--ai-color);
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: var(--ai-color);
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(255, 0, 255, 0.2);
+            animation: glow 2s infinite alternate;
+        }
+        
+        .global-search-banner {
+            background: rgba(0, 123, 255, 0.1); /* Blue for Standard */
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.2);
+            animation: glowBlue 2s infinite alternate;
+        }
+
+        @keyframes glow {
+            from { box-shadow: 0 0 5px rgba(255, 0, 255, 0.1); }
+            to { box-shadow: 0 0 15px rgba(255, 0, 255, 0.4); }
+        }
+        
+        @keyframes glowBlue {
+            from { box-shadow: 0 0 5px rgba(0, 123, 255, 0.1); }
+            to { box-shadow: 0 0 15px rgba(0, 123, 255, 0.4); }
+        }
+
+        .ai-banner-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.1rem;
+        }
+        
+        /* New Styles for AI Options and Lightbox */
+        .ai-search-options-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+
+            /* hide native arrows (Chrome, Safari, Edge, Opera) */
+            input[type=number]::-webkit-outer-spin-button,
+            input[type=number]::-webkit-inner-spin-button {
+              -webkit-appearance: none;
+              margin: 0;
+            }
+            /* hide native arrows (Firefox) */
+            input[type=number] {
+              -moz-appearance: textfield;
+            }
+
+            .ai-limit-container {
+                display: flex;
+                align-items: center;
+                background: var(--glass-bg);
+                border: 1px solid var(--glass-border);
+                border-radius: 8px;
+                overflow: hidden; /* Mantiene i bordi arrotondati */
+                height: 36px; /* Altezza fissa per coerenza */
+            }
+
+            .ai-limit-btn {
+                background: transparent;
+                border: none;
+                color: var(--ai-color);
+                font-size: 1.2rem;
+                font-weight: bold;
+                width: 30px;
+                height: 100%;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: background 0.2s;
+            }
+
+            .ai-limit-btn:hover {
+                background: rgba(255, 0, 255, 0.2);
+                color: white;
+            }
+
+            .ai-limit-input {
+                background: transparent;
+                border: none;
+                border-left: 1px solid var(--glass-border);
+                border-right: 1px solid var(--glass-border);
+                color: white;
+                width: 50px;
+                height: 100%;
+                font-size: 1rem;
+                text-align: center;
+                font-weight: bold;
+                outline: none;
+            }
+
+            .ai-limit-input:focus {
+                background: rgba(255, 255, 255, 0.05);
+            }
+
+        .ai-banner-actions button {
+            background: transparent;
+            border: 1px solid var(--ai-color);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .global-search-banner .ai-banner-actions button {
+            border-color: var(--primary-color);
+        }
+        .global-search-banner .ai-banner-actions button:hover {
+            background: var(--primary-color);
+        }
+
+        .ai-banner-actions button:hover {
+            background: var(--ai-color);
+        }
+
         .gallery-container {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -631,6 +891,8 @@
             outline-offset: 2px;
         }
 
+        /* Disable selection in Global AI Mode */
+        
         .selection-checkmark {
             position: absolute;
             bottom: 12px;
@@ -777,6 +1039,21 @@
             font-size: 0.75rem;
             text-decoration: none;
             font-weight: 600;
+        }
+        
+        .ai-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: var(--ai-color);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            z-index: 10;
+            text-transform: uppercase;
         }
 
         #selection-bar {
@@ -1002,6 +1279,15 @@
             hyphens: auto;
             max-width: 90vw;
         }
+        
+        #lightbox-folder-name {
+            font-size: 1.1rem;
+            color: var(--primary-color);
+            margin-top: 0.2rem;
+            font-weight: 600;
+            opacity: 0.9;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
 
         #lightbox-toolbar {
             display: flex;
@@ -1033,6 +1319,12 @@
         #lightbox-toolbar a:hover {
             background: rgba(255, 255, 255, 0.2);
         }
+        
+        /* AI Caption Icon in Lightbox */
+        #lightbox-caption-icon {
+            color: var(--ai-color);
+            border-color: var(--ai-color);
+        }
 
         #lightbox-content {
             display: flex;
@@ -1041,7 +1333,7 @@
             justify-content: center;
             width: 100%;
             height: 100%;
-            padding: 6rem 1rem 2rem;
+            padding: 6rem 1rem 6rem; /* Added bottom padding for caption */
         }
 
         #lightbox-media {
@@ -1049,7 +1341,7 @@
             align-items: center;
             justify-content: center;
             max-width: 95vw;
-            max-height: 90vh;
+            max-height: 80vh;
         }
 
         #lightbox-media img,
@@ -1061,8 +1353,89 @@
             box-shadow: var(--shadow-lg);
             cursor: grab;
         }
+        
+        #lightbox-ai-caption {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 700px;
+            max-height: 40vh; /* Altezza massima */
+            
+            /* Layout Flex per gestire header fisso e content scrollabile */
+            display: none; 
+            flex-direction: column;
+            overflow: hidden; /* Il contenitore NON scrolla */
+            
+            background: rgba(10, 10, 10, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--ai-color);
+            border-radius: 12px;
+            /* Padding ridotto sul container, spostato nel contenuto */
+            padding: 10px; 
+            
+            z-index: 2020;
+            color: #eee;
+            font-size: 1rem;
+            line-height: 1.5;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.7);
+        }
+        
+        #lightbox-ai-caption.visible {
+            display: flex; /* Importante: flex per il layout */
+            animation: slideUpCaption 0.3s ease-out;
+        }
 
-        #backToTopBtn {
+        /* Nuovo contenitore per il testo che scrolla */
+        #lightbox-ai-text-scroll {
+            overflow-y: auto; /* Solo questo div scrolla */
+            flex-grow: 1;
+            padding: 10px 15px; /* Padding interno per il testo */
+            margin-top: 5px;
+            padding-right: 5px; /* Spazio per scrollbar */
+        }
+
+        /* Stile scrollbar interno */
+        #lightbox-ai-text-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        #lightbox-ai-text-scroll::-webkit-scrollbar-thumb {
+            background-color: var(--ai-color);
+            border-radius: 3px;
+        }
+
+        @keyframes slideUpCaption {
+            from { transform: translate(-50%, 50px); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+        
+        .caption-close-btn {
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            background: rgba(10, 10, 10, 0.5); /* Sfondo leggero per leggibilità sopra testo */
+            border-radius: 50%;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+            line-height: 1;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            z-index: 10; /* Sempre sopra */
+        }
+        
+        .caption-close-btn:hover {
+            color: var(--danger-color);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        #backToTopBtn-Old {
             display: none;
             position: fixed;
             bottom: 110px;
@@ -1078,7 +1451,22 @@
             transition: all 0.3s;
             box-shadow: var(--shadow-md);
         }
-
+        #backToTopBtn {
+            display: none;
+            position: fixed;
+            bottom: 110px;
+            right: 30px;
+            z-index: 2000; 
+            font-size: 1.2rem;
+            border: none;
+            background: var(--primary-color);
+            color: white;
+            cursor: pointer;
+            padding: 12px 16px;
+            border-radius: 50%;
+            transition: all 0.3s;
+            box-shadow: var(--shadow-md);
+        }
         #load-more-container {
             text-align: center;
             padding: 3rem;
@@ -1105,7 +1493,8 @@
 
         #node-summary-overlay,
         #upload-overlay,
-        #sync-overlay {
+        #sync-overlay,
+        #ai-search-overlay {
             position: fixed;
             top: 0;
             left: 0;
@@ -1128,6 +1517,10 @@
         #upload-overlay {
             z-index: 2200;
         }
+        
+        #ai-search-overlay {
+            z-index: 2250;
+        }
 
         #sync-overlay {
             z-index: 2300;
@@ -1137,7 +1530,8 @@
         }
 
         #node-summary-overlay.visible,
-        #upload-overlay.visible {
+        #upload-overlay.visible,
+        #ai-search-overlay.visible {
             opacity: 1;
             pointer-events: auto;
         }
@@ -1154,6 +1548,114 @@
             flex-direction: column;
             transform: scale(0.95);
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* AI Modal Styles */
+        .ai-modal-panel {
+            background: var(--surface-color);
+            border: 1px solid var(--ai-color);
+            border-radius: 20px;
+            box-shadow: 0 0 30px rgba(255, 0, 255, 0.2);
+            width: 90vw;
+            max-width: 500px;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            transform: scale(0.95);
+            transition: transform 0.3s;
+            position: relative;
+        }
+        
+        #ai-search-overlay.visible .ai-modal-panel {
+            transform: scale(1);
+        }
+        
+        .ai-modal-header {
+            text-align: center;
+            color: white;
+        }
+        
+        .ai-modal-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .ai-search-textarea {
+            width: 100%;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: white;
+            padding: 1rem;
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        .ai-search-textarea:focus {
+            outline: none;
+            border-color: var(--ai-color);
+            box-shadow: 0 0 10px rgba(255,0,255,0.2);
+        }
+        
+        .ai-scope-selector {
+            display: flex;
+            background: var(--glass-bg);
+            padding: 4px;
+            border-radius: 10px;
+            border: 1px solid var(--glass-border);
+        }
+        
+        .ai-scope-option {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 8px;
+            font-weight: 500;
+            color: var(--text-muted);
+            transition: all 0.3s;
+        }
+        
+        .ai-scope-option.active {
+            background: var(--ai-color);
+            color: white;
+            font-weight: bold;
+        }
+        
+        .ai-search-submit {
+            background: var(--ai-gradient);
+            border: none;
+            color: white;
+            padding: 1rem;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+            box-shadow: 0 4px 15px rgba(255,0,255,0.3);
+        }
+        
+        .ai-search-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255,0,255,0.5);
+        }
+        
+        .ai-modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
         }
 
         .node-summary-panel {
@@ -1524,12 +2026,20 @@
                 margin-bottom: 1rem;
             }
 
-            .filter-form-grid {
-                display: none;
+            /* --- FIX: Allow panel to be visible on mobile when toggled --- */
+            .search-overlay-panel {
+                display: none; /* Hidden by default, but NOT !important so JS can override */
+                width: 100%;
+                margin-top: 5px;
+                padding: 1rem;
+            }
+            
+            .search-overlay-panel.visible {
+                display: block !important;
             }
 
-            .filter-form-grid.visible {
-                display: grid;
+            .filter-form-grid {
+                display: grid; /* Always grid inside the panel */
                 grid-template-columns: 1fr;
             }
 
@@ -1888,7 +2398,475 @@
             }
         }
 
+        .ai-input-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        #ai-search-clear-text {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--glass-border);
+            color: var(--text-muted);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            display: none; /* Nascosto di default */
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        #ai-search-clear-text:hover {
+            background: var(--danger-color);
+            color: white;
+            border-color: var(--danger-color);
+        }
+        
+        /* --- STILE TESTO BOTTONE AI --- */
+        .ai-btn-text {
+            color: var(--ai-color);
+            font-weight: bold;
+            margin-left: 8px;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            text-shadow: 0 0 5px rgba(255, 0, 255, 0.3);
+        }
+
+        /* --- LAYOUT MOBILE HEADER (Filtri + AI) --- */
+        .mobile-header-row {
+            display: none; /* Nascosto su desktop */
+            gap: 10px;
+            margin-bottom: 1rem;
+            width: 100%;
+        }
+
+        /* Modifiche Media Query per Mobile */
+        @media (max-width: 768px) {
+            /* Mostra la riga header su mobile */
+            .mobile-header-row {
+                display: flex; 
+            }
+            
+            /* Il bottone filtri prende lo spazio rimanente */
+            #mobile-filter-toggle {
+                display: block; /* Assicuriamoci sia visibile */
+                margin-bottom: 0 !important; /* Rimuove margine vecchio */
+                flex-grow: 1; 
+                text-align: center;
+                width: auto; /* Reset larghezza */
+            }
+
+            /* Nascondi il bottone AI "Desktop" che sta in basso */
+            #ai-search-toggle-desktop {
+                display: none !important;
+            }
+            
+            /* Hide the Desktop Toggle */
+            #search-toggle-desktop {
+                display: none !important;
+            }
+
+            /* Stile per il bottone AI "Mobile" in alto */
+            #ai-search-toggle-mobile {
+                background: var(--glass-bg);
+                border: 1px solid var(--ai-color);
+                color: white;
+                border-radius: 8px;
+                padding: 0 1rem;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0; /* Non si rimpicciolisce */
+                transition: background 0.3s;
+            }
+            
+            #ai-search-toggle-mobile:active {
+                background: var(--ai-surface);
+            }
+        }
+        
+        /* --- STILI AI BANNER (DESKTOP & MOBILE) --- */
+        .ai-banner {
+            background: var(--ai-surface);
+            border-bottom: 1px solid var(--ai-color);
+            padding: 1rem 2rem;
+            /* DESKTOP DEFAULT: Flexbox su una riga */
+            display: flex; 
+            align-items: center;
+            justify-content: space-between;
+            color: var(--ai-color);
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(255, 0, 255, 0.2);
+            animation: glow 2s infinite alternate;
+        }
+
+        .ai-banner-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.1rem;
+            overflow: hidden; /* Per desktop */
+            white-space: nowrap; /* Per desktop */
+            text-overflow: ellipsis; /* Per desktop */
+            margin-right: 15px;
+        }
+
+        .ai-query-part {
+            color: white;
+            margin-left: 5px;
+        }
+
+        .ai-banner-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        /* --- LAYOUT MOBILE AI BANNER (GRID) --- */
+        @media (max-width: 768px) {
+            .ai-banner, .global-search-banner {
+                padding: 12px;
+                /* Passiamo a Grid per controllo posizionale preciso */
+                display: grid !important; 
+                grid-template-columns: 1fr auto; /* Colonna 1: Label, Colonna 2: Bottoni */
+                gap: 10px 0; /* Spazio verticale tra le righe */
+                height: auto;
+            }
+
+            .ai-banner-title {
+                /* TRUCCO: display: contents fa sparire il div contenitore dal layout,
+                   così i suoi figli (span scope e span query) diventano figli diretti della Grid .ai-banner */
+                display: contents !important; 
+            }
+
+            /* RIGA 1, COLONNA 1: Label (es. "🧠 Global") */
+            .ai-scope-part {
+                grid-column: 1;
+                grid-row: 1;
+                align-self: center;
+                font-size: 0.95rem;
+                white-space: nowrap;
+            }
+
+            /* RIGA 1, COLONNA 2: Bottoni (Edit/Exit) */
+            .ai-banner-actions {
+                grid-column: 2;
+                grid-row: 1;
+                align-self: center;
+            }
+            
+            /* Bottoni un po' più compatti su mobile */
+            .ai-banner-actions button {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.85rem;
+            }
+
+            /* RIGA 2: Query utente (Tutta larghezza) */
+            .ai-query-part {
+                grid-column: 1 / -1; /* Occupa tutte le colonne */
+                grid-row: 2;
+                margin-left: 0;
+                white-space: normal; /* Permette a capo */
+                word-break: break-word;
+                background: rgba(0,0,0,0.3); /* Sfondo scuro per risaltare */
+                padding: 8px 10px;
+                border-radius: 8px;
+                border-left: 3px solid var(--ai-color);
+                font-weight: normal;
+                font-size: 1rem;
+                line-height: 1.4;
+            }
+        }
+ 
+        /* --- CAPTION (Start/Middle/End) --- */
+        .ai-caption-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-left: 3px solid var(--ai-color);
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 15px;
+            padding: 0;
+            overflow: hidden;
+            transition: background 0.3s;
+        }
+        
+        .ai-caption-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .ai-card-header {
+            background: rgba(255, 0, 255, 0.15);
+            color: var(--ai-color);
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            padding: 5px 10px;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .ai-card-body {
+            padding: 10px 12px;
+            color: #ddd;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        /* Icone decorative per i frame */
+        .ai-card-header::before {
+            content: '⏱️';
+            font-size: 0.9rem;
+        }
+        /* --- MODAL INFO AI --- */
+        #ai-info-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 3000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        #ai-info-overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .ai-info-panel {
+            background: #111;
+            border: 2px solid var(--ai-color); /* Bordo Fuxia */
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 0 30px rgba(255, 0, 255, 0.25); /* Bagliore */
+            text-align: center;
+            color: #eee;
+        }
+
+        .ai-info-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 2rem;
+            cursor: pointer;
+            line-height: 1;
+        }
+        
+        .ai-info-close:hover { color: var(--ai-color); }
+
+        .ai-hero-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            filter: drop-shadow(0 0 10px var(--ai-color));
+        }
+
+        .ai-info-title {
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #fff 0%, var(--ai-color) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .ai-info-text {
+            font-size: 1rem;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+            color: #ccc;
+        }
+
+        .ai-comparison-box {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            text-align: left;
+            border-left: 4px solid var(--ai-color);
+        }
+
+        .ai-badge-light { color: var(--success-color); font-weight: bold; }
+        .ai-badge-full { color: var(--ai-color); font-weight: bold; }
+
+        .ai-cta-btn {
+            display: inline-block;
+            background: linear-gradient(90deg, var(--ai-color) 0%, #a0f 100%);
+            color: white;
+            text-decoration: none;
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 5px 15px rgba(180, 0, 255, 0.4);
+        }
+
+        .ai-cta-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(180, 0, 255, 0.6);
+        }
+        
+        /* ---  MORE MODAL INFO AI --- */
+        .ai-status-alert {
+            background: rgba(255, 50, 50, 0.1);
+            border: 1px solid rgba(255, 50, 50, 0.4);
+            color: #ffcccc;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .ai-status-alert code {
+            background: rgba(0,0,0,0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #fff;
+            font-family: monospace;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .ai-steps-list {
+            text-align: left;
+            margin: 1.5rem 0;
+            padding-left: 1.5rem;
+            color: #ddd;
+        }
+        
+        .ai-steps-list li {
+            margin-bottom: 0.8rem;
+        }
+        
+        .ai-steps-list strong {
+            color: var(--ai-color);
+        }
+        /* --- STILI PER IL BLOCCO READ MORE (ACCORDION) --- */
+        .ai-details {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            margin: 1.5rem 0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: left;
+            overflow: hidden;
+            transition: background 0.3s;
+        }
+
+        .ai-details:hover {
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .ai-details summary {
+            padding: 12px 15px;
+            cursor: pointer;
+            font-weight: bold;
+            color: var(--ai-color);
+            list-style: none; /* Nasconde triangolo default */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+
+        /* Rimuove marker default su Safari/Chrome */
+        .ai-details summary::-webkit-details-marker {
+            display: none;
+        }
+
+        /* Freccetta personalizzata animata */
+        .ai-details summary::after {
+            content: '▼';
+            font-size: 0.7rem;
+            color: #888;
+            transition: transform 0.3s ease;
+        }
+
+        .ai-details[open] summary::after {
+            transform: rotate(180deg);
+            color: var(--ai-color);
+        }
+
+        .ai-details-content {
+            padding: 0 15px 15px 15px;
+            color: #ccc;
+            font-size: 1.05rem;
+            line-height: 1.6;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            margin-top: 5px;
+            padding-top: 10px;
+        }
+        
+        .ai-details-content em {
+            color: #fff;
+            font-style: italic;
+        }
+        
+        .limit-warning-box {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid var(--favorite-color);
+            color: var(--text-muted);
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .limit-warning-icon {
+            font-size: 1.2rem;
+        }
+        
+        /* --- QUICK RESET FILTER ICON --- */
+        .filter-reset-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            margin-left: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            z-index: 10; /* Ensure it stays on top */
+        }
+
+        .filter-reset-icon:hover {
+            background: var(--danger-color);
+            transform: scale(1.1);
+        }
+        
         </style>
+        
 </head>
 
 <body>
@@ -1921,76 +2899,259 @@
     </aside>
     <div class="main-content">
         <header class="breadcrumbs">
-            <div class="breadcrumb-links">
+            <div class="breadcrumb-links" style="{% if (is_ai_search and ' ||| ' not in ai_query) or is_global_search %}display:none;{% endif %}">
                 {% for crumb in breadcrumbs %}
                 <a href="{{ url_for('gallery_view', folder_key=crumb.key) }}">{{ crumb.display_name }}</a>
                 {% if not loop.last %}<span>/</span>{% endif %}
                 {% endfor %}
             </div>
             <div class="gallery-sort-controls">
+                <!-- MODIFIED: Show count for Global/AI searches too -->
                 <span class="file-count-badge">
-                    📂 {{ total_files }} Files {% if total_files != total_folder_files %}({{ total_folder_files }} Total){% endif %}
+                    {% if is_ai_search or is_global_search %}
+                        🔍 Found {{ total_files }} Result{% if total_files != 1 %}s{% endif %}
+                    {% else %}
+                        📂 {{ total_files }} Files {% if total_files != total_folder_files %}({{ total_folder_files }} Total){% endif %}
+                    {% endif %}
                 </span>
-                {% set current_sort_by = request.args.get('sort_by', 'date') %}
-                {% set current_sort_order = request.args.get('sort_order', 'desc') %}
-                {% set date_is_active = current_sort_by == 'date' %}
-                {% set date_next_order = 'asc' if date_is_active and current_sort_order == 'desc' else 'desc' %}
-                {% set date_query_params = dict(request.args.to_dict(flat=False), sort_by='date',
-                sort_order=date_next_order) %}
-                <a href="{{ url_for('gallery_view', folder_key=current_folder_key, **date_query_params) }}"
-                    class="sort-btn {{ 'active' if date_is_active else '' }}">
-                    Sort by Date {% if date_is_active %}{{ '↑' if current_sort_order == 'asc' else '↓' }}{% endif %}
-                </a>
-                {% set name_is_active = current_sort_by == 'name' %}
-                {% set name_next_order = 'desc' if name_is_active and current_sort_order == 'asc' else 'asc' %}
-                {% set name_query_params = dict(request.args.to_dict(flat=False), sort_by='name',
-                sort_order=name_next_order) %}
-                <a href="{{ url_for('gallery_view', folder_key=current_folder_key, **name_query_params) }}"
-                    class="sort-btn {{ 'active' if name_is_active else '' }}">
-                    Sort by Name {% if name_is_active %}{{ '↑' if current_sort_order == 'asc' else '↓' }}{% endif %}
-                </a>
+                        
+                {% if not is_ai_search %}
+                    {% set current_sort_by = request.args.get('sort_by', 'date') %}
+                    {% set current_sort_order = request.args.get('sort_order', 'desc') %}
+                    {% set date_is_active = current_sort_by == 'date' %}
+                    {% set date_next_order = 'asc' if date_is_active and current_sort_order == 'desc' else 'desc' %}
+                    {% set date_query_params = dict(request.args.to_dict(flat=False), sort_by='date',
+                    sort_order=date_next_order) %}
+                    <a href="{{ url_for('gallery_view', folder_key=current_folder_key, **date_query_params) }}"
+                        class="sort-btn {{ 'active' if date_is_active else '' }}">
+                        Sort by Date {% if date_is_active %}{{ '↑' if current_sort_order == 'asc' else '↓' }}{% endif %}
+                    </a>
+                    {% set name_is_active = current_sort_by == 'name' %}
+                    {% set name_next_order = 'desc' if name_is_active and current_sort_order == 'asc' else 'asc' %}
+                    {% set name_query_params = dict(request.args.to_dict(flat=False), sort_by='name',
+                    sort_order=name_next_order) %}
+                    <a href="{{ url_for('gallery_view', folder_key=current_folder_key, **name_query_params) }}"
+                        class="sort-btn {{ 'active' if name_is_active else '' }}">
+                        Sort by Name {% if name_is_active %}{{ '↑' if current_sort_order == 'asc' else '↓' }}{% endif %}
+                    </a>
+                {% endif %}
             </div>
         </header>
+
+        {% if is_ai_search %}
+        <div class="ai-banner">
+            <div class="ai-banner-title" id="ai-banner-text" data-raw-query="{{ ai_query }}">
+                <span>🧠</span> Loading AI Results...
+            </div>
+            <div class="ai-banner-actions">
+                <button onclick="openAiSearchModal()" title="Edit Search Parameters" style="margin-right: 8px;">
+                    ✏️ Edit
+                </button>
+                <button onclick="window.location.href='{{ url_for('gallery_view', folder_key=current_folder_key) }}'">
+                    Exit AI Mode
+                </button>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- NEW GLOBAL STANDARD SEARCH BANNER -->
+        {% if is_global_search and not is_ai_search %}
+        <div class="global-search-banner">
+            <div class="ai-banner-title">
+                <span class="ai-scope-part"><span>🌐</span> Global Search Results</span>
+                <span class="ai-query-part">Showing all matches</span>
+            </div>
+            <div class="ai-banner-actions">
+                <button onclick="window.location.href='{{ url_for('gallery_view', folder_key=current_folder_key) }}'">
+                    Exit Global Search
+                </button>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if not is_ai_search %}
         <div class="filter-bar">
-            <form method="GET" action="{{ url_for('gallery_view', folder_key=current_folder_key) }}">
+            <!-- WRAPPER FOR TOGGLE FORM -->
+            <form method="GET" action="{{ url_for('gallery_view', folder_key=current_folder_key) }}" id="filter-form">
                 <input type="hidden" name="sort_by" value="{{ request.args.get('sort_by', 'date') }}">
                 <input type="hidden" name="sort_order" value="{{ request.args.get('sort_order', 'desc') }}">
-                <button type="button" id="mobile-filter-toggle">⚙️ Filters & Options</button>
-                <div class="filter-form-grid" id="filter-form-grid">
-                    <div class="filter-group"><label for="search-input">🔍 Search by Name</label><input type="text"
-                            name="search" id="search-input" placeholder="Search files..."
-                            value="{{ request.args.get('search', '') }}"></div>
-                    <div class="filter-group"><label for="extension-select">📄 Extensions</label><select
-                            name="extension" id="extension-select" multiple>{% for ext in available_extensions %}<option
-                                value="{{ ext }}" {% if ext in selected_extensions %}selected{% endif %}>{{ ext }}
-                            </option>{% endfor %}</select></div>
-                    <div class="filter-group"><label for="prefix-select">🏷️ Prefixes</label><select name="prefix"
-                            id="prefix-select" multiple>{% for pfx in available_prefixes %}{% if pfx != '.gallery ' %}
-                            <option value="{{ pfx }}" {% if pfx in selected_prefixes %}selected{% endif %}>{{ pfx }}
-                            </option>{% endif %}{% endfor %}
-                        </select></div>
-                    <div class="filter-group">
-                        <div class="filter-group-inline"><input type="checkbox" name="favorites" id="favorites-check"
-                                value="true" {% if show_favorites %}checked{% endif %}><label for="favorites-check">⭐
-                                Favorites Only</label></div>
-                    </div>
-                    <div class="filter-group mobile-actions-only"><label>Actions</label>
-                        <div class="mobile-actions-row"><button type="submit">🔍 Filter</button><a
-                                href="{{ url_for('gallery_view', folder_key=current_folder_key) }}">🔄 Reset</a></div>
-                    </div>
+                
+                <!-- MOBILE HEADER: Filters + AI -->
+                <div class="mobile-header-row">
+                    <!-- Updated Button with Quick Reset X -->
+                    <button type="button" id="mobile-filter-toggle">
+                        ⚙️ Filters {% if active_filters_count > 0 %}({{ active_filters_count }}){% endif %}
+                        {% if active_filters_count > 0 %}
+                            <span class="filter-reset-icon" title="Clear all filters">✕</span>
+                        {% endif %}
+                    </button>
+                    
+                    {% if enable_ai_search %}
+                    <button type="button" id="ai-search-toggle-mobile" title="Semantic AI Search">
+                        🧠 <span class="ai-btn-text">AI Search</span>
+                    </button>
+                    {% endif %}
                 </div>
+                
+                <!-- DESKTOP ACTIONS ROW (BUTTONS) -->
                 <div class="filter-actions-row">
-                    <div class="filter-actions-row desktop-actions-only"><button type="submit">🔍 Filter</button><a
-                            href="{{ url_for('gallery_view', folder_key=current_folder_key) }}">🔄 Reset</a></div>
-                    <button type="button" id="main-select-all-btn">✅ Select All</button><button type="button"
-                        id="show-upload-modal-btn">☁️ Upload</button><button type="button" id="rescan-folder-btn"
-                        style="background:var(--workflow-color);border-color:var(--workflow-color);">♻️
-                        Rescan</button><button type="button" id="refresh-btn" class="refresh-btn">♻️ Refresh</button>
+                    <!-- Standard Filter Toggle Desktop with Quick Reset X -->
+                    <button type="button" id="search-toggle-desktop" class="desktop-actions-only {% if active_filters_count > 0 %}active-filters{% endif %}">
+                        🔍 Search & Filters {% if active_filters_count > 0 %}({{ active_filters_count }}){% endif %}
+                        {% if active_filters_count > 0 %}
+                            <span class="filter-reset-icon" title="Clear all filters">✕</span>
+                        {% endif %}
+                    </button>
+
+                    <!-- AI Search Button (DESKTOP) - Hidden if AI is not enabled -->
+                    {% if enable_ai_search %}
+                    <button type="button" class="ai-btn" id="ai-search-toggle-desktop" title="Semantic AI Search">
+                        🧠 <span class="ai-btn-text">AI Search</span>
+                    </button>
+                    {% endif %}
+                    
+                    <!-- Select All (Always visible) -->
+                    <button type="button" id="main-select-all-btn">✅ Select All</button>
+
+                    <!-- Folder Actions: Hide during Global Search (Standard or AI Global) -->
+                    {% if not is_global_search and not (is_ai_search and ' ||| ' not in ai_query) %}
+                        <button type="button" id="show-upload-modal-btn">☁️ Upload</button>
+                        <button type="button" id="rescan-folder-btn" style="background:var(--workflow-color);border-color:var(--workflow-color);">♻️ Rescan</button>
+                        <button type="button" id="refresh-btn" class="refresh-btn">♻️ Refresh</button>
+                    {% endif %}
+                </div>
+
+                <!-- COLLAPSIBLE FILTER PANEL (DESKTOP & MOBILE INTEGRATED) -->
+                <!-- On desktop this is handled by search-toggle-desktop via JS. On mobile by mobile-filter-toggle via JS. -->
+                <div class="search-overlay-panel" id="desktop-search-panel">
+                    <div class="filter-form-grid" id="filter-form-grid">
+                        
+                        <!-- NEW SCOPE SELECTOR (No auto-submit) -->
+                        <div class="filter-group">
+                            <label>Search Scope</label>
+                            <div class="scope-options">
+                                <label class="scope-label {% if current_scope == 'local' %}active{% endif %}">
+                                    <input type="radio" name="scope" value="local" {% if current_scope == 'local' %}checked{% endif %}>
+                                    📂 Current Folder
+                                </label>
+                                <label class="scope-label {% if current_scope == 'global' %}active{% endif %}">
+                                    <input type="radio" name="scope" value="global" {% if current_scope == 'global' %}checked{% endif %}>
+                                    🌐 Global (All)
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="filter-group"><label for="search-input">🔍 Search by Name</label><input type="text"
+                                name="search" id="search-input" placeholder="Search files..."
+                                value="{{ request.args.get('search', '') }}"></div>
+                        <div class="filter-group">
+                            <label for="workflow-files-input">⚙️ Workflow Files</label>
+                            <input type="text" 
+                                   name="workflow_files" 
+                                   id="workflow-files-input" 
+                                   placeholder="e.g. wan2.2, lorax, ab.png" 
+                                   value="{{ request.args.get('workflow_files', '') }}"
+                                   title="Search for filenames used inside the workflow (e.g. models, loras, inputs). Separate multiple terms with commas.">
+                        </div>
+                        <!-- PROMPT FILTER -->
+                        <div class="filter-group">
+                            <label for="workflow-prompt-input">🎨 Prompt Keywords</label>
+                            <input type="text" 
+                                   name="workflow_prompt" 
+                                   id="workflow-prompt-input" 
+                                   placeholder="e.g. woman, kimono..." 
+                                   value="{{ request.args.get('workflow_prompt', '') }}"
+                                   title="Search for keywords inside the workflow positive prompt. Separate multiple terms with commas.">
+                        </div>
+                        <div class="filter-group"><label for="extension-select">📄 Extensions</label><select
+                                name="extension" id="extension-select" multiple>{% for ext in available_extensions %}<option
+                                    value="{{ ext }}" {% if ext in selected_extensions %}selected{% endif %}>{{ ext }}
+                                </option>{% endfor %}</select></div>
+                        <div class="filter-group">
+                            <label for="prefix-select">🏷️ Prefixes</label>
+                            
+                            <!-- 1. Warning Container (Hidden/Shown by JS/CSS) -->
+                            <div id="prefix-warning-container" class="limit-warning-box" style="display: {% if prefix_limit_reached %}flex{% else %}none{% endif %};" title="To ensure good performance, the list is hidden.">
+                                <span class="limit-warning-icon">⚠️</span>
+                                <span>
+                                    Too many prefixes found.<br>
+                                    Please use <strong>Search by Name</strong> instead.
+                                </span>
+                            </div>
+
+                            <!-- 2. Dropdown Container (Hidden/Shown by JS/CSS) -->
+                            <div id="prefix-select-container" style="display: {% if prefix_limit_reached %}none{% else %}block{% endif %};">
+                                <select name="prefix" id="prefix-select" multiple>
+                                    {% for pfx in available_prefixes %}
+                                        {% if pfx != '.gallery ' %}
+                                            <option value="{{ pfx }}" {% if pfx in selected_prefixes %}selected{% endif %}>{{ pfx }}</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- NEW: Date Range Group -->
+                        <div class="filter-group">
+                            <label>📅 Date Range</label>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <div style="flex: 1; min-width: 160px;">
+                                    <label for="start-date" style="font-size: 0.75rem; margin-bottom: 2px; display:block;">From:</label>
+                                    <input type="date" name="start_date" id="start-date" 
+                                           value="{{ request.args.get('start_date', '') }}" 
+                                           style="width: 100%;">
+                                </div>
+                                <div style="flex: 1; min-width: 160px;">
+                                    <label for="end-date" style="font-size: 0.75rem; margin-bottom: 2px; display:block;">To:</label>
+                                    <input type="date" name="end_date" id="end-date" 
+                                           value="{{ request.args.get('end_date', '') }}" 
+                                           style="width: 100%;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- MODIFIED: Options Group -->
+                        <div class="filter-group">
+                            <label>Options</label>
+                            
+                            <!-- Favorites -->
+                            <div class="filter-group-inline">
+                                <input type="checkbox" name="favorites" id="favorites-check" value="true" 
+                                       {% if request.args.get('favorites') == 'true' %}checked{% endif %}>
+                                <label for="favorites-check">⭐ Favorites Only</label>
+                            </div>
+
+                            <!-- No Workflow -->
+                            <div class="filter-group-inline">
+                                <input type="checkbox" name="no_workflow" id="no-workflow-check" value="true" 
+                                       {% if request.args.get('no_workflow') == 'true' %}checked{% endif %}>
+                                <label for="no-workflow-check">🚫 No Workflow</label>
+                            </div>
+
+                            <!-- No AI Caption (Conditional) -->
+                            {% if enable_ai_search %}
+                            <div class="filter-group-inline">
+                                <input type="checkbox" name="no_ai_caption" id="no-ai-caption-check" value="true" 
+                                       {% if request.args.get('no_ai_caption') == 'true' %}checked{% endif %}>
+                                <label for="no-ai-caption-check">😶 No AI Caption</label>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label>Actions</label>
+                             <div class="filter-actions-row"><button type="submit">🔍 Filter</button><a
+                                    href="{{ url_for('gallery_view', folder_key=current_folder_key) }}">🔄 Reset</a></div>
+                        </div>
+                    </div>
                 </div>
             </form>
         </div>
+        {% endif %}
+        
         <div id="gallery-anchor"></div>
         <main class="gallery-container" id="gallery-container"></main>
+        
         <div id="load-more-container"><button id="load-more-btn">📂 Load More</button></div>
     </div>
     <button onclick="scrollToTop()" id="backToTopBtn" title="Go to Top" style="display: none;"><svg width="20"
@@ -2023,23 +3184,27 @@
     </div>
     <div id="lightbox-overlay">
         <div id="lightbox-header">
-            <div id="lightbox-title"></div>
-            <!-- MODIFICATION START: Added rename button to the lightbox toolbar -->
+            <div style="display:flex; flex-direction:column; align-items:center;">
+                <div id="lightbox-title"></div>
+                <div id="lightbox-folder-name"></div>
+            </div>
+            
             <div id="lightbox-toolbar">
                 <button id="lightbox-zoom-out" title="Zoom Out">-</button>
                 <button id="lightbox-zoom-in" title="Zoom In">+</button>
                 <a id="lightbox-download" href="#" title="Download File">💾</a>
                 <button id="lightbox-rename-btn" title="Rename File">✏️</button>
                 <button id="lightbox-summary-btn" title="Node Summary">📝</button>
+                <button id="lightbox-caption-icon" title="View AI Caption" style="display:none;">🧠</button>
                 <a id="lightbox-workflow" href="#" class="workflow-btn" title="Download Workflow">⚙️</a>
                 <button id="lightbox-delete-btn" title="Delete File">🗑️</button>
                 <a id="lightbox-new-tab" href="#" target="_blank" title="Open in New Tab">↗️</a>
                 <button class="close-btn" onclick="closeLightbox()" title="Close">×</button>
             </div>
-            <!-- MODIFICATION END -->
         </div>
         <div id="lightbox-content">
             <div id="lightbox-media"></div>
+            <div id="lightbox-ai-caption"></div>
         </div>
         <button id="lightbox-prev" class="lightbox-nav">‹</button><button id="lightbox-next"
             class="lightbox-nav">›</button>
@@ -2143,6 +3308,118 @@
             </div>
         </div>
     </div>
+    
+    <!-- AI Search Modal -->
+    <div id="ai-search-overlay">
+        <div class="ai-modal-panel">
+            <button class="ai-modal-close" id="ai-modal-close">×</button>
+            <div class="ai-modal-header">
+                <h2>🧠 Semantic Search</h2>
+                <p style="color: #ccc; margin-top: 5px;">Powered by SmartGallery AI</p>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div class="ai-search-options-row">
+                    <div style="flex:1;">
+                        <label style="color: #fff; font-weight: bold; display:block; margin-bottom:5px;">Search Scope:</label>
+                        <div class="ai-scope-selector">
+                            <div class="ai-scope-option active" data-scope="global" onclick="selectAiScope('global')">Global (All)</div>
+                            <div class="ai-scope-option" data-scope="local" onclick="selectAiScope('local')">Current Folder</div>
+                        </div>
+                    </div>
+                    <div>
+                        <label style="color: #fff; font-weight: bold; display:block; margin-bottom:5px;">Max Results:</label>
+                        <div class="ai-limit-container">
+                            <!-- Minus Button -->
+                            <button class="ai-limit-btn" onclick="adjustAiLimit(-50)">-</button>
+                            
+                            <!-- Input (native arrows hidden via CSS) -->
+                            <input type="number" id="ai-search-limit" class="ai-limit-input" value="100" min="10" max="1000" step="10">
+                            
+                            <!-- Plus Button -->
+                            <button class="ai-limit-btn" onclick="adjustAiLimit(50)">+</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div>
+                <div class="ai-input-wrapper">
+                    <textarea id="ai-search-input" class="ai-search-textarea" placeholder="Describe what you are looking for in English..."></textarea>
+                    <button id="ai-search-clear-text" title="Clear Query">×</button>
+                </div>
+            </div>
+            
+            <button id="ai-search-submit" class="ai-search-submit">Search</button>
+        </div>
+    </div>
+
+    <!-- AI INFO / PROMO MODAL -->
+    <div id="ai-info-overlay">
+        <div class="ai-info-panel">
+            <button class="ai-info-close" onclick="closeAiInfoModal()">×</button>
+            
+            <div class="ai-hero-icon">🧠✨</div>
+            <h2 class="ai-info-title">Enable Semantic AI <span style="font-size:0.6em; color:#fff; font-weight:normal;">(Free & Local)</span></h2>
+            
+            <!-- STATUS ALERT BOX -->
+            <div class="ai-status-alert">
+                ⚠️ <strong>AI is currently disabled.</strong><br>
+                Your environment variable is detected as: <code>ENABLE_AI_SEARCH=False</code>
+                <p class="ai-info-text">
+                    To unlock the AI features, you need to set the variable to <code>true</code>. 
+                    Depending on your current installation, follow the steps below:
+                </p>
+
+            </div>
+
+            <div class="ai-comparison-box">
+                <h3 style="margin-top:0; color:white;">Activation Guide:</h3>
+                
+                <!-- SCENARIO A: GIÀ INSTALLATO -->
+                <div style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                    <strong>🔹 Case A: You already have the AI files</strong><br>
+                    <span style="font-size: 0.9rem; color: #bbb;">(You previously downloaded the full AI version)</span><br>
+                    <p style="margin: 5px 0 0 0;">
+                        You just need to set <code>ENABLE_AI_SEARCH=true</code> in your startup script or environment and restart. No new downloads required.
+                    </p>
+                </div>
+
+                <!-- SCENARIO B: NUOVA INSTALLAZIONE -->
+                <div>
+                    <strong>🔹 Case B: You are on the Light Version</strong><br>
+                    <span style="font-size: 0.9rem; color: #bbb;">(First time enabling AI)</span><br>
+                    <ol class="ai-steps-list" style="margin-top: 5px; margin-bottom: 0;">
+                        <li>
+                            <strong>Upgrade:</strong> Read the instructions & Install the Full AI Configuration from our GitHub repo ->  
+                            <a href="https://github.com/biagiomaf/smart-comfyui-gallery" target="_blank" style="color:var(--ai-color); word-break: break-all;">*here*</a> 
+                        </li>
+                        <li><strong>Activate:</strong> Set ENABLE_AI_SEARCH=true and restart.</li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- SEMANTIC SEARCH EXPLANATION (COLLAPSIBLE) -->
+            <details class="ai-details">
+                <summary>🤔 What is Semantic Search? (Read More)</summary>
+                <div class="ai-details-content">
+                    <p>Standard search only looks for exact filenames (e.g., <code>img_001.png</code>). Semantic Search is different: it <strong>understands</strong> the content of your image.</p>
+                    <p>Using <strong>Florence-2</strong> (Vision) and <strong>Nomic</strong> (Embeddings), the system scans your images and creates a mathematical map of their meaning.</p>
+                    <p>This allows you to search for concepts like <em>"a cyberpunk city in the rain"</em> or <em>"red flowers on a table"</em>, even if those words are not in the filename. We are thrilled to bring this advanced technology to your local machine!</p>
+                </div>
+            </details>
+                
+            <p style="font-size: 1.2rem; color: #aaa; margin-bottom: 1.5rem;">
+                🛡️ <strong>Privacy Guaranteed:</strong> Our AI models run <strong>100% locally</strong>. 
+                No external API calls. Your images never leave your computer.
+            </p>
+
+            <a href="https://github.com/biagiomaf/smart-comfyui-gallery" target="_blank" class="ai-cta-btn">
+                🚀 View Installation Guide
+            </a>
+        </div>
+    </div>
+    
     <div id="rescan-modal-overlay"
         style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.8);backdrop-filter:blur(10px);z-index:2400;display:flex;justify-content:center;align-items:center;opacity:0;pointer-events:none;transition:opacity 0.3s;">
         <div
@@ -2219,6 +3496,15 @@
         let totalFolderFiles = {{ total_folder_files }};
         const currentFolderKey = '{{ current_folder_key }}';
         const ancestorKeys = {{ ancestor_keys | tojson }};
+        
+         // --- AI SEARCH VARIABLES ---
+        const enableAiSearch = {{ enable_ai_search | tojson }};
+        const isAiSearch = {{ is_ai_search | tojson }};
+        const isGlobalSearch = {{ is_global_search | tojson }};
+        const activeFiltersCount = {{ active_filters_count }};
+        const rawAiQuery = {{ ai_query | tojson }};
+        const isAiGlobal = isAiSearch && (rawAiQuery && rawAiQuery.indexOf(" ||| ") === -1);
+        let currentAiScope = 'global'; 
 
         const galleryContainer = document.getElementById('gallery-container');
         const selectionBar = document.getElementById('selection-bar');
@@ -2285,8 +3571,14 @@
             const folderDisplayName = folder.display_name;
             const folderIcon = '📁';
             let itemHTML;
+            
             if (isMovePanel) {
-                itemHTML = ` <div class="folder-item"> <span class="toggle-btn ${!hasChildren ? 'empty' : ''}"></span> <span class="folder-link" title="${folderDisplayName}">${folderIcon} ${folderDisplayName}</span> <button class="move-here-btn" data-folder-key="${folderKey}" title="Move here" ${folderKey === currentFolderKey ? 'disabled' : ''}>➜</button> </div>`;
+                // MODIFICA: Calcolo se il bottone deve essere disabilitato.
+                // Disabilita SOLO SE è il folder corrente E NON siamo in ricerca AI/Global.
+                const shouldDisable = (folderKey === currentFolderKey && !isAiGlobal && !isGlobalSearch);
+                const disabledAttr = shouldDisable ? 'disabled' : '';
+                
+                itemHTML = ` <div class="folder-item"> <span class="toggle-btn ${!hasChildren ? 'empty' : ''}"></span> <span class="folder-link" title="${folderDisplayName}">${folderIcon} ${folderDisplayName}</span> <button class="move-here-btn" data-folder-key="${folderKey}" title="Move here" ${disabledAttr}>➜</button> </div>`;
             } else {
                 itemHTML = ` <div class="folder-item ${isActive ? 'active' : ''}"> <span class="toggle-btn ${!hasChildren ? 'empty' : ''}"></span> <span class="folder-link navigation-link" data-folder-url="/galleryout/view/${folderKey}" title="${folderDisplayName}">${folderIcon} ${folderDisplayName}</span> ${(folderKey !== '_root_' && !protectedFolderKeys.includes(folderKey)) ? `<div class="folder-actions"> <button class="folder-action-btn" title="Rename" data-action="rename" data-name="${folderDisplayName}">✏️</button> <button class="folder-action-btn" title="Delete" data-action="delete" data-name="${folderDisplayName}">🗑️</button> </div>` : ''} </div>`;
             }
@@ -2417,8 +3709,10 @@
         function createGalleryItem(file) {
             const item = document.createElement('div');
             item.className = 'gallery-item';
+            if (isGlobalSearch) item.classList.add('ai-global'); // reuse global style
             item.dataset.fileId = file.id;
             item.dataset.fileType = file.type;
+            item.dataset.aiCaption = file.ai_caption || '';
             item.setAttribute('draggable', 'true');
             item.addEventListener('dragstart', (event) => dragStart(event, file.id));
             let mediaHTML = '';
@@ -2448,13 +3742,45 @@
                 const formattedScannedDate = scannedDate.toLocaleString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
                 scannedHTML = `<div class="file-scanned-time" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; opacity: 0.8;">🔍 Scanned: ${formattedScannedDate}</div>`;
             }
+            
+            // AI Score Badge
+            let aiBadgeHTML = '';
+            if (isAiSearch && file.score) {
+                const percentage = Math.round(file.score * 100);
+                aiBadgeHTML = `<div class="ai-badge">score ${percentage}%</div>`;
+            }
 
-            item.innerHTML = `<div class="selection-checkmark" onclick="toggleSelection(event, '${file.id}', this.closest('.gallery-item'))">✓</div><div class="thumbnail-link" onclick="openLightbox(event, '${file.id}'); event.stopPropagation();" draggable="false"><div class="thumbnail-wrapper">${mediaHTML}${file.has_workflow ? `<a href="/galleryout/workflow/${file.id}" class="workflow-badge" onclick="event.stopPropagation()">⚙️ Workflow</a>` : ''}${file.duration ? `<span class="duration-overlay">⏱️ ${file.duration}</span>` : ''}</div></div><div class="item-info"><div><p title="${file.name}"><strong>${file.name}</strong></p>${metadataHTML}${scannedHTML}</div><div class="item-actions">${summaryButtonHTML}<button class="favorite-btn ${file.is_favorite ? 'favorited' : ''}" title="Favorite" onclick="toggleFavorite(event, '${file.id}', this)">${file.is_favorite ? '⭐' : '☆'}</button><a href="/galleryout/download/${file.id}" onclick="event.stopPropagation()" title="Download">💾</a><button class="delete-btn" onclick="deleteFile(event, '${file.id}', this)">🗑️</button></div></div>`;
+            item.innerHTML = `
+                <div class="selection-checkmark" onclick="toggleSelection(event, '${file.id}', this.closest('.gallery-item'))">✓</div>
+                <div class="thumbnail-link" onclick="openLightbox(event, '${file.id}'); event.stopPropagation();" draggable="false">
+                    <div class="thumbnail-wrapper">
+                        ${mediaHTML}
+                        ${file.has_workflow ? `<a href="/galleryout/workflow/${file.id}" class="workflow-badge" onclick="event.stopPropagation()">⚙️ Workflow</a>` : ''}
+                        ${aiBadgeHTML}
+                        ${file.duration ? `<span class="duration-overlay">⏱️ ${file.duration}</span>` : ''}
+                    </div>
+                </div>
+                <div class="item-info">
+                    <div>
+                        <p title="${file.name}"><strong>${file.name}</strong></p>
+                        ${metadataHTML}
+                        ${scannedHTML}
+                    </div>
+                    <div class="item-actions">
+                        ${summaryButtonHTML}
+                        <button class="favorite-btn ${file.is_favorite ? 'favorited' : ''}" title="Favorite" onclick="toggleFavorite(event, '${file.id}', this)">
+                            ${file.is_favorite ? '⭐' : '☆'}
+                        </button>
+                        <a href="/galleryout/download/${file.id}" onclick="event.stopPropagation()" title="Download">💾</a>
+                        <button class="delete-btn" onclick="deleteFile(event, '${file.id}', this)">🗑️</button>
+                    </div>
+                </div>
+            `;
             return item;
         }
         function updateLoadMoreVisibility() { const loadMoreContainer = document.getElementById('load-more-container'); if (!loadMoreContainer) return; const shouldHide = currentItemCount >= totalFiles || totalFiles === 0; loadMoreContainer.style.display = shouldHide ? 'none' : 'block'; }
         function updateFileCountBadge() { const fileCountBadge = document.querySelector('.file-count-badge'); if (!fileCountBadge) return; const displayCount = galleryItems.length; totalFiles = displayCount; totalFolderFiles--; const showTotal = totalFiles !== totalFolderFiles; fileCountBadge.textContent = `📂 ${displayCount} File${displayCount !== 1 ? 's' : ''}${showTotal ? ` (${totalFolderFiles} Total)` : ''}`; }
-        function showEmptyState() { galleryContainer.innerHTML = `<div class="empty-state" style="grid-column: 1/-1;"><h3>📭 No files found</h3><p>There are no files matching your criteria in this folder.</p></div>`; }
+        function showEmptyState() { galleryContainer.innerHTML = `<div class="empty-state" style="grid-column: 1/-1;"><h3>📭 No files found</h3><p>There are no files matching your criteria.</p></div>`; }
         function initializeLazyLoading(elements) { const observer = new IntersectionObserver((entries, obs) => { entries.forEach(entry => { if (entry.isIntersecting) { const el = entry.target; if (el.dataset.src) { el.src = el.dataset.src; if (el.tagName === "VIDEO") el.load(); } el.classList.remove("lazy"); obs.unobserve(el); } }); }, { rootMargin: '50px' }); elements.forEach(el => observer.observe(el)); }
         function createFolder() { const folderName = prompt("📁 Enter a name for the new folder:"); if (folderName && folderName.trim()) { fetch('/galleryout/create_folder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ folder_name: folderName.trim(), parent_key: currentFolderKey }) }).then(handleGenericResponse).catch(handleError); } }
         function renameFolder(event, folderKey, oldName) { event.stopPropagation(); const newName = prompt("✏️ Enter the new name for the folder:", oldName); if (newName && newName.trim() && newName.trim() !== oldName) { fetch(`/galleryout/rename_folder/${folderKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ new_name: newName.trim() }) }).then(handleGenericResponse).catch(handleError); } }
@@ -2481,7 +3807,7 @@
         function dragStart(event, fileId) { event.stopPropagation(); if (!selectedFiles.has(fileId)) { deselectAll(); selectedFiles.add(fileId); updateSelectionUI(); } const dragImage = document.createElement('div'); dragImage.style.cssText = `position:absolute;top:-100px;background:var(--primary-color);color:white;padding:8px 16px;border-radius:8px;font-weight:600;`; dragImage.textContent = `📦 ${selectedFiles.size} file${selectedFiles.size !== 1 ? 's' : ''}`; document.body.appendChild(dragImage); event.dataTransfer.setDragImage(dragImage, 0, 0); setTimeout(() => document.body.removeChild(dragImage), 0); event.dataTransfer.setData('text/plain', [...selectedFiles].join(',')); populateAndShowDropPanel(); }
         function toggleSelection(event, fileId, item) {
             event.stopPropagation();
-
+                        
             // Sync keyboard focus with mouse selection
             const newIndex = galleryItems.indexOf(item);
             if (newIndex !== -1) {
@@ -2541,9 +3867,20 @@
         function selectAll() { galleryItems.forEach(item => selectedFiles.add(item.dataset.fileId)); lastSelectedItem = galleryItems.length > 0 ? galleryItems[galleryItems.length - 1] : null; updateSelectionUI(); }
         function deselectAll() { selectedFiles.clear(); lastSelectedItem = null; updateSelectionUI(); }
         function toggleFavorite(event, fileId, element) { event.stopPropagation(); const originalContent = element.innerHTML; element.innerHTML = '⏳'; element.disabled = true; fetch(`/galleryout/toggle_favorite/${fileId}`, { method: 'POST' }).then(res => res.json()).then(data => { if (data.status === 'success') { element.classList.toggle('favorited', data.is_favorite); element.innerHTML = data.is_favorite ? '⭐' : '☆'; showNotification(data.is_favorite ? 'Added to favorites!' : 'Removed from favorites!', 'success'); } else { element.innerHTML = originalContent; showNotification('Error toggling favorite', 'error'); } }).catch(error => { element.innerHTML = originalContent; handleError(error); }).finally(() => element.disabled = false); }
-        function deleteFile(event, fileId, element) { event.stopPropagation(); if (!confirm('🗑️ Delete this file? This cannot be undone.')) return; const item = element.closest('.gallery-item'); element.disabled = true; fetch(`/galleryout/delete/${fileId}`, { method: 'POST' }).then(res => res.json()).then(data => { if (data.status === 'success') { item.style.transition = 'all 0.4s ease'; item.style.opacity = '0'; item.style.transform = 'scale(0.8)'; showNotification('File deleted!', 'success'); setTimeout(() => { item.remove(); galleryItems = galleryItems.filter(gi => gi !== item); allFilesData = allFilesData.filter(f => f.id !== fileId); selectedFiles.delete(fileId); updateSelectionUI(); currentItemCount--; updateFileCountBadge(); updateLoadMoreVisibility(); }, 400); } else { showNotification(`Error: ${data.message || 'Deletion failed'}`, 'error'); element.disabled = false; } }).catch(error => { handleError(error); element.disabled = false; }); }
+        
+        function deleteFile(event, fileId, element) { 
+            event.stopPropagation(); 
+            
+            if (!confirm('🗑️ Delete this file? This cannot be undone.')) return; 
+            
+            const item = element.closest('.gallery-item'); element.disabled = true; fetch(`/galleryout/delete/${fileId}`, { method: 'POST' }).then(res => res.json()).then(data => { if (data.status === 'success') { item.style.transition = 'all 0.4s ease'; item.style.opacity = '0'; item.style.transform = 'scale(0.8)'; showNotification('File deleted!', 'success'); setTimeout(() => { item.remove(); galleryItems = galleryItems.filter(gi => gi !== item); allFilesData = allFilesData.filter(f => f.id !== fileId); selectedFiles.delete(fileId); updateSelectionUI(); currentItemCount--; updateFileCountBadge(); updateLoadMoreVisibility(); }, 400); } else { showNotification(`Error: ${data.message || 'Deletion failed'}`, 'error'); element.disabled = false; } }).catch(error => { handleError(error); element.disabled = false; }); 
+        }
+        
         function moveSelected() { if (selectedFiles.size > 0) populateAndShowDropPanel(); }
-        function deleteSelected() { const count = selectedFiles.size; if (count > 0 && confirm(`🗑️ Delete ${count} files? This cannot be undone.`)) { performBatchAction('/galleryout/delete_batch', { file_ids: [...selectedFiles] }); } }
+        function deleteSelected() { 
+            
+            const count = selectedFiles.size; if (count > 0 && confirm(`🗑️ Delete ${count} files? This cannot be undone.`)) { performBatchAction('/galleryout/delete_batch', { file_ids: [...selectedFiles] }); } 
+        }
         function favoriteSelected(status) { if (selectedFiles.size === 0) return; performBatchAction('/galleryout/favorite_batch', { file_ids: [...selectedFiles], status: status }); }
         function performBatchAction(url, body) { fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(handleGenericResponse).catch(handleError); }
         function downloadSelectedZip() {
@@ -2640,13 +3977,16 @@
                 }
             }, 60000); // Disappear after 60 secs if ignored
         }
-        const lightboxOverlay = document.getElementById('lightbox-overlay'); const lightboxMedia = document.getElementById('lightbox-media'); const lightboxTitle = document.getElementById('lightbox-title'); const lightboxDownload = document.getElementById('lightbox-download'); const lightboxWorkflow = document.getElementById('lightbox-workflow'); const lightboxNewTab = document.getElementById('lightbox-new-tab'); let currentLightboxIndex = -1; let currentLightboxFile = null; let currentZoom = 1; let currentTranslateX = 0; let currentTranslateY = 0; let panStep = 50;
+        const lightboxOverlay = document.getElementById('lightbox-overlay'); const lightboxMedia = document.getElementById('lightbox-media'); const lightboxTitle = document.getElementById('lightbox-title'); const lightboxDownload = document.getElementById('lightbox-download'); const lightboxWorkflow = document.getElementById('lightbox-workflow'); const lightboxNewTab = document.getElementById('lightbox-new-tab'); const lightboxAiCaption = document.getElementById('lightbox-ai-caption'); let currentLightboxIndex = -1; let currentLightboxFile = null; let currentZoom = 1; let currentTranslateX = 0; let currentTranslateY = 0; let panStep = 50;
         function updateLightboxTitle() { if (!currentLightboxFile) return; const zoomPercentage = Math.round(currentZoom * 100); lightboxTitle.textContent = `${currentLightboxFile.name} (${zoomPercentage}%)`; }
         function updateMediaTransform() { const mediaEl = lightboxMedia.querySelector('img, video'); if (!mediaEl) return; mediaEl.style.transform = `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentZoom})`; updateLightboxTitle(); }
         function openLightbox(event, fileId) { if (event.target.closest('a, button')) return; event.stopPropagation(); currentLightboxIndex = galleryItems.findIndex(item => item.dataset.fileId === fileId); if (currentLightboxIndex === -1) return; currentZoom = 1; currentTranslateX = 0; currentTranslateY = 0; panStep = 50; document.body.classList.add('lightbox-open'); lightboxOverlay.classList.add('visible'); showItemAtIndex(currentLightboxIndex); }
         function closeLightbox() {
             const mediaElement = lightboxMedia.querySelector('video, audio');
             if (mediaElement) mediaElement.pause();
+            
+            // Close AI Caption if open
+            toggleAiCaption(false);
 
             // Sync grid focus with lightbox position
             if (currentLightboxIndex !== -1 && galleryItems.length > 0) {
@@ -2668,7 +4008,7 @@
             currentLightboxFile = null;
         }
 
-function showItemAtIndex(index) {
+        function showItemAtIndex(index) {
             const item = galleryItems[index];
             if (!item) return;
             
@@ -2678,8 +4018,25 @@ function showItemAtIndex(index) {
             currentLightboxFile = file;
             updateLightboxTitle();
             
+            // Set Folder Name in Lightbox
+            const lightboxFolderEl = document.getElementById('lightbox-folder-name');
+            if (file.path) {
+                const parts = file.path.split(/[/\\]/);
+                if (parts.length > 1) {
+                    let folderName = parts[parts.length - 2];
+                    if (folderName.toLowerCase() === 'output') folderName = 'Main';
+                    lightboxFolderEl.textContent = `📂 ${folderName}`;
+                } else {
+                    lightboxFolderEl.textContent = '';
+                }
+            } else {
+                lightboxFolderEl.textContent = '';
+            }
+            
             // Clear the container
             lightboxMedia.innerHTML = '';
+            // Hide caption by default when changing images
+            toggleAiCaption(false);
             
             let mediaEl;
             const isImage = ['image', 'animated_image'].includes(file.type);
@@ -2703,9 +4060,6 @@ function showItemAtIndex(index) {
             }
             
             if (mediaEl) {
-                // --- OPTIMIZED LOADING LOGIC ---
-                
-                // Helper function to reveal media and apply zoom
                 const showMedia = () => {
                     const loader = lightboxMedia.querySelector('.lightbox-loader');
                     if (loader) loader.remove();
@@ -2713,30 +4067,22 @@ function showItemAtIndex(index) {
                     updateMediaTransform();
                 };
 
-                // CASE 1: Image is already cached (Instant load)
-                // If .complete is true, the browser has the image data ready.
-                // We skip the loader and the fade-in animation entirely for a snappy feel.
                 if (isImage && mediaEl.complete) {
-                    mediaEl.style.opacity = '1'; // Visible immediately
+                    mediaEl.style.opacity = '1'; 
                     lightboxMedia.appendChild(mediaEl);
                     updateMediaTransform();
                 } 
-                // CASE 2: Needs loading (Show Loader + Fast Fade-in)
                 else {
-                    // Insert the loader spinner
                     const loader = document.createElement('div');
                     loader.className = 'lightbox-loader';
                     lightboxMedia.appendChild(loader);
 
-                    // Initially hide the media
                     mediaEl.style.opacity = '0';
-                    // Reduced transition to 0.15s for a snappier feel
                     mediaEl.style.transition = 'opacity 0.15s ease-out'; 
 
                     if (isImage) {
                         mediaEl.onload = showMedia;
                     } else {
-                        // Logic for Video/Audio
                         mediaEl.onloadeddata = showMedia;
                         mediaEl.onerror = () => {
                             if (loader) loader.remove();
@@ -2746,31 +4092,91 @@ function showItemAtIndex(index) {
                     
                     lightboxMedia.appendChild(mediaEl);
                 }
-
-                // Safety check: re-apply transform to ensure zoom is correct
                 requestAnimationFrame(() => updateMediaTransform());
 
             } else {
                 lightboxMedia.innerHTML = `<div style="color:white;font-size:1.2rem;text-align:center;">📄<br>Preview not available</div>`;
             }
             
-            // Update toolbar links and buttons
+            // Update toolbar (Initial rendering from Cache)
             lightboxDownload.href = `/galleryout/download/${file.id}`;
             lightboxNewTab.href = `/galleryout/file/${file.id}`;
             
+            updateLightboxButtonsUI(file.has_workflow, file.ai_caption, file.id);
+
+            // --- NEW: Perform a background check for fresh metadata ---
+            verifyMetadataRealtime(file.id);
+        }
+
+        // Helper to update buttons state
+        function updateLightboxButtonsUI(hasWorkflow, aiCaption, fileId) {
             const summaryBtn = document.getElementById('lightbox-summary-btn');
-            if (file.has_workflow) {
-                lightboxWorkflow.href = `/galleryout/workflow/${file.id}`;
-                lightboxWorkflow.style.display = 'flex';
+            const workflowBtn = document.getElementById('lightbox-workflow');
+            const captionBtn = document.getElementById('lightbox-caption-icon');
+
+            if (hasWorkflow) {
+                workflowBtn.href = `/galleryout/workflow/${fileId}`;
+                workflowBtn.style.display = 'flex';
                 summaryBtn.style.display = 'flex';
                 summaryBtn.onclick = (event) => {
                     event.stopPropagation();
-                    showNodeSummary(event, file.id);
+                    showNodeSummary(event, fileId);
                 };
             } else {
-                lightboxWorkflow.style.display = 'none';
+                workflowBtn.style.display = 'none';
                 summaryBtn.style.display = 'none';
                 summaryBtn.onclick = null;
+            }
+            
+            if (aiCaption) {
+                captionBtn.style.display = 'flex';
+                captionBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    toggleAiCaption(true, aiCaption);
+                };
+            } else {
+                captionBtn.style.display = 'none';
+            }
+        }
+
+        // New Function: Fetches real status from server and updates UI
+        function verifyMetadataRealtime(fileId) {
+            fetch(`/galleryout/check_metadata/${fileId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // 1. Update the cached data object so navigation remembers it
+                        const fileIndex = allFilesData.findIndex(f => f.id === fileId);
+                        if (fileIndex !== -1) {
+                            allFilesData[fileIndex].has_workflow = data.has_workflow;
+                            allFilesData[fileIndex].ai_caption = data.ai_caption;
+                        }
+
+                        // 2. If we are still looking at the same file, update the UI
+                        if (currentLightboxFile && currentLightboxFile.id === fileId) {
+                            updateLightboxButtonsUI(data.has_workflow, data.ai_caption, fileId);
+                        }
+                    }
+                })
+                .catch(err => console.error("Metadata check failed:", err));
+        }
+        
+        function toggleAiCaption(show, text='') {
+            const captionBox = document.getElementById('lightbox-ai-caption');
+            
+            if (show && text) {
+                const formattedText = formatAiCaptionText(text);
+
+                captionBox.innerHTML = `
+                    <button class="caption-close-btn" title="Close" onclick="toggleAiCaption(false)">×</button>
+                    <div id="lightbox-ai-text-scroll">
+                        <strong style="color:var(--ai-color); display:block; margin-bottom:10px; font-size:1.1rem;">🧠 AI Caption:</strong>
+                        ${formattedText}
+                    </div>
+                `;
+                captionBox.classList.add('visible');
+            } else {
+                captionBox.classList.remove('visible');
             }
         }
         
@@ -2810,7 +4216,23 @@ function showItemAtIndex(index) {
                 header.style.pointerEvents = 'auto';
             }, 5000);
         }
-        function deleteFromLightbox(noConfirm = false) { if (currentLightboxIndex < 0 || currentLightboxIndex >= galleryItems.length) return; const itemToDelete = galleryItems[currentLightboxIndex]; const fileId = itemToDelete.dataset.fileId; const deleteBtn = document.getElementById('lightbox-delete-btn'); const proceedWithDelete = () => { deleteBtn.disabled = true; fetch(`/galleryout/delete/${fileId}`, { method: 'POST' }).then(res => res.json().then(data => ({ ok: res.ok, data }))).then(({ ok, data }) => { if (ok && data.status === 'success') { showNotification(data.message || 'File deleted!', 'success'); itemToDelete.remove(); galleryItems.splice(currentLightboxIndex, 1); allFilesData = allFilesData.filter(f => f.id !== fileId); currentItemCount--; updateFileCountBadge(); if (galleryItems.length === 0) { closeLightbox(); showEmptyState(); } else { if (currentLightboxIndex >= galleryItems.length) { currentLightboxIndex = galleryItems.length - 1; } showItemAtIndex(currentLightboxIndex); } } else { throw new Error(data.message || 'Deletion failed on the server.'); } }).catch(handleError).finally(() => { if (deleteBtn) { deleteBtn.disabled = false; } }); }; if (noConfirm || confirm('🗑️ Are you sure you want to delete this file? This cannot be undone.')) { proceedWithDelete(); } }
+        function deleteFromLightbox(noConfirm = false) { 
+            if (currentLightboxIndex < 0 || currentLightboxIndex >= galleryItems.length) return; 
+            
+            // Safety: in AI/Global mode confirm always
+            if ((isAiSearch || isGlobalSearch) && noConfirm) noConfirm = false;
+            
+            const itemToDelete = galleryItems[currentLightboxIndex]; 
+            const fileId = itemToDelete.dataset.fileId; 
+            const deleteBtn = document.getElementById('lightbox-delete-btn'); 
+            
+            const proceedWithDelete = () => { deleteBtn.disabled = true; fetch(`/galleryout/delete/${fileId}`, { method: 'POST' }).then(res => res.json().then(data => ({ ok: res.ok, data }))).then(({ ok, data }) => { if (ok && data.status === 'success') { showNotification(data.message || 'File deleted!', 'success'); itemToDelete.remove(); galleryItems.splice(currentLightboxIndex, 1); allFilesData = allFilesData.filter(f => f.id !== fileId); currentItemCount--; updateFileCountBadge(); if (galleryItems.length === 0) { closeLightbox(); showEmptyState(); } else { if (currentLightboxIndex >= galleryItems.length) { currentLightboxIndex = galleryItems.length - 1; } showItemAtIndex(currentLightboxIndex); } } else { throw new Error(data.message || 'Deletion failed on the server.'); } }).catch(handleError).finally(() => { if (deleteBtn) { deleteBtn.disabled = false; } }); }; 
+            
+            let message = '🗑️ Are you sure you want to delete this file? This cannot be undone.';
+            if(isAiSearch || isGlobalSearch) message = '🗑️ Global Mode: Are you sure you want to delete this file from its original folder?';
+            
+            if (noConfirm || confirm(message)) { proceedWithDelete(); } 
+        }
 
         // --- NEW FEATURE: RENAME FILE FROM LIGHTBOX ---
 
@@ -2854,14 +4276,13 @@ function showItemAtIndex(index) {
                         }
 
                         // 2. Update the gallery item in the DOM
-                        // We need to find the item by the OLD fileId
                         const galleryItem = document.querySelector(`.gallery-item[data-file-id="${fileId}"]`);
                         if (galleryItem) {
                             galleryItem.dataset.fileId = newId;
                             galleryItem.querySelector('.item-info p strong').textContent = data.new_name;
                             galleryItem.querySelector('.item-info p').title = data.new_name;
 
-                            // Update all handlers to use the new ID
+                            // Update all handlers
                             galleryItem.querySelector('.thumbnail-link').setAttribute('onclick', `openLightbox(event, '${newId}'); event.stopPropagation();`);
                             galleryItem.querySelector('.selection-checkmark').setAttribute('onclick', `toggleSelection(event, '${newId}', this.closest('.gallery-item'))`);
                             galleryItem.querySelector('.favorite-btn').setAttribute('onclick', `toggleFavorite(event, '${newId}', this)`);
@@ -2917,22 +4338,13 @@ async function showNodeSummary(event, fileId) {
                             
                             if (node.params && node.params.length > 0) {
                                 node.params.forEach(p => {
-                                    // 1. Shows parameter in textual list
                                     paramsHTML += `<li><strong>${escapeHTML(p.name)}:</strong> <code>${escapeHTML(p.value)}</code>`;
-                                    
-                                    // 2. If it is a input file, add link inside the textual list
                                     if (p.is_input_file) {
                                         paramsHTML += ` <span style="color:var(--success-color); font-size:0.8rem;">(Found in Inputs)</span>`;
-                                        
-                                        // 3. Generate multimedial "Card" 
                                         const fileExt = p.value.toString().split('.').pop().toLowerCase();
-                                        
-                                        // Definisci il tipo di media
                                         const isVideo = ['mp4', 'mov', 'webm', 'mkv', 'avi'].includes(fileExt);
                                         const isAudio = ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac'].includes(fileExt);
-                                        
                                         let mediaTag = '';
-                                        
                                         if (isAudio) {
                                             mediaTag = `<div style="height:200px; display:flex; align-items:center; justify-content:center; width:100%; background:rgba(0,0,0,0.2); border-radius:8px; margin-bottom:1rem; flex-direction:column; gap:10px;">
                                                 <span style="font-size:3rem;">🎵</span>
@@ -2941,10 +4353,8 @@ async function showNodeSummary(event, fileId) {
                                         } else if (isVideo) {
                                             mediaTag = `<video src="${p.input_url}" controls class="input-media-preview"></video>`;
                                         } else {
-                                            // Immagini (incluso jfif)
                                             mediaTag = `<img src="${p.input_url}" class="input-media-preview">`;
                                         }
-
                                         mediaCardsHTML += `
                                             <div class="input-media-card">
                                                 <div class="input-media-title">📥 ${escapeHTML(p.value)}</div>
@@ -3037,8 +4447,7 @@ async function showNodeSummary(event, fileId) {
             syncMessage.textContent = 'Rescanning files...';
             syncProgressFill.style.width = '100%';
             syncProgressFill.style.backgroundColor = 'var(--primary-color)';
-            syncProgressFill.classList.add('indeterminate'); // You might want to add CSS animation for this
-
+            
             fetch('/galleryout/rescan_folder', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -3050,7 +4459,242 @@ async function showNodeSummary(event, fileId) {
                     syncOverlay.style.display = 'none';
                 });
         }
+        
+        // --- AI SEARCH FUNCTIONS ---
+        function selectAiScope(scope) {
+            currentAiScope = scope;
+            document.querySelectorAll('.ai-scope-option').forEach(el => {
+                el.classList.toggle('active', el.dataset.scope === scope);
+            });
+        }
+        
+        // --- MODAL AI ---
+        function closeAiInfoModal() {
+            document.getElementById('ai-info-overlay').classList.remove('visible');
+        }
 
+        function openAiSearchModal() {
+            if (!enableAiSearch) {
+                const infoOverlay = document.getElementById('ai-info-overlay');
+                infoOverlay.classList.add('visible');
+                
+                infoOverlay.addEventListener('click', (e) => {
+                    if (e.target === infoOverlay) closeAiInfoModal();
+                }, { once: true }); // once per non accumulare listener
+                
+                return;
+            }
+            
+            // AI Enabled 
+            const overlay = document.getElementById('ai-search-overlay');
+            const inputEl = document.getElementById('ai-search-input');
+            const clearBtn = document.getElementById('ai-search-clear-text');
+            const limitInput = document.getElementById('ai-search-limit');
+            
+            // 1. RIPRISTINA LA QUERY
+            const lastQuery = localStorage.getItem('lastAiQuery');
+            if (lastQuery) {
+                inputEl.value = lastQuery;
+                clearBtn.style.display = 'flex';
+            } else {
+                inputEl.value = '';
+                clearBtn.style.display = 'none';
+            }
+
+            // 2. RIPRISTINA IL LIMITE
+            const lastLimit = localStorage.getItem('lastAiLimit');
+            if (lastLimit && limitInput) {
+                limitInput.value = lastLimit;
+            } else if (limitInput) {
+                limitInput.value = 100;
+            }
+
+            // 3. RIPRISTINA LO SCOPE
+            const lastScope = localStorage.getItem('lastAiScope');
+            if (lastScope && (lastScope === 'global' || lastScope === 'local')) {
+                selectAiScope(lastScope);
+            } else {
+                selectAiScope('global');
+            }
+            
+            overlay.classList.add('visible');
+            document.body.classList.add('modal-open');
+            inputEl.focus();
+        }
+        
+        function closeAiSearchModal() {
+            const overlay = document.getElementById('ai-search-overlay');
+            overlay.classList.remove('visible');
+            document.body.classList.remove('modal-open');
+        }
+        
+        function submitAiSearch() {
+            const inputEl = document.getElementById('ai-search-input');
+            const query = inputEl.value.trim();
+            const limit = document.getElementById('ai-search-limit').value || 100;
+            
+            if (!query) return;
+            
+            // --- SALVATAGGIO STATO ---
+            localStorage.setItem('lastAiQuery', query);
+            localStorage.setItem('lastAiLimit', limit);        // Salva il limite
+            localStorage.setItem('lastAiScope', currentAiScope); // Salva lo scope (global/local)
+            
+            closeAiSearchModal();
+            
+            // Show Loader
+            const loader = document.getElementById('loader-overlay');
+            loader.style.display = 'flex';
+            loader.style.opacity = '1';
+            
+            let finalQuery = query;
+            if (currentAiScope === 'local') {
+                finalQuery += " ||| " + currentFolderInfo.path;
+            }
+            
+            const searchPayload = { 
+                query: finalQuery, 
+                limit: parseInt(limit),
+                scope: currentAiScope
+            };
+
+            fetch('/galleryout/ai_queue', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(searchPayload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'queued') {
+                    pollAiStatus(data.session_id);
+                } else {
+                    showNotification("Error starting AI search: " + data.message, 'error');
+                    loader.style.display = 'none';
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                showNotification("Network error starting AI search", 'error');
+                loader.style.display = 'none';
+            });
+        }
+        
+        function pollAiStatus(sessionId) {
+            let attempts = 0;
+            const maxAttempts = 15; // Timeout dopo 15 secondi
+            
+            const interval = setInterval(() => {
+                attempts++;
+                
+                fetch(`/galleryout/ai_check/${sessionId}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'completed') {
+                            clearInterval(interval);
+                            window.location.href = `{{ url_for('gallery_view', folder_key=current_folder_key) }}?ai_session_id=${sessionId}`;
+                        } else if (data.status === 'error') {
+                            clearInterval(interval);
+                            showNotification("AI Search failed (Worker Error).", 'error');
+                            document.getElementById('loader-overlay').style.display = 'none';
+                        } else {
+                            // Status is 'pending' or 'processing'
+                            // Controlla timeout
+                            if (attempts >= maxAttempts) {
+                                clearInterval(interval);
+                                document.getElementById('loader-overlay').style.display = 'none';
+                                
+                                const repoUrl = "https://github.com/biagiomaf/smart-comfyui-gallery";
+                                const msg = "⚠️ AI Service Timeout (Worker not responding)\n" +
+                                            "The search request was sent, but the AI service did not respond in time.\n" +
+                                            "Please ensure that the 'gallery_ai_service.py' script is running in your backend terminal.\n" +
+                                            "If you haven't installed the AI dependencies yet, please consult the installation guide at:\n" +
+                                            repoUrl;
+                                
+                                alert(msg);
+                            }
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        // do not stop for temporarly network errors
+                    });
+            }, 1000);
+        }
+        
+        
+        // --- SCOPE SELECTOR LOGIC (Visual + Dynamic Data Fetch) ---
+            const scopeRadios = document.querySelectorAll('input[name="scope"]');
+            
+            // Store TomSelect instances for easy access
+            let extSelectInst = null;
+            let pfxSelectInst = null;
+            
+            // Initialize TomSelects and store references
+            if (!isAiSearch) {
+                const extEl = document.getElementById('extension-select');
+                const pfxEl = document.getElementById('prefix-select');
+                if (extEl) extSelectInst = new TomSelect('#extension-select', { plugins: ['checkbox_options', 'clear_button'], placeholder: '📄 Select extensions...' });
+                if (pfxEl) pfxSelectInst = new TomSelect('#prefix-select', { plugins: ['checkbox_options', 'clear_button'], placeholder: '🏷️ Select prefixes...' });
+            }
+
+            scopeRadios.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    // 1. Visual Update (Blue Box)
+                    document.querySelectorAll('.scope-label').forEach(label => label.classList.remove('active'));
+                    if (this.checked) this.closest('.scope-label').classList.add('active');
+                    
+                    // 2. Dynamic Data Fetch (AJAX)
+                    const scope = this.value;
+                    const currentFolderKey = '{{ current_folder_key }}';
+                    
+                    // Show small loading indication (optional, or just wait)
+                    if(extSelectInst) extSelectInst.wrapper.style.opacity = '0.5';
+                    if(pfxSelectInst) pfxSelectInst.wrapper.style.opacity = '0.5';
+
+                    fetch(`/galleryout/api/search_options?scope=${scope}&folder_key=${currentFolderKey}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            // Update Extensions
+                            if (extSelectInst) {
+                                extSelectInst.clearOptions();
+                                data.extensions.forEach(ext => {
+                                    extSelectInst.addOption({value: ext, text: ext});
+                                });
+                                extSelectInst.refreshOptions(false);
+                                extSelectInst.wrapper.style.opacity = '1';
+                            }
+
+                            // Update Prefixes & Handle Limit
+                            const warningBox = document.getElementById('prefix-warning-container');
+                            const selectContainer = document.getElementById('prefix-select-container');
+
+                            if (data.prefix_limit_reached) {
+                                // Show Warning, Hide Dropdown
+                                if(warningBox) warningBox.style.display = 'flex';
+                                if(selectContainer) selectContainer.style.display = 'none';
+                            } else {
+                                // Hide Warning, Show Dropdown
+                                if(warningBox) warningBox.style.display = 'none';
+                                if(selectContainer) selectContainer.style.display = 'block';
+                                
+                                if (pfxSelectInst) {
+                                    pfxSelectInst.clearOptions();
+                                    data.prefixes.forEach(pfx => {
+                                        pfxSelectInst.addOption({value: pfx, text: pfx});
+                                    });
+                                    pfxSelectInst.refreshOptions(false);
+                                    pfxSelectInst.wrapper.style.opacity = '1';
+                                }
+                            }
+                        })
+                        .catch(err => {
+                            console.error("Failed to update search options:", err);
+                            if(extSelectInst) extSelectInst.wrapper.style.opacity = '1';
+                            if(pfxSelectInst) pfxSelectInst.wrapper.style.opacity = '1';
+                        });
+                });
+            });
+        
         // --- MAIN INITIALIZATION FUNCTION ---
         document.addEventListener('DOMContentLoaded', () => {
             loaderOverlay.style.opacity = '0';
@@ -3061,10 +4705,74 @@ async function showNodeSummary(event, fileId) {
             renderAllTrees();
             setupSidebarExpansion();
             appendFiles(initialFiles);
+            
+            // --- DATE VALIDATION LOGIC ---
+            const filterForm = document.getElementById('filter-form');
+            const startDateInput = document.getElementById('start-date');
+            const endDateInput = document.getElementById('end-date');
 
-            new TomSelect('#extension-select', { plugins: ['checkbox_options', 'clear_button'], placeholder: '📄 Select extensions...' });
-            new TomSelect('#prefix-select', { plugins: ['checkbox_options', 'clear_button'], placeholder: '🏷️ Select prefixes...' });
+            if (filterForm && startDateInput && endDateInput) {
+                
+                // Helper: Update 'min' attribute of end date based on start date
+                startDateInput.addEventListener('change', () => {
+                    endDateInput.min = startDateInput.value;
+                });
 
+                // Helper: Auto-fill end date if empty when start is selected (UX improvement)
+                startDateInput.addEventListener('blur', () => {
+                     if (startDateInput.value && !endDateInput.value) {
+                         // Optional: set to today or same as start. 
+                         // Let's enforce validation instead as requested.
+                     }
+                });
+
+                // Form Submit Validation
+                filterForm.addEventListener('submit', (e) => {
+                    const start = startDateInput.value;
+                    const end = endDateInput.value;
+
+                    if (start && !end) {
+                        e.preventDefault();
+                        showNotification('⚠️ Please select an End Date.', 'warning');
+                        endDateInput.focus();
+                        return;
+                    }
+
+                    if (start && end && start > end) {
+                        e.preventDefault();
+                        showNotification('⚠️ Start Date cannot be after End Date.', 'error');
+                        return;
+                    }
+                });
+            }
+            
+            // --- JS: AI BANNER TEXT FORMATTING ---
+            const aiBannerText = document.getElementById('ai-banner-text');
+            if (aiBannerText) {
+                const rawQuery = aiBannerText.dataset.rawQuery || "";
+                const separator = " ||| ";
+                
+                let labelHtml = "";
+                let queryText = "";
+
+                if (rawQuery.includes(separator)) {
+                    // Local
+                    const parts = rawQuery.split(separator);
+                    queryText = parts[0];
+                    labelHtml = `<span>🧠</span> Current Folder`;
+                } else {
+                    //  Global
+                    queryText = rawQuery;
+                    labelHtml = `<span>🧠</span> All Folders`;
+                }
+
+                // Inseriamo DUE span separati per permettere al CSS Mobile di spostarli
+                aiBannerText.innerHTML = `
+                    <span class="ai-scope-part">${labelHtml}</span>
+                    <span class="ai-query-part">"${escapeHTML(queryText)}"</span>
+                `;
+            }
+            
             const sidebar = document.querySelector('.sidebar');
             const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
             const sidebarToggleText = document.getElementById('sidebar-toggle-text');
@@ -3082,9 +4790,64 @@ async function showNodeSummary(event, fileId) {
                 setTimeout(() => galleryAnchor.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
                 sessionStorage.removeItem('galleryMobileNav');
             }
+            // --- MOBILE FILTER TOGGLE LOGIC ---
             const mobileFilterToggle = document.getElementById('mobile-filter-toggle');
-            const filterFormGrid = document.getElementById('filter-form-grid');
-            if (mobileFilterToggle) { mobileFilterToggle.addEventListener('click', () => { filterFormGrid.classList.toggle('visible'); mobileFilterToggle.textContent = filterFormGrid.classList.contains('visible') ? '✕  Hide Filters' : '⚙️ Filters & Options'; }); }
+            // We use the same panel ID for both desktop and mobile
+            const searchPanel = document.getElementById('desktop-search-panel'); 
+
+            if (mobileFilterToggle && searchPanel) { 
+                mobileFilterToggle.addEventListener('click', (e) => { 
+                    if (e.target.classList.contains('filter-reset-icon')) return;
+
+                    e.stopPropagation();
+                    searchPanel.classList.toggle('visible'); 
+                    
+                    // Update button text maintaining the X icon structure
+                    const isVisible = searchPanel.classList.contains('visible');
+                    const activeCount = {{ active_filters_count }};
+                    
+                    let baseText = isVisible ? '✕  Hide Filters' : '⚙️ Filters';
+                    if (!isVisible && activeCount > 0) baseText += ` (${activeCount})`;
+                    
+                    let iconHtml = '';
+                    if (activeCount > 0) {
+                        iconHtml = ' <span class="filter-reset-icon" title="Clear all filters">✕</span>';
+                    }
+                    
+                    mobileFilterToggle.innerHTML = baseText + iconHtml;
+                }); 
+            }
+            
+            // --- NEW: DESKTOP SEARCH PANEL TOGGLE ---
+            const searchToggleDesktop = document.getElementById('search-toggle-desktop');
+            const desktopSearchPanel = document.getElementById('desktop-search-panel');
+            
+            if (searchToggleDesktop && desktopSearchPanel) {
+                searchToggleDesktop.addEventListener('click', (e) => {
+                    // FIX: Se l'utente ha cliccato sulla X di reset, fermati qui!
+                    // Non eseguire lo stopPropagation (così sale al body per il reset)
+                    // e non aprire il pannello.
+                    if (e.target.classList.contains('filter-reset-icon')) return;
+
+                    e.stopPropagation();
+                    desktopSearchPanel.classList.toggle('visible');
+                });
+                
+                // Close when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (desktopSearchPanel.classList.contains('visible')) {
+                        // Check if click is outside panel AND outside button
+                        if (!desktopSearchPanel.contains(e.target) && e.target !== searchToggleDesktop) {
+                            desktopSearchPanel.classList.remove('visible');
+                        }
+                    }
+                });
+                
+                // Prevent closing when clicking inside the panel
+                desktopSearchPanel.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                });
+            }
 
             document.getElementById('folder-tree-nav').addEventListener('click', (e) => {
                 const link = e.target.closest('.navigation-link');
@@ -3110,10 +4873,29 @@ async function showNodeSummary(event, fileId) {
                     if (actionBtn.dataset.action === 'delete') deleteFolder(e, key, name);
 
                 } else if (link) {
+                    if (isAiSearch || isGlobalSearch || activeFiltersCount > 0) {
+                        const confirmLeave = confirm("⚠️ Active Search Session\n\nYou are about to leave the search results. Do you want to discard them and browse the folder?");
+                        if (!confirmLeave) return; 
+                    }
+                    
                     window.location.href = link.dataset.folderUrl;
                 }
             });
-
+            
+            const breadcrumbContainer = document.querySelector('.breadcrumb-links');
+            if (breadcrumbContainer) {
+                breadcrumbContainer.addEventListener('click', (e) => {
+                    const link = e.target.closest('a');
+                    if (link && (isAiSearch || isGlobalSearch || activeFiltersCount > 0)) {
+                        const confirmLeave = confirm("⚠️ Active Search Session\n\nYou are about to leave the search results. Do you want to discard them and browse the folder?");
+                        
+                        if (!confirmLeave) {
+                            e.preventDefault();
+                        }
+                    }
+                });
+            }
+            
             document.getElementById('move-folder-tree').addEventListener('click', (e) => {
                 const toggle = e.target.closest('.toggle-btn');
                 const moveBtn = e.target.closest('.move-here-btn');
@@ -3134,13 +4916,40 @@ async function showNodeSummary(event, fileId) {
                     confirmMoveToFolder(moveBtn.dataset.folderKey);
                 }
             });
-
-            document.getElementById('refresh-btn').addEventListener('click', (e) => { e.preventDefault(); startSyncProcess(true); });
-            document.getElementById('rescan-folder-btn').addEventListener('click', showRescanModal);
+            
+            // AI Listeners
+            // Bottone Desktop
+            const aiToggleDesktop = document.getElementById('ai-search-toggle-desktop');
+            if (aiToggleDesktop) {
+                aiToggleDesktop.addEventListener('click', openAiSearchModal);
+            }
+            
+            // Bottone Mobile
+            const aiToggleMobile = document.getElementById('ai-search-toggle-mobile');
+            if (aiToggleMobile) {
+                aiToggleMobile.addEventListener('click', openAiSearchModal);
+            }
+            
+            document.getElementById('ai-modal-close').addEventListener('click', closeAiSearchModal);
+            
+            document.getElementById('ai-search-submit').addEventListener('click', submitAiSearch);
+            
+            const refreshBtn = document.getElementById('refresh-btn');
+            if(refreshBtn) refreshBtn.addEventListener('click', (e) => { e.preventDefault(); startSyncProcess(true); });
+            
+            const rescanBtn = document.getElementById('rescan-folder-btn');
+            if(rescanBtn) rescanBtn.addEventListener('click', showRescanModal);
+            
             rescanRecentBtn.addEventListener('click', () => performRescan('recent'));
             rescanAllBtn.addEventListener('click', () => performRescan('all'));
             rescanCancelBtn.addEventListener('click', hideRescanModal);
-            document.getElementById('main-select-all-btn').addEventListener('click', selectAll);
+            
+            const mainSelectAll = document.getElementById('main-select-all-btn');
+            if(mainSelectAll) mainSelectAll.addEventListener('click', selectAll);
+            
+            const showUpload = document.getElementById('show-upload-modal-btn');
+            if(showUpload) showUpload.addEventListener('click', showUploadModal);
+            
             document.getElementById('create-folder-btn').addEventListener('click', createFolder);
             document.getElementById('cancel-drop-btn').addEventListener('click', hideDropZone);
             document.getElementById('select-all-btn').addEventListener('click', selectAll);
@@ -3156,13 +4965,27 @@ async function showNodeSummary(event, fileId) {
             document.getElementById('lightbox-zoom-in').addEventListener('click', () => zoomLightbox(0.2));
             document.getElementById('lightbox-zoom-out').addEventListener('click', () => zoomLightbox(-0.2));
             document.getElementById('lightbox-delete-btn').addEventListener('click', () => deleteFromLightbox(false));
-            // --- MODIFICATION: Add event listener for the new rename button ---
             document.getElementById('lightbox-rename-btn').addEventListener('click', renameFileFromLightbox);
 
             document.getElementById('lightbox-content').addEventListener('wheel', (event) => { if (lightboxOverlay.classList.contains('visible')) { event.preventDefault(); zoomLightbox(event.deltaY < 0 ? 0.1 : -0.1); } });
+            // --- ZOOM IMAGE (existing) ---
+            document.getElementById('lightbox-content').addEventListener('wheel', (event) => { 
+                if (lightboxOverlay.classList.contains('visible')) { 
+                    event.preventDefault(); // Blocca lo scroll pagina, fa lo zoom
+                    zoomLightbox(event.deltaY < 0 ? 0.1 : -0.1); 
+                } 
+            });
+
+            // --- FIX SCROLL CAPTION ---
+            const captionBoxElement = document.getElementById('lightbox-ai-caption');
+            if (captionBoxElement) {
+                captionBoxElement.addEventListener('wheel', (event) => {
+                    event.stopPropagation();
+                }, { passive: true });
+            }
             document.getElementById('close-summary-btn').addEventListener('click', closeNodeSummary);
             summaryOverlay.addEventListener('click', (event) => { if (event.target === summaryOverlay) closeNodeSummary(); });
-            showUploadModalBtn.addEventListener('click', showUploadModal);
+            if(showUpload) showUploadModalBtn.addEventListener('click', showUploadModal);
             uploadCancelBtn.addEventListener('click', closeUploadModal);
             uploadOverlay.addEventListener('click', (event) => { if (event.target === uploadOverlay) closeUploadModal(); });
             fileBrowseBtn.addEventListener('click', () => fileInput.click());
@@ -3170,17 +4993,14 @@ async function showNodeSummary(event, fileId) {
 
             // --- KEYBOARD SHORTCUTS ---
             document.addEventListener('keydown', (e) => {
-                // Ignore shortcuts if user is typing in an input
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
 
-                // 1. GESTIONE CTRL+A (Manteniamo la tua funzione originale)
                 if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) {
                     e.preventDefault();
                     selectAll();
                     return;
                 }
 
-                // 2. GESTIONE ESCAPE (Unificata qui per pulizia)
                 if (e.key === 'Escape') {
                     const shortcutsHelp = document.getElementById('shortcuts-help-overlay');
                     if (shortcutsHelp.classList.contains('visible')) {
@@ -3195,12 +5015,21 @@ async function showNodeSummary(event, fileId) {
                         closeNodeSummary();
                         return;
                     }
-                    // Se c'è una selezione e nessun modale, deseleziona tutto
+                    if (document.getElementById('ai-search-overlay').classList.contains('visible')) {
+                        closeAiSearchModal();
+                        return;
+                    }
+                    // Close the new desktop search panel on ESC
+                    const panel = document.getElementById('desktop-search-panel');
+                    if (panel && panel.classList.contains('visible')) {
+                        panel.classList.remove('visible');
+                        return;
+                    }
+                    
                     if (selectedFiles.size > 0 && !document.body.classList.contains('lightbox-open')) {
                          deselectAll();
                     }
                     hideDropZone();
-                    // Nota: L'escape della Lightbox è gestito nel blocco isLightboxOpen sotto
                 }
 
                 if (document.body.classList.contains('modal-open')) return;
@@ -3223,7 +5052,7 @@ async function showNodeSummary(event, fileId) {
                         case 'd':
                         case 'D':
                         case 'Delete':
-                             deleteFromLightbox(true); // true = no confirmation
+                             deleteFromLightbox(true); 
                             break;
                         case 'f':
                         case 'F':
@@ -3297,29 +5126,28 @@ async function showNodeSummary(event, fileId) {
                         case '.':
                             cyclePanStep();
                             break;
-                        // Numpad support
-                        case '8': // Up
+                        case '8': 
                             panLightbox(0, panStep);
                             break;
-                        case '2': // Down
+                        case '2': 
                             panLightbox(0, -panStep);
                             break;
-                        case '4': // Left
+                        case '4': 
                             panLightbox(panStep, 0);
                             break;
-                        case '6': // Right
+                        case '6': 
                             panLightbox(-panStep, 0);
                             break;
-                        case '7': // Up-Left
+                        case '7': 
                             panLightbox(panStep, panStep);
                             break;
-                        case '9': // Up-Right
+                        case '9': 
                             panLightbox(-panStep, panStep);
                             break;
-                        case '1': // Down-Left
+                        case '1': 
                             panLightbox(panStep, -panStep);
                             break;
-                        case '3': // Down-Right
+                        case '3': 
                             panLightbox(-panStep, -panStep);
                             break;
                         case 'h':
@@ -3331,7 +5159,6 @@ async function showNodeSummary(event, fileId) {
                             break;
                     }
                 } else {
-                    // Main View Shortcuts
                     if (e.key === 'z' || e.key === 'Z') {
                         downloadSelectedZip();
                     }
@@ -3349,7 +5176,6 @@ async function showNodeSummary(event, fileId) {
 
                     if (galleryItems.length === 0) return;
 
-                    // Calculate columns for Up/Down navigation
                     const getColumns = () => {
                         const gridStyle = window.getComputedStyle(galleryContainer);
                         const gridTemplateColumns = gridStyle.getPropertyValue('grid-template-columns');
@@ -3457,7 +5283,6 @@ async function showNodeSummary(event, fileId) {
 
                 let newIndex = focusedItemIndex + delta;
 
-                // Clamp index
                 if (newIndex < 0) newIndex = 0;
                 if (newIndex >= galleryItems.length) newIndex = galleryItems.length - 1;
 
@@ -3470,17 +5295,52 @@ async function showNodeSummary(event, fileId) {
                     newItem.classList.add('focused');
                     newItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 } else if (focusedItemIndex === -1) {
-                    // Initialize focus if none
                     focusedItemIndex = 0;
                     galleryItems[0].classList.add('focused');
                 }
             }
+
             dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
             dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
             dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
             uploadSubmitBtn.addEventListener('click', performUpload);
+
+            // --- FIX LOAD MORE BUTTON ---
             const loadMoreBtn = document.getElementById('load-more-btn');
-            if (loadMoreBtn) { loadMoreBtn.addEventListener('click', async function () { this.disabled = true; this.innerHTML = '📂 Loading...'; try { const response = await fetch(`/galleryout/load_more?offset=${currentItemCount}&folder_key=${currentFolderKey}&${new URLSearchParams(new FormData(document.querySelector('.filter-bar form')))}`); const data = await response.json(); if (data.files && data.files.length > 0) appendFiles(data.files); else { showNotification('No more files to load.', 'info'); this.style.display = 'none'; } } catch (error) { handleError(error); } if (currentItemCount < totalFiles) { this.disabled = false; this.innerHTML = '📂 Load More'; } }); }
+            if (loadMoreBtn) {
+                loadMoreBtn.addEventListener('click', async function () {
+                    this.disabled = true;
+                    this.innerHTML = '📂 Loading...';
+                    try {
+                        let fetchUrl = `/galleryout/load_more?offset=${currentItemCount}&folder_key=${currentFolderKey}`;
+                        
+                        // Controllo esistenza form filtri (assente in AI mode)
+                        const filterForm = document.querySelector('#filter-form');
+                        if (filterForm) {
+                            fetchUrl += `&${new URLSearchParams(new FormData(filterForm))}`;
+                        }
+                        
+                        const response = await fetch(fetchUrl);
+                        const data = await response.json();
+                        
+                        if (data.files && data.files.length > 0) {
+                            appendFiles(data.files);
+                        } else {
+                            showNotification('No more files to load.', 'info');
+                            this.style.display = 'none';
+                        }
+                    } catch (error) {
+                        handleError(error);
+                    }
+                    
+                    if (currentItemCount < totalFiles) {
+                        this.disabled = false;
+                        this.innerHTML = '📂 Load More';
+                    } else {
+                        this.style.display = 'none';
+                    }
+                });
+            }
 
             function showShortcutsHelp() { document.getElementById('shortcuts-help-overlay').classList.add('visible'); }
             function closeShortcutsHelp() { document.getElementById('shortcuts-help-overlay').classList.remove('visible'); }
@@ -3489,11 +5349,83 @@ async function showNodeSummary(event, fileId) {
             if (closeShortcutsBtn) {
                 closeShortcutsBtn.addEventListener('click', closeShortcutsHelp);
             }
-            window.onscroll = () => { if (backToTopBtn) { backToTopBtn.style.display = (window.scrollY > 300) ? 'block' : 'none'; } };
 
-            startSyncProcess(false);
+            // --- CLEAR BUTTON ---
+            const aiInput = document.getElementById('ai-search-input');
+            const aiClearBtn = document.getElementById('ai-search-clear-text');
+            
+            if (aiInput && aiClearBtn) {
+                // Mostra/Nascondi X mentre scrivi
+                aiInput.addEventListener('input', () => {
+                    aiClearBtn.style.display = aiInput.value.trim().length > 0 ? 'flex' : 'none';
+                });
+                
+                // Click on X
+                aiClearBtn.addEventListener('click', () => {
+                    aiInput.value = ''; // Pulisce
+                    aiClearBtn.style.display = 'none'; 
+                    localStorage.removeItem('lastAiQuery'); 
+                    aiInput.focus(); // Rimette il focus
+                });
+            }
+
+            // --- BACK TO TOP ---
+            const backToTopBtn = document.getElementById('backToTopBtn');
+            window.addEventListener('scroll', () => {
+                if (backToTopBtn) {
+                    backToTopBtn.style.display = (window.scrollY > 300) ? 'block' : 'none';
+                }
+            });
+            
+            // --- QUICK FILTER RESET LOGIC (Event Delegation) ---
+            // Using delegation ensures it works even after the mobile button 
+            // rewrites its own HTML (Hide/Show toggle).
+            document.body.addEventListener('click', (e) => {
+                if (e.target.classList.contains('filter-reset-icon')) {
+                    e.stopPropagation(); 
+                    e.preventDefault();
+                    
+                    // Redirect to clear filters
+                    window.location.href = "{{ url_for('gallery_view', folder_key=current_folder_key) }}";
+                }
+            });
+            
+            // Only run regular sync if not in AI mode
+            if(!isAiSearch) {
+                startSyncProcess(false);
+            }
         });
+        // --- BUTTONS + - LIMIT MAX RESULTS ---
+        window.adjustAiLimit = function(delta) {
+            const input = document.getElementById('ai-search-limit');
+            if (input) {
+                let val = parseInt(input.value) || 100;
+                val += delta;
+                
+                // Limiti di sicurezza (Minimo 10, Massimo 2000)
+                if (val < 10) val = 10;
+                if (val > 2000) val = 2000;
+                
+                input.value = val;
+            }
+        };
+        // --- FORMATTING CAPTION TEXT ---
+        function formatAiCaptionText(text) {
+            if (!text) return "";
+            const frameRegex = /\[(Start|Middle|End):\s*([\s\S]*?)\]/gi;
+            if (text.match(frameRegex)) {
+                return text.replace(frameRegex, (match, label, content) => {
+                    return `
+                        <div class="ai-caption-card">
+                            <div class="ai-card-header">${label.toUpperCase()} FRAME</div>
+                            <div class="ai-card-body">${content.trim()}</div>
+                        </div>
+                    `;
+                });
+            }
+            
+            return text;
+        }
     </script>
 </body>
-
 </html>
