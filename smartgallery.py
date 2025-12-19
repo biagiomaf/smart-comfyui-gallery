@@ -2742,7 +2742,7 @@ def check_for_updates():
                     is_update_available = remote_v > local_v
                 
                 if is_update_available:
-                    print(f"\n\033[93m{'\033[1m'}NOTICE: A new version ({remote_version_str}) is available!{'\033[0m'}")
+                    print(f"\n{Colors.YELLOW}{Colors.BOLD}NOTICE: A new version ({remote_version_str}) is available!{Colors.RESET}")
                     print(f"Please update from: {GITHUB_REPO_URL}\n")
                 else:
                     print("You are up to date.")
