@@ -3,7 +3,7 @@ ifneq (,$(wildcard .env))
   export $(shell sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p' .env)
 endif
 
-SMARTGALLERY_VERSION = 1.41.1
+SMARTGALLERY_VERSION = 1.51
 
 DOCKERFILE = Dockerfile
 DOCKER_TAG_PRE = smartgallery
@@ -15,7 +15,7 @@ SMARTGALLERY_CONTAINER_NAME = ${DOCKER_TAG_PRE}:${DOCKER_TAG}
 SMARTGALLERY_NAME = $(shell echo ${SMARTGALLERY_CONTAINER_NAME} | tr -cd '[:alnum:]-_.')
 
 DOCKER_CMD=docker
-DOCKER_PRE="NVIDIA_VISIBLE_DEVICES=all"
+DOCKER_PRE="NVIDIA_VISIBLE_DEVICES=void"
 DOCKER_BUILD_ARGS=
 
 # Avoid modifying the _PATH variables
