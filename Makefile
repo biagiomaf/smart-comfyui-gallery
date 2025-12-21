@@ -1,18 +1,42 @@
 ifneq (,$(wildcard .env))
-  include .env
-  export $(shell sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p' .env)
+	include .env
+	export $(shell sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p' .env)
 endif
+
+.PHONY: all build_main build_exp build_core run kill buildx_rm docker_tag docker_push
 
 SMARTGALLERY_VERSION = 1.51
 
 DOCKERFILE = Dockerfile
 DOCKER_TAG_PRE = smartgallery
+DOCKER_TAG_PRE_EXP = smartgallery_exp
 
 DOCKER_TAG = ${SMARTGALLERY_VERSION}
 DOCKER_LATEST_TAG = latest
 
 SMARTGALLERY_CONTAINER_NAME = ${DOCKER_TAG_PRE}:${DOCKER_TAG}
+SMARTGALLERY_CONTAINER_NAME_EXP = ${DOCKER_TAG_PRE_EXP}:${DOCKER_TAG}
+
+# used for builfx
 SMARTGALLERY_NAME = $(shell echo ${SMARTGALLERY_CONTAINER_NAME} | tr -cd '[:alnum:]-_.')
+SMARTGALLERY_NAME_EXP = $(shell echo ${SMARTGALLERY_CONTAINER_NAME_EXP} | tr -cd '[:alnum:]-_.')
+
+TEMPLATE_FILE=templates/index.html
+SMARTGALLERY_FILE=smartgallery.py
+
+EXP_FOLDER=experiments
+# if EXP_FOLDER/templates/index.html exists, set EXP_TEMPLATE_FILE to it
+ifneq (,$(wildcard ${EXP_FOLDER}/templates/index.html))
+	EXP_TEMPLATE_FILE=${EXP_FOLDER}/templates/index.html
+else
+	EXP_TEMPLATE_FILE=${TEMPLATE_FILE}
+endif
+# Same with smartgallery.py
+ifneq (,$(wildcard ${EXP_FOLDER}/smartgallery.py))
+	EXP_SMARTGALLERY_FILE=${EXP_FOLDER}/smartgallery.py
+else
+	EXP_SMARTGALLERY_FILE=${SMARTGALLERY_FILE}
+endif
 
 DOCKER_CMD=docker
 DOCKER_PRE="NVIDIA_VISIBLE_DEVICES=void"
@@ -41,16 +65,25 @@ BATCH_SIZE=500
 # see MAX_PARALLEL_WORKERS in smartgallery.py, if not set, will use "None" (ie use all available CPU cores)
 
 all: 
-	@echo "Available targets: build run kill buildx_rm"
+	@echo "Available targets: build build_exp run kill buildx_rm"
 
 build:
-	@echo ""; echo ""; echo "===== Building ${SMARTGALLERY_CONTAINER_NAME}"
-	@$(eval VAR_NT="${SMARTGALLERY_NAME}")
+	CHOOSEN_NAME=${SMARTGALLERY_NAME} CHOOSEN_CONTAINER_NAME=${SMARTGALLERY_CONTAINER_NAME} CHOOSEN_TEMPLATE_FILE=${TEMPLATE_FILE} CHOOSEN_SMARTGALLERY_FILE=${SMARTGALLERY_FILE} make build_core
+
+build_exp:
+	CHOOSEN_NAME=${SMARTGALLERY_NAME_EXP} CHOOSEN_CONTAINER_NAME=${SMARTGALLERY_CONTAINER_NAME_EXP} CHOOSEN_TEMPLATE_FILE=${EXP_TEMPLATE_FILE} CHOOSEN_SMARTGALLERY_FILE=${EXP_SMARTGALLERY_FILE} make build_core
+
+build_core:
+	@echo ""; echo ""; echo "===== Building ${CHOOSEN_CONTAINER_NAME}"
+	@$(eval VAR_NT="${CHOOSEN_NAME}")
 	@echo "-- Docker command to be run:"
+# always use the same builder name
 	@echo "docker buildx ls | grep -q ${SMARTGALLERY_NAME} && echo \"builder already exists -- to delete it, use: docker buildx rm ${SMARTGALLERY_NAME}\" || docker buildx create --name ${SMARTGALLERY_NAME}"  > ${VAR_NT}.cmd
 	@echo "docker buildx use ${SMARTGALLERY_NAME} || exit 1" >> ${VAR_NT}.cmd
 	@echo "BUILDX_EXPERIMENTAL=1 ${DOCKER_PRE} docker buildx debug --on=error build --progress plain --platform linux/amd64 ${DOCKER_BUILD_ARGS} \\" >> ${VAR_NT}.cmd
-	@echo "  --tag=\"${SMARTGALLERY_CONTAINER_NAME}\" \\" >> ${VAR_NT}.cmd
+	@echo "  --build-arg CHOOSEN_TEMPLATE_FILE=\"${CHOOSEN_TEMPLATE_FILE}\" \\" >> ${VAR_NT}.cmd
+	@echo "  --build-arg CHOOSEN_SMARTGALLERY_FILE=\"${CHOOSEN_SMARTGALLERY_FILE}\" \\" >> ${VAR_NT}.cmd
+	@echo "  --tag=\"${CHOOSEN_CONTAINER_NAME}\" \\" >> ${VAR_NT}.cmd
 	@echo "  -f ${DOCKERFILE} \\" >> ${VAR_NT}.cmd
 	@echo "  --load \\" >> ${VAR_NT}.cmd
 	@echo "  ." >> ${VAR_NT}.cmd
@@ -82,11 +115,13 @@ DOCKER_PRESENT=$(shell image="${SMARTGALLERY_CONTAINER_NAME}"; if docker images 
 docker_tag:
 	@if [ `echo ${DOCKER_PRESENT} | wc -w` -eq 0 ]; then echo "No images to tag"; exit 1; fi
 	@echo "== About to tag ${SMARTGALLERY_CONTAINER_NAME} as:"
+	@echo "${DOCKER_TAG_PRE}:${DOCKER_LATEST_TAG}"
 	@echo "${DOCKERHUB_REPO}:${DOCKER_TAG}"
 	@echo "${DOCKERHUB_REPO}:${DOCKER_LATEST_TAG}"
 	@echo ""
 	@echo "Press Ctl+c within 5 seconds to cancel"
 	@for i in 5 4 3 2 1; do echo -n "$$i "; sleep 1; done; echo ""
+	@docker tag ${SMARTGALLERY_CONTAINER_NAME} ${DOCKER_TAG_PRE}:${DOCKER_LATEST_TAG}
 	@docker tag ${SMARTGALLERY_CONTAINER_NAME} ${DOCKERHUB_REPO}:${DOCKER_TAG}
 	@docker tag ${SMARTGALLERY_CONTAINER_NAME} ${DOCKERHUB_REPO}:${DOCKER_LATEST_TAG}
 
