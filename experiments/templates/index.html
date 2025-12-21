@@ -2868,18 +2868,22 @@
             transform: scale(1.1);
         }
         
-        /* --- AUTO REFRESH STYLES (Split Button) --- */
         /* --- POPOVER FIXED POSITIONING --- */
         #auto-refresh-popover {
             display: none;
-            position: fixed; /* FIXED invece di absolute per uscire dai container */
+            position: fixed;
             background: var(--surface-color);
             border: 1px solid var(--primary-color);
             padding: 1rem;
             border-radius: 12px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.9); /* Ombra molto forte */
-            z-index: 10000 !important; /* Sopra a tutto, anche alle modali */
-            min-width: 260px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.9);
+            z-index: 10000 !important;
+            
+            /* RESPONSIVE FIXES */
+            width: 260px;          
+            max-width: 85vw;       
+            white-space: normal;   
+            
             backdrop-filter: blur(10px);
             text-align: left;
         }
@@ -4074,17 +4078,25 @@
                 // Calculate position dynamically
                 const rect = btn.getBoundingClientRect();
                 
-                // Position below the button
+                // Position 1: Top (below button)
                 let top = rect.bottom + 5;
-                // Align to the right of the button (260 is the popover min-width)
-                let left = rect.right - 260;
                 
-                // Mobile Safety Check: Ensure it doesn't go off-screen to the left
-                if (left < 10) left = 10;
+                // Position 2: Left (Horizontal logic)
+                // We assume the preferred width (260px) for calculation logic
+                const preferredWidth = 260; 
                 
-                // Mobile Safety Check: Ensure it doesn't go off-screen to the right
-                if (left + 260 > window.innerWidth) {
-                    left = window.innerWidth - 270; // 10px padding from right
+                // Try to align to the right edge of the button
+                let left = rect.right - preferredWidth;
+                
+                // MOBILE SAFETY FIX:
+                // 1. Check Right Edge: If (left + width) goes off screen, snap to right edge - 10px
+                if (left + preferredWidth > window.innerWidth) {
+                    left = window.innerWidth - preferredWidth - 10;
+                }
+                
+                // 2. Check Left Edge: Never go below 10px margin
+                if (left < 10) {
+                    left = 10;
                 }
 
                 popover.style.top = top + 'px';
