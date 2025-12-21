@@ -49,3 +49,7 @@ Thumbs.db
 .env
 *.temp
 
+# Test artifacts
+compose-test.yaml
+SmartGallery
+temp
