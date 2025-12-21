@@ -1,4 +1,11 @@
 Flask
 Pillow
 opencv-python
+numpy # needed for opencv-python
 tqdm
+werkzeug # needed for Flask
+markupsafe
+pyOpenSSL
+click
+itsdangerous
+blinker
