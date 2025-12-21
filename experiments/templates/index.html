@@ -3041,7 +3041,7 @@
         
         <div class="ar-row">
             <label for="ar-interval">Interval (seconds):</label>
-            <input type="number" id="ar-interval" class="ar-input" value="10" min="5" max="3600">
+            <input type="number" id="ar-interval" class="ar-input" value="60" min="5" max="3600">
         </div>
         
         <p style="font-size:0.75rem; color:var(--text-muted); margin:10px 0 0 0;">
@@ -4173,7 +4173,7 @@
             if (saved) {
                 try {
                     const settings = JSON.parse(saved);
-                    if(intervalInput) intervalInput.value = settings.interval || 10;
+                    if(intervalInput) intervalInput.value = settings.interval || 60;
                     if (settings.active && toggle) {
                         toggle.checked = true;
                         updateAutoRefreshState();
