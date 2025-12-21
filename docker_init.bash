@@ -199,6 +199,6 @@ done
 
 echo ""; echo "==================="
 echo "== Running SmartGallery"
-cd /app; python smartgallery.py || error_exit "SmartGallery failed or exited with an error"
+cd /app; source /app/venv/bin/activate; python smartgallery.py || error_exit "SmartGallery failed or exited with an error"
 
 ok_exit "Clean exit"
