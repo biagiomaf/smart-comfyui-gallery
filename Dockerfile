@@ -2,14 +2,18 @@ FROM python:3.12-slim
 
 # Install system packages
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update -y --fix-missing\
-    && apt-get install -y \
+RUN apt-get update -y --fix-missing --no-install-recommends \
+    && apt-get install -y --no-install-recommends \
     apt-utils \
     locales \
     ca-certificates \
     sudo \
+    curl \
+    libgl1 \
+    libglib2.0-0 \
     && apt-get upgrade -y \
-    && apt-get clean
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # UTF-8
 RUN localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
@@ -46,13 +50,42 @@ RUN useradd -u 1024 -d /home/smartgallery -g smartgallery -s /bin/bash -m smartg
 RUN useradd -u 1025 -d /home/smartgallerytoo -g smartgallerytoo -s /bin/bash -m smartgallerytoo \
     && usermod -G users smartgallerytoo \
     && adduser smartgallerytoo sudo
+RUN chown -R smartgallerytoo:smartgallerytoo /app
+
+USER smartgallerytoo
+
+# Install uv
+# https://docs.astral.sh/uv/guides/integration/docker/#installing-uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/home/smartgallerytoo/.local/bin/:$PATH"
+ENV UV_PROJECT_ENVIRONMENT=venv
+
+# Verify that python3 and uv are installed
+RUN which python3 && python3 --version
+RUN which uv && uv --version
 
 COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+RUN sudo mkdir /uv_cache \ 
+    && sudo chown smartgallerytoo:smartgallerytoo /uv_cache \
+    && export UV_CACHE_DIR=/uv_cache \
+    && cd /app \
+    && uv venv venv \
+    && VIRTUAL_ENV=/app/venv uv pip install -r requirements.txt --trusted-host pypi.org --trusted-host files.pythonhosted.org \
+    && test -d /app/venv \
+    && test -f /app/venv/bin/activate \
+    && test -x /app/venv/bin/python3 \
+    && VIRTUAL_ENV=/app/venv uv pip install uv \
+    && test -x /app/venv/bin/uv \
+    && sudo rm -rf /uv_cache \
+    && unset UV_CACHE_DIR
 
-COPY smartgallery.py /app/smartgallery.py
-COPY templates/* /app/templates/
+ARG CHOOSEN_TEMPLATE_FILE
+ARG CHOOSEN_SMARTGALLERY_FILE
+COPY ${CHOOSEN_SMARTGALLERY_FILE} /app/smartgallery.py
+COPY ${CHOOSEN_TEMPLATE_FILE} /app/templates/
 COPY static /app/static
+
+USER root
 
 COPY --chmod=555 docker_init.bash /smartgallery_init.bash
 
