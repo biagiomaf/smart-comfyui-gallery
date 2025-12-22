@@ -1946,6 +1946,65 @@
         }
 
         @media (max-width: 1024px) {
+            /* 1. NOTIFICATIONS: Positioned lower and centered to avoid browser URL bar overlap */
+            #notification-container {
+                top: 120px !important; 
+                right: auto !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+                align-items: center !important;
+                width: 85% !important;
+                z-index: 10001 !important;
+            }
+
+            .notification {
+                transform: translateY(-20px);
+                border-left: none;
+                border-bottom: 5px solid var(--primary-color);
+                text-align: center;
+                box-shadow: var(--shadow-lg);
+                width: 100%;
+            }
+
+            /* 2. SIDEBAR HEADER: SmartGallery title on Left, Folders Button on Right */
+            .sidebar-header {
+                display: flex !important;
+                justify-content: space-between !important; 
+                align-items: center !important;
+                width: 100% !important;
+                gap: 10px;
+                margin-bottom: 1rem;
+            }
+
+            .sidebar-header a h1 {
+                font-size: 1.4rem; /* Slightly smaller for mobile space */
+                white-space: nowrap;
+            }
+
+            .sidebar-actions {
+                width: auto !important; /* Override fixed desktop width */
+                display: flex !important;
+                justify-content: flex-end !important;
+                padding: 0 !important;
+                gap: 0 !important;
+            }
+
+            #sidebar-toggle-btn {
+                display: flex !important;
+                white-space: nowrap !important;
+                font-size: 0.85rem !important;
+                padding: 0.5rem 0.8rem !important;
+                background: var(--surface-hover);
+                border-radius: 8px;
+            }
+
+            /* 3. WIDTH CONTROLS: Strictly hide desktop expansion/minify icons on mobile */
+            #sidebar-minify-btn, 
+            #sidebar-expand-btn {
+                display: none !important;
+            }
+
+            /* 4. MOBILE NAVIGATION LOGIC */
             body.sidebar-expanded-mobile .sidebar {
                 position: fixed;
                 width: 100%;
@@ -1971,6 +2030,13 @@
                 position: static;
                 border-right: none;
                 border-bottom: 1px solid var(--border-color);
+                padding: 1.2rem;
+            }
+
+            .sidebar.nav-collapsed .folder-controls,
+            .sidebar.nav-collapsed .folder-tree-container,
+            .sidebar.nav-collapsed #create-folder-btn {
+                display: none;
             }
 
             #selection-bar {
@@ -1980,22 +2046,8 @@
             body.sidebar-expanded #selection-bar {
                 left: 0;
             }
-
-            #sidebar-toggle-btn {
-                display: flex;
-            }
-
-            #sidebar-expand-btn {
-                display: none;
-            }
-
-            .sidebar.nav-collapsed .folder-controls,
-            .sidebar.nav-collapsed .folder-tree-container,
-            .sidebar.nav-collapsed #create-folder-btn {
-                display: none;
-            }
         }
-
+        
 @media (max-width: 768px) {
             .breadcrumbs {
                 flex-direction: column;
@@ -2990,11 +3042,12 @@
             overflow: hidden; /* Nasconde il contenuto che sborda */
         }
 
+        /* Only hide these elements inside the sidebar, not globally */
         body.sidebar-minimized .sidebar h1,
-        body.sidebar-minimized .folder-controls,
-        body.sidebar-minimized .folder-tree-container,
-        body.sidebar-minimized #create-folder-btn,
-        body.sidebar-minimized #sidebar-expand-btn {
+        body.sidebar-minimized .sidebar .folder-controls,
+        body.sidebar-minimized .sidebar .folder-tree-container,
+        body.sidebar-minimized .sidebar #create-folder-btn,
+        body.sidebar-minimized .sidebar #sidebar-expand-btn {
             display: none !important;
             opacity: 0; 
             transition: opacity 0.2s;
@@ -3022,11 +3075,7 @@
             font-size: 1.5rem;
         }
         
-        @media (max-width: 1024px) {
-            #sidebar-minify-btn {
-                display: none !important;
-            }
-        }
+        
         
         </style>
         
@@ -3889,6 +3938,12 @@
             const body = document.body;
             
             if (!btn) return;
+            
+             // Hide automatically if on mobile/small tablet
+            if (window.innerWidth <= 1024) {
+                btn.style.display = 'none';
+                return;
+            }
 
             // Helper to update icon
             const updateUI = () => {
@@ -4072,42 +4127,61 @@
             const popover = document.getElementById('auto-refresh-popover');
             const btn = document.getElementById('refresh-options-btn');
             
+            if (!popover || !btn) return;
+
             if (popover.classList.contains('visible')) {
                 popover.classList.remove('visible');
             } else {
-                // Calculate position dynamically
                 const rect = btn.getBoundingClientRect();
+                const screenWidth = window.innerWidth;
+                const screenHeight = window.innerHeight;
                 
-                // Position 1: Top (below button)
-                let top = rect.bottom + 5;
-                
-                // Position 2: Left (Horizontal logic)
-                // We assume the preferred width (260px) for calculation logic
+                // Set a fixed preferred width for calculation
                 const preferredWidth = 260; 
+                const margin = 15; // Safe distance from screen edges
                 
-                // Try to align to the right edge of the button
+                // 1. Calculate Horizontal Position (Left)
+                // Default: align the right edge of the popover with the right edge of the button
                 let left = rect.right - preferredWidth;
                 
-                // MOBILE SAFETY FIX:
-                // 1. Check Right Edge: If (left + width) goes off screen, snap to right edge - 10px
-                if (left + preferredWidth > window.innerWidth) {
-                    left = window.innerWidth - preferredWidth - 10;
+                // MOBILE SAFETY: Check if it overflows on the right
+                if (left + preferredWidth > screenWidth - margin) {
+                    left = screenWidth - preferredWidth - margin;
                 }
                 
-                // 2. Check Left Edge: Never go below 10px margin
-                if (left < 10) {
-                    left = 10;
+                // MOBILE SAFETY: Check if it overflows on the left
+                if (left < margin) {
+                    left = margin;
                 }
 
+                // 2. Calculate Vertical Position (Top)
+                let top = rect.bottom + 5;
+                
+                // FLIP LOGIC: If the button is near the bottom, show the menu ABOVE it
+                // Estimated height of popover is ~160px
+                const estimatedHeight = 160;
+                if (top + estimatedHeight > screenHeight && rect.top > estimatedHeight) {
+                    top = rect.top - estimatedHeight - 5;
+                }
+
+                // 3. Apply styles and show
                 popover.style.top = top + 'px';
                 popover.style.left = left + 'px';
-                
                 popover.classList.add('visible');
             }
         }
-        // --- FUNCTION: EXECUTE CYCLE ---
+        
+        // --- FUNCTION: EXECUTE AUTO-REFRESH CYCLE ---
         function runAutoRefreshCycle() {
-            // Safety Checks: Don't refresh if user is busy (Lightbox, Modals, Upload)
+            // SAFETY CHECKS: Skip refresh if user is performing operations
+            
+            // 1. Check if files are selected (Selection Bar is visible)
+            // This prevents losing the user's current selection work
+            if (selectedFiles && selectedFiles.size > 0) {
+                return;
+            }
+
+            // 2. Check if user is busy with UI elements (Lightbox, Modals, Upload)
             if (document.body.classList.contains('lightbox-open') || 
                 document.body.classList.contains('modal-open') ||
                 (document.getElementById('upload-overlay') && document.getElementById('upload-overlay').classList.contains('visible'))) {
