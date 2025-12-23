@@ -40,7 +40,6 @@ This is especially useful for:
   ```env
   FFPROBE_MANUAL_PATH=/path/to/ffprobe
 ```
----
 
 ** All the New features:**
 - 🎥 Real-time Transcoding Bridge (ProRes / `.mov` support)
