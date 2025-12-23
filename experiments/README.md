@@ -38,7 +38,7 @@ This is especially useful for:
 - `ffmpeg` must be installed on your system
 - `ffprobe` path must be correctly configured:
   ```env
-  FFPROBE_MANUAL_PATH=/path/to/ffprobe
+    FFPROBE_MANUAL_PATH=/path/to/ffprobe
 ```
 
 ** All the New features:**
