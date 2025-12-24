@@ -1392,21 +1392,44 @@ def sync_folder_on_demand(folder_path):
         print(f"ERROR: {error_message}")
         yield f"data: {json.dumps({'message': error_message, 'current': 1, 'total': 1, 'error': True})}\n\n"
         
-def scan_folder_and_extract_options(folder_path):
+def scan_folder_and_extract_options(folder_path, recursive=False):
+    """
+    Scans the physical folder to count files and extract metadata.
+    Supports recursive mode to include subfolders in the count.
+    """
     extensions, prefixes = set(), set()
     file_count = 0
     try:
-        if not os.path.isdir(folder_path): return 0, [], []
-        for filename in os.listdir(folder_path):
-            if os.path.isfile(os.path.join(folder_path, filename)):
-                ext = os.path.splitext(filename)[1]
-                if ext and ext.lower() not in ['.json', '.sqlite']: 
-                    extensions.add(ext.lstrip('.').lower())
-                    file_count += 1
-                if '_' in filename: prefixes.add(filename.split('_')[0])
-    except Exception as e: print(f"ERROR: Could not scan folder '{folder_path}': {e}")
+        if not os.path.isdir(folder_path): 
+            return 0, [], []
+        
+        if recursive:
+            # Recursive scan using os.walk
+            for root, dirs, files in os.walk(folder_path):
+                # Filter out hidden/protected folders in-place
+                dirs[:] = [d for d in dirs if not d.startswith('.') and d not in [THUMBNAIL_CACHE_FOLDER_NAME, SQLITE_CACHE_FOLDER_NAME, ZIP_CACHE_FOLDER_NAME, AI_MODELS_FOLDER_NAME]]
+                for filename in files:
+                    ext = os.path.splitext(filename)[1].lower()
+                    if ext and ext not in ['.json', '.sqlite']:
+                        file_count += 1
+                        extensions.add(ext.lstrip('.'))
+                        if '_' in filename: prefixes.add(filename.split('_')[0])
+        else:
+            # Single folder scan using os.scandir (faster)
+            for entry in os.scandir(folder_path):
+                if entry.is_file():
+                    filename = entry.name
+                    ext = os.path.splitext(filename)[1].lower()
+                    if ext and ext not in ['.json', '.sqlite']:
+                        file_count += 1
+                        extensions.add(ext.lstrip('.'))
+                        if '_' in filename: prefixes.add(filename.split('_')[0])
+                        
+    except Exception as e: 
+        print(f"ERROR: Could not scan folder '{folder_path}': {e}")
+        
     return file_count, sorted(list(extensions)), sorted(list(prefixes))
-
+    
 def _worker_extract_wf_string(filepath):
     """
     Worker helper for migration: Extracts just the workflow string.
@@ -1550,7 +1573,7 @@ def initialize_gallery():
         except sqlite3.DatabaseError as e:
             print(f"ERROR initializing database: {e}")
             
-def get_filter_options_from_db(conn, scope, folder_path=None):
+def get_filter_options_from_db_old(conn, scope, folder_path=None):
     """
     Extracts available extensions and prefixes from the database based on scope.
     Enforces a limit on prefixes to prevent UI issues.
@@ -1604,6 +1627,68 @@ def get_filter_options_from_db(conn, scope, folder_path=None):
         print(f"Error extracting options: {e}")
         
     return sorted(list(extensions)), sorted(list(prefixes)), prefix_limit_reached
+
+def get_filter_options_from_db(conn, scope, folder_path=None, recursive=False):
+    """
+    Extracts extensions and prefixes for dropdowns using a robust 
+    Python-side path filtering to handle mixed slashes and cross-platform issues.
+    """
+    extensions, prefixes = set(), set()
+    prefix_limit_reached = False
+    
+    # Identical helper to gallery_view for consistency
+    def safe_path_norm(p):
+        if not p: return ""
+        return os.path.normpath(str(p).replace('\\', '/')).replace('\\', '/').lower().rstrip('/')
+
+    try:
+        # We fetch all names and paths. For very large DBs (100k+ files), 
+        # this is still faster than failing with a wrong SQL LIKE.
+        cursor = conn.execute("SELECT name, path FROM files")
+        
+        target_norm = safe_path_norm(folder_path)
+
+        for row in cursor:
+            f_path_raw = row['path']
+            f_name = row['name']
+            
+            # NORMALIZATION STEP
+            f_path_norm = safe_path_norm(f_path_raw)
+            f_dir_norm = safe_path_norm(os.path.dirname(f_path_norm))
+
+            # FILTERING LOGIC (Same as Gallery View)
+            show_file = False
+            if scope == 'global':
+                show_file = True
+            elif recursive:
+                # Check if it's inside the target folder tree
+                if f_path_norm.startswith(target_norm + '/'):
+                    show_file = True
+            else:
+                # Strict local: must be in this exact folder
+                if f_dir_norm == target_norm:
+                    show_file = True
+
+            if show_file:
+                # 1. Extensions
+                _, ext = os.path.splitext(f_name)
+                if ext: 
+                    extensions.add(ext.lstrip('.').lower())
+                
+                # 2. Prefixes
+                if not prefix_limit_reached and '_' in f_name:
+                    pfx = f_name.split('_')[0]
+                    if pfx:
+                        prefixes.add(pfx)
+                        if len(prefixes) > MAX_PREFIX_DROPDOWN_ITEMS:
+                            prefix_limit_reached = True
+                            prefixes.clear()
+                            
+    except Exception as e: 
+        print(f"Error extracting options: {e}")
+        
+    return sorted(list(extensions)), sorted(list(prefixes)), prefix_limit_reached
+    
 
 # --- FLASK ROUTES ---
 @app.route('/galleryout/')
@@ -1669,26 +1754,19 @@ def sync_status(folder_key):
 
 @app.route('/galleryout/api/search_options')
 def api_search_options():
-    """
-    API Endpoint to fetch filter options (extensions/prefixes) dynamically
-    without reloading the page.
-    """
     scope = request.args.get('scope', 'local')
     folder_key = request.args.get('folder_key', '_root_')
+    is_rec = request.args.get('recursive', 'false').lower() == 'true' # Added
     
     folders = get_dynamic_folder_config()
-    # Resolve folder path safely
     folder_path = folders.get(folder_key, {}).get('path', BASE_OUTPUT_PATH)
     
     with get_db_connection() as conn:
-        exts, pfxs, limit_reached = get_filter_options_from_db(conn, scope, folder_path)
+        # Now passing the recursive flag to the options extractor
+        exts, pfxs, limit_reached = get_filter_options_from_db(conn, scope, folder_path, recursive=is_rec)
         
-    return jsonify({
-        'extensions': exts,
-        'prefixes': pfxs,
-        'prefix_limit_reached': limit_reached
-    })
-
+    return jsonify({'extensions': exts, 'prefixes': pfxs, 'prefix_limit_reached': limit_reached})
+    
 @app.route('/galleryout/view/<string:folder_key>')
 def gallery_view(folder_key):
     global gallery_view_cache
@@ -1699,209 +1777,167 @@ def gallery_view(folder_key):
     current_folder_info = folders[folder_key]
     folder_path = current_folder_info['path']
     
-    # Check if this is an AI Result View (Only if enabled)
+    # 1. Capture All Request Parameters
+    is_recursive = request.args.get('recursive', 'false').lower() == 'true'
+    search_scope = request.args.get('scope', 'local')
+    is_global_search = (search_scope == 'global')
     ai_session_id = request.args.get('ai_session_id')
+    
+    # Text filters
+    search_term = request.args.get('search', '').strip()
+    wf_files = request.args.get('workflow_files', '').strip()
+    wf_prompt = request.args.get('workflow_prompt', '').strip()
+    start_date = request.args.get('start_date', '').strip()
+    end_date = request.args.get('end_date', '').strip()
+    selected_exts = request.args.getlist('extension')
+    selected_prefixes = request.args.getlist('prefix')
+
     is_ai_search = False
     ai_query_text = ""
-    is_global_search = False
-    
-    # AI Logic runs only if explicitly enabled
-    if ENABLE_AI_SEARCH:
+
+    # --- PATH A: AI SEARCH RESULTS ---
+    if ENABLE_AI_SEARCH and ai_session_id:
         with get_db_connection() as conn:
-            # --- PATH A: AI SEARCH RESULTS ---
-            if ai_session_id:
-                # Verify session completion
-                try:
-                    queue_info = conn.execute("SELECT query, status FROM ai_search_queue WHERE session_id = ?", (ai_session_id,)).fetchone()
-                    
-                    if queue_info and queue_info['status'] == 'completed':
-                        is_ai_search = True
-                        ai_query_text = queue_info['query']
-                        
-                        # Retrieve files joined with search results, ordered by score
-                        query_sql = '''
-                            SELECT f.*, r.score 
-                            FROM ai_search_results r
-                            JOIN files f ON r.file_id = f.id
-                            WHERE r.session_id = ?
-                            ORDER BY r.score DESC
-                        '''
-                        all_files_raw = conn.execute(query_sql, (ai_session_id,)).fetchall()
-                        
-                        # Convert to dict and clean blob
-                        files_list = []
-                        for row in all_files_raw:
-                            d = dict(row)
-                            if 'ai_embedding' in d: del d['ai_embedding']
-                            files_list.append(d)
-                        
-                        gallery_view_cache = files_list
-                except Exception as e:
-                    print(f"AI Search Error: {e}")
-                    is_ai_search = False
-    
-    # --- PATH B: STANDARD FOLDER VIEW OR GLOBAL STANDARD SEARCH ---
+            try:
+                queue_info = conn.execute("SELECT query, status FROM ai_search_queue WHERE session_id = ?", (ai_session_id,)).fetchone()
+                if queue_info and queue_info['status'] == 'completed':
+                    is_ai_search = True
+                    ai_query_text = queue_info['query']
+                    rows = conn.execute('''
+                        SELECT f.*, r.score FROM ai_search_results r
+                        JOIN files f ON r.file_id = f.id
+                        WHERE r.session_id = ? ORDER BY r.score DESC
+                    ''', (ai_session_id,)).fetchall()
+                    gallery_view_cache = [dict(r) for r in rows]
+            except Exception as e:
+                print(f"AI Search Error: {e}")
+                is_ai_search = False
+
+    # --- PATH B: STANDARD VIEW / SEARCH (Cross-Platform Robust) ---
     if not is_ai_search:
         with get_db_connection() as conn:
             conditions, params = [], []
-            
-            # Check for Global Search Scope
-            search_scope = request.args.get('scope', 'local')
-            if search_scope == 'global':
-                is_global_search = True
-            else:
-                # Local scope: filter by path
-                conditions.append("path LIKE ?")
-                params.append(folder_path + os.sep + '%')
-            
-            sort_by = 'name' if request.args.get('sort_by') == 'name' else 'mtime'
-            sort_order = 'asc' if request.args.get('sort_order', 'desc').lower() == 'asc' else 'desc'
 
-            # 1. Text Search
-            search_term = request.args.get('search', '').strip()
+            # 2. Apply Metadata Filters first (Generic fields)
             if search_term:
                 conditions.append("name LIKE ?")
                 params.append(f"%{search_term}%")
             
-            # 2. Workflow Files Search
-            wf_search_raw = request.args.get('workflow_files', '').strip()
-            if wf_search_raw:
-                keywords = [k.strip() for k in wf_search_raw.split(',') if k.strip()]
-                for kw in keywords:
-                    smart_kw = normalize_smart_path(kw)
+            if wf_files:
+                for kw in [k.strip() for k in wf_files.split(',') if k.strip()]:
                     conditions.append("workflow_files LIKE ?")
-                    params.append(f"%{smart_kw}%")
+                    params.append(f"%{normalize_smart_path(kw)}%")
             
-            # 3. Workflow PROMPT Search (NEW)
-            wf_prompt_raw = request.args.get('workflow_prompt', '').strip()
-            if wf_prompt_raw:
-                keywords = [k.strip() for k in wf_prompt_raw.split(',') if k.strip()]
-                for kw in keywords:
-                    # Use standard LIKE for text matching
+            if wf_prompt:
+                for kw in [k.strip() for k in wf_prompt.split(',') if k.strip()]:
                     conditions.append("workflow_prompt LIKE ?")
                     params.append(f"%{kw}%")
-                    
-            # 4. Boolean Options
-            # Favorites
-            if request.args.get('favorites', 'false').lower() == 'true':
-                conditions.append("is_favorite = 1")
-            
-            # No Workflow (New)
-            if request.args.get('no_workflow', 'false').lower() == 'true':
-                conditions.append("has_workflow = 0")
-            
-            # No AI Caption (New - Only if AI Enabled)
-            if ENABLE_AI_SEARCH and request.args.get('no_ai_caption', 'false').lower() == 'true':
-                conditions.append("(ai_caption IS NULL OR ai_caption = '')")
 
-            # 5. Date Range Search (New)
-            start_date_str = request.args.get('start_date', '').strip()
-            end_date_str = request.args.get('end_date', '').strip()
+            if request.args.get('favorites') == 'true': conditions.append("is_favorite = 1")
+            if request.args.get('no_workflow') == 'true': conditions.append("has_workflow = 0")
 
-            if start_date_str:
-                try:
-                    # Convert 'YYYY-MM-DD' to timestamp at 00:00:00
-                    dt_start = datetime.strptime(start_date_str, '%Y-%m-%d')
-                    conditions.append("mtime >= ?")
-                    params.append(dt_start.timestamp())
-                except ValueError:
-                    pass # Ignore invalid date format
-            
-            if end_date_str:
-                try:
-                    # Convert 'YYYY-MM-DD' to timestamp at 23:59:59
-                    dt_end = datetime.strptime(end_date_str, '%Y-%m-%d')
-                    # Add almost one day (86399 seconds) to include the whole end day
-                    end_ts = dt_end.timestamp() + 86399 
-                    conditions.append("mtime <= ?")
-                    params.append(end_ts)
-                except ValueError:
-                    pass
+            if start_date:
+                try: conditions.append("mtime >= ?"); params.append(datetime.strptime(start_date, '%Y-%m-%d').timestamp())
+                except: pass
+            if end_date:
+                try: conditions.append("mtime <= ?"); params.append(datetime.strptime(end_date, '%Y-%m-%d').timestamp() + 86399)
+                except: pass
 
-            # 6. Dropdown Filters (Prefix/Extensions)
-            selected_prefixes = request.args.getlist('prefix')
+            if selected_exts:
+                e_cond = [f"name LIKE ?" for e in selected_exts if e.strip()]
+                params.extend([f"%.{e.lstrip('.').lower()}" for e in selected_exts if e.strip()])
+                if e_cond: conditions.append(f"({' OR '.join(e_cond)})")
+
             if selected_prefixes:
-                prefix_conditions = [f"name LIKE ?" for p in selected_prefixes if p.strip()]
+                p_cond = [f"name LIKE ?" for p in selected_prefixes if p.strip()]
                 params.extend([f"{p.strip()}_%" for p in selected_prefixes if p.strip()])
-                if prefix_conditions: conditions.append(f"({' OR '.join(prefix_conditions)})")
+                if p_cond: conditions.append(f"({' OR '.join(p_cond)})")
 
-            selected_extensions = request.args.getlist('extension')
-            if selected_extensions:
-                ext_conditions = [f"name LIKE ?" for ext in selected_extensions if ext.strip()]
-                params.extend([f"%.{ext.lstrip('.').lower()}" for ext in selected_extensions if ext.strip()])
-                if ext_conditions: conditions.append(f"({' OR '.join(ext_conditions)})")
-            
-            sort_direction = "ASC" if sort_order == 'asc' else "DESC"
-            
+            # 3. Execution: We fetch files matching metadata, then filter paths in Python
+            # This is the only way to guarantee 100% slash-agnostic behavior
+            sort_by = 'name' if request.args.get('sort_by') == 'name' else 'mtime'
+            sort_order = "ASC" if request.args.get('sort_order', 'desc').lower() == 'asc' else "DESC"
             where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-            query = f"SELECT * FROM files {where_clause} ORDER BY {sort_by} {sort_direction}"
             
-            all_files_raw = conn.execute(query, params).fetchall()
+            query = f"SELECT * FROM files {where_clause} ORDER BY {sort_by} {sort_order}"
+            rows = conn.execute(query, params).fetchall()
             
-            # Local Scope strict filtering
-            if not is_global_search:
-                folder_path_norm = os.path.normpath(folder_path)
-                all_files_filtered = [dict(row) for row in all_files_raw if os.path.normpath(os.path.dirname(row['path'])) == folder_path_norm]
-            else:
-                all_files_filtered = [dict(row) for row in all_files_raw]
+            # --- ULTRA-ROBUST MIXED-PATH FILTERING ---
+            final_files = []
+            
+            # Helper to normalize ANY path (mixed slashes, case, trailing)
+            def safe_path_norm(p):
+                if not p: return ""
+                # 1. Force all backslashes to forward slashes immediately
+                # 2. Lowercase for cross-platform case-insensitivity
+                # 3. Clean up and remove trailing slashes
+                return os.path.normpath(str(p).replace('\\', '/')).replace('\\', '/').lower().rstrip('/')
 
-            # Cleanup blobs
-            for f in all_files_filtered:
-                if 'ai_embedding' in f: del f['ai_embedding']
+            target_norm = safe_path_norm(folder_path)
+            
+            for row in rows:
+                f_data = dict(row)
+                if 'ai_embedding' in f_data: del f_data['ai_embedding']
                 
-            gallery_view_cache = all_files_filtered
+                # Normalize the DB path which might be mixed (e.g., c:/folder\img.png)
+                f_path_norm = safe_path_norm(f_data['path'])
+                f_dir_norm = safe_path_norm(os.path.dirname(f_path_norm))
+                
+                if is_global_search:
+                    final_files.append(f_data)
+                elif is_recursive:
+                    # Check if the file is inside the target folder tree
+                    # Adding a '/' ensures we don't match 'folder_backup' when looking for 'folder'
+                    if f_path_norm.startswith(target_norm + '/'):
+                        final_files.append(f_data)
+                else:
+                    # Strict match: must be exactly in the target folder
+                    if f_dir_norm == target_norm:
+                        final_files.append(f_data)
+            
+            gallery_view_cache = final_files
 
-    # Count active filters for UI Feedback
+    # 4. Final Metadata for Template
+    # --- RIGOROUS FILTER COUNTING LOGIC ---
     active_filters_count = 0
-    if request.args.get('search', '').strip(): active_filters_count += 1
-    if request.args.get('workflow_files', '').strip(): active_filters_count += 1
-    if request.args.get('workflow_prompt', '').strip(): active_filters_count += 1
-    if request.args.get('favorites', 'false').lower() == 'true': active_filters_count += 1
-    if request.args.get('no_workflow', 'false').lower() == 'true': active_filters_count += 1
-    if request.args.get('no_ai_caption', 'false').lower() == 'true': active_filters_count += 1
-    if request.args.get('start_date', '').strip(): active_filters_count += 1 
-    if request.args.getlist('extension'): active_filters_count += 1
-    if request.args.getlist('prefix'): active_filters_count += 1
-    if request.args.get('scope', 'local') == 'global': active_filters_count += 1
+    if search_term: active_filters_count += 1
+    if wf_files: active_filters_count += 1
+    if wf_prompt: active_filters_count += 1
+    if start_date: active_filters_count += 1
+    if end_date: active_filters_count += 1
+    if selected_exts: active_filters_count += 1
+    if selected_prefixes: active_filters_count += 1
+    if request.args.get('favorites') == 'true': active_filters_count += 1
+    if request.args.get('no_workflow') == 'true': active_filters_count += 1
+    if ENABLE_AI_SEARCH and request.args.get('no_ai_caption') == 'true': active_filters_count += 1
 
-    # Pagination Logic (Shared)
-    initial_files = gallery_view_cache[:PAGE_SIZE]
-    
-    # --- Metadata and Options Logic ---
-    
-    # 1. Get total files count for the badge (Standard Local Scan)
-    # We ignore the list-based options from the scan (using _) because we get them from DB now
-    total_folder_files, _, _ = scan_folder_and_extract_options(folder_path)
-    
-    # 2. Get Filter Dropdown Options (DB Based, Scope Aware, Limited)
-    scope_for_options = 'global' if is_global_search else 'local'
-    
-    # Initialize variables to ensure they exist even if branches are skipped
-    extensions = []
-    prefixes = []
-    prefix_limit_reached = False
+    # Scope/Recursive Logic:
+    if is_global_search:
+        # Global search is a major state change, counts as 1 filter
+        active_filters_count += 1
+    elif is_recursive:
+        # Recursive only counts as a filter if we are in Local mode (modifying the default folder view)
+        active_filters_count += 1
 
-    # Check if 'conn' variable exists and is open from previous blocks (PATH B)
-    if 'conn' in locals() and not is_ai_search:
-        # Re-use existing connection
-        extensions, prefixes, prefix_limit_reached = get_filter_options_from_db(conn, scope_for_options, folder_path)
-    else:
-        # Open temp connection (e.g. inside AI path or error cases)
-        with get_db_connection() as db_conn_for_opts:
-            extensions, prefixes, prefix_limit_reached = get_filter_options_from_db(db_conn_for_opts, scope_for_options, folder_path)
+    # Important: count files correctly on disk for the badge
+    total_folder_files, _, _ = scan_folder_and_extract_options(folder_path, recursive=is_recursive)
     
-    # --- Breadcrumbs Logic ---
+    with get_db_connection() as conn_opts:
+        scope_for_opts = 'global' if is_global_search else 'local'
+        # FIX: Added recursive=is_recursive to ensure dropdowns match current view on load
+        extensions, prefixes, pfx_limit = get_filter_options_from_db(conn_opts, scope_for_opts, folder_path, recursive=is_recursive)
+    
     breadcrumbs, ancestor_keys = [], set()
-    curr_key = folder_key
-    while curr_key is not None and curr_key in folders:
-        folder_info = folders[curr_key]
-        breadcrumbs.append({'key': curr_key, 'display_name': folder_info['display_name']})
-        ancestor_keys.add(curr_key)
-        curr_key = folder_info.get('parent')
+    curr = folder_key
+    while curr and curr in folders:
+        f_info = folders[curr]
+        breadcrumbs.append({'key': curr, 'display_name': f_info['display_name']})
+        ancestor_keys.add(curr)
+        curr = f_info.get('parent')
     breadcrumbs.reverse()
     
     return render_template('index.html', 
-                           files=initial_files, 
+                           files=gallery_view_cache[:PAGE_SIZE], 
                            total_files=len(gallery_view_cache),
                            total_folder_files=total_folder_files, 
                            folders=folders,
@@ -1911,17 +1947,18 @@ def gallery_view(folder_key):
                            ancestor_keys=list(ancestor_keys),
                            available_extensions=extensions, 
                            available_prefixes=prefixes,
-                           prefix_limit_reached=prefix_limit_reached,  
-                           selected_extensions=request.args.getlist('extension'), 
-                           selected_prefixes=request.args.getlist('prefix'),
-                           show_favorites=request.args.get('favorites', 'false').lower() == 'true', 
+                           prefix_limit_reached=pfx_limit,  
+                           selected_extensions=selected_exts, 
+                           selected_prefixes=selected_prefixes,
                            protected_folder_keys=list(PROTECTED_FOLDER_KEYS),
+                           show_favorites=request.args.get('favorites', 'false').lower() == 'true',
                            enable_ai_search=ENABLE_AI_SEARCH,
                            is_ai_search=is_ai_search,
                            ai_query=ai_query_text,
                            is_global_search=is_global_search,
                            active_filters_count=active_filters_count,
-                           current_scope=request.args.get('scope', 'local'))
+                           current_scope=search_scope,
+                           is_recursive=is_recursive)
                            
 @app.route('/galleryout/upload', methods=['POST'])
 def upload_files():

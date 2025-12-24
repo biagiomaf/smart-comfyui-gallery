@@ -767,6 +767,57 @@
             font-size: 1.1rem;
         }
         
+        /* --- RECURSIVE SEARCH TOGGLE STYLE --- */
+        .recursive-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            border: 1px solid var(--glass-border);
+            cursor: pointer;
+            transition: all 0.2s;
+            width: fit-content;
+        }
+
+        .recursive-wrapper:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .recursive-wrapper input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--primary-color);
+            cursor: pointer;
+        }
+
+        .recursive-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            user-select: none;
+            cursor: pointer;
+        }
+
+        .recursive-wrapper.active {
+            border-color: var(--primary-color);
+            background: rgba(0, 123, 255, 0.1);
+        }
+
+        .recursive-wrapper.active .recursive-label {
+            color: white;
+        }
+        
+        /* --- RECURSIVE UI ENHANCEMENT --- */
+        .recursive-wrapper.disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            pointer-events: none; /* Prevents clicks when scope is Global */
+            filter: grayscale(1);
+        }
+        
         /* New Styles for AI Options and Lightbox */
         .ai-search-options-row {
             display: flex;
@@ -3000,9 +3051,11 @@
             background: rgba(0,0,0,0.2) !important;
         }
 
+        /* --- AUTO-REFRESH ACTIVE INDICATOR --- */
         .refresh-group.auto-active {
-            box-shadow: 0 0 8px rgba(40, 167, 69, 0.6);
-            border-color: #20c997;
+            /* Keep original border and shadow color for the button group */
+            box-shadow: 0 0 8px rgba(40, 167, 69, 0.4);
+            border-color: var(--workflow-color);
         }
 
         .refresh-group.auto-active::after {
@@ -3012,11 +3065,30 @@
             right: -4px;
             width: 10px;
             height: 10px;
-            background-color: #20c997; /* Bright green dot */
+            /* Only the dot is red */
+            background-color: #ff0000; 
             border-radius: 50%;
-            box-shadow: 0 0 4px #20c997;
-            animation: pulse-dot 2s infinite;
+            box-shadow: 0 0 6px #ff0000;
+            z-index: 10;
+            /* Animation for pulsing effect */
+            animation: pulse-dot-red 2s infinite;
             pointer-events: none;
+        }
+
+        /* Keyframes to make the red dot pulse */
+        @keyframes pulse-dot-red {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7);
+            }
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 6px rgba(255, 0, 0, 0);
+            }
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
+            }
         }
 
         /* ARROW e INPUTS nel popover */
@@ -3075,7 +3147,61 @@
             font-size: 1.5rem;
         }
         
+        /* --- NAVIGATION CHOICE MODAL --- */
+        #nav-choice-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 5000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        #nav-choice-overlay.visible { display: flex; opacity: 1; }
         
+        .nav-choice-panel {
+            background: var(--surface-color);
+            border: 1px solid var(--primary-color);
+            border-radius: 20px;
+            padding: 2rem;
+            max-width: 450px;
+            width: 90%;
+            text-align: center;
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .nav-choice-panel h3 { margin-top: 0; color: white; }
+        .nav-choice-panel p { color: var(--text-muted); margin-bottom: 1.5rem; }
+        
+        .nav-choice-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .nav-btn {
+            padding: 12px;
+            border-radius: 10px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+        /* --- Highlight the focused button for keyboard navigation --- */
+        .nav-btn:focus {
+            outline: 3px solid rgba(255, 255, 255, 0.5);
+            outline-offset: 2px;
+            transform: scale(1.05); /* Slightly enlarge to show it's active */
+        }
+        .nav-btn-primary { background: var(--primary-color); color: white; }
+        .nav-btn-secondary { background: var(--surface-hover); color: var(--text-color); border: 1px solid var(--border-color); }
+        .nav-btn-cancel { background: transparent; color: var(--text-muted); }
+        
+        .nav-btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
         
         </style>
         
@@ -3141,7 +3267,7 @@
             <div class="gallery-sort-controls">
                 <!-- MODIFIED: Show count for Global/AI searches too -->
                 <span class="file-count-badge">
-                    {% if is_ai_search or is_global_search %}
+                    {% if is_ai_search or is_global_search or is_recursive %}
                         🔍 Found {{ total_files }} Result{% if total_files != 1 %}s{% endif %}
                     {% else %}
                         📂 {{ total_files }} Files {% if total_files != total_folder_files %}({{ total_folder_files }} Total){% endif %}
@@ -3296,6 +3422,11 @@
                                     🌐 Global (All)
                                 </label>
                             </div>
+                            <!-- Inside Search Scope filter-group -->
+                            <label class="recursive-wrapper {% if request.args.get('recursive') == 'true' %}active{% endif %}" id="recursive-standard-ui">
+                                <input type="checkbox" name="recursive" value="true" {% if request.args.get('recursive') == 'true' %}checked{% endif %} onchange="this.parentElement.classList.toggle('active', this.checked)">
+                                <span class="recursive-label">📂 Include Subfolders</span>
+                            </label>
                         </div>
                         
                         <div class="filter-group"><label for="search-input">🔍 Search by Name</label><input type="text"
@@ -3590,6 +3721,12 @@
                             <div class="ai-scope-option active" data-scope="global" onclick="selectAiScope('global')">Global (All)</div>
                             <div class="ai-scope-option" data-scope="local" onclick="selectAiScope('local')">Current Folder</div>
                         </div>
+                        <!-- NEW: Recursive Toggle for AI (hidden by default, shown by JS when local is selected) -->
+                        <label class="recursive-wrapper" id="ai-recursive-toggle" style="display:none; margin-top:10px; width:100%; justify-content:center;">
+                            <input type="checkbox" id="ai-search-recursive" value="true">
+                            <span class="recursive-label">📂 Include Subfolders</span>
+                        </label>
+                        
                     </div>
                     <div>
                         <label style="color: #fff; font-weight: bold; display:block; margin-bottom:5px;">Max Results:</label>
@@ -3750,6 +3887,18 @@
             </div>
         </div>
     </div>
+    <!-- NAVIGATION CHOICE MODAL -->
+    <div id="nav-choice-overlay">
+        <div class="nav-choice-panel">
+            <h3>🔍 Filters are Active</h3>
+            <p>You are moving to a new folder. How would you like to proceed with your current search settings?</p>
+            <div class="nav-choice-actions">
+                <button id="nav-keep-filters" class="nav-btn nav-btn-primary">✨ Keep Filters & Navigate</button>
+                <button id="nav-reset-filters" class="nav-btn nav-btn-secondary">📁 Reset & Browse Folder</button>
+                <button id="nav-cancel" class="nav-btn nav-btn-cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
     <script>
         // --- DATA INITIALIZATION AND GLOBAL STATE ---
@@ -3838,11 +3987,9 @@
             let itemHTML;
             
             if (isMovePanel) {
-                // MODIFICA: Calcolo se il bottone deve essere disabilitato.
-                // Disabilita SOLO SE è il folder corrente E NON siamo in ricerca AI/Global.
-                const shouldDisable = (folderKey === currentFolderKey && !isAiGlobal && !isGlobalSearch);
+                const isRecursive = document.querySelector('input[name="recursive"]')?.checked || false;
+                const shouldDisable = (folderKey === currentFolderKey && !isAiGlobal && !isGlobalSearch && !isRecursive);
                 const disabledAttr = shouldDisable ? 'disabled' : '';
-                
                 itemHTML = ` <div class="folder-item"> <span class="toggle-btn ${!hasChildren ? 'empty' : ''}"></span> <span class="folder-link" title="${folderDisplayName}">${folderIcon} ${folderDisplayName}</span> <button class="move-here-btn" data-folder-key="${folderKey}" title="Move here" ${disabledAttr}>➜</button> </div>`;
             } else {
                 itemHTML = ` <div class="folder-item ${isActive ? 'active' : ''}"> <span class="toggle-btn ${!hasChildren ? 'empty' : ''}"></span> <span class="folder-link navigation-link" data-folder-url="/galleryout/view/${folderKey}" title="${folderDisplayName}">${folderIcon} ${folderDisplayName}</span> ${(folderKey !== '_root_' && !protectedFolderKeys.includes(folderKey)) ? `<div class="folder-actions"> <button class="folder-action-btn" title="Rename" data-action="rename" data-name="${folderDisplayName}">✏️</button> <button class="folder-action-btn" title="Delete" data-action="delete" data-name="${folderDisplayName}">🗑️</button> </div>` : ''} </div>`;
@@ -5054,6 +5201,12 @@ async function showNodeSummary(event, fileId) {
             document.querySelectorAll('.ai-scope-option').forEach(el => {
                 el.classList.toggle('active', el.dataset.scope === scope);
             });
+            
+            // Show recursive toggle ONLY if scope is local AND folder has subfolders
+            const recursiveToggle = document.getElementById('ai-recursive-toggle');
+            if (recursiveToggle) {
+                recursiveToggle.style.display = (scope === 'local') ? 'flex' : 'none';
+            }
         }
         
         // --- MODAL AI ---
@@ -5136,8 +5289,12 @@ async function showNodeSummary(event, fileId) {
             loader.style.opacity = '1';
             
             let finalQuery = query;
+            const isRecursive = document.getElementById('ai-search-recursive')?.checked;
+        
             if (currentAiScope === 'local') {
-                finalQuery += " ||| " + currentFolderInfo.path;
+                // We append a special flag if recursive is enabled
+                const pathSuffix = isRecursive ? " [RECURSIVE]" : "";
+                finalQuery += " ||| " + currentFolderInfo.path + pathSuffix;
             }
             
             const searchPayload = { 
@@ -5210,78 +5367,106 @@ async function showNodeSummary(event, fileId) {
         }
         
         
-        // --- SCOPE SELECTOR LOGIC (Visual + Dynamic Data Fetch) ---
-            const scopeRadios = document.querySelectorAll('input[name="scope"]');
-            
-            // Store TomSelect instances for easy access
-            let extSelectInst = null;
-            let pfxSelectInst = null;
-            
-            // Initialize TomSelects and store references
-            if (!isAiSearch) {
-                const extEl = document.getElementById('extension-select');
-                const pfxEl = document.getElementById('prefix-select');
-                if (extEl) extSelectInst = new TomSelect('#extension-select', { plugins: ['checkbox_options', 'clear_button'], placeholder: '📄 Select extensions...' });
-                if (pfxEl) pfxSelectInst = new TomSelect('#prefix-select', { plugins: ['checkbox_options', 'clear_button'], placeholder: '🏷️ Select prefixes...' });
+        // --- SCOPE SELECTOR & RECURSIVE LOGIC (Integrated Dynamic Fetch) ---
+        const scopeRadios = document.querySelectorAll('input[name="scope"]');
+        const recursiveCheckbox = document.querySelector('input[name="recursive"]');
+        const recursiveWrapper = document.getElementById('recursive-standard-ui');
+        
+        let extSelectInst = null;
+        let pfxSelectInst = null;
+        
+        // Initialize TomSelects
+        if (!isAiSearch) {
+            const extEl = document.getElementById('extension-select');
+            const pfxEl = document.getElementById('prefix-select');
+            if (extEl) extSelectInst = new TomSelect('#extension-select', { plugins: ['checkbox_options', 'clear_button'], placeholder: '📄 Select extensions...' });
+            if (pfxEl) pfxSelectInst = new TomSelect('#prefix-select', { plugins: ['checkbox_options', 'clear_button'], placeholder: '🏷️ Select prefixes...' });
+        }
+
+        // Logic to disable/enable Recursive checkbox based on Global Scope
+        function updateRecursiveUIState() {
+            const isGlobal = document.querySelector('input[name="scope"][value="global"]')?.checked;
+            if (recursiveWrapper && recursiveCheckbox) {
+                if (isGlobal) {
+                    recursiveWrapper.classList.add('disabled');
+                    recursiveCheckbox.checked = false; // Forced off when global
+                    recursiveWrapper.classList.remove('active');
+                } else {
+                    recursiveWrapper.classList.remove('disabled');
+                    // Ensure the 'active' class matches the checkbox state (for blue styling)
+                    recursiveWrapper.classList.toggle('active', recursiveCheckbox.checked);
+                }
             }
+        }
 
-            scopeRadios.forEach(radio => {
-                radio.addEventListener('change', function() {
-                    // 1. Visual Update (Blue Box)
-                    document.querySelectorAll('.scope-label').forEach(label => label.classList.remove('active'));
-                    if (this.checked) this.closest('.scope-label').classList.add('active');
-                    
-                    // 2. Dynamic Data Fetch (AJAX)
-                    const scope = this.value;
-                    const currentFolderKey = '{{ current_folder_key }}';
-                    
-                    // Show small loading indication (optional, or just wait)
-                    if(extSelectInst) extSelectInst.wrapper.style.opacity = '0.5';
-                    if(pfxSelectInst) pfxSelectInst.wrapper.style.opacity = '0.5';
+        // Main function to refresh dropdowns (Extensions/Prefixes) via AJAX
+        function triggerOptionsRefresh() {
+            const scope = document.querySelector('input[name="scope"]:checked')?.value || 'local';
+            const isRec = recursiveCheckbox?.checked || false;
+            const folderKey = '{{ current_folder_key }}';
+            
+            // Visual feedback: dim the controls during fetch
+            if(extSelectInst) extSelectInst.wrapper.style.opacity = '0.5';
+            if(pfxSelectInst) pfxSelectInst.wrapper.style.opacity = '0.5';
 
-                    fetch(`/galleryout/api/search_options?scope=${scope}&folder_key=${currentFolderKey}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            // Update Extensions
-                            if (extSelectInst) {
-                                extSelectInst.clearOptions();
-                                data.extensions.forEach(ext => {
-                                    extSelectInst.addOption({value: ext, text: ext});
-                                });
-                                extSelectInst.refreshOptions(false);
-                                extSelectInst.wrapper.style.opacity = '1';
-                            }
+            fetch(`/galleryout/api/search_options?scope=${scope}&folder_key=${folderKey}&recursive=${isRec}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Update Extensions
+                    if (extSelectInst) {
+                        extSelectInst.clearOptions();
+                        data.extensions.forEach(ext => extSelectInst.addOption({value: ext, text: ext}));
+                        extSelectInst.refreshOptions(false);
+                        extSelectInst.wrapper.style.opacity = '1';
+                    }
 
-                            // Update Prefixes & Handle Limit
-                            const warningBox = document.getElementById('prefix-warning-container');
-                            const selectContainer = document.getElementById('prefix-select-container');
+                    // Update Prefixes & Handle Limit
+                    const warningBox = document.getElementById('prefix-warning-container');
+                    const selectContainer = document.getElementById('prefix-select-container');
 
-                            if (data.prefix_limit_reached) {
-                                // Show Warning, Hide Dropdown
-                                if(warningBox) warningBox.style.display = 'flex';
-                                if(selectContainer) selectContainer.style.display = 'none';
-                            } else {
-                                // Hide Warning, Show Dropdown
-                                if(warningBox) warningBox.style.display = 'none';
-                                if(selectContainer) selectContainer.style.display = 'block';
-                                
-                                if (pfxSelectInst) {
-                                    pfxSelectInst.clearOptions();
-                                    data.prefixes.forEach(pfx => {
-                                        pfxSelectInst.addOption({value: pfx, text: pfx});
-                                    });
-                                    pfxSelectInst.refreshOptions(false);
-                                    pfxSelectInst.wrapper.style.opacity = '1';
-                                }
-                            }
-                        })
-                        .catch(err => {
-                            console.error("Failed to update search options:", err);
-                            if(extSelectInst) extSelectInst.wrapper.style.opacity = '1';
-                            if(pfxSelectInst) pfxSelectInst.wrapper.style.opacity = '1';
-                        });
+                    if (data.prefix_limit_reached) {
+                        if(warningBox) warningBox.style.display = 'flex';
+                        if(selectContainer) selectContainer.style.display = 'none';
+                    } else {
+                        if(warningBox) warningBox.style.display = 'none';
+                        if(selectContainer) selectContainer.style.display = 'block';
+                        if (pfxSelectInst) {
+                            pfxSelectInst.clearOptions();
+                            data.prefixes.forEach(pfx => pfxSelectInst.addOption({value: pfx, text: pfx}));
+                            pfxSelectInst.refreshOptions(false);
+                            pfxSelectInst.wrapper.style.opacity = '1';
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.error("Search options refresh failed:", err);
+                    if(extSelectInst) extSelectInst.wrapper.style.opacity = '1';
+                    if(pfxSelectInst) pfxSelectInst.wrapper.style.opacity = '1';
                 });
+        }
+
+        // Event Listeners for UI Changes
+        scopeRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                // Visual update for the radio buttons labels (Blue box)
+                document.querySelectorAll('.scope-label').forEach(label => label.classList.remove('active'));
+                if (this.checked) this.closest('.scope-label').classList.add('active');
+                
+                updateRecursiveUIState();
+                triggerOptionsRefresh();
             });
+        });
+
+        if (recursiveCheckbox) {
+            recursiveCheckbox.addEventListener('change', function() {
+                // Toggle 'active' class on the wrapper for styling
+                if (recursiveWrapper) recursiveWrapper.classList.toggle('active', this.checked);
+                triggerOptionsRefresh();
+            });
+        }
+
+        // Initialize UI on page load
+        updateRecursiveUIState();
         
         // --- MAIN INITIALIZATION FUNCTION ---
         document.addEventListener('DOMContentLoaded', () => {
@@ -5447,12 +5632,66 @@ async function showNodeSummary(event, fileId) {
                 });
             }
 
+            // --- SMART NAVIGATION LOGIC (Filter Persistence) ---
+            const navOverlay = document.getElementById('nav-choice-overlay');
+            let pendingNavUrl = null;
+
+            /**
+             * Handles folder navigation by checking for active filters.
+             * Focuses the primary action button to allow immediate keyboard confirmation.
+             */
+            function handleFolderNavigation(targetBaseUrl) {
+                // Determine if filters are actually active using the backend count
+                if (activeFiltersCount > 0) {
+                    pendingNavUrl = targetBaseUrl;
+                    navOverlay.classList.add('visible');
+                    document.body.classList.add('modal-open');
+
+                    // UX IMPROVEMENT: Auto-focus the "Keep Filters" button.
+                    // This highlights the button and allows the user to simply press "Enter"
+                    // instead of moving the mouse across large screens.
+                    setTimeout(() => {
+                        const keepBtn = document.getElementById('nav-keep-filters');
+                        if (keepBtn) keepBtn.focus();
+                    }, 50); // Small delay to ensure modal visibility animation is starting
+                } else {
+                    window.location.href = targetBaseUrl;
+                }
+            }
+
+            // Modal Button: Keep current filters and apply them to the new folder
+            document.getElementById('nav-keep-filters').onclick = () => {
+                const currentParams = new URLSearchParams(window.location.search);
+                
+                // If we were in Global Search, we switch to Local for the specific folder clicked
+                // but we keep all other keywords, extensions, and date filters.
+                if (currentParams.get('scope') === 'global') {
+                    currentParams.set('scope', 'local');
+                }
+                
+                window.location.href = pendingNavUrl + "?" + currentParams.toString();
+            };
+
+            // Modal Button: Discard filters and browse the folder normally
+            document.getElementById('nav-reset-filters').onclick = () => {
+                window.location.href = pendingNavUrl;
+            };
+
+            // Modal Button: Close modal and stay on the current page
+            document.getElementById('nav-cancel').onclick = () => {
+                navOverlay.classList.remove('visible');
+                document.body.classList.remove('modal-open');
+                pendingNavUrl = null;
+            };
+
+            // Updated Tree Listener: Handles Toggles, Actions, and Smart Navigation
             document.getElementById('folder-tree-nav').addEventListener('click', (e) => {
                 const link = e.target.closest('.navigation-link');
                 const toggle = e.target.closest('.toggle-btn');
                 const actionBtn = e.target.closest('.folder-action-btn');
 
                 if (toggle) {
+                    // Standard folder expand/collapse logic
                     const li = toggle.closest('li');
                     const key = li.dataset.folderKey;
                     const isNowCollapsed = li.classList.toggle('collapsed');
@@ -5464,6 +5703,7 @@ async function showNodeSummary(event, fileId) {
                     localStorage.setItem('galleryFolderState', JSON.stringify([...expandedFolderKeys]));
 
                 } else if (actionBtn) {
+                    // Folder actions (Rename/Delete)
                     const li = actionBtn.closest('li');
                     const key = li.dataset.folderKey;
                     const name = actionBtn.dataset.name;
@@ -5471,25 +5711,20 @@ async function showNodeSummary(event, fileId) {
                     if (actionBtn.dataset.action === 'delete') deleteFolder(e, key, name);
 
                 } else if (link) {
-                    if (isAiSearch || isGlobalSearch || activeFiltersCount > 0) {
-                        const confirmLeave = confirm("⚠️ Active Search Session\n\nYou are about to leave the search results. Do you want to discard them and browse the folder?");
-                        if (!confirmLeave) return; 
-                    }
-                    
-                    window.location.href = link.dataset.folderUrl;
+                    // Navigation click: use the Smart Navigation logic
+                    e.preventDefault();
+                    handleFolderNavigation(link.dataset.folderUrl);
                 }
             });
             
+            // Updated Breadcrumbs Listener: Uses Smart Navigation
             const breadcrumbContainer = document.querySelector('.breadcrumb-links');
             if (breadcrumbContainer) {
                 breadcrumbContainer.addEventListener('click', (e) => {
                     const link = e.target.closest('a');
-                    if (link && (isAiSearch || isGlobalSearch || activeFiltersCount > 0)) {
-                        const confirmLeave = confirm("⚠️ Active Search Session\n\nYou are about to leave the search results. Do you want to discard them and browse the folder?");
-                        
-                        if (!confirmLeave) {
-                            e.preventDefault();
-                        }
+                    if (link) {
+                        e.preventDefault();
+                        handleFolderNavigation(link.getAttribute('href'));
                     }
                 });
             }
