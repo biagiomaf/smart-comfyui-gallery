@@ -6,15 +6,34 @@ This folder is updated regularly with new experimental features. If you're inter
 **Successful experiments will be integrated into official releases** after thorough testing and community feedback.
 ---
 ## Current experiments
-### Files: `templates/index.html` + smartgallery.py - ProRes .mov support
-### 🎥 Real-time Transcoding Bridge (ProRes / `.mov` support)
-**Last updated:** 23 December 2025
+### Files: `templates/index.html` + smartgallery.py 
+
+### 📂 Recursive Search & Smart Filter Persistence
+
+**Last updated:** 24 December 2025
+
 **What is this?**  
+
+The filtering system has been significantly upgraded to support recursive directory traversal and persistent search sessions during navigation.
+Key Enhancements:
+-Recursive Search Mode: A new "Include Subfolders" toggle is available in Search. When enabled, the gallery will scan the entire directory tree starting from the current folder, allowing you to find files regardless of their depth.
+-Smart Navigation Modal: Navigating between folders while filters are active no longer resets your search. A new stylized modal allows you to:
+-Keep Filters & Navigate: Apply your current search terms, extensions, and date ranges to the newly selected folder.
+-Reset & Browse: Clear filters and browse the target folder in its default state.
+-Dynamic Filter Discovery: Dropdown menus for File Extensions and Filename Prefixes now update dynamically via AJAX. If you toggle "Include Subfolders," the filters immediately reflect all file types found throughout the entire sub-tree without a page reload.
+-Intelligent UI & UX:
+-Context-Aware: The recursive option is automatically managed based on search scope (e.g., disabled during Global Search as it is already implicit).
+-Keyboard Accessible: The navigation modal supports immediate keyboard confirmation (Focus on "Keep Filters"), optimized for large desktop screens.
+
+
+### 🎥 Real-time Transcoding Bridge (ProRes / `.mov` support)
+
 This experimental feature introduces a **real-time transcoding pipeline** that allows SmartGallery to preview **ProRes `.mov` files directly in the browser**.
 This is especially useful for:
 - 🍎 **macOS users**
 - 🎬 Video creators exporting **ProRes** from Final Cut Pro, DaVinci Resolve, or Premiere
 - 🖥️ Anyone working with **high-quality `.mov` files** that browsers normally can't play
+
 **How it works:**
 - When SmartGallery detects a `.mov` file (commonly ProRes)
 - It automatically launches **ffmpeg in the background**
