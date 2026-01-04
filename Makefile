@@ -158,3 +158,6 @@ docker_push:
 #   % rm *.log
 # - Erase the buildx builder
 #   % make buildx_rm
+#
+# Icon conversion:
+# magick assets/logo.png -define icon:auto-resize=256,128,64,48,32,16 static/galleryout/favicon.ico
