@@ -9,20 +9,25 @@ SMARTGALLERY_VERSION = 1.51
 
 DOCKERFILE = Dockerfile
 DOCKER_TAG_PRE = smartgallery
-DOCKER_TAG_PRE_EXP = smartgallery_exp
+DOCKER_TAG_POST_EXP = exp
 
 DOCKER_TAG = ${SMARTGALLERY_VERSION}
 DOCKER_LATEST_TAG = latest
 
 SMARTGALLERY_CONTAINER_NAME = ${DOCKER_TAG_PRE}:${DOCKER_TAG}
-SMARTGALLERY_CONTAINER_NAME_EXP = ${DOCKER_TAG_PRE_EXP}:${DOCKER_TAG}
+SMARTGALLERY_CONTAINER_NAME_EXP = ${DOCKER_TAG_PRE}:${DOCKER_TAG_POST_EXP}
 
 # used for builfx
-SMARTGALLERY_NAME = $(shell echo ${SMARTGALLERY_CONTAINER_NAME} | tr -cd '[:alnum:]-_.')
-SMARTGALLERY_NAME_EXP = $(shell echo ${SMARTGALLERY_CONTAINER_NAME_EXP} | tr -cd '[:alnum:]-_.')
+SMARTGALLERY_NAME = ${DOCKER_TAG_PRE}
 
 TEMPLATE_FILE=templates/index.html
 SMARTGALLERY_FILE=smartgallery.py
+
+# Try to optimize caching for development
+RELEASE_BUILD=true
+# apt-cacher-ng proxy
+# APT Cache: HTTP only, most content from Ubuntu will work, limit download of common packages between images/builds
+BUILD_APT_PROXY ?=
 
 EXP_FOLDER=experiments
 # if EXP_FOLDER/templates/index.html exists, set EXP_TEMPLATE_FILE to it
@@ -77,12 +82,21 @@ build_core:
 	@echo ""; echo ""; echo "===== Building ${CHOOSEN_CONTAINER_NAME}"
 	@$(eval VAR_NT="${CHOOSEN_NAME}")
 	@echo "-- Docker command to be run:"
-# always use the same builder name
-	@echo "docker buildx ls | grep -q ${SMARTGALLERY_NAME} && echo \"builder already exists -- to delete it, use: docker buildx rm ${SMARTGALLERY_NAME}\" || docker buildx create --name ${SMARTGALLERY_NAME}"  > ${VAR_NT}.cmd
-	@echo "docker buildx use ${SMARTGALLERY_NAME} || exit 1" >> ${VAR_NT}.cmd
+	@if [ "A${RELEASE_BUILD}" = "Atrue" ]; then \
+		if [ -f buildkitd.toml ]; then \
+			BUILDX_ADD="--driver docker-container --config ./buildkitd.toml"; \
+		else \
+			BUILDX_ADD=""; \
+		fi; \
+		echo "docker buildx ls | grep -q ${SMARTGALLERY_NAME} && echo \"builder already exists -- to delete it, use: docker buildx rm ${SMARTGALLERY_NAME}\" || docker buildx create --name ${SMARTGALLERY_NAME} $${BUILDX_ADD}"  > ${VAR_NT}.cmd; \
+		echo "docker buildx use ${SMARTGALLERY_NAME} || exit 1" >> ${VAR_NT}.cmd; \
+	else \
+		echo "docker buildx use default || exit 1" > ${VAR_NT}.cmd; \
+	fi
 	@echo "BUILDX_EXPERIMENTAL=1 ${DOCKER_PRE} docker buildx debug --on=error build --progress plain --platform linux/amd64 ${DOCKER_BUILD_ARGS} \\" >> ${VAR_NT}.cmd
 	@echo "  --build-arg CHOOSEN_TEMPLATE_FILE=\"${CHOOSEN_TEMPLATE_FILE}\" \\" >> ${VAR_NT}.cmd
 	@echo "  --build-arg CHOOSEN_SMARTGALLERY_FILE=\"${CHOOSEN_SMARTGALLERY_FILE}\" \\" >> ${VAR_NT}.cmd
+	@echo "  --build-arg BUILD_APT_PROXY=\"${BUILD_APT_PROXY}\" \\" >> ${VAR_NT}.cmd
 	@echo "  --tag=\"${CHOOSEN_CONTAINER_NAME}\" \\" >> ${VAR_NT}.cmd
 	@echo "  -f ${DOCKERFILE} \\" >> ${VAR_NT}.cmd
 	@echo "  --load \\" >> ${VAR_NT}.cmd

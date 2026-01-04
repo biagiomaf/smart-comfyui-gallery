@@ -2,6 +2,17 @@ FROM python:3.12-slim
 
 # Install system packages
 ENV DEBIAN_FRONTEND=noninteractive
+
+# Make use of apt-cacher-ng if available
+RUN if [ "A${BUILD_APT_PROXY:-}" != "A" ]; then \
+        echo "Using APT proxy: ${BUILD_APT_PROXY}"; \
+        printf 'Acquire::http::Proxy "%s";\n' "$BUILD_APT_PROXY" > /etc/apt/apt.conf.d/01proxy; \
+    fi \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates wget gnupg \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
 RUN apt-get update -y --fix-missing --no-install-recommends \
     && apt-get install -y --no-install-recommends \
     apt-utils \
@@ -90,6 +101,10 @@ USER root
 COPY --chmod=555 docker_init.bash /smartgallery_init.bash
 
 EXPOSE 8189
+
+# Remove APT proxy configuration and clean up APT downloaded files
+RUN rm -rf /var/lib/apt/lists/* /etc/apt/apt.conf.d/01proxy \
+    && apt-get clean
 
 USER smartgallerytoo
 

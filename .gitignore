@@ -48,6 +48,7 @@ Thumbs.db
 *.log
 .env
 *.temp
+buildkitd.toml
 
 # Test artifacts
 compose-test.yaml
