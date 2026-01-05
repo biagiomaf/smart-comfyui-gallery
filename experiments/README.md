@@ -11,7 +11,12 @@ This folder is updated regularly with new experimental features. If you're inter
 ## Current experiments: Version 1.52.2 Beta
 ### Files: `templates/index.html` + smartgallery.py 
 
-**Last updated:** 03 January 2026
+**Last updated:** 05 January 2026
+
+### Seamless Infinite Scrolling
+Browsing large galleries is now smoother and faster.
+- **Auto-Loading:** Images automatically load as you scroll down, eliminating the need to repeatedly click "Load More".
+- **High Performance:** Powered by the modern `IntersectionObserver` API, it ensures efficient memory usage and battery life on both Desktop and Mobile devices.
 
 ### UI/UX Modernization and lot of new features
 
@@ -31,7 +36,6 @@ Key Enhancements:
 - Smart Navigation: Navigating between folders while filters are active no longer resets your search. Apply your current search filters to the newly selected folder.
 - Dynamic Filter Discovery: Dropdown menus for File Extensions and Filename Prefixes now update dynamically via AJAX. If you toggle "Include Subfolders," the filters immediately reflect all file types found throughout the entire sub-tree without a page reload.
 - Intelligent UI & UX:
-
 
 ### Real-time Transcoding Bridge (ProRes / `.mov` support)
 
@@ -53,6 +57,7 @@ This is especially useful for:
 ```env
   FFPROBE_MANUAL_PATH=/path/to/ffprobe
 ```
+
 ---
 
 ### The rest of the New Features:
@@ -61,21 +66,14 @@ This is especially useful for:
 - Full Resizable and hide the left sidebar (directory tree)
 - Keyboard shortcut `C` - copies image workflow to clipboard for pasting in ComfyUI (Ctrl+V)
 
-## We need you Feedback
-**Everything works?** → Let us know, so we can officially realease this beta experimental version. Leave a message in the discussion area of this repo. 
-Your feedback helps make these features stable for everyone. Thank you for testing! 🙏
+---
 
-**Found a bug?** → Open an issue with details  
-
+## How to install and test this beta version:
 
 **⚠️ IMPORTANT:**
-- This version **may be unstable**
-- **Always backup** your original file before testing
-- If something **doesn't work or breaks**, please:
-  1. **Restore the original file** immediately
-  2. **Open an issue** on GitHub describing the problem
-  3. Include your browser and OS information
-**How to test:**
+- This version may be unstable
+- Always backup your original file before testing
+
 1. **Backup your current file:**
 ```bash
 copy templates\index.html templates\index.html.backup
@@ -86,11 +84,21 @@ copy smartgallery.py smartgallery.py.backup
 copy experiments\templates\index.html templates\index.html
 copy experiments\smartgallery.py smartgallery.py
 ```
-3. Restart the application and test the new features
+3. Restart the application and enjoy (...and test) the new features
 4. **If something breaks - restore original:**
 ```bash
 copy templates\index.html.backup templates\index.html
 copy smartgallery.py.backup smartgallery.py
 ```
 
+**For Docker Users**
+- the process to use this beta version is to use the **make build_exp** which will provide a smartgallery:exp image
+
+---
+
+## We need you Feedback
+**Everything works?** → Let us know, so we can officially realease this beta experimental version. Leave a message in the discussion area of this repo. 
+Your feedback helps make these features stable for everyone. Thank you for testing! 🙏
+
+**Found a bug?** → Open an issue with details  
 

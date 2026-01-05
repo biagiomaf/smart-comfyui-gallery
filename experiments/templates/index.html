@@ -176,109 +176,216 @@
             transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .sidebar-header {
-            margin-bottom: 1.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px; 
-            flex-shrink: 0;
-            width: 100%;
-            overflow: hidden; 
-        }
+/* ### inizio */
+/* ========================================= */
+/* === SIDEBAR HEADER (WRAPPER STRATEGY) === */
+/* ========================================= */
 
-        .sidebar-header h1 {
-            margin: 0;
-            font-size: 1.8rem;
-            font-weight: 700;
-            background: var(--gradient-primary);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    /* ABSOLUTE START: Everything starts from the left */
+    justify-content: flex-start !important; 
+    width: 100%;
+    margin-bottom: 1.5rem;
+    flex-shrink: 0;
+    padding: 0 4px;
+    box-sizing: border-box;
+    min-height: 44px;
+    /* Allow text to overflow if needed, no more dots/truncation */
+    overflow: visible; 
+}
 
-        /* --- MOBILE FOLDER TOGGLE BUTTON --- */
-        #sidebar-toggle-btn {
-            display: none;
-            /* Stile Glass */
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--glass-border);
-            color: var(--text-color);
-            /* Layout */
-            align-items: center;
-            gap: 8px;
-            padding: 0.5rem 0.8rem;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            cursor: pointer;
+/* --- LEFT BLOCK (LOGO + TEXTS) --- */
+.brand-link {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    
+    /* DIMENSIONS BLOCK */
+    flex-grow: 0 !important;
+    flex-shrink: 0 !important;
+    /* Width: content only. No extra pixels. */
+    width: fit-content !important; 
+    max-width: 80%; /* Mobile safety */
+    
+    /* SPACING */
+    gap: 10px !important;
+    margin-right: 0 !important; /* No push from here */
+}
+
+
+
+.brand-logo {
+    width: 38px;
+    height: 38px;
+    min-width: 38px !important;
+    object-fit: contain;
+    flex-shrink: 0;
+    
+    background-color: #ffcccc;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(255, 0, 255, 0.3);
+    margin: 0 !important;
+}
+
+.brand-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start !important; /* Text aligned to the left */
+    text-align: left !important;
+    
+    line-height: 1.1;
+    /* REMOVED OVERFLOW HIDDEN: No more truncation dots */
+    overflow: visible !important; 
+    white-space: nowrap;
+    margin: 0 !important;
+}
+.brand-link h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    font-family: system-ui, -apple-system, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+    letter-spacing: -0.02em; /* Tracking modern */
+    white-space: nowrap;
+    overflow: visible !important; 
+    text-overflow: clip !important; 
+    
+    background: linear-gradient(135deg, #f0a0ff 0%, #9b30ff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    
+    /* Glow modern */
+    filter: drop-shadow(0 0 8px rgba(155, 48, 255, 0.4))
+            drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    
+    margin-bottom: 2px !important;
+}
+.version-row-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start !important;
+    gap: 8px; 
+    margin: 0 !important;
+    width: 100%;
+}
+
+.v-num {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5); 
+    font-family: monospace;
+    font-weight: 500;
+    line-height: 1;
+}
+
+.header-update-badge {
+    background: var(--primary-color);
+    color: white !important;
+    font-size: 0.6rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 600;
+    text-transform: uppercase;
+    white-space: nowrap;
+    animation: pulse-update 2s infinite;
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+}
+
+/* --- RIGHT BLOCK (BUTTONS) - CRITICAL MODIFICATION BELOW --- */
+.sidebar-actions {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+    
+    /* THIS IS THE KEY: */
+    /* Push this element all the way to the right. This keeps the logo on the left. */
+    margin-left: auto !important; 
+}
+
+/* 1. Bring Update Badge closer to version number */
+.version-row-header {
+    gap: 4px !important; /* Was 8px, reduced to tighten spacing */
+}
+
+/* 2. Remove ghost margins from badge to stick it to the left */
+.header-update-badge {
+    margin-left: 0 !important;
+}
+
+/* 3. Force text closer to the logo (eliminating dead space) */
+.brand-link {
+    gap: 4px !important; /* Reduced gap between logo and title */
+}
+
+.brand-logo {
+    margin-right: 5px !important; /* Fixed space to the right of the logo */
+}
+
+
+        #sidebar-minify-btn, #sidebar-expand-btn {
+            background: transparent; border: 1px solid var(--glass-border); color: var(--text-muted);
+            padding: 0; border-radius: 6px; cursor: pointer; font-size: 0.9rem;
+            width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
             transition: all 0.2s;
-            white-space: nowrap;
         }
-        #sidebar-toggle-btn:hover,
-        #sidebar-toggle-btn:active {
-            background: var(--surface-hover);
-            border-color: var(--primary-color);
-            color: white;
-        }
-        #sidebar-toggle-btn svg {
-            flex-shrink: 0;
-            stroke: var(--favorite-color) !important; 
-            filter: drop-shadow(0 0 2px rgba(255, 193, 7, 0.3));
-        }
-        @media (max-width: 1024px) {
-            #sidebar-toggle-btn {
-                display: flex !important;
-            }
-        }
-        
-        /* --- BRANDING / LOGO STYLES --- */
-        .brand-link {
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            transition: all 0.3s ease;
-            flex-grow: 1; 
-            min-width: 0; 
-            margin-right: auto;
+        #sidebar-minify-btn:hover, #sidebar-expand-btn:hover {
+            background: var(--surface-hover); color: white; border-color: var(--text-muted);
         }
 
-        .brand-link h1 {
-            margin: 0;
-            line-height: 1;
-            white-space: nowrap;
-            font-size: 1.6rem;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .brand-logo {
-            width: 40px; 
+        /* --- MOBILE FOLDERS BUTTON --- */
+        #sidebar-toggle-btn {
+            display: none; 
+            background: rgba(255, 255, 255, 0.08); 
+            border: 1px solid var(--glass-border);
+            color: var(--text-color); 
+            
+            /* Increased dimensions for better mobile touch target */
+            padding: 0 10px; 
             height: 40px; 
-            object-fit: contain;
-            flex-shrink: 0;
-            background-color: #ffcccc;            
-            border-radius: 8px; 
-            padding: 0px;       
-            box-shadow: 0 0 10px rgba(255, 0, 255, 0.3); 
-        }
-        
-        body.sidebar-minimized .brand-link h1 {
-            display: none; /* Hide text */
-            opacity: 0;
+            border-radius: 10px;
+            font-size: 0.95rem; 
+            
+            font-weight: 600; 
+            cursor: pointer; 
+            align-items: center; 
+            gap: 8px; 
+            white-space: nowrap;
+            transition: all 0.2s ease;
         }
 
-        body.sidebar-minimized .brand-link {
-            justify-content: center; /* Center the logo in the narrow bar */
-            padding: 0;
-        }
-        
-        body.sidebar-minimized .brand-logo {
-            width: 32px; 
-            height: 32px;
+        /* Slightly larger icon to match the new button size */
+        #sidebar-toggle-btn svg { 
+            flex-shrink: 0; 
+            stroke: var(--favorite-color) !important; 
+            width: 20px; 
+            height: 20px; 
         }
 
+        @media (max-width: 1024px) {
+            #sidebar-minify-btn, #sidebar-expand-btn { display: none !important; }
+            #sidebar-toggle-btn { display: flex !important; }
+            .brand-link h1 { font-size: 1.3rem; }
+            .brand-logo { width: 34px; height: 34px; }
+        }
+
+        /* MINIMIZED STATE */
+        body.sidebar-minimized .brand-info { display: none !important; }
+        body.sidebar-minimized .sidebar-header { flex-direction: column; gap: 10px; margin-bottom: 0; }
+        
+        /* Quando minimizzato, togliamo il margine auto per centrare il logo */
+        body.sidebar-minimized .brand-link { margin-right: 0 !important; justify-content: center; gap: 0 !important; width: 100% !important; }
+        
+        body.sidebar-minimized .brand-logo { margin: 0 !important; width: 30px; height: 30px; }
+        body.sidebar-minimized .sidebar-actions { flex-direction: column; width: 100%; }
+        body.sidebar-minimized #sidebar-expand-btn { display: none !important; }
+        body.sidebar-minimized #sidebar-minify-btn { width: 100%; border: none; }
+/* ########## fine */
         .folder-controls {
             display: flex;
             flex-direction: column;
@@ -720,7 +827,6 @@
             accent-color: var(--primary-color);
         }
 
-        /* ### inizio */
         /* --- MODERN FILTER PANEL INTERIORS --- */
 
         /* 1. Labels */
@@ -2654,19 +2760,6 @@
             }
 
             /* 2. SIDEBAR HEADER: SmartGallery title on Left, Folders Button on Right */
-            .sidebar-header {
-                display: flex !important;
-                justify-content: space-between !important; 
-                align-items: center !important;
-                width: 100% !important;
-                gap: 10px;
-                margin-bottom: 1rem;
-            }
-
-            .sidebar-header a h1 {
-                font-size: 1.4rem; /* Slightly smaller for mobile space */
-                white-space: nowrap;
-            }
 
             .sidebar-actions {
                 width: auto !important; /* Override fixed desktop width */
@@ -2716,17 +2809,6 @@
             .sidebar.nav-collapsed #create-folder-btn,
             .sidebar.nav-collapsed .sidebar-footer { /* Added footer here to hide it */
                 display: none;
-            }
-            
-            .brand-link {
-                min-width: auto !important; 
-                flex-shrink: 0 !important;  
-            }
-
-            .brand-link h1 {
-                overflow: visible !important; 
-                text-overflow: clip !important; 
-                font-size: 1.35rem !important;  
             }
             
         }
@@ -3816,33 +3898,14 @@
         /* --- SIDEBAR FOOTER (Version & Links) --- */
         .sidebar-footer {
             margin-top: auto;
-            padding-top: 15px;
+            padding-top: 10px;
             border-top: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 0; 
             transition: all 0.3s ease;
         }
 
-        .version-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            font-family: monospace;
-            padding: 0 5px;
-        }
-
-        .update-badge {
-            background: var(--primary-color);
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            text-decoration: none;
-            font-weight: bold;
-            animation: pulse-update 2s infinite;
-        }
 
         /* GitHub Promo Box Style */
         .github-promo-link {
@@ -3897,9 +3960,7 @@
             padding-top: 10px;
             gap: 10px;
         }
-        body.sidebar-minimized .version-row {
-            display: none;
-        }
+        
         body.sidebar-minimized .github-promo-link {
             padding: 10px;
             justify-content: center;
@@ -3943,14 +4004,6 @@
             display: none !important;
             opacity: 0; 
             transition: opacity 0.2s;
-        }
-
-        body.sidebar-minimized .sidebar-header {
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 0;
-            padding: 0;
         }
 
         body.sidebar-minimized .sidebar-actions {
@@ -4134,7 +4187,10 @@
             color: var(--text-color);
             /* FIX FOR LONG PATHS ON MOBILE: */
             word-break: break-all; /* Breaks long path strings */
-            white-space: normal;   /* Allows text wrapping */
+            
+            /* PRESERVE SPACES FIX: */
+            white-space: pre-wrap;   /* Allows text wrapping AND preserves multiple spaces */
+            
             line-height: 1.3;
             margin-right: 10px;    /* Space between text and Stop button */
         }
@@ -4996,25 +5052,28 @@
         /* --- FIX MOBILE FOLDER SCROLL --- */
         @media (max-width: 1024px) {
             .folder-tree-container {
-                /* Limita l'altezza al 40% dello schermo per vedere il footer */
+                /* Limit 40% screen to see the footer */
                 max-height: 40vh !important; 
                 min-height: 150px !important;
                 
-                /* Abilita lo scroll interno */
+                /* enable scroll */
                 overflow-y: auto !important; 
                 
-                /* Stile "Box incavato" per far capire che si scrolla */
                 background: rgba(0, 0, 0, 0.2);
                 border: 1px solid var(--glass-border);
                 border-radius: 12px;
                 padding: 10px;
-                margin-bottom: 20px; /* Spazio per staccare il footer */
+                margin-bottom: 20px; 
                 
-                /* Ombra interna */
                 box-shadow: inset 0 2px 10px rgba(0,0,0,0.3);
             }
         }
+        /* Auto-expand AI button on mobile when Filters are hidden */
+        .mobile-big-actions button:only-child {
+            grid-column: 1 / -1; /* Span full width */
+        }
         
+                
         </style>
         
 </head>
@@ -5041,23 +5100,27 @@
     </div>
     <aside class="sidebar">
         <div class="sidebar-header">
+            <!-- Brand Link (Blocco Unico a Sinistra) -->
             <a href="{{ url_for('gallery_view', folder_key='_root_') }}" class="brand-link">
-                <img src="{{ app_logo_b64 }}" 
-                     alt="Logo" 
-                     class="brand-logo">
-                
-                <!-- TESTO -->
-                <h1>SmartGallery</h1>
+                <img src="{{ app_logo_b64 }}" alt="Logo" class="brand-logo">
+                <div class="brand-info">
+                    <h1>SmartGallery</h1>
+                    <div class="version-row-header">
+                        <span class="v-num">v{{ app_version }}</span>
+                        {% if update_available %}
+                        <a href="{{ github_url }}" target="_blank" class="header-update-badge" title="Update available">
+                            🚀 UPDATE v{{ remote_version }}
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
             </a>
+
+            <!-- Right Actions (Blocco Unico a Destra) -->
             <div class="sidebar-actions">
-                <button id="sidebar-minify-btn" title="Minimize Sidebar">
-                    <span>◀</span>
-                </button>
-                <button id="sidebar-expand-btn" title="Expand Sidebar">
-                    <span>↔️</span>
-                </button>
+                <button id="sidebar-minify-btn" title="Minimize Sidebar"><span>◀</span></button>
+                <button id="sidebar-expand-btn" title="Expand Sidebar"><span>↔️</span></button>
                 <button id="sidebar-toggle-btn" title="Toggle Folders">
-                    <!-- Icona Folder SVG (Più elegante del carattere Unicode) -->
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                     </svg>
@@ -5078,17 +5141,7 @@
         <button id="create-folder-btn">➕ Create New Folder</button>
         <!-- VERSION & GITHUB FOOTER -->
         <div class="sidebar-footer">
-            <!-- 1. Version Info -->
-            <div class="version-row">
-                <span>v{{ app_version }}</span>
-                {% if update_available %}
-                <a href="{{ github_url }}" target="_blank" class="update-badge" title="New version available!">
-                    🚀 Update v{{ remote_version }}
-                </a>
-                {% endif %}
-            </div>
-            
-            <!-- 2. Persuasive GitHub Link (No changes here, kept for context) -->
+            <!-- Persuasive GitHub Link -->
             <a href="{{ github_url }}" target="_blank" class="github-promo-link" title="Support SmartGallery on GitHub">
                 <svg class="gh-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
@@ -5133,12 +5186,15 @@
     <div class="toolbar-container desktop-only">
         <div class="toolbar-row">
             
+            <!-- Filters Button (Hidden during AI Search) -->
+            {% if not is_ai_search %}
             <button type="button" id="search-toggle-desktop" class="glass-btn filter-main-btn {% if active_filters_count > 0 %}active-blue{% endif %}">
                 🔍 Filters {% if active_filters_count > 0 %}({{ active_filters_count }}){% endif %}
                 {% if active_filters_count > 0 %}
                     <span class="filter-reset-icon filter-reset-badge" title="Clear all filters">✕</span>
                 {% endif %}
             </button>
+            {% endif %}
 
             {% if enable_ai_search %}
             <button type="button" id="ai-search-toggle-desktop" class="glass-btn {% if is_ai_search %}active-fuxia{% endif %}">
@@ -5227,14 +5283,17 @@
                 {% endif %}
             </span>
         </div>
-
+        
         <!-- Row 3: Big Actions (Only if AI is enabled) -->
         {% if enable_ai_search %}
         <div class="mobile-big-actions">
+            <!-- Filters Button (Hidden during AI Search) -->
+            {% if not is_ai_search %}
             <button type="button" id="mobile-filter-toggle" class="glass-btn filter-main-btn {% if active_filters_count > 0 %}active-blue{% endif %}">
                 🔍 Filters {% if active_filters_count > 0 %}({{ active_filters_count }}){% endif %}
                 {% if active_filters_count > 0 %}<span class="filter-reset-icon filter-reset-badge">✕</span>{% endif %}
             </button>
+            {% endif %}
             
             <button type="button" id="ai-search-toggle-mobile" class="glass-btn {% if is_ai_search %}active-fuxia{% endif %}">
                 ✨ AI Search
@@ -5384,7 +5443,7 @@
         <!-- Load More Button with Logic Check -->
         <div id="load-more-container" {% if total_files <= files|length %}style="display:none;"{% endif %}>
             <button id="load-more-btn">
-                <span>Load More</span>
+                <span>Load More / Scroll Down</span>
                 <svg class="arrow-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M7 13l5 5 5-5M7 6l5 5 5-5"/>
                 </svg>
@@ -8068,18 +8127,20 @@ async function showNodeSummary(event, fileId) {
                             document.getElementById('loader-overlay').style.display = 'none';
                         } else {
                             // Status is 'pending' or 'processing'
+                            // Timeout reached
                             if (attempts >= maxAttempts) {
                                 clearInterval(interval);
                                 document.getElementById('loader-overlay').style.display = 'none';
                                 
                                 const repoUrl = "https://github.com/biagiomaf/smart-comfyui-gallery";
-                                const msg = "⚠️ AI Service Timeout (Worker not responding)\n" +
-                                            "The search request was sent, but the AI service did not respond in time.\n" +
-                                            "Please ensure that the 'smartgallery_ai_service' script is running in your backend terminal.\n" +
-                                            "If you haven't installed the AI dependencies yet, please consult the installation guide at:\n" +
-                                            repoUrl;
                                 
-                                alert(msg);
+                                // Construct HTML message for Smart Dialog
+                                const msg = "The search request was sent, but the AI service did not respond in time.\n\n" +
+                                            "Please ensure that the <strong>'smartgallery_ai_service'</strong> script is running in your backend terminal.\n\n" +
+                                            "If you haven't installed the AI dependencies yet, please consult the installation guide here:\n" +
+                                            `<a href="${repoUrl}" target="_blank" style="color:var(--ai-color); font-weight:bold; word-break:break-all;">${repoUrl}</a>`;
+                                
+                                smartConfirm("⚠️ AI Service Timeout", msg, false);
                             }
                         }
                     })
@@ -9026,14 +9087,20 @@ async function showNodeSummary(event, fileId) {
             dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
             uploadSubmitBtn.addEventListener('click', performUpload);
 
-            // --- FIX LOAD MORE BUTTON LOGIC ---
+            // --- FIX LOAD MORE BUTTON LOGIC & INFINITE SCROLL ---
             const loadMoreBtn = document.getElementById('load-more-btn');
+            const loadMoreContainer = document.getElementById('load-more-container');
+
             if (loadMoreBtn) {
+                // 1. Click Handler (Original Logic)
                 loadMoreBtn.addEventListener('click', async function () {
+                    if (this.disabled) return; // Prevent double firing
+                    
                     this.disabled = true;
                     
-                    // [FIX] Aggiorna solo il testo nello span, preserva l'icona SVG!
+                    // [FIX] Update text span only, preserve SVG icon
                     const textSpan = this.querySelector('span');
+                    const originalText = textSpan ? textSpan.textContent : 'Load More';
                     if (textSpan) textSpan.textContent = 'Loading...';
                     
                     try {
@@ -9050,8 +9117,9 @@ async function showNodeSummary(event, fileId) {
                         if (data.files && data.files.length > 0) {
                             appendFiles(data.files);
                         } else {
-                            showNotification('No more files to load.', 'info');
-                            this.style.display = 'none';
+                            // No more files: hide container and disconnect observer
+                            // showNotification('No more files to load.', 'info'); // Optional: usually distracting on infinite scroll
+                            if (loadMoreContainer) loadMoreContainer.style.display = 'none';
                         }
                     } catch (error) {
                         handleError(error);
@@ -9059,12 +9127,31 @@ async function showNodeSummary(event, fileId) {
                     
                     if (currentItemCount < totalFiles) {
                         this.disabled = false;
-                        // [FIX] Ripristina il testo originale
-                        if (textSpan) textSpan.textContent = 'Load More';
+                        // [FIX] Restore original text
+                        if (textSpan) textSpan.textContent = originalText;
                     } else {
-                        this.style.display = 'none';
+                        if (loadMoreContainer) loadMoreContainer.style.display = 'none';
                     }
                 });
+
+                // 2. Infinite Scroll Observer
+                // Triggers the click automatically when the button comes into view
+                if (loadMoreContainer) {
+                    const scrollObserver = new IntersectionObserver((entries) => {
+                        const entry = entries[0];
+                        // If visible AND not already loading AND container is not hidden
+                        if (entry.isIntersecting && !loadMoreBtn.disabled && loadMoreContainer.style.display !== 'none') {
+                            console.log("Infinite Scroll: Triggering load more...");
+                            loadMoreBtn.click();
+                        }
+                    }, {
+                        root: null, // Viewport
+                        rootMargin: '300px', // Trigger loading 300px BEFORE reaching the bottom for smoothness
+                        threshold: 0.1
+                    });
+                    
+                    scrollObserver.observe(loadMoreContainer);
+                }
             }
 
             function showShortcutsHelp() { document.getElementById('shortcuts-help-overlay').classList.add('visible'); }
@@ -9673,8 +9760,7 @@ async function showNodeSummary(event, fileId) {
             }
         }
         
-        // 3. Updated Watched Folders List (Shows full relative paths)
-       // Aggiorna la lista Watched passando il PATH codificato (sicuro per Windows/Linux)
+        // Update the Watched list passing the encoded PATH
         async function loadWatchedFolders() {
             const list = document.getElementById('watched-folders-list');
             if(!list) return;
@@ -9689,23 +9775,12 @@ async function showNodeSummary(event, fileId) {
                     return;
                 }
                 
+                // SPACING FIX: HTML compacted into a single line to prevent pre-wrap from reading code indentation
                 list.innerHTML = data.folders.map(f => {
-                    // Codifica il percorso per evitare errori con backslash (\) o caratteri speciali
                     const safePath = encodeURIComponent(f.path);
-                    return `
-                    <div class="watched-folder-item">
-                        <div style="display:flex; flex-direction:column; overflow:hidden;">
-                            <span class="watched-folder-path" title="${f.path}" style="font-size:0.85rem; color:var(--primary-color);">
-                                ${f.rel_path || f.display_name}
-                            </span>
-                            <span style="font-size:0.75rem; color:#666;">
-                                ${f.recursive ? '↳ Recursive' : '⏹ Flat'}
-                            </span>
-                        </div>
-                        <!-- Passiamo safePath invece della key -->
-                        <button onclick="removeWatchedFolder('${safePath}')" class="delete-btn" style="padding:4px 8px; font-size:0.8rem; flex-shrink:0;">Stop</button>
-                    </div>
-                `}).join('');
+                    const displayName = f.rel_path || f.display_name;
+                    return `<div class="watched-folder-item"><div style="display:flex; flex-direction:column; overflow:hidden; align-items:flex-start;"><span class="watched-folder-path" title="${f.path}" style="font-size:0.85rem; color:var(--primary-color);">${displayName}</span><span style="font-size:0.75rem; color:#666;">${f.recursive ? '↳ Recursive' : '⏹ Flat'}</span></div><button onclick="removeWatchedFolder('${safePath}')" class="delete-btn" style="padding:4px 8px; font-size:0.8rem; flex-shrink:0;">Stop</button></div>`;
+                }).join('');
                 
             } catch (e) { list.innerHTML = 'Error loading folders.'; }
         }
