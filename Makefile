@@ -5,7 +5,7 @@ endif
 
 .PHONY: all build_main build_exp build_core run kill buildx_rm docker_tag docker_push
 
-SMARTGALLERY_VERSION = 1.51
+SMARTGALLERY_VERSION = 1.53
 
 DOCKERFILE = Dockerfile
 DOCKER_TAG_PRE = smartgallery
@@ -93,7 +93,7 @@ build_core:
 	else \
 		echo "docker buildx use default || exit 1" > ${VAR_NT}.cmd; \
 	fi
-	@echo "BUILDX_EXPERIMENTAL=1 ${DOCKER_PRE} docker buildx debug --on=error build --progress plain --platform linux/amd64 ${DOCKER_BUILD_ARGS} \\" >> ${VAR_NT}.cmd
+	@echo "BUILDX_EXPERIMENTAL=1 ${DOCKER_PRE} docker buildx debug --on=error build --progress plain ${DOCKER_BUILD_ARGS} \\" >> ${VAR_NT}.cmd
 	@echo "  --build-arg CHOOSEN_TEMPLATE_FILE=\"${CHOOSEN_TEMPLATE_FILE}\" \\" >> ${VAR_NT}.cmd
 	@echo "  --build-arg CHOOSEN_SMARTGALLERY_FILE=\"${CHOOSEN_SMARTGALLERY_FILE}\" \\" >> ${VAR_NT}.cmd
 	@echo "  --build-arg BUILD_APT_PROXY=\"${BUILD_APT_PROXY}\" \\" >> ${VAR_NT}.cmd

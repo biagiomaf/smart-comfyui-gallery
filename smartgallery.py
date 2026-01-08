@@ -1,7 +1,7 @@
 # Smart Gallery for ComfyUI
-# Author: Biagio Maffettone © 2025 — MIT License (free to use and modify)
+# Author: Biagio Maffettone © 2025-2026 — MIT License (free to use and modify)
 #
-# Version: 1.51 - December 18, 2025
+# Version: 1.53 - January 7, 2026
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -297,8 +297,8 @@ ZIP_CACHE_FOLDER_NAME = '.zip_downloads'
 AI_MODELS_FOLDER_NAME = '.AImodels'
 
 # --- APP INFO ---
-APP_VERSION = "1.51"
-APP_VERSION_DATE = "December 18, 2025"
+APP_VERSION = "1.53"
+APP_VERSION_DATE = "January 7, 2026"
 GITHUB_REPO_URL = "https://github.com/biagiomaf/smart-comfyui-gallery"
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/biagiomaf/smart-comfyui-gallery/main/smartgallery.py"
 
@@ -315,7 +315,7 @@ def key_to_path(key):
     except Exception: return None
 
 # --- DERIVED SETTINGS ---
-DB_SCHEMA_VERSION = 26 
+DB_SCHEMA_VERSION = 27 
 THUMBNAIL_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, THUMBNAIL_CACHE_FOLDER_NAME)
 SQLITE_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, SQLITE_CACHE_FOLDER_NAME)
 DATABASE_FILE = os.path.join(SQLITE_CACHE_DIR, DATABASE_FILENAME)
@@ -335,6 +335,25 @@ class Colors:
     RESET = '\033[0m'
     BOLD = '\033[1m'
     DIM = '\033[2m'
+
+# --- HELPER FOR AI PATH CONSISTENCY ---
+def get_standardized_path(filepath):
+    """
+    Converts path to absolute, forces forward slashes, and handles case sensitivity for Windows.
+    Used ONLY for AI Queue uniqueness to prevent loops on mixed-path systems.
+    """
+    if not filepath: return ""
+    try:
+        # Resolve absolute path (handles .. and current dir)
+        abs_path = os.path.abspath(filepath)
+        # Force forward slashes (works on Win/Linux/Mac for Python)
+        std_path = abs_path.replace('\\', '/')
+        # On Windows, filesystem is case-insensitive, so we lower for the DB unique key
+        if os.name == 'nt':
+            return std_path.lower()
+        return std_path
+    except:
+        return str(filepath)
 
 def normalize_smart_path(path_str):
     """
@@ -1043,84 +1062,141 @@ def process_single_file(filepath):
         return None
         
 def get_db_connection():
-    # Timeout increased to 50s to be patient with the Indexer
-    conn = sqlite3.connect(DATABASE_FILE, timeout=50)
+    # Timeout increased to 60s to be patient with the Indexer
+    conn = sqlite3.connect(DATABASE_FILE, timeout=60)
     conn.row_factory = sqlite3.Row
-    
     # CONCURRENCY OPTIMIZATION:
     # WAL: Allows non-blocking reads.
     # NORMAL: Makes transactions (commits) instant, reducing lock time drastically.
     conn.execute('PRAGMA journal_mode=WAL;') 
     conn.execute('PRAGMA synchronous=NORMAL;') 
     return conn
-    
+
 def init_db(conn=None):
     close_conn = False
     if conn is None:
         conn = get_db_connection()
         close_conn = True
         
-    # Main files table - UPDATED SCHEMA with all new columns
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS files (
-            id TEXT PRIMARY KEY, 
-            path TEXT NOT NULL UNIQUE, 
-            mtime REAL NOT NULL,
-            name TEXT NOT NULL, 
-            type TEXT, 
-            duration TEXT, 
-            dimensions TEXT,
-            has_workflow INTEGER, 
-            is_favorite INTEGER DEFAULT 0, 
-            size INTEGER DEFAULT 0,
-            
-            -- Version 24+ Columns included natively for fresh installs
-            last_scanned REAL DEFAULT 0,
-            workflow_files TEXT DEFAULT '',
-            workflow_prompt TEXT DEFAULT '',
-            
-            -- AI Columns
-            ai_last_scanned REAL DEFAULT 0,
-            ai_caption TEXT,
-            ai_embedding BLOB,
-            ai_error TEXT
-        )
-    ''')
+    try:
+        # 1. CORE TABLE CREATION (Safe: creates only if missing)
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS files (
+                id TEXT PRIMARY KEY, 
+                path TEXT NOT NULL UNIQUE, 
+                mtime REAL NOT NULL,
+                name TEXT NOT NULL, 
+                type TEXT, 
+                duration TEXT, 
+                dimensions TEXT,
+                has_workflow INTEGER, 
+                is_favorite INTEGER DEFAULT 0, 
+                size INTEGER DEFAULT 0,
+                last_scanned REAL DEFAULT 0,
+                workflow_files TEXT DEFAULT '',
+                workflow_prompt TEXT DEFAULT '',
+                ai_last_scanned REAL DEFAULT 0,
+                ai_caption TEXT,
+                ai_embedding BLOB,
+                ai_error TEXT
+            )
+        ''')
 
-    # AI Search Queue Table
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS ai_search_queue (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id TEXT NOT NULL UNIQUE,
-            query TEXT NOT NULL,
-            limit_results INTEGER DEFAULT 100,
-            status TEXT DEFAULT 'pending', 
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            completed_at TIMESTAMP NULL
-        );
-    ''')
-    
-    # AI Search Results Table
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS ai_search_results (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id TEXT NOT NULL,
-            file_id TEXT NOT NULL,
-            score REAL NOT NULL,
-            FOREIGN KEY (session_id) REFERENCES ai_search_queue(session_id)
-        );
-    ''')
-    
-    # AI Metadata Table
-    conn.execute("CREATE TABLE IF NOT EXISTS ai_metadata (key TEXT PRIMARY KEY, value TEXT, updated_at REAL)")
-    
-    # Indices
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_queue_status ON ai_search_queue(status);')
-    conn.execute('CREATE INDEX IF NOT EXISTS idx_results_session ON ai_search_results(session_id);')
+        # 2. AI TABLE CREATION
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS ai_search_queue (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL UNIQUE,
+                query TEXT NOT NULL,
+                limit_results INTEGER DEFAULT 100,
+                status TEXT DEFAULT 'pending', 
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP NULL
+            );
+        ''')
+        
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS ai_search_results (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL,
+                file_id TEXT NOT NULL,
+                score REAL NOT NULL,
+                FOREIGN KEY (session_id) REFERENCES ai_search_queue(session_id)
+            );
+        ''')
+        
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_queue_status ON ai_search_queue(status);')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_results_session ON ai_search_results(session_id);')
+        
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS ai_indexing_queue (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_path TEXT NOT NULL,
+                file_id TEXT,
+                status TEXT DEFAULT 'pending', 
+                force_index INTEGER DEFAULT 0,
+                params TEXT DEFAULT '{}',
+                created_at REAL,
+                updated_at REAL,
+                error_msg TEXT,
+                UNIQUE(file_path) ON CONFLICT REPLACE
+            );
+        ''')
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_ai_idx_status ON ai_indexing_queue(status);')
 
-    conn.commit()
-    if close_conn: conn.close()
-    
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS ai_watched_folders (
+                path TEXT PRIMARY KEY,
+                recursive INTEGER DEFAULT 0,
+                added_at REAL
+            );
+        ''')
+        
+        conn.execute("CREATE TABLE IF NOT EXISTS ai_metadata (key TEXT PRIMARY KEY, value TEXT, updated_at REAL)")
+
+        # 3. COLUMN MIGRATION
+        required_columns = {
+            'last_scanned': 'REAL DEFAULT 0',
+            'workflow_files': "TEXT DEFAULT ''",
+            'workflow_prompt': "TEXT DEFAULT ''",
+            'ai_last_scanned': 'REAL DEFAULT 0',
+            'ai_caption': 'TEXT',
+            'ai_embedding': 'BLOB',
+            'ai_error': 'TEXT'
+        }
+
+        cursor = conn.execute("PRAGMA table_info(files)")
+        existing_columns = {row['name'] for row in cursor.fetchall()}
+
+        for col_name, col_type in required_columns.items():
+            if col_name not in existing_columns:
+                print(f"INFO: Updating Database Schema... Adding missing column '{col_name}'")
+                try:
+                    conn.execute(f"ALTER TABLE files ADD COLUMN {col_name} {col_type}")
+                except Exception as e:
+                    print(f"WARNING: Could not add column {col_name}: {e}")
+
+        # 4. SCHEMA VERSION CONTROL (Versioning)
+        # We check and update the internal version ONLY if everything above succeeded.
+        try:
+            cur = conn.execute("PRAGMA user_version")
+            current_ver = cur.fetchone()[0]
+            
+            if current_ver != DB_SCHEMA_VERSION:
+                print(f"INFO: Updating Database Schema Version: {current_ver} -> {DB_SCHEMA_VERSION}")
+                conn.execute(f"PRAGMA user_version = {DB_SCHEMA_VERSION}")
+        except Exception as e:
+            print(f"WARNING: Could not update DB schema version: {e}")
+
+        # Final Commit for all operations
+        conn.commit()
+        
+    except Exception as e:
+        print(f"CRITICAL DATABASE ERROR: {e}")
+        
+    finally:
+        if close_conn: conn.close()
+        
 def get_dynamic_folder_config(force_refresh=False):
     global folder_config_cache
     if folder_config_cache is not None and not force_refresh:
@@ -1142,14 +1218,30 @@ def get_dynamic_folder_config(force_refresh=False):
             'relative_path': '',
             'parent': None,
             'children': [],
-            'mtime': root_mtime 
+            'mtime': root_mtime,
+            'is_watched': False,
+            'is_explicitly_watched': False # NEW flag
         }
     }
 
     try:
+        # --- NEW: Fetch Watched Status with Recursive Logic ---
+        # We store tuples of (normalized_path, is_recursive_bool)
+        watched_rules = [] 
+        if ENABLE_AI_SEARCH:
+            try:
+                with get_db_connection() as conn:
+                    rows = conn.execute("SELECT path, recursive FROM ai_watched_folders").fetchall()
+                    for r in rows:
+                        # Normalize watched paths for consistent comparison (force forward slashes)
+                        w_path = os.path.normpath(r['path']).replace('\\', '/')
+                        watched_rules.append((w_path, bool(r['recursive'])))
+            except: pass
+        # ---------------------------------
+
         all_folders = {}
         for dirpath, dirnames, _ in os.walk(BASE_OUTPUT_PATH):
-            dirnames[:] = [d for d in dirnames if d not in [THUMBNAIL_CACHE_FOLDER_NAME, SQLITE_CACHE_FOLDER_NAME, ZIP_CACHE_FOLDER_NAME, AI_MODELS_FOLDER_NAME]]
+            dirnames[:] = [d for d in dirnames if not d.startswith('.') and d not in [THUMBNAIL_CACHE_FOLDER_NAME, SQLITE_CACHE_FOLDER_NAME, ZIP_CACHE_FOLDER_NAME, AI_MODELS_FOLDER_NAME]]
             for dirname in dirnames:
                 full_path = os.path.normpath(os.path.join(dirpath, dirname)).replace('\\', '/')
                 relative_path = os.path.relpath(full_path, BASE_OUTPUT_PATH).replace('\\', '/')
@@ -1175,13 +1267,32 @@ def get_dynamic_folder_config(force_refresh=False):
             if parent_key in dynamic_config:
                 dynamic_config[parent_key]['children'].append(key)
 
+            # --- Check if this folder is Watched (Directly or via Parent) ---
+            current_path = folder_data['full_path']
+            is_watched_folder = False
+            is_explicitly_watched = False # NEW flag
+            
+            for w_path, is_recursive in watched_rules:
+                # 1. Exact Match (Explicit)
+                if current_path == w_path:
+                    is_watched_folder = True
+                    is_explicitly_watched = True
+                    break
+                # 2. Child of a Recursive Watched Folder (Implicit)
+                if is_recursive and current_path.startswith(w_path + '/'):
+                    is_watched_folder = True
+                    # is_explicitly_watched remains False
+                    break
+
             dynamic_config[key] = {
                 'display_name': folder_data['display_name'],
-                'path': folder_data['full_path'],
+                'path': current_path,
                 'relative_path': rel_path,
                 'parent': parent_key,
                 'children': [],
-                'mtime': folder_data['mtime']
+                'mtime': folder_data['mtime'],
+                'is_watched': is_watched_folder,
+                'is_explicitly_watched': is_explicitly_watched # Pass to frontend
             }
     except FileNotFoundError:
         print(f"WARNING: The base directory '{BASE_OUTPUT_PATH}' was not found.")
@@ -1189,6 +1300,115 @@ def get_dynamic_folder_config(force_refresh=False):
     folder_config_cache = dynamic_config
     return dynamic_config
     
+# --- BACKGROUND WATCHER THREAD ---
+def background_watcher_task():
+    """
+    Periodically scans watched folders.
+    Ensures TRUE incremental indexing:
+    1. Ignores files currently 'pending' or 'processing'.
+    2. Checks 'files' DB: if ai_data is missing or outdated -> queues it.
+    3. Revives 'completed'/'error' queue entries back to 'pending' if the file is dirty.
+    """
+    print("INFO: AI Background Watcher started (Incremental Mode).")
+    while True:
+        try:
+            if ENABLE_AI_SEARCH:
+                with get_db_connection() as conn:
+                    # 1. Cleanup very old jobs to keep table light (> 3 days)
+                    conn.execute("DELETE FROM ai_indexing_queue WHERE status='completed' AND created_at < ?", (time.time() - 259200,))
+                    
+                    watched = conn.execute("SELECT path, recursive FROM ai_watched_folders").fetchall()
+                    
+                    for row in watched:
+                        folder_path = row['path'] 
+                        is_recursive = row['recursive']
+                        
+                        valid_exts = {'.png','.jpg','.jpeg','.webp','.gif','.mp4','.mov','.avi','.webm'}
+                        EXCLUDED = {'.thumbnails_cache', '.sqlite_cache', '.zip_downloads', '.AImodels', 'venv', 'venv-ai', '.git'}
+                        
+                        files_to_check = []
+
+                        if os.path.isdir(folder_path):
+                            if is_recursive:
+                                for root, dirs, files in os.walk(folder_path, topdown=True):
+                                    dirs[:] = [d for d in dirs if not d.startswith('.') and d not in EXCLUDED]
+                                    for f in files:
+                                        if os.path.splitext(f)[1].lower() in valid_exts:
+                                            files_to_check.append(os.path.join(root, f))
+                            else:
+                                try:
+                                    for f in os.listdir(folder_path):
+                                        full = os.path.join(folder_path, f)
+                                        if os.path.isfile(full) and os.path.splitext(f)[1].lower() in valid_exts:
+                                            files_to_check.append(full)
+                                except: pass
+                        
+                        # Process Candidates
+                        for raw_path in files_to_check:
+                            p_key = get_standardized_path(raw_path)
+                            
+                            # 1. CHECK ACTIVE STATUS
+                            # Only skip if it is actively waiting or running. 
+                            # Do NOT skip if it is 'completed' or 'error' (we might need to retry/update).
+                            active_job = conn.execute("""
+                                SELECT 1 FROM ai_indexing_queue 
+                                WHERE file_path = ? AND status IN ('pending', 'processing', 'waiting_gpu')
+                            """, (p_key,)).fetchone()
+                            
+                            if active_job: 
+                                continue # Busy, come back later
+
+                            # 2. CHECK FILE STATE IN DB
+                            # We need to find the file ID and its scan timestamp
+                            # We use the robust path lookup logic (normalized slash match)
+                            # to ensure we find the record even if slashes differ.
+                            
+                            # Try exact match first
+                            file_row = conn.execute("SELECT id, mtime, ai_last_scanned FROM files WHERE path = ?", (raw_path,)).fetchone()
+                            
+                            # Fallback: Normalized Match
+                            if not file_row:
+                                norm_p = raw_path.replace('\\', '/')
+                                file_row = conn.execute("SELECT id, mtime, ai_last_scanned FROM files WHERE REPLACE(path, '\\', '/') = ?", (norm_p,)).fetchone()
+
+                            if not file_row:
+                                # File exists on disk but NOT in DB. 
+                                # We cannot index it yet (missing metadata/dimensions).
+                                # The main 'files' sync must run first. We skip it silently.
+                                continue
+                            
+                            file_id = file_row['id']
+                            last_scan_ts = file_row['ai_last_scanned'] if file_row['ai_last_scanned'] is not None else 0
+                            mtime = file_row['mtime']
+                            
+                            # 3. DIRTY CHECK (The Core Incremental Logic)
+                            needs_index = False
+                            
+                            if last_scan_ts == 0:
+                                needs_index = True # Never scanned or Reset by user
+                            elif last_scan_ts < mtime:
+                                needs_index = True # File modified on disk after last scan
+                            
+                            if needs_index:
+                                # UPSERT: If exists (e.g. 'completed'), revive to 'pending'. If new, insert.
+                                # This fixes the issue where completed items were ignored even after reset.
+                                conn.execute("""
+                                    INSERT INTO ai_indexing_queue 
+                                    (file_path, file_id, status, created_at, force_index, params)
+                                    VALUES (?, ?, 'pending', ?, 0, '{}')
+                                    ON CONFLICT(file_path) DO UPDATE SET
+                                        status = 'pending',
+                                        file_id = excluded.file_id,
+                                        created_at = excluded.created_at
+                                """, (p_key, file_id, time.time()))
+                    
+                    conn.commit()
+                    
+        except Exception as e:
+            print(f"Watcher Loop Error: {e}")
+            
+        time.sleep(10) # Faster check cycle (10s instead of 60s) to feel responsive
+        
 def full_sync_database(conn):
     print("INFO: Starting full file scan...")
     start_time = time.time()
@@ -1392,45 +1612,44 @@ def sync_folder_on_demand(folder_path):
         print(f"ERROR: {error_message}")
         yield f"data: {json.dumps({'message': error_message, 'current': 1, 'total': 1, 'error': True})}\n\n"
         
-def scan_folder_and_extract_options(folder_path):
+def scan_folder_and_extract_options(folder_path, recursive=False):
+    """
+    Scans the physical folder to count files and extract metadata.
+    Supports recursive mode to include subfolders in the count.
+    """
     extensions, prefixes = set(), set()
     file_count = 0
     try:
-        if not os.path.isdir(folder_path): return 0, [], []
-        for filename in os.listdir(folder_path):
-            if os.path.isfile(os.path.join(folder_path, filename)):
-                ext = os.path.splitext(filename)[1]
-                if ext and ext.lower() not in ['.json', '.sqlite']: 
-                    extensions.add(ext.lstrip('.').lower())
-                    file_count += 1
-                if '_' in filename: prefixes.add(filename.split('_')[0])
-    except Exception as e: print(f"ERROR: Could not scan folder '{folder_path}': {e}")
+        if not os.path.isdir(folder_path): 
+            return 0, [], []
+        
+        if recursive:
+            # Recursive scan using os.walk
+            for root, dirs, files in os.walk(folder_path):
+                # Filter out hidden/protected folders in-place
+                dirs[:] = [d for d in dirs if not d.startswith('.') and d not in [THUMBNAIL_CACHE_FOLDER_NAME, SQLITE_CACHE_FOLDER_NAME, ZIP_CACHE_FOLDER_NAME, AI_MODELS_FOLDER_NAME]]
+                for filename in files:
+                    ext = os.path.splitext(filename)[1].lower()
+                    if ext and ext not in ['.json', '.sqlite']:
+                        file_count += 1
+                        extensions.add(ext.lstrip('.'))
+                        if '_' in filename: prefixes.add(filename.split('_')[0])
+        else:
+            # Single folder scan using os.scandir (faster)
+            for entry in os.scandir(folder_path):
+                if entry.is_file():
+                    filename = entry.name
+                    ext = os.path.splitext(filename)[1].lower()
+                    if ext and ext not in ['.json', '.sqlite']:
+                        file_count += 1
+                        extensions.add(ext.lstrip('.'))
+                        if '_' in filename: prefixes.add(filename.split('_')[0])
+                        
+    except Exception as e: 
+        print(f"ERROR: Could not scan folder '{folder_path}': {e}")
+        
     return file_count, sorted(list(extensions)), sorted(list(prefixes))
-
-def _worker_extract_wf_string(filepath):
-    """
-    Worker helper for migration: Extracts just the workflow string.
-    """
-    try:
-        wf_json = extract_workflow(filepath)
-        if wf_json:
-            return extract_workflow_files_string(wf_json)
-    except Exception:
-        pass
-    return ""
-
-def _worker_extract_wf_prompt(filepath):
-    """
-    Worker helper for migration: Extracts just the workflow prompt (positive).
-    """
-    try:
-        wf_json = extract_workflow(filepath)
-        if wf_json:
-            return extract_workflow_prompt_string(wf_json)
-    except Exception:
-        pass
-    return ""
-
+    
 def initialize_gallery():
     print("INFO: Initializing gallery...")
     global FFPROBE_EXECUTABLE_PATH
@@ -1440,108 +1659,8 @@ def initialize_gallery():
     
     with get_db_connection() as conn:
         try:
-            # ==========================================
-            # SCENARIO A: FRESH INSTALL (No Database)
-            # ==========================================
-            table_check = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='files'").fetchone()
-            
-            if not table_check:
-                print(f"{Colors.GREEN}INFO: New installation detected. Creating database (v{DB_SCHEMA_VERSION})...{Colors.RESET}")
-                # 1. Create Tables (schema is already up to date in init_db)
-                init_db(conn)
-                # 2. Initial Scan
-                print(f"{Colors.BLUE}INFO: Performing initial file scan...{Colors.RESET}")
-                full_sync_database(conn)
-                # 3. Set Version
-                conn.execute(f'PRAGMA user_version = {DB_SCHEMA_VERSION}')
-                conn.commit()
-                print(f"{Colors.GREEN}INFO: Initialization complete.{Colors.RESET}")
-                return # Exit function, everything is ready.
-
-            # ==========================================
-            # SCENARIO B: UPGRADE / EXISTING DATABASE
-            # ==========================================
-            
-            # 1. Check & Add Missing Columns (Non-destructive Migration)
-            cursor = conn.execute("PRAGMA table_info(files)")
-            columns = [row[1] for row in cursor.fetchall()]
-            
-            # List of columns to check/add
-            migrations = {
-                'last_scanned': 'REAL DEFAULT 0',
-                'ai_last_scanned': 'REAL DEFAULT 0',
-                'ai_caption': 'TEXT',
-                'ai_embedding': 'BLOB',
-                'ai_error': 'TEXT',
-                'workflow_files': "TEXT DEFAULT ''",
-                'workflow_prompt': "TEXT DEFAULT ''"
-            }
-            
-            for col_name, col_def in migrations.items():
-                if col_name not in columns:
-                    print(f"INFO: Migrating DB... Adding column '{col_name}'")
-                    conn.execute(f"ALTER TABLE files ADD COLUMN {col_name} {col_def}")
-            
-            conn.commit()
-
-            # 2. Data Backfill (Populate new columns for existing files)
-            
-            # Backfill: Workflow Files
-            missing_wf_data = conn.execute(
-                "SELECT id, path FROM files WHERE has_workflow = 1 AND (workflow_files IS NULL OR workflow_files = '')"
-            ).fetchall()
-            
-            if missing_wf_data:
-                count = len(missing_wf_data)
-                print(f"{Colors.YELLOW}INFO: Migrating {count} files to populate 'workflow_files'...{Colors.RESET}")
-                updates = []
-                with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_PARALLEL_WORKERS) as executor:
-                    futures = {executor.submit(_worker_extract_wf_string, row['path']): row['id'] for row in missing_wf_data}
-                    for future in tqdm(concurrent.futures.as_completed(futures), total=count, desc="Migrating Files", unit="files"):
-                        try:
-                            wf_string = future.result()
-                            if wf_string: updates.append((wf_string, futures[future]))
-                        except: pass
-                if updates:
-                    conn.executemany("UPDATE files SET workflow_files = ? WHERE id = ?", updates)
-                    conn.commit()
-
-            # Backfill: Workflow Prompt
-            missing_prompt_data = conn.execute(
-                "SELECT id, path FROM files WHERE has_workflow = 1 AND (workflow_prompt IS NULL OR workflow_prompt = '')"
-            ).fetchall()
-            
-            if missing_prompt_data:
-                count = len(missing_prompt_data)
-                print(f"{Colors.YELLOW}INFO: Migrating {count} files to populate 'workflow_prompt'...{Colors.RESET}")
-                print(f"{Colors.DIM}      This runs only once. Please wait...{Colors.RESET}")
-                updates = []
-                with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_PARALLEL_WORKERS) as executor:
-                    futures = {executor.submit(_worker_extract_wf_prompt, row['path']): row['id'] for row in missing_prompt_data}
-                    for future in tqdm(concurrent.futures.as_completed(futures), total=count, desc="Migrating Prompts", unit="files"):
-                        try:
-                            wf_prompt = future.result()
-                            updates.append((wf_prompt, futures[future]))
-                        except: pass
-                if updates:
-                    conn.executemany("UPDATE files SET workflow_prompt = ? WHERE id = ?", updates)
-                    conn.commit()
-                print(f"{Colors.GREEN}INFO: Prompt migration complete.{Colors.RESET}")
-
-            # 3. Final Version Update
-            # We update the version number only after migrations are successful
-            try: 
-                stored_version = conn.execute('PRAGMA user_version').fetchone()[0]
-            except: 
-                stored_version = 0
-                
-            if stored_version < DB_SCHEMA_VERSION:
-                print(f"INFO: Updating DB Internal Version: {stored_version} -> {DB_SCHEMA_VERSION}")
-                conn.execute(f'PRAGMA user_version = {DB_SCHEMA_VERSION}')
-                conn.commit()
-            
+            init_db(conn) 
             # 4. Fallback check for empty DB on existing install
-            # (In case a user has the DB file but 0 records for some reason)
             file_count = conn.execute("SELECT COUNT(*) FROM files").fetchone()[0]
             if file_count == 0:
                 print(f"{Colors.BLUE}INFO: Database file exists but is empty. Scanning...{Colors.RESET}")
@@ -1550,60 +1669,67 @@ def initialize_gallery():
         except sqlite3.DatabaseError as e:
             print(f"ERROR initializing database: {e}")
             
-def get_filter_options_from_db(conn, scope, folder_path=None):
+def get_filter_options_from_db(conn, scope, folder_path=None, recursive=False):
     """
-    Extracts available extensions and prefixes from the database based on scope.
-    Enforces a limit on prefixes to prevent UI issues.
+    Extracts extensions and prefixes for dropdowns using a robust 
+    Python-side path filtering to handle mixed slashes and cross-platform issues.
     """
-    extensions = set()
-    prefixes = set()
+    extensions, prefixes = set(), set()
     prefix_limit_reached = False
     
+    # Identical helper to gallery_view for consistency
+    def safe_path_norm(p):
+        if not p: return ""
+        return os.path.normpath(str(p).replace('\\', '/')).replace('\\', '/').lower().rstrip('/')
+
     try:
-        # Determine Query based on Scope
-        if scope == 'global':
-            cursor = conn.execute("SELECT name FROM files")
-        else:
-            # Local Scope: strict folder match (parent directory must match)
-            # We use Python filtering for strict parent match to align with view logic,
-            # or a precise SQL like 'path' logic.
-            # To be fast and consistent with gallery_view, we query strictly.
-            # Note: We need rows that belong strictly to this folder.
-            
-            # Efficient SQL for strict parent check is complex across OS separators.
-            # We will grab all files in the tree and filter in python for 100% accuracy
-            # or use a GLOB/LIKE and filter.
-            cursor = conn.execute("SELECT name, path FROM files WHERE path LIKE ?", (folder_path + os.sep + '%',))
+        # We fetch all names and paths. For very large DBs (100k+ files), 
+        # this is still faster than failing with a wrong SQL LIKE.
+        cursor = conn.execute("SELECT name, path FROM files")
+        
+        target_norm = safe_path_norm(folder_path)
 
-        # Process Results
         for row in cursor:
-            # For local scope, ensure strict containment (no subfolders)
-            if scope != 'global':
-                file_dir = os.path.dirname(row['path'])
-                # OS-agnostic comparison
-                if os.path.normpath(file_dir) != os.path.normpath(folder_path):
-                    continue
+            f_path_raw = row['path']
+            f_name = row['name']
+            
+            # NORMALIZATION STEP
+            f_path_norm = safe_path_norm(f_path_raw)
+            f_dir_norm = safe_path_norm(os.path.dirname(f_path_norm))
 
-            name = row['name']
-            
-            # 1. Extensions
-            _, ext = os.path.splitext(name)
-            if ext: 
-                extensions.add(ext.lstrip('.').lower())
-            
-            # 2. Prefixes (Only if limit not reached)
-            if not prefix_limit_reached and '_' in name:
-                pfx = name.split('_')[0]
-                if pfx:
-                    prefixes.add(pfx)
-                    if len(prefixes) > MAX_PREFIX_DROPDOWN_ITEMS:
-                        prefix_limit_reached = True
-                        prefixes.clear() # Discard to save memory, UI will show fallback
-                        
-    except Exception as e:
+            # FILTERING LOGIC (Same as Gallery View)
+            show_file = False
+            if scope == 'global':
+                show_file = True
+            elif recursive:
+                # Check if it's inside the target folder tree
+                if f_path_norm.startswith(target_norm + '/'):
+                    show_file = True
+            else:
+                # Strict local: must be in this exact folder
+                if f_dir_norm == target_norm:
+                    show_file = True
+
+            if show_file:
+                # 1. Extensions
+                _, ext = os.path.splitext(f_name)
+                if ext: 
+                    extensions.add(ext.lstrip('.').lower())
+                
+                # 2. Prefixes
+                if not prefix_limit_reached and '_' in f_name:
+                    pfx = f_name.split('_')[0]
+                    if pfx:
+                        prefixes.add(pfx)
+                        if len(prefixes) > MAX_PREFIX_DROPDOWN_ITEMS:
+                            prefix_limit_reached = True
+                            prefixes.clear()
+                            
+    except Exception as e: 
         print(f"Error extracting options: {e}")
         
     return sorted(list(extensions)), sorted(list(prefixes)), prefix_limit_reached
+    
 
 # --- FLASK ROUTES ---
 @app.route('/galleryout/')
@@ -1669,26 +1795,417 @@ def sync_status(folder_key):
 
 @app.route('/galleryout/api/search_options')
 def api_search_options():
-    """
-    API Endpoint to fetch filter options (extensions/prefixes) dynamically
-    without reloading the page.
-    """
     scope = request.args.get('scope', 'local')
     folder_key = request.args.get('folder_key', '_root_')
+    is_rec = request.args.get('recursive', 'false').lower() == 'true' # Added
     
     folders = get_dynamic_folder_config()
-    # Resolve folder path safely
     folder_path = folders.get(folder_key, {}).get('path', BASE_OUTPUT_PATH)
     
     with get_db_connection() as conn:
-        exts, pfxs, limit_reached = get_filter_options_from_db(conn, scope, folder_path)
+        # Now passing the recursive flag to the options extractor
+        exts, pfxs, limit_reached = get_filter_options_from_db(conn, scope, folder_path, recursive=is_rec)
         
-    return jsonify({
-        'extensions': exts,
-        'prefixes': pfxs,
-        'prefix_limit_reached': limit_reached
-    })
+    return jsonify({'extensions': exts, 'prefixes': pfxs, 'prefix_limit_reached': limit_reached})
 
+# --- AI MANAGER API ROUTES ---
+@app.route('/galleryout/ai_indexing/reset', methods=['POST'])
+def ai_indexing_reset():
+    """
+    Resets AI metadata (caption, embedding, timestamp) for specific files or a whole folder.
+    CRITICAL: Also removes these files from the indexing queue to prevent re-processing.
+    """
+    if not ENABLE_AI_SEARCH: return jsonify({'status':'error'})
+    data = request.json
+    
+    # Mode 1: Batch IDs
+    file_ids = data.get('file_ids', [])
+    
+    # Mode 2: Folder Path
+    folder_key = data.get('folder_key')
+    recursive = data.get('recursive', False)
+    
+    count = 0
+    
+    try:
+        with get_db_connection() as conn:
+            ids_to_wipe = []
+            
+            # Case A: Specific File IDs (Selection or Lightbox)
+            if file_ids:
+                ids_to_wipe = file_ids
+            
+            # Case B: Folder (Recursive or Flat)
+            elif folder_key:
+                folders = get_dynamic_folder_config()
+                if folder_key in folders:
+                    folder_path = folders[folder_key]['path']
+                    # Normalize for robust DB lookup
+                    target_norm = os.path.normpath(folder_path).replace('\\', '/').lower()
+                    if not target_norm.endswith('/'): target_norm += '/'
+                    
+                    # Fetch candidates to wipe
+                    cursor = conn.execute("SELECT id, path FROM files WHERE ai_caption IS NOT NULL OR ai_embedding IS NOT NULL")
+                    for row in cursor:
+                        f_path = row['path']
+                        # Normalize DB path
+                        f_path_norm = os.path.normpath(f_path).replace('\\', '/').lower()
+                        
+                        is_match = False
+                        if recursive:
+                            if f_path_norm.startswith(target_norm): is_match = True
+                        else:
+                            # Strict parent check
+                            parent_norm = os.path.dirname(f_path_norm).replace('\\', '/').lower() + '/'
+                            if parent_norm == target_norm: is_match = True
+                            
+                        if is_match:
+                            ids_to_wipe.append(row['id'])
+
+            if ids_to_wipe:
+                # Process in chunks to avoid SQL limits
+                chunk_size = 500
+                for i in range(0, len(ids_to_wipe), chunk_size):
+                    chunk = ids_to_wipe[i:i + chunk_size]
+                    placeholders = ','.join(['?'] * len(chunk))
+                    
+                    # 1. WIPE METADATA (Instant)
+                    conn.execute(f"""
+                        UPDATE files 
+                        SET ai_caption=NULL, ai_embedding=NULL, ai_last_scanned=0, ai_error=NULL 
+                        WHERE id IN ({placeholders})
+                    """, chunk)
+                    
+                    # 2. REMOVE FROM PROCESSING QUEUE (Critical fix)
+                    # We must delete pending jobs for these files to stop the worker from indexing them
+                    conn.execute(f"""
+                        DELETE FROM ai_indexing_queue 
+                        WHERE file_id IN ({placeholders})
+                    """, chunk)
+                    
+                count = len(ids_to_wipe)
+                conn.commit()
+                
+        return jsonify({'status': 'success', 'count': count, 'message': f'AI data erased and queue cleared for {count} files.'})
+        
+    except Exception as e:
+        print(f"AI Reset Error: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+        
+@app.route('/galleryout/ai_indexing/add_files', methods=['POST'])
+def ai_indexing_add_files():
+    if not ENABLE_AI_SEARCH: return jsonify({'status':'error'})
+    data = request.json
+    file_ids = data.get('file_ids', [])
+    force_index = data.get('force', False)
+    params = json.dumps({'beams': data.get('beams', 3), 'precision': data.get('precision', 'fp16')})
+    
+    count = 0
+    skipped = 0
+    
+    with get_db_connection() as conn:
+        # --- NEW: WIPE DATA IF FORCED ---
+        if force_index and file_ids:
+            # We must wipe database fields before queuing
+            placeholders = ','.join(['?'] * len(file_ids))
+            conn.execute(f"""
+                UPDATE files 
+                SET ai_caption=NULL, ai_embedding=NULL, ai_last_scanned=0, ai_error=NULL 
+                WHERE id IN ({placeholders})
+            """, file_ids)
+
+        for fid in file_ids:
+            # Check current status
+            row = conn.execute("SELECT path, ai_last_scanned FROM files WHERE id=?", (fid,)).fetchone()
+            if row:
+                # --- INCREMENTAL LOGIC ---
+                has_ai_data = row['ai_last_scanned'] and row['ai_last_scanned'] > 0
+                
+                if not force_index and has_ai_data:
+                    skipped += 1
+                    continue
+                
+                p_key = get_standardized_path(row['path'])
+                # FIX: Use "ON CONFLICT DO UPDATE" to reset status to 'pending'
+                conn.execute("""
+                    INSERT INTO ai_indexing_queue (file_path, file_id, status, created_at, force_index, params)
+                    VALUES (?, ?, 'pending', ?, ?, ?)
+                    ON CONFLICT(file_path) DO UPDATE SET
+                        status = 'pending',
+                        force_index = excluded.force_index,
+                        created_at = excluded.created_at,
+                        params = excluded.params
+                """, (p_key, fid, time.time(), 1 if force_index else 0, params))
+                count += 1
+        conn.commit()
+    
+    # --- FEEDBACK MESSAGES ---
+    if count == 0 and skipped > 0:
+        return jsonify({
+            'status': 'warning', 
+            'message': "All selected files are already indexed. Enable 'Force Re-Index' to overwrite.",
+            'count': 0
+        })
+        
+    msg = f"Queued {count} files."
+    if skipped > 0:
+        msg += f" (Skipped {skipped} already indexed)"
+        
+    return jsonify({'status': 'success', 'count': count, 'message': msg})
+    
+@app.route('/galleryout/ai_indexing/add_folder', methods=['POST'])
+def ai_indexing_add_folder():
+    if not ENABLE_AI_SEARCH: return jsonify({'status':'error'})
+    data = request.json
+    
+    folder_key = data.get('folder_key')
+    recursive = data.get('recursive', False)
+    watch = data.get('watch', False)
+    force = data.get('force', False)
+    
+    folders = get_dynamic_folder_config()
+    if folder_key not in folders: 
+        return jsonify({'status':'error', 'message':'Folder not found'}), 404
+    
+    raw_path = folders[folder_key]['path']
+    std_path = get_standardized_path(raw_path)
+    
+    params = json.dumps({'beams': data.get('beams', 3), 'precision': data.get('precision', 'fp16')})
+    msg = "Indexing queued."
+
+    # 1. HANDLE WATCH LIST UPDATE
+    with get_db_connection() as conn:
+        if watch:
+            existing = conn.execute("SELECT path, recursive FROM ai_watched_folders").fetchall()
+            should_add = True
+            for row in existing:
+                exist_std = get_standardized_path(row['path'])
+                if exist_std == std_path:
+                    # Update recursion if needed
+                    if recursive and not row['recursive']: 
+                        conn.execute("UPDATE ai_watched_folders SET recursive=1 WHERE path=?", (row['path'],))
+                    should_add = False
+                    break
+                if std_path.startswith(exist_std + '/') and row['recursive']:
+                    should_add = False
+                    msg = "Covered by parent watcher."
+                    break
+            if should_add:
+                conn.execute("INSERT OR REPLACE INTO ai_watched_folders (path, recursive, added_at) VALUES (?, ?, ?)", (raw_path, 1 if recursive else 0, time.time()))
+                msg = "Folder added to Watch List & Queued."
+        conn.commit()
+    
+    # --- CRITICAL FIX: REFRESH SERVER CACHE IMMEDIATELY ---
+    # This ensures that subsequent UI calls see 'is_watched=True' right away.
+    if watch:
+        get_dynamic_folder_config(force_refresh=True)
+    
+    # 2. BACKGROUND SCAN & QUEUE
+    def _scan():
+        valid = {'.png','.jpg','.jpeg','.webp','.gif','.mp4','.mov','.avi','.webm'}
+        exc = {'.thumbnails_cache', '.sqlite_cache', '.zip_downloads', '.AImodels', 'venv', '.git'}
+        files_found = []
+        try:
+            if recursive:
+                for r, d, f in os.walk(raw_path, topdown=True, followlinks=False):
+                    d[:] = [x for x in d if not x.startswith('.') and x not in exc]
+                    for x in f:
+                        if os.path.splitext(x)[1].lower() in valid: files_found.append(os.path.join(r, x))
+            else:
+                for entry in os.scandir(raw_path):
+                    if entry.is_file() and os.path.splitext(entry.name)[1].lower() in valid: files_found.append(entry.path)
+        except: return
+
+        # Optimize: Batch Operations
+        with get_db_connection() as conn:
+            
+            ids_to_wipe = []
+            queue_entries = []
+            
+            for fp in files_found:
+                pk = get_standardized_path(fp)
+                
+                # --- ROBUST LOOKUP START (YOUR LOGIC) ---
+                # 1. Try exact match
+                row = conn.execute("SELECT id, mtime, ai_last_scanned FROM files WHERE path=?", (fp,)).fetchone()
+                
+                # 2. Try standardized match (case insensitive on Windows)
+                if not row: 
+                    row = conn.execute("SELECT id, mtime, ai_last_scanned FROM files WHERE path=?", (pk,)).fetchone()
+                
+                # 3. Try Normalized Slash match (Fixes subfolder mismatch issues)
+                if not row:
+                    norm_p = fp.replace('\\', '/')
+                    row = conn.execute("SELECT id, mtime, ai_last_scanned FROM files WHERE REPLACE(path, '\\', '/') = ?", (norm_p,)).fetchone()
+                # --- ROBUST LOOKUP END ---
+                
+                should_queue = False
+                fid = None
+                
+                if row:
+                    fid = row['id']
+                    if force:
+                        ids_to_wipe.append(fid)
+                        should_queue = True
+                    elif (row['ai_last_scanned'] or 0) < row['mtime']:
+                        should_queue = True # Needs update (Incremental logic)
+                else:
+                    # New file not in DB yet - queue it, worker will retry later
+                    should_queue = True 
+                
+                if should_queue:
+                    # Prepare for batch insertion
+                    queue_entries.append((pk, fid, time.time(), 1 if force else 0, params))
+
+            # 3. WIPE OLD DATA IF FORCED
+            if ids_to_wipe:
+                chunk_size = 500
+                for i in range(0, len(ids_to_wipe), chunk_size):
+                    chunk = ids_to_wipe[i:i + chunk_size]
+                    placeholders = ','.join(['?'] * len(chunk))
+                    conn.execute(f"""
+                        UPDATE files 
+                        SET ai_caption=NULL, ai_embedding=NULL, ai_last_scanned=0, ai_error=NULL 
+                        WHERE id IN ({placeholders})
+                    """, chunk)
+
+            # 4. BATCH INSERT INTO QUEUE (UPSERT)
+            if queue_entries:
+                conn.executemany("""
+                    INSERT INTO ai_indexing_queue (file_path, file_id, status, created_at, force_index, params) 
+                    VALUES (?, ?, 'pending', ?, ?, ?)
+                    ON CONFLICT(file_path) DO UPDATE SET
+                        status = 'pending',
+                        force_index = excluded.force_index,
+                        created_at = excluded.created_at,
+                        params = excluded.params
+                """, queue_entries)
+                
+            conn.commit()
+            
+    threading.Thread(target=_scan, daemon=True).start()
+    return jsonify({'status': 'success', 'message': msg})
+    
+@app.route('/galleryout/ai_indexing/watched', methods=['GET', 'DELETE'])
+def ai_watched_folders():
+    if not ENABLE_AI_SEARCH: return jsonify({})
+    with get_db_connection() as conn:
+        if request.method == 'DELETE':
+            path = request.json.get('folder_path')
+            if not path:
+                key = request.json.get('folder_key')
+                folders = get_dynamic_folder_config()
+                if key in folders: path = folders[key]['path']
+            
+            if path:
+                # 1. Stop Watching
+                conn.execute("DELETE FROM ai_watched_folders WHERE path=?", (path,))
+                
+                # 2. CLEAR QUEUE (Critical Fix)
+                # When stopping watch, we ALWAYS clear pending jobs for this folder to stop immediate processing.
+                # We use LIKE for path matching.
+                # Ensure we handle OS separators robustly.
+                std_path = get_standardized_path(path)
+                # Remove exact match or subfiles
+                conn.execute("DELETE FROM ai_indexing_queue WHERE file_path = ? OR file_path LIKE ?", (std_path, std_path + '/%'))
+                
+                # 3. WIPE DATA (Optional User Choice)
+                if request.json.get('reset_data'):
+                    std_target = get_standardized_path(path)
+                    rows = conn.execute("SELECT id, path FROM files WHERE ai_caption IS NOT NULL OR ai_embedding IS NOT NULL").fetchall()
+                    ids_to_wipe = []
+                    for r in rows:
+                        p_std = get_standardized_path(r['path'])
+                        if p_std == std_target or p_std.startswith(std_target + '/'):
+                            ids_to_wipe.append(r['id'])
+                    
+                    if ids_to_wipe:
+                        # Chunk processing for huge folders
+                        chunk_size = 500
+                        for i in range(0, len(ids_to_wipe), chunk_size):
+                            chunk = ids_to_wipe[i:i+chunk_size]
+                            ph = ','.join(['?'] * len(chunk))
+                            conn.execute(f"UPDATE files SET ai_caption=NULL, ai_embedding=NULL, ai_last_scanned=0, ai_error=NULL WHERE id IN ({ph})", chunk)
+                            # (Queue already cleared above by path, but redundant check by ID is safe)
+                            conn.execute(f"DELETE FROM ai_indexing_queue WHERE file_id IN ({ph})", chunk)
+                
+                conn.commit()
+                # --- FORCE CONFIG REFRESH TO UPDATE UI COLORS IMMEDIATELY ---
+                get_dynamic_folder_config(force_refresh=True)
+                
+                return jsonify({'status': 'success'})
+            return jsonify({'status': 'error'})
+        
+        rows = conn.execute("SELECT path, recursive FROM ai_watched_folders").fetchall()
+        folders = get_dynamic_folder_config()
+        pmap = {info['path']: {'key': k, 'name': info['display_name']} for k, info in folders.items()}
+        res = []
+        for r in rows:
+            m = pmap.get(r['path'])
+            rel = r['path']
+            try: rel = os.path.relpath(r['path'], BASE_OUTPUT_PATH)
+            except: pass
+            if m: res.append({'path': r['path'], 'rel_path': rel, 'key': m['key'], 'display_name': m['name'], 'recursive': bool(r['recursive'])})
+            else: res.append({'path': r['path'], 'rel_path': rel, 'key': '_unknown', 'display_name': os.path.basename(r['path']), 'recursive': bool(r['recursive'])})
+        return jsonify({'folders': res})
+        
+@app.route('/galleryout/ai_indexing/status')
+def ai_indexing_status():
+    if not ENABLE_AI_SEARCH: return jsonify({})
+    try:
+        with get_db_connection() as conn:
+            pending = conn.execute("SELECT COUNT(*) FROM ai_indexing_queue WHERE status='pending'").fetchone()[0]
+            processing = conn.execute("SELECT file_path FROM ai_indexing_queue WHERE status='processing'").fetchone()
+            
+            # Preview Next 10 files with PRIORITY INFO
+            next_rows = conn.execute("SELECT file_path, force_index FROM ai_indexing_queue WHERE status='pending' ORDER BY force_index DESC, created_at ASC LIMIT 10").fetchall()
+            
+            avg = conn.execute("SELECT value FROM ai_metadata WHERE key='avg_processing_time'").fetchone()
+            paused = conn.execute("SELECT value FROM ai_metadata WHERE key='indexing_paused'").fetchone()
+            waiting = conn.execute("SELECT COUNT(*) FROM ai_indexing_queue WHERE status='waiting_gpu'").fetchone()[0]
+            
+            status = "Idle"
+            if paused and paused['value'] == '1': status = "Paused"
+            elif waiting > 0: status = "waiting_gpu"
+            elif processing: status = "Indexing"
+            elif pending > 0: status = "Queued"
+            
+            curr_file = ""
+            if processing:
+                try: curr_file = os.path.relpath(processing['file_path'], BASE_OUTPUT_PATH)
+                except: curr_file = os.path.basename(processing['file_path'])
+            
+            next_files = []
+            for r in next_rows:
+                try: p = os.path.relpath(r['file_path'], BASE_OUTPUT_PATH)
+                except: p = os.path.basename(r['file_path'])
+                
+                next_files.append({
+                    'path': p,
+                    'is_priority': bool(r['force_index'])
+                })
+
+            return jsonify({
+                'global_status': status, 'pending_count': pending, 'current_file': curr_file,
+                'gpu_usage': 0, 'avg_time': float(avg['value']) if avg else 0.0,
+                'current_job_progress': 0, 'current_job_total': pending + (1 if processing else 0),
+                'next_files': next_files
+            })
+    except Exception as e: return jsonify({'error': str(e)}), 500
+
+@app.route('/galleryout/ai_indexing/control', methods=['POST'])
+def ai_indexing_control():
+    if not ENABLE_AI_SEARCH: return jsonify({'status':'error'})
+    action = request.json.get('action')
+    with get_db_connection() as conn:
+        if action == 'pause': conn.execute("INSERT OR REPLACE INTO ai_metadata (key, value) VALUES ('indexing_paused', '1')")
+        elif action == 'resume':
+            conn.execute("INSERT OR REPLACE INTO ai_metadata (key, value) VALUES ('indexing_paused', '0')")
+            conn.execute("UPDATE ai_indexing_queue SET status='pending' WHERE status='waiting_gpu'")
+        elif action == 'clear': conn.execute("DELETE FROM ai_indexing_queue WHERE status != 'processing'")
+        conn.commit()
+    return jsonify({'status': 'success', 'message': f'Queue {action}d'})
+    
 @app.route('/galleryout/view/<string:folder_key>')
 def gallery_view(folder_key):
     global gallery_view_cache
@@ -1699,211 +2216,187 @@ def gallery_view(folder_key):
     current_folder_info = folders[folder_key]
     folder_path = current_folder_info['path']
     
-    # Check if this is an AI Result View (Only if enabled)
+    # 1. Capture All Request Parameters
+    is_recursive = request.args.get('recursive', 'false').lower() == 'true'
+    search_scope = request.args.get('scope', 'local')
+    is_global_search = (search_scope == 'global')
     ai_session_id = request.args.get('ai_session_id')
+    
+    # Text filters
+    search_term = request.args.get('search', '').strip()
+    wf_files = request.args.get('workflow_files', '').strip()
+    wf_prompt = request.args.get('workflow_prompt', '').strip()
+    start_date = request.args.get('start_date', '').strip()
+    end_date = request.args.get('end_date', '').strip()
+    selected_exts = request.args.getlist('extension')
+    selected_prefixes = request.args.getlist('prefix')
+
     is_ai_search = False
     ai_query_text = ""
-    is_global_search = False
-    
-    # AI Logic runs only if explicitly enabled
-    if ENABLE_AI_SEARCH:
+
+    # --- PATH A: AI SEARCH RESULTS ---
+    if ENABLE_AI_SEARCH and ai_session_id:
         with get_db_connection() as conn:
-            # --- PATH A: AI SEARCH RESULTS ---
-            if ai_session_id:
-                # Verify session completion
-                try:
-                    queue_info = conn.execute("SELECT query, status FROM ai_search_queue WHERE session_id = ?", (ai_session_id,)).fetchone()
+            try:
+                queue_info = conn.execute("SELECT query, status FROM ai_search_queue WHERE session_id = ?", (ai_session_id,)).fetchone()
+                if queue_info and queue_info['status'] == 'completed':
+                    is_ai_search = True
+                    ai_query_text = queue_info['query']
+                    rows = conn.execute('''
+                        SELECT f.*, r.score FROM ai_search_results r
+                        JOIN files f ON r.file_id = f.id
+                        WHERE r.session_id = ? ORDER BY r.score DESC
+                    ''', (ai_session_id,)).fetchall()
                     
-                    if queue_info and queue_info['status'] == 'completed':
-                        is_ai_search = True
-                        ai_query_text = queue_info['query']
-                        
-                        # Retrieve files joined with search results, ordered by score
-                        query_sql = '''
-                            SELECT f.*, r.score 
-                            FROM ai_search_results r
-                            JOIN files f ON r.file_id = f.id
-                            WHERE r.session_id = ?
-                            ORDER BY r.score DESC
-                        '''
-                        all_files_raw = conn.execute(query_sql, (ai_session_id,)).fetchall()
-                        
-                        # Convert to dict and clean blob
-                        files_list = []
-                        for row in all_files_raw:
-                            d = dict(row)
-                            if 'ai_embedding' in d: del d['ai_embedding']
-                            files_list.append(d)
-                        
-                        gallery_view_cache = files_list
-                except Exception as e:
-                    print(f"AI Search Error: {e}")
-                    is_ai_search = False
-    
-    # --- PATH B: STANDARD FOLDER VIEW OR GLOBAL STANDARD SEARCH ---
+                    # FIX: Clean up BLOB data (ai_embedding) which is not JSON serializable
+                    files_list = []
+                    for row in rows:
+                        d = dict(row)
+                        if 'ai_embedding' in d: 
+                            del d['ai_embedding'] # Remove binary data
+                        files_list.append(d)
+                    
+                    gallery_view_cache = files_list
+            except Exception as e:
+                print(f"AI Search Error: {e}")
+                is_ai_search = False
+
+    # --- PATH B: STANDARD VIEW / SEARCH (Cross-Platform Robust) ---
     if not is_ai_search:
         with get_db_connection() as conn:
             conditions, params = [], []
-            
-            # Check for Global Search Scope
-            search_scope = request.args.get('scope', 'local')
-            if search_scope == 'global':
-                is_global_search = True
-            else:
-                # Local scope: filter by path
-                conditions.append("path LIKE ?")
-                params.append(folder_path + os.sep + '%')
-            
-            sort_by = 'name' if request.args.get('sort_by') == 'name' else 'mtime'
-            sort_order = 'asc' if request.args.get('sort_order', 'desc').lower() == 'asc' else 'desc'
 
-            # 1. Text Search
-            search_term = request.args.get('search', '').strip()
+            # 2. Apply Metadata Filters first (Generic fields)
             if search_term:
                 conditions.append("name LIKE ?")
                 params.append(f"%{search_term}%")
             
-            # 2. Workflow Files Search
-            wf_search_raw = request.args.get('workflow_files', '').strip()
-            if wf_search_raw:
-                keywords = [k.strip() for k in wf_search_raw.split(',') if k.strip()]
-                for kw in keywords:
-                    smart_kw = normalize_smart_path(kw)
+            if wf_files:
+                for kw in [k.strip() for k in wf_files.split(',') if k.strip()]:
                     conditions.append("workflow_files LIKE ?")
-                    params.append(f"%{smart_kw}%")
+                    params.append(f"%{normalize_smart_path(kw)}%")
             
-            # 3. Workflow PROMPT Search (NEW)
-            wf_prompt_raw = request.args.get('workflow_prompt', '').strip()
-            if wf_prompt_raw:
-                keywords = [k.strip() for k in wf_prompt_raw.split(',') if k.strip()]
-                for kw in keywords:
-                    # Use standard LIKE for text matching
+            if wf_prompt:
+                for kw in [k.strip() for k in wf_prompt.split(',') if k.strip()]:
                     conditions.append("workflow_prompt LIKE ?")
                     params.append(f"%{kw}%")
-                    
-            # 4. Boolean Options
-            # Favorites
-            if request.args.get('favorites', 'false').lower() == 'true':
-                conditions.append("is_favorite = 1")
-            
-            # No Workflow (New)
-            if request.args.get('no_workflow', 'false').lower() == 'true':
-                conditions.append("has_workflow = 0")
-            
-            # No AI Caption (New - Only if AI Enabled)
-            if ENABLE_AI_SEARCH and request.args.get('no_ai_caption', 'false').lower() == 'true':
+
+            if request.args.get('favorites') == 'true': conditions.append("is_favorite = 1")
+            if request.args.get('no_workflow') == 'true': conditions.append("has_workflow = 0")
+            if request.args.get('no_ai_caption') == 'true': 
                 conditions.append("(ai_caption IS NULL OR ai_caption = '')")
 
-            # 5. Date Range Search (New)
-            start_date_str = request.args.get('start_date', '').strip()
-            end_date_str = request.args.get('end_date', '').strip()
+            if start_date:
+                try: conditions.append("mtime >= ?"); params.append(datetime.strptime(start_date, '%Y-%m-%d').timestamp())
+                except: pass
+            if end_date:
+                try: conditions.append("mtime <= ?"); params.append(datetime.strptime(end_date, '%Y-%m-%d').timestamp() + 86399)
+                except: pass
 
-            if start_date_str:
-                try:
-                    # Convert 'YYYY-MM-DD' to timestamp at 00:00:00
-                    dt_start = datetime.strptime(start_date_str, '%Y-%m-%d')
-                    conditions.append("mtime >= ?")
-                    params.append(dt_start.timestamp())
-                except ValueError:
-                    pass # Ignore invalid date format
-            
-            if end_date_str:
-                try:
-                    # Convert 'YYYY-MM-DD' to timestamp at 23:59:59
-                    dt_end = datetime.strptime(end_date_str, '%Y-%m-%d')
-                    # Add almost one day (86399 seconds) to include the whole end day
-                    end_ts = dt_end.timestamp() + 86399 
-                    conditions.append("mtime <= ?")
-                    params.append(end_ts)
-                except ValueError:
-                    pass
+            if selected_exts:
+                e_cond = [f"name LIKE ?" for e in selected_exts if e.strip()]
+                params.extend([f"%.{e.lstrip('.').lower()}" for e in selected_exts if e.strip()])
+                if e_cond: conditions.append(f"({' OR '.join(e_cond)})")
 
-            # 6. Dropdown Filters (Prefix/Extensions)
-            selected_prefixes = request.args.getlist('prefix')
             if selected_prefixes:
-                prefix_conditions = [f"name LIKE ?" for p in selected_prefixes if p.strip()]
+                p_cond = [f"name LIKE ?" for p in selected_prefixes if p.strip()]
                 params.extend([f"{p.strip()}_%" for p in selected_prefixes if p.strip()])
-                if prefix_conditions: conditions.append(f"({' OR '.join(prefix_conditions)})")
+                if p_cond: conditions.append(f"({' OR '.join(p_cond)})")
 
-            selected_extensions = request.args.getlist('extension')
-            if selected_extensions:
-                ext_conditions = [f"name LIKE ?" for ext in selected_extensions if ext.strip()]
-                params.extend([f"%.{ext.lstrip('.').lower()}" for ext in selected_extensions if ext.strip()])
-                if ext_conditions: conditions.append(f"({' OR '.join(ext_conditions)})")
-            
-            sort_direction = "ASC" if sort_order == 'asc' else "DESC"
-            
+            # 3. Execution: We fetch files matching metadata, then filter paths in Python
+            # This is the only way to guarantee 100% slash-agnostic behavior
+            sort_by = 'name' if request.args.get('sort_by') == 'name' else 'mtime'
+            sort_order = "ASC" if request.args.get('sort_order', 'desc').lower() == 'asc' else "DESC"
             where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
-            query = f"SELECT * FROM files {where_clause} ORDER BY {sort_by} {sort_direction}"
             
-            all_files_raw = conn.execute(query, params).fetchall()
+            query = f"SELECT * FROM files {where_clause} ORDER BY {sort_by} {sort_order}"
+            rows = conn.execute(query, params).fetchall()
             
-            # Local Scope strict filtering
-            if not is_global_search:
-                folder_path_norm = os.path.normpath(folder_path)
-                all_files_filtered = [dict(row) for row in all_files_raw if os.path.normpath(os.path.dirname(row['path'])) == folder_path_norm]
-            else:
-                all_files_filtered = [dict(row) for row in all_files_raw]
+            # --- ULTRA-ROBUST MIXED-PATH FILTERING ---
+            final_files = []
+            
+            # Helper to normalize ANY path (mixed slashes, case, trailing)
+            def safe_path_norm(p):
+                if not p: return ""
+                # 1. Force all backslashes to forward slashes immediately
+                # 2. Lowercase for cross-platform case-insensitivity
+                # 3. Clean up and remove trailing slashes
+                return os.path.normpath(str(p).replace('\\', '/')).replace('\\', '/').lower().rstrip('/')
 
-            # Cleanup blobs
-            for f in all_files_filtered:
-                if 'ai_embedding' in f: del f['ai_embedding']
+            target_norm = safe_path_norm(folder_path)
+            
+            for row in rows:
+                f_data = dict(row)
+                if 'ai_embedding' in f_data: del f_data['ai_embedding']
                 
-            gallery_view_cache = all_files_filtered
+                # Normalize the DB path which might be mixed (e.g., c:/folder\img.png)
+                f_path_norm = safe_path_norm(f_data['path'])
+                f_dir_norm = safe_path_norm(os.path.dirname(f_path_norm))
+                
+                if is_global_search:
+                    final_files.append(f_data)
+                elif is_recursive:
+                    # Check if the file is inside the target folder tree
+                    # Adding a '/' ensures we don't match 'folder_backup' when looking for 'folder'
+                    if f_path_norm.startswith(target_norm + '/'):
+                        final_files.append(f_data)
+                else:
+                    # Strict match: must be exactly in the target folder
+                    if f_dir_norm == target_norm:
+                        final_files.append(f_data)
+            
+            gallery_view_cache = final_files
 
-    # Count active filters for UI Feedback
+    # 4. Final Metadata for Template
+    # --- RIGOROUS FILTER COUNTING LOGIC ---
     active_filters_count = 0
-    if request.args.get('search', '').strip(): active_filters_count += 1
-    if request.args.get('workflow_files', '').strip(): active_filters_count += 1
-    if request.args.get('workflow_prompt', '').strip(): active_filters_count += 1
-    if request.args.get('favorites', 'false').lower() == 'true': active_filters_count += 1
-    if request.args.get('no_workflow', 'false').lower() == 'true': active_filters_count += 1
-    if request.args.get('no_ai_caption', 'false').lower() == 'true': active_filters_count += 1
-    if request.args.get('start_date', '').strip(): active_filters_count += 1 
-    if request.args.getlist('extension'): active_filters_count += 1
-    if request.args.getlist('prefix'): active_filters_count += 1
-    if request.args.get('scope', 'local') == 'global': active_filters_count += 1
+    if search_term: active_filters_count += 1
+    if wf_files: active_filters_count += 1
+    if wf_prompt: active_filters_count += 1
+    if start_date: active_filters_count += 1
+    if end_date: active_filters_count += 1
+    if selected_exts: active_filters_count += 1
+    if selected_prefixes: active_filters_count += 1
+    if request.args.get('favorites') == 'true': active_filters_count += 1
+    if request.args.get('no_workflow') == 'true': active_filters_count += 1
+    if ENABLE_AI_SEARCH and request.args.get('no_ai_caption') == 'true': active_filters_count += 1
 
-    # Pagination Logic (Shared)
-    initial_files = gallery_view_cache[:PAGE_SIZE]
-    
-    # --- Metadata and Options Logic ---
-    
-    # 1. Get total files count for the badge (Standard Local Scan)
-    # We ignore the list-based options from the scan (using _) because we get them from DB now
-    total_folder_files, _, _ = scan_folder_and_extract_options(folder_path)
-    
-    # 2. Get Filter Dropdown Options (DB Based, Scope Aware, Limited)
-    scope_for_options = 'global' if is_global_search else 'local'
-    
-    # Initialize variables to ensure they exist even if branches are skipped
-    extensions = []
-    prefixes = []
-    prefix_limit_reached = False
+    # Scope/Recursive Logic:
+    if is_global_search:
+        # Global search is a major state change, counts as 1 filter
+        active_filters_count += 1
+    elif is_recursive:
+        # Recursive only counts as a filter if we are in Local mode (modifying the default folder view)
+        active_filters_count += 1
 
-    # Check if 'conn' variable exists and is open from previous blocks (PATH B)
-    if 'conn' in locals() and not is_ai_search:
-        # Re-use existing connection
-        extensions, prefixes, prefix_limit_reached = get_filter_options_from_db(conn, scope_for_options, folder_path)
-    else:
-        # Open temp connection (e.g. inside AI path or error cases)
-        with get_db_connection() as db_conn_for_opts:
-            extensions, prefixes, prefix_limit_reached = get_filter_options_from_db(db_conn_for_opts, scope_for_options, folder_path)
+    # Important: count files correctly on disk for the badge
+    total_folder_files, _, _ = scan_folder_and_extract_options(folder_path, recursive=is_recursive)
+    # Initialize DB Total
+    total_db_files = 0 
+    with get_db_connection() as conn_opts:
+        # NEW: Get the grand total of files in the database (for Global/AI context)
+        try:
+            total_db_files = conn_opts.execute("SELECT COUNT(*) FROM files").fetchone()[0]
+        except:
+            total_db_files = 0
+
+        scope_for_opts = 'global' if is_global_search else 'local'
+        # FIX: Added recursive=is_recursive to ensure dropdowns match current view on load
+        extensions, prefixes, pfx_limit = get_filter_options_from_db(conn_opts, scope_for_opts, folder_path, recursive=is_recursive)
     
-    # --- Breadcrumbs Logic ---
     breadcrumbs, ancestor_keys = [], set()
-    curr_key = folder_key
-    while curr_key is not None and curr_key in folders:
-        folder_info = folders[curr_key]
-        breadcrumbs.append({'key': curr_key, 'display_name': folder_info['display_name']})
-        ancestor_keys.add(curr_key)
-        curr_key = folder_info.get('parent')
+    curr = folder_key
+    while curr and curr in folders:
+        f_info = folders[curr]
+        breadcrumbs.append({'key': curr, 'display_name': f_info['display_name']})
+        ancestor_keys.add(curr)
+        curr = f_info.get('parent')
     breadcrumbs.reverse()
-    
     return render_template('index.html', 
-                           files=initial_files, 
+                           files=gallery_view_cache[:PAGE_SIZE], 
                            total_files=len(gallery_view_cache),
                            total_folder_files=total_folder_files, 
+                           total_db_files=total_db_files,
                            folders=folders,
                            current_folder_key=folder_key, 
                            current_folder_info=current_folder_info,
@@ -1911,18 +2404,23 @@ def gallery_view(folder_key):
                            ancestor_keys=list(ancestor_keys),
                            available_extensions=extensions, 
                            available_prefixes=prefixes,
-                           prefix_limit_reached=prefix_limit_reached,  
-                           selected_extensions=request.args.getlist('extension'), 
-                           selected_prefixes=request.args.getlist('prefix'),
-                           show_favorites=request.args.get('favorites', 'false').lower() == 'true', 
+                           prefix_limit_reached=pfx_limit,  
+                           selected_extensions=selected_exts, 
+                           selected_prefixes=selected_prefixes,
                            protected_folder_keys=list(PROTECTED_FOLDER_KEYS),
+                           show_favorites=request.args.get('favorites', 'false').lower() == 'true',
                            enable_ai_search=ENABLE_AI_SEARCH,
                            is_ai_search=is_ai_search,
                            ai_query=ai_query_text,
                            is_global_search=is_global_search,
                            active_filters_count=active_filters_count,
-                           current_scope=request.args.get('scope', 'local'))
-                           
+                           current_scope=search_scope,
+                           is_recursive=is_recursive,
+                           app_version=APP_VERSION,
+                           github_url=GITHUB_REPO_URL,
+                           update_available=UPDATE_AVAILABLE,
+                           remote_version=REMOTE_VERSION)
+    
 @app.route('/galleryout/upload', methods=['POST'])
 def upload_files():
     folder_key = request.form.get('folder_key')
@@ -2150,7 +2648,7 @@ def check_zip_status(job_id):
 @app.route('/galleryout/serve_zip/<filename>')
 def serve_zip_file(filename):
     return send_from_directory(ZIP_CACHE_DIR, filename, as_attachment=True)
-    
+
 @app.route('/galleryout/rename_folder/<string:folder_key>', methods=['POST'])
 def rename_folder(folder_key):
     if folder_key in PROTECTED_FOLDER_KEYS: return jsonify({'status': 'error', 'message': 'This folder cannot be renamed.'}), 403
@@ -2163,25 +2661,101 @@ def rename_folder(folder_key):
         
     folders = get_dynamic_folder_config()
     if folder_key not in folders: return jsonify({'status': 'error', 'message': 'Folder not found.'}), 400
-    old_path = folders[folder_key]['path']
-    new_path = os.path.join(os.path.dirname(old_path), new_name)
-    if os.path.exists(new_path): return jsonify({'status': 'error', 'message': 'A folder with this name already exists.'}), 400
+    
+    # 1. GET EXACT FOLDER PATH FROM CONFIG (Usually has forward slashes '/')
+    old_folder_path = folders[folder_key]['path']
+    
+    # 2. CONSTRUCT NEW FOLDER PATH (Preserving forward slashes structure)
+    # We do NOT use os.path.join here for the folder part because it might force backslashes on Windows,
+    # breaking consistency with get_dynamic_folder_config which enforces '/'.
+    # We strip the last segment and append the new name.
+    if '/' in old_folder_path:
+        parent_dir = old_folder_path.rsplit('/', 1)[0]
+        new_folder_path = f"{parent_dir}/{new_name}"
+    else:
+        # Fallback for systems strictly using backslash (unlikely given your logs, but safe)
+        parent_dir = os.path.dirname(old_folder_path)
+        new_folder_path = os.path.join(parent_dir, new_name)
+    
+    # Check existence (using normpath for OS safety check)
+    if os.path.exists(os.path.normpath(new_folder_path)): 
+        return jsonify({'status': 'error', 'message': 'A folder with this name already exists.'}), 400
+    
     try:
         with get_db_connection() as conn:
-            old_path_like = old_path + os.sep + '%'
-            files_to_update = conn.execute("SELECT id, path FROM files WHERE path LIKE ?", (old_path_like,)).fetchall()
+            all_files_cursor = conn.execute("SELECT id, path FROM files")
+            
             update_data = []
-            for row in files_to_update:
-                new_file_path = row['path'].replace(old_path, new_path, 1)
-                new_id = hashlib.md5(new_file_path.encode()).hexdigest()
-                update_data.append((new_id, new_file_path, row['id']))
-            os.rename(old_path, new_path)
-            if update_data: conn.executemany("UPDATE files SET id = ?, path = ? WHERE id = ?", update_data)
+            ids_to_clean_collisions = []
+            
+            # Prepare check
+            is_windows = (os.name == 'nt')
+            check_old = old_folder_path.lower() if is_windows else old_folder_path
+            
+            for row in all_files_cursor:
+                current_path = row['path']
+                check_curr = current_path.lower() if is_windows else current_path
+                
+                # Check containment
+                if check_curr.startswith(check_old):
+                    
+                    # 1. EXTRACT FILENAME
+                    # We rely on os.path.basename. It works on "C:/A/B\file.txt" correctly on Windows.
+                    filename = os.path.basename(current_path)
+                    
+                    # 2. CONSTRUCT NEW PATH EXACTLY LIKE THE SCANNER DOES
+                    # Scanner logic: os.path.join(folder_path_from_config, filename)
+                    # This produces "C:/.../NewName\filename.ext" on Windows.
+                    new_file_path = os.path.join(new_folder_path, filename)
+                    
+                    # 3. GENERATE ID
+                    new_id = hashlib.md5(new_file_path.encode()).hexdigest()
+                    
+                    update_data.append((new_id, new_file_path, row['id']))
+                    ids_to_clean_collisions.append(new_id)
+
+            # Cleanup Ghost records
+            if ids_to_clean_collisions:
+                placeholders = ','.join(['?'] * len(ids_to_clean_collisions))
+                conn.execute(f"DELETE FROM files WHERE id IN ({placeholders})", ids_to_clean_collisions)
+
+            # Physical Rename (Use normpath for OS call to be safe)
+            os.rename(os.path.normpath(old_folder_path), os.path.normpath(new_folder_path))
+            
+            # Atomic DB Update
+            if update_data: 
+                conn.executemany("UPDATE files SET id = ?, path = ? WHERE id = ?", update_data)
+            
+            # Update Watch List
+            watched_folders = conn.execute("SELECT path FROM ai_watched_folders").fetchall()
+            for row in watched_folders:
+                w_path = row['path']
+                w_check = w_path.lower() if is_windows else w_path
+                
+                if w_check == check_old:
+                    conn.execute("UPDATE ai_watched_folders SET path = ? WHERE path = ?", (new_folder_path, w_path))
+                elif w_check.startswith(check_old):
+                    # Subfolder logic: simple string replace to preserve structure
+                    # We use standard string replacement which works because we enforced '/' structure above
+                    if is_windows:
+                        # Case insensitive replace is tricky, let's assume structure holds
+                        # We reconstruct the tail
+                        suffix = w_path[len(old_folder_path):]
+                        new_w_path = new_folder_path + suffix
+                        conn.execute("UPDATE ai_watched_folders SET path = ? WHERE path = ?", (new_w_path, w_path))
+                    else:
+                        new_w_path = w_path.replace(old_folder_path, new_folder_path, 1)
+                        conn.execute("UPDATE ai_watched_folders SET path = ? WHERE path = ?", (new_w_path, w_path))
+
             conn.commit()
+            
         get_dynamic_folder_config(force_refresh=True)
         return jsonify({'status': 'success', 'message': 'Folder renamed.'})
-    except Exception as e: return jsonify({'status': 'error', 'message': f'Error: {e}'}), 500
-    
+        
+    except Exception as e: 
+        print(f"Rename Error: {e}")
+        return jsonify({'status': 'error', 'message': f'Error: {e}'}), 500
+        
 @app.route('/galleryout/delete_folder/<string:folder_key>', methods=['POST'])
 def delete_folder(folder_key):
     if folder_key in PROTECTED_FOLDER_KEYS: return jsonify({'status': 'error', 'message': 'This folder cannot be deleted.'}), 403
@@ -2190,13 +2764,24 @@ def delete_folder(folder_key):
     try:
         folder_path = folders[folder_key]['path']
         with get_db_connection() as conn:
+            # 1. Remove files from DB
             conn.execute("DELETE FROM files WHERE path LIKE ?", (folder_path + os.sep + '%',))
+            
+            # 2. AI WATCHED FOLDERS CLEANUP (Logic added)
+            # Remove the folder itself from watched list
+            conn.execute("DELETE FROM ai_watched_folders WHERE path = ?", (folder_path,))
+            # Remove any subfolders that might be in the watched list
+            conn.execute("DELETE FROM ai_watched_folders WHERE path LIKE ?", (folder_path + os.sep + '%',))
+            
             conn.commit()
+            
+        # 3. Physical deletion
         shutil.rmtree(folder_path)
+        
         get_dynamic_folder_config(force_refresh=True)
         return jsonify({'status': 'success', 'message': 'Folder deleted.'})
     except Exception as e: return jsonify({'status': 'error', 'message': f'Error: {e}'}), 500
-
+    
 @app.route('/galleryout/load_more')
 def load_more():
     offset = request.args.get('offset', 0, type=int)
@@ -2628,10 +3213,6 @@ def serve_thumbnail(file_id):
     if cache_path and os.path.exists(cache_path): return send_file(cache_path)
     return "Thumbnail generation failed", 404
 
-@app.route('/favicon.ico')
-def favicon():
-    return send_file('static/galleryout/favicon.ico')
-
 @app.route('/galleryout/input_file/<path:filename>')
 def serve_input_file(filename):
     """Serves input files directly from the ComfyUI Input folder."""
@@ -2654,12 +3235,12 @@ def serve_input_file(filename):
 @app.route('/galleryout/check_metadata/<string:file_id>')
 def check_metadata(file_id):
     """
-    Lightweight endpoint to check real-time status of metadata 
-    (Workflow and AI Caption) for the Lightbox.
+    Lightweight endpoint to check real-time status of metadata.
     """
     try:
         with get_db_connection() as conn:
-            row = conn.execute("SELECT has_workflow, ai_caption FROM files WHERE id = ?", (file_id,)).fetchone()
+            # Aggiunto ai_last_scanned alla query
+            row = conn.execute("SELECT has_workflow, ai_caption, ai_last_scanned FROM files WHERE id = ?", (file_id,)).fetchone()
             
         if not row:
             return jsonify({'status': 'error', 'message': 'File not found'}), 404
@@ -2668,12 +3249,73 @@ def check_metadata(file_id):
             'status': 'success',
             'has_workflow': bool(row['has_workflow']),
             'has_ai_caption': bool(row['ai_caption']),
-            'ai_caption': row['ai_caption'] or "" # Return actual text to update cache
+            'ai_caption': row['ai_caption'] or "",
+            'ai_last_scanned': row['ai_last_scanned'] or 0 # Nuovi dati
         })
     except Exception as e:
         print(f"Metadata Check Error: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
-          
+        
+@app.route('/galleryout/stream/<string:file_id>')
+def stream_video(file_id):
+    """
+    Streams video files by transcoding them on-the-fly using FFmpeg.
+    This allows professional formats like ProRes to be viewed in any browser.
+    Includes a safety scale filter to ensure smooth playback even for 4K+ sources.
+    """
+    filepath = get_file_info_from_db(file_id, 'path')
+    
+    if not FFPROBE_EXECUTABLE_PATH:
+        abort(404, description="FFmpeg/FFprobe not found on system.")
+
+    # Determine ffmpeg executable path based on ffprobe location
+    ffmpeg_dir = os.path.dirname(FFPROBE_EXECUTABLE_PATH)
+    ffmpeg_name = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
+    ffmpeg_path = os.path.join(ffmpeg_dir, ffmpeg_name) if ffmpeg_dir else ffmpeg_name
+
+    # FFmpeg command for fast on-the-fly transcoding
+    # -preset ultrafast: minimal CPU usage
+    # -vf scale: ensures the stream is not larger than 720p for performance
+    # -movflags frag_keyframe+empty_moov: required for fragmented MP4 streaming
+    cmd = [
+        ffmpeg_path,
+        '-i', filepath,
+        '-vcodec', 'libx264',
+        '-preset', 'ultrafast',
+        '-tune', 'zerolatency',
+        '-vf', "scale='min(1280,iw)':-2", 
+        '-acodec', 'aac',
+        '-b:a', '128k',
+        '-f', 'mp4',
+        '-movflags', 'frag_keyframe+empty_moov+default_base_moof',
+        'pipe:1'
+    ]
+
+    def generate():
+        # Start ffmpeg process with specific flags to avoid console windows on Windows
+        process = subprocess.Popen(
+            cmd, 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.DEVNULL,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+        )
+        try:
+            # Read in chunks of 16KB for better streaming performance
+            while True:
+                data = process.stdout.read(16384)
+                if not data:
+                    break
+                yield data
+        finally:
+            # Clean up: ensure the process is killed when the request ends
+            process.terminate()
+            try:
+                process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                process.kill()
+
+    return Response(generate(), mimetype='video/mp4')
+    
 def print_startup_banner():
     banner = rf"""
 {Colors.GREEN}{Colors.BOLD}   _____                      _      _____       _ _                 
@@ -2693,8 +3335,13 @@ def print_startup_banner():
     print(f"   Contributor: {Colors.CYAN}Martial Michel (Docker & Codebase){Colors.RESET}")
     print("")
 
+# --- GLOBAL STATE FOR UPDATES ---
+UPDATE_AVAILABLE = False
+REMOTE_VERSION = None  # New global variable
+
 def check_for_updates():
     """Checks the GitHub repo for a newer version without external libs."""
+    global UPDATE_AVAILABLE, REMOTE_VERSION
     print("Checking for updates...", end=" ", flush=True)
     try:
         # Timeout (3s) not blocking start if no internet connection
@@ -2708,42 +3355,34 @@ def check_for_updates():
             if match:
                 remote_version_str = match.group(1)
             else:
-                # Fallback: Check header comment if variable not found
                 match_header = re.search(r'#\s*Version:\s*([0-9.]+)', content)
                 if match_header:
                     remote_version_str = match_header.group(1)
 
             if remote_version_str:
-                # --- HYBRID COMPARISON LOGIC ---
-                # 1. Clean both versions from non-numeric chars (except dots)
                 local_clean = re.sub(r'[^0-9.]', '', str(APP_VERSION))
                 remote_clean = re.sub(r'[^0-9.]', '', str(remote_version_str))
 
-                # 2. Check if they are Legacy Float style (max 1 dot, e.g. "1.41", "1.4099")
-                #    or Modern SemVer style (2+ dots, e.g. "1.51.01")
                 local_dots = local_clean.count('.')
                 remote_dots = remote_clean.count('.')
                 
                 is_update_available = False
                 
                 if local_dots <= 1 and remote_dots <= 1:
-                    # Use Float logic (Legacy) to support 1.41 > 1.4099
                     try:
                         is_update_available = float(remote_clean) > float(local_clean)
                     except ValueError:
-                        # Fallback to tuple comparison if float conversion fails
                         pass
 
                 if not is_update_available:
-                    # Use Semantic Tuple logic (Modern) if float check failed or didn't apply
-                    # Examples: 1.51.1 > 1.51
                     local_v = tuple(map(int, local_clean.split('.'))) if local_clean else (0,)
                     remote_v = tuple(map(int, remote_clean.split('.'))) if remote_clean else (0,)
                     is_update_available = remote_v > local_v
                 
                 if is_update_available:
+                    UPDATE_AVAILABLE = True
+                    REMOTE_VERSION = remote_version_str # Store the version string
                     print(f"\n{Colors.YELLOW}{Colors.BOLD}NOTICE: A new version ({remote_version_str}) is available!{Colors.RESET}")
-                    print(f"Please update from: {GITHUB_REPO_URL}\n")
                 else:
                     print("You are up to date.")
             else:
@@ -2751,7 +3390,7 @@ def check_for_updates():
                 
     except Exception:
         print("Skipped (Offline or GitHub unreachable).")
-
+        
 # --- STARTUP CHECKS AND MAIN ENTRY POINT ---
 def show_config_error_and_exit(path):
     """Shows a critical error message and exits the program."""
@@ -2819,7 +3458,7 @@ if __name__ == '__main__':
         print(f"{Colors.YELLOW}   > Source media visualization in Node Summary will be DISABLED.{Colors.RESET}")
         print(f"{Colors.YELLOW}   > The gallery will still function normally for output files.{Colors.RESET}\n")
     
-    # Initialize the gallery
+    # Initialize the gallery (Creates DB, Migrations, etc.)
     initialize_gallery()
     
     # --- CHECK: FFMPEG WARNING ---
@@ -2832,6 +3471,16 @@ if __name__ == '__main__':
                 print(f"{Colors.RED}WARNING: FFmpeg not found. Video workflows extraction disabled.{Colors.RESET}")
         else:
             print(f"{Colors.RED}WARNING: FFmpeg not found. Video workflows extraction disabled.{Colors.RESET}")
+
+    # --- START BACKGROUND WATCHER (New Integration) ---
+    if ENABLE_AI_SEARCH:
+        try:
+            # Daemon=True ensures the thread dies when the main app stops
+            watcher = threading.Thread(target=background_watcher_task, daemon=True)
+            watcher.start()
+            print(f"{Colors.BLUE}INFO: AI Background Watcher started.{Colors.RESET}")
+        except Exception as e:
+            print(f"{Colors.RED}ERROR: Failed to start AI Watcher: {e}{Colors.RESET}")
 
     print(f"{Colors.GREEN}{Colors.BOLD}🚀 Gallery started successfully!{Colors.RESET}")
     print(f"👉 Access URL: {Colors.CYAN}{Colors.BOLD}http://127.0.0.1:{SERVER_PORT}/galleryout/{Colors.RESET}")
