@@ -1,259 +1,342 @@
-# SmartGallery for ComfyUI ✨
-### Your lightweight, browser-based visual hub for ComfyUI outputs
-
-**SmartGallery** is a fast, mobile-friendly web gallery that gives you
-**complete control over your ComfyUI outputs** — even when ComfyUI is not running.
-
-Browse, search, organize, and instantly recall the exact workflow behind every image or video,
-from any device, on Windows, Linux, or Docker.
-
----
-
-<p align="center">
-  <img src="assets/gallery_from_pc_screen.png" alt="SmartGallery Interface" width="800">
-</p>
-
-<p align="center">
-  <em>🎨 A beautiful, lightning-fast gallery that remembers the workflow behind every creation</em>
-</p>
-
-<p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License"></a>
-  <img src="https://img.shields.io/badge/Python-3.9+-blue.svg" alt="Python Version">
-  <a href="https://github.com/biagiomaf/smart-comfyui-gallery/stargazers">
-    <img src="https://img.shields.io/github/stars/biagiomaf/smart-comfyui-gallery?style=social" alt="GitHub stars">
-  </a>
-</p>
-
----
-
-## 🎯 Why SmartGallery?
-
-If you use ComfyUI, you already know the pain:
-
-- Thousands of generated files
-- Forgotten workflows
-- Generic filenames
-- No easy way to browse from your phone
-- No fast way to find *that* image again
-
-**SmartGallery fixes all of this.**
-
-It automatically links every generated file (PNG, JPG, MP4, WebP)
-to its **exact workflow**, making your entire creative history searchable and explorable.
-
----
-
-## ⚡ Key Features
-
-- 📝 **$\color{red}{\text{(new)}}$** **Prompt Keywords Search**: Instantly find generations by searching for specific words inside your prompt. Supports multiple comma-separated keywords (e.g., "woman, kimono").
-
-- 🧬 **$\color{red}{\text{(new)}}$** **Deep Workflow Search**: Search for generated images, videos, and animations based on the **filenames** inside the workflow (Models, LoRAs, Inputs). 
-  *Supports multiple comma-separated keywords (e.g., "wan2.1, portrait.png").*
-
-- 🏃‍♂️ **Blazing Fast**  
-  SQLite database + smart caching = instant browsing, even with huge libraries
-
-- 📱 **Mobile-First Experience**  
-  Perfect UI on desktop, tablet, and smartphone
-  
-- 🔍 **Powerful Search**  
-  Search by filename, prefix, extension, date range, or globally across folders
-
-- 🔎 **Node Summary**  
-  Instantly see model, seed, parameters, and source media used to generate each file
-
-<p align="center">
-  <img src="assets/node_summary_with_image.png" alt="Node Summary with source image" width="450"/>
-</p>
-
-- 📁 **Smart Organization**  
-  Real-time folder browsing, sorting, filtering, and file management
-
-- 📦 **Batch Operations**  
-  Multi-select, ZIP download, range selection
-
-- 🆕 **Universal Upload Magic**  
-  Upload any ComfyUI-generated image or video and instantly discover its workflow
-
-- 🔄 **Real-time Sync**  
-  Background scanning with visual progress when new files are detected
-
-- 🐳 **Docker Ready**  
-  Run it anywhere, cleanly and reliably
-
----
-
-## 🆕 What's New in Version 1.51?
-
-Recent updates focus on search, performance, and usability.
-Highlights:
-
-### 📝 Powerful Prompt Text Search
-Finding that one specific generation is now easier than ever. We've added a **Prompt Keywords** search that digs into the actual text used in your prompts.
-*   **How it works:** It scans the workflow metadata for the text prompts you wrote.
-*   **Multiple Keywords:** You can search for several words at once.
-*   **Example:** You want to find all your previous tests involving a woman wearing a specific garment.
-*   **Solution:** Just type `woman, kimono` in the Prompt Keywords field, and SmartGallery will filter all matching images, animations, and videos instantly!
-
-### 🧬 Deep Workflow Search
-We've added a powerful new way to find your creations. The **"Workflow Files"** search field digs inside the hidden metadata to find specific **filenames** used in the generation.
-
-*   **How it works:** It searches specifically for the names of **Checkpoints, LoRAs, Upscalers, and Input Images** referenced in the nodes.
-*   **Multiple Keywords:** You can search for multiple items at once by separating them with commas.
-*   **Example:** You want to find images generated with the **Wan2.1** model that also used **portrait.png** as an input.
-*   **Solution:** Just type `wan2.1, portrait.png` in the Workflow Files search, and SmartGallery will find matches containing both!
-*   *(Note: This searches for filenames, not numeric parameters like Seed or CFG).*
-
-🌐 **Global search across all folders**
-
-📅 **Date range filtering**
-
-🚀 **Optimized UI for large libraries**
-
-👉 See [CHANGELOG.md](CHANGELOG.md) for full details.
-
-
 <div align="center">
-  <img src="assets/gallery_from_mobile_screen.png" alt="Mobile View" width="300">
-  <img src="assets/node_summary.png" alt="Node Summary" width="350"/>
+
+  <h1>SmartGallery for ComfyUI</h1>
+  
+  <img src="assets/logo.png" width="120" alt="SmartGallery logo" style="margin-top: 10px; margin-bottom: 10px;">
+  
+  <p>
+    A lightweight, local, browser-based gallery that remembers<br>
+    <strong>exactly how every image or video was generated</strong>.
+  </p>
+
+  <p>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License"></a>
+    <img src="https://img.shields.io/badge/Python-3.9+-blue.svg" alt="Python">
+    <a href="https://github.com/biagiomaf/smart-comfyui-gallery/stargazers">
+      <img src="https://img.shields.io/github/stars/biagiomaf/smart-comfyui-gallery?style=social" alt="Stars">
+    </a>
+  </p>
+
 </div>
-<p align="center">
-  <em>📱 Perfect mobile experience</em>
-</p>
 
 ---
 
-## 🎮 Installation: Ridiculously Simple
+## What is SmartGallery?
 
-### Step 1: Get the Code
+**SmartGallery** turns your ComfyUI output folder into a fast, searchable, mobile-friendly web gallery.
+
+Every generated file (image or video) is automatically linked to its **exact ComfyUI workflow**, even if:
+- ComfyUI is not running
+- the file was generated weeks or months ago
+- filenames are meaningless
+
+Everything runs **fully offline**, locally, with no cloud and no tracking. 
+ 
+**Who is this for?**  
+ComfyUI users who generate a lot, iterate fast, and want to *never lose a workflow again*.
+
+---
+
+## Why it exists
+
+If you use ComfyUI seriously, you probably faced this:
+
+- Thousands of outputs with generic filenames
+- Forgotten workflows
+- Hard to search by what you actually remember
+- No usable way to browse from your phone
+
+SmartGallery turns your output folder into a **living memory of your creative process**.
+
+---
+
+## Screenshots
+<div align="center">
+  <!-- Sezione Desktop Gallery -->
+  <table style="border-collapse: collapse; width: 100%;">
+    <!-- Titolo Desktop con effetto grigetto -->
+    <tr>
+      <td align="center"><strong>Desktop Interface</strong></td>
+    </tr>
+    <!-- Immagine Desktop -->
+    <tr>
+      <td align="center" style="padding: 10px;">
+        <img src="assets/desktop.png" width="900" alt="Desktop View">
+      </td>
+    </tr>
+    <!-- Riga Didascalia Desktop (Tecnica adottata per Node Summary) -->
+    <tr>
+      <td align="center" style="vertical-align: top; padding: 10px;">
+        <em>Fast, clean desktop gallery with workflow-aware search</em>
+      </td>
+    </tr>
+  </table>
+
+  <br> <!-- Spazio tra le due tabelle -->
+
+  <!-- Sezione Mobile Gallery -->
+  <table style="border-collapse: collapse; width: 100%;">
+    <!-- Riga 1: Titoli (Effetto rettangolo grigio) -->
+    <tr>
+      <td align="center" width="50%"><strong>Mobile Interface</strong></td>
+      <td align="center" width="50%"><strong>Node Summary</strong></td>
+    </tr>
+    <!-- Riga 2: Immagini allineate al TOP -->
+    <tr>
+      <td align="center" style="vertical-align: top; padding: 10px;">
+        <img src="assets/mobile.png" height="500" alt="Mobile View">
+      </td>
+      <td align="center" style="vertical-align: top; padding: 10px;">
+        <img src="assets/mobile-node-summary.png" height="500" alt="Node Summary">
+      </td>
+    </tr>
+    <!-- Riga 3: Didascalie -->
+    <tr>
+      <td align="center" style="vertical-align: top; padding: 10px;">
+        <em>Fully usable on mobile</em>
+      </td>
+      <td align="center" style="vertical-align: top; padding: 10px;">
+        <em>Instant workflow recall with visual node summary</em>
+      </td>
+    </tr>
+  </table>
+</div>
+
+---
+
+## Core Features
+- Search with powerful filters: prompt keywords, specific models/LoRAs, file extension, recursive folder scanning, date range, and more
+- Full workflow access for PNG, JPG, WebP, and MP4: view node summary, copy to clipboard, or download as JSON
+- Upload external files to add them to your collection and retrieve their workflow
+- "Auto-Watch" mode to automatically refresh the gallery when new files appear
+- Batch operations (delete, move, re-scan)
+- Full folder management directly from the UI
+- Fully offline and local — works even when ComfyUI is not running
+- Cross-platform: Windows, Linux, macOS + Docker
+
+---
+
+**Actively developed** — frequent updates focused on real ComfyUI workflows.  
+
+## What’s New in v1.53
+- Native preview support for ProRes `.mov` files (optimized for macOS)
+- "Auto-Watch Folder": configurable interval to automatically refresh the gallery when new files appear
+- Recursive search with persistent filters
+- Modernized dark / glass UI
+- Seamless infinite scrolling
+- Fully collapsible folder sidebar
+- Improved mobile-first responsive layout
+
+This is a curated summary — see the 👉 full [CHANGELOG](CHANGELOG.md) for all technical changes.
+
+---
+
+## Installation & Update  
+## - Windows, macOS, Linux, Docker  
+
+<details>
+<summary><strong>Select your platform</strong></summary>
+
+Each quick install shows **only the relevant steps for that platform**.
+
+---
+
+<details>
+<summary><strong>Windows (Python)</strong></summary>
+
+### 1. Install
+
+**Option A: Using Git (Recommended)**
+```bat
+git clone https://github.com/biagiomaf/smart-comfyui-gallery
+cd smart-comfyui-gallery
+```
+
+**Option B: No Git (Manual Download)**
+
+Download the latest **Source code (zip)** from [**Releases**](https://github.com/biagiomaf/smart-comfyui-gallery/releases/latest), extract it, and open a terminal inside the folder.
+
+**Then, setup the environment:**
+```bat
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### 2. Run (Best Practice)
+
+Create a new file named `run_smartgallery.bat` inside the folder and paste this content.
+
+**⚠️ IMPORTANT:** Replace the example paths with your real paths. Use forward slashes `/` even on Windows.
+```bat
+@echo off
+cd /d %~dp0
+call venv\Scripts\activate.bat
+
+:: --- CONFIGURATION ---
+:: REPLACE these paths with your actual folders.
+:: NOTE: Use forward slashes (/) for paths (e.g., C:/ComfyUI/output)
+
+set "BASE_OUTPUT_PATH=C:/Path/To/ComfyUI/output"
+set "BASE_INPUT_PATH=C:/Path/To/ComfyUI/input"
+set "BASE_SMARTGALLERY_PATH=C:/Path/To/ComfyUI/output"
+
+:: If ffmpeg is not in your system PATH, point to ffprobe.exe here:
+set "FFPROBE_MANUAL_PATH=C:/Path/To/ffmpeg/bin/ffprobe.exe"
+set SERVER_PORT=8189
+
+:: --- START ---
+python smartgallery.py
+pause
+```
+
+Double-click `run_smartgallery.bat` to start.
+
+### 3. How to Update
+
+If you installed via Git:
+```bat
+cd smart-comfyui-gallery
+git pull
+venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+If you downloaded the ZIP: Download the new version, extract it, and copy your `run_smartgallery.bat` into the new folder.
+
+</details>
+
+---
+
+<details>
+<summary><strong>macOS (Python)</strong></summary>
+
+### 1. Install
+
+**Option A: Using Git (Recommended)**
 ```bash
 git clone https://github.com/biagiomaf/smart-comfyui-gallery
 cd smart-comfyui-gallery
 ```
 
-### Step 2: Quick Setup
+**Option B: No Git (Manual Download)**
+
+Download the latest **Source code (tar.gz)** from [**Releases**](https://github.com/biagiomaf/smart-comfyui-gallery/releases/latest), extract it, and open a terminal inside the folder.
+
+**Then, setup the environment:**
 ```bash
-# Create virtual environment (recommended)
-python -m venv venv
-
-# Activate it
-# Windows Command Prompt: call venv\Scripts\activate.bat
-# Mac/Linux: source venv/bin/activate
-
-# Install dependencies
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Step 3: Configure Your Paths
+### 2. Run (Best Practice)
 
-You have **two easy options** to configure SmartGallery:
-
-#### 🅰️ Option A: Environment Variables (recommended)
-Create a startup script to keep your settings organized.
-
-Perfect if you want to keep your settings separate or run multiple configurations.
-
-**Windows:**
-Create a file named start_gallery.bat inside the smart-comfyui-gallery folder with the following content:
-```cmd
-@echo off
-cd /d %~dp0
-call venv\Scripts\activate.bat
-REM Path to your ComfyUI Output folder (Where images are generated)
-set "BASE_OUTPUT_PATH=C:/ComfyUI/output"
-REM Path to your ComfyUI Input folder (For source media in Node Summary)
-set "BASE_INPUT_PATH=C:/ComfyUI/input"
-REM Where SmartGallery stores the SQLite Database and Thumbnails Cache
-set "BASE_SMARTGALLERY_PATH=C:/ComfyUI/output"
-REM Path to ffprobe.exe (ffmpeg required for extracting workflows from video files)
-set "FFPROBE_MANUAL_PATH=C:/ffmpeg/bin/ffprobe.exe"
-set SERVER_PORT=8189
-REM Leave MAX_PARALLEL_WORKERS empty to use all CPU cores (recommended)
-set "MAX_PARALLEL_WORKERS="
-python smartgallery.py
-```
-
-**Linux/Mac:**
-Create a file named start_gallery.sh with the following content:
+Create a file named `run_smartgallery.sh`, make it executable (`chmod +x run_smartgallery.sh`), and paste this content:
 ```bash
 #!/bin/bash
 source venv/bin/activate
-# Path to your ComfyUI Output folder (Where images are generated)
+
+# Increase open files limit (fix for "Too many open files" on macOS)
+ulimit -n 4096
+
+# --- CONFIGURATION ---
+# REPLACE these paths with your actual folders.
 export BASE_OUTPUT_PATH="$HOME/ComfyUI/output"
-# Path to your ComfyUI Input folder (For source media in Node Summary)
 export BASE_INPUT_PATH="$HOME/ComfyUI/input"
-# Where SmartGallery stores the SQLite Database and Thumbnails Cache
 export BASE_SMARTGALLERY_PATH="$HOME/ComfyUI/output"
-# Path to ffprobe executable (Required for extracting workflows from video files)
+
+# Ensure ffprobe is installed (brew install ffmpeg)
 export FFPROBE_MANUAL_PATH="/usr/bin/ffprobe"
-# The port where SmartGallery will run
 export SERVER_PORT=8189
-# Leave empty to use all CPU cores, or set a number (e.g., 4) to limit usage
-export MAX_PARALLEL_WORKERS=""
+
+# --- START ---
 python smartgallery.py
 ```
-Then make it executable and run it:
+
+Run it with: `./run_smartgallery.sh`
+
+### 3. How to Update
 ```bash
-chmod +x start_gallery.sh
-./start_gallery.sh
+cd smart-comfyui-gallery
+git pull
+source venv/bin/activate
+pip install -r requirements.txt
 ```
+If you downloaded the tar.gz: Download the new version, extract it, and copy your `run_smartgallery.sh` into the new folder.
 
-> 💡 **Tip**: See the complete configuration guide at the top of `smartgallery.py` for all available settings and detailed examples!
-
-#### 🅱️ Option B: Direct File Edit 
-
-Open `smartgallery.py` and find the **USER CONFIGURATION** section. A detailed guide is included at the top of the file. Update just the paths after the commas:
-```python
-# Find this section and change ONLY the values after the commas:
-BASE_OUTPUT_PATH = os.environ.get('BASE_OUTPUT_PATH', 'C:/ComfyUI/output')
-BASE_INPUT_PATH = os.environ.get('BASE_INPUT_PATH', 'C:/ComfyUI/input')
-BASE_SMARTGALLERY_PATH = os.environ.get('BASE_SMARTGALLERY_PATH', BASE_OUTPUT_PATH) # DB & Cache location
-FFPROBE_MANUAL_PATH = os.environ.get('FFPROBE_MANUAL_PATH', "C:/ffmpeg/bin/ffprobe.exe")
-SERVER_PORT = int(os.environ.get('SERVER_PORT', 8189))
-```
-
-> 💡 **Important**: Always use forward slashes (`/`) even on Windows! If your paths contain spaces, use quotes.
-
-> 📹 **FFmpeg Note**: Recommended for extracting workflows from MP4 files. Download from [ffmpeg.org](https://ffmpeg.org/) if needed. Common locations:
-> - Windows: `C:/ffmpeg/bin/ffprobe.exe` or `C:/Program Files/ffmpeg/bin/ffprobe.exe`
-> - Linux: `/usr/bin/ffprobe` or `/usr/local/bin/ffprobe`
-> - Mac: `/usr/local/bin/ffprobe` or `/opt/homebrew/bin/ffprobe`
-
-### Step 4: Launch & Enjoy
-
-Visit **`http://127.0.0.1:8189/galleryout`** and watch the magic happen!
-
-> **⏱️ First Run**: The initial launch scans your files and generates thumbnails. Thanks to parallel processing, this is now incredibly fast (seconds to a few minutes depending on your collection size). After that? Lightning fast! ⚡
+</details>
 
 ---
 
+<details>
+<summary><strong>Linux (Python)</strong></summary>
 
-## 🐳 Docker Deployment (Advanced Users)
+### 1. Install
 
-Want to run SmartGallery in a containerized environment? We've got you covered!
-
-> 🎖️ **Special Thanks**: A huge shout-out to **[Martial Michel](https://github.com/mmartial)** for orchestrating the Docker support and contributing significant improvements to the core application logic.
-
-> **Note for Windows Users**: The standard installation (Steps 1-4 above) is much simpler and works perfectly on Windows! Docker is completely optional and mainly useful for Linux servers or advanced deployment scenarios.
-
-Docker deployment provides isolation, easier deployment, and consistent environments across different systems. However, it requires some familiarity with Docker concepts.
-
-**🗄️ Pre-built images**
-
-Pre-built images are available on DockerHub at [mmartial/smart-comfyui-gallery](https://hub.docker.com/r/mmartial/smart-comfyui-gallery) and Unraid's Community Apps. 
-
-![assets/smart-comfyui-gallery-unraidCA.png](assets/smart-comfyui-gallery-unraidCA.png)
-
-Example `docker run` command:
-
+**Option A: Using Git (Recommended)**
 ```bash
-# Adapt the mounts and WANTED_UID/WANTED_GID variables to match your system
+git clone https://github.com/biagiomaf/smart-comfyui-gallery
+cd smart-comfyui-gallery
+```
+
+**Option B: No Git**
+
+Download **Source code** from [**Releases**](https://github.com/biagiomaf/smart-comfyui-gallery/releases/latest).
+
+**Then, setup the environment:**
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 2. Run (Best Practice)
+
+Create a file named `run_smartgallery.sh`, make it executable (`chmod +x run_smartgallery.sh`), and paste this content:
+```bash
+#!/bin/bash
+source venv/bin/activate
+
+# --- CONFIGURATION ---
+# REPLACE these paths with your actual folders.
+export BASE_OUTPUT_PATH="$HOME/ComfyUI/output"
+export BASE_INPUT_PATH="$HOME/ComfyUI/input"
+export BASE_SMARTGALLERY_PATH="$HOME/ComfyUI/output"
+export FFPROBE_MANUAL_PATH="/usr/bin/ffprobe"
+export SERVER_PORT=8189
+
+# --- START ---
+python smartgallery.py
+```
+
+Run it with: `./run_smartgallery.sh`
+
+### 3. How to Update
+```bash
+cd smart-comfyui-gallery
+git pull
+source venv/bin/activate
+pip install -r requirements.txt
+```
+If you downloaded the source code manually: Download the new version, extract it, and copy your `run_smartgallery.sh` into the new folder.
+
+</details>
+
+---
+
+<details>
+<summary><strong>Docker</strong></summary>
+
+### 1. Run
+
+Replace the paths on the left side of the `:` with your actual host paths.
+```bash
 docker run \
   --name smartgallery \
-  -v /comfyui-nvidia/basedir/output:/mnt/output \
-  -v /comfyui-nvidia/basedir/input:/mnt/input \
-  -v /comfyui-nvidia/SmartGallery:/mnt/SmartGallery \
+  -v /your/host/output:/mnt/output \
+  -v /your/host/input:/mnt/input \
+  -v /your/host/SmartGallery:/mnt/SmartGallery \
   -e BASE_OUTPUT_PATH=/mnt/output \
   -e BASE_INPUT_PATH=/mnt/input \
   -e BASE_SMARTGALLERY_PATH=/mnt/SmartGallery \
@@ -263,113 +346,101 @@ docker run \
   mmartial/smart-comfyui-gallery
 ```
 
-> **Note**: The `id -u` and `id -g` commands return the user and group IDs of the current user, respectively. This ensures that the container runs with the same permissions as the host user, which is important for file permissions and access to mounted volumes.
-
-A [compose.yaml](compose.yaml) file is provided for ease of use. You can use it to obtain the published image and run the container with the following command after placing it in a directory of your choice and adapting the paths and environment variables to match your system:
+### 2. How to Update
 ```bash
-docker compose up -d
+# 1. Pull the latest image
+docker pull mmartial/smart-comfyui-gallery
+
+# 2. Stop and remove the old container
+docker stop smartgallery && docker rm smartgallery
+
+# 3. Run the 'docker run' command again (see above)
 ```
 
-See the following section's "All available environment variables" for a list of all available environment variables.
+### 🐳 Docker Deployment 
 
-**📚 [Complete Docker Setup Guide →](DOCKER_HELP.md)**
+Want to run SmartGallery in a containerized environment? We've got you covered!
 
-Our comprehensive Docker guide covers:
-- 🏗️ Building the Docker image
-- 🚀 Running with Docker Compose (recommended for beginners)
-- ⚙️ Using Makefile (For advanced control and automation)
-- 🔐 Understanding permissions and volume mapping
-- 🛠️ Troubleshooting common Docker issues
-- 📋 All available environment variables
+> 🎖️ **Special Thanks**: A huge shout-out to **[Martial Michel](https://github.com/mmartial)** for orchestrating the Docker support and contributing to the core application logic.
 
+Docker deployment provides isolation, easier deployment, and consistent environments across different systems. However, it requires some familiarity with Docker concepts.
+
+**🗄️ Pre-built images**
+
+Pre-built images are available on DockerHub at [mmartial/smart-comfyui-gallery](https://hub.docker.com/r/mmartial/smart-comfyui-gallery) and Unraid's Community Apps. 
+
+![assets/smart-comfyui-gallery-unraidCA.png](assets/smart-comfyui-gallery-unraidCA.png)
+
+**Full Docker guide:** 👉 [docs/DOCKER_HELP.md](DOCKER_HELP.md)
+
+
+</details>
+
+</details>
 
 ---
-## 🌐 Reverse Proxy Setup
 
-Running behind Nginx or Apache? Point your proxy to:
+### - Open SmartGallery
+
 ```
 http://127.0.0.1:8189/galleryout
 ```
 
-**Example Nginx configuration:**
-```nginx
-location /gallery/ {
-    proxy_pass http://127.0.0.1:8189/galleryout/;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-}
-```
+---
+
+### For advanced configuration: 👉 [Complete Installation Guide](docs/installation.md) (Docker Compose, reverse proxy, ffmpeg, scripts, and more)
 
 ---
-## 🚀 Coming Soon: Announcing the AI Features (Optional)
+
+## Optional AI Features (Planned)
 
 SmartGallery is designed to stay **lightweight by default**.
 
-Advanced AI-powered features will be provided soon by a **separate optional component**:
+Advanced AI-powered features (semantic search, natural language queries) will be provided by a **separate optional service**:
 
-### **SmartGallery AI Service (Optional)**
+* Fully optional
+* Runs locally
+* Separate Docker container or Python environment
+* No impact on the core gallery if not installed
 
-> 🔌 A dedicated service, completely independent from the SmartGallery core.
-
-### 🧠 AI Search (Coming Soon)
-
-Search your gallery by **describing what you remember** — not filenames.
-
-Examples:
-```text
-"cyberpunk portrait with neon lights"
-"dark fantasy illustration"
-"portrait with red background"
-No manual tagging.
-No heavy dependencies in the core.
-No cloud. Fully local and private.
-```
-⚠️ Important
-SmartGallery works perfectly without AI
-The AI Service is optional, local and free!
-It runs in a separate Docker container or Python environment.
-If you don't install it, nothing changes.
-
-**The AI Service is currently under development and not released yet.**
-
-[ SmartGallery Core (lightweight)]  --->  [ SmartGallery AI Service (Optional)- docker / separate environment]
-                    
----
-## 🤝 Join the Community
-
-### Found a Bug? Have an Idea?
-**[➡️ Open an Issue](../../issues)** - I read every single one!
-
-### Want to Contribute?
-1. Fork the repo
-2. Create your feature branch (`git checkout -b amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin amazing-feature`)
-5. Open a Pull Request
-
-Let's build something incredible together! 🚀
+The AI service is currently **under development and not released yet**.
 
 ---
 
-## 🔥 License
+## Philosophy
 
-SmartGallery is released under the **MIT License** - see [LICENSE](LICENSE) for details.
-
-This software is provided "as is" without warranty. Use responsibly and in compliance with applicable laws.
+* Local-first
+* Privacy-first
+* Minimal dependencies
+* No forced upgrades
+* No vendor lock-in
 
 ---
 
-## ❤️ Show Some Love
+## Contributing & Feedback
 
-If SmartGallery has transformed your ComfyUI workflow, **please give it a ⭐ star!** 
+Issues, ideas, and pull requests are welcome.
 
-It takes 2 seconds but means the world to me and helps other creators discover this tool.
+* [Open an issue](../../issues)
+* Fork → branch → PR
 
-**[⭐ Star this repo now!](https://github.com/biagiomaf/smart-comfyui-gallery/stargazers)**
+---
+
+## ⭐ Support the Project
+
+If SmartGallery improves your ComfyUI workflow, consider giving the repository a ⭐.
+
+It helps visibility, motivates future development, and costs nothing.
+
+---
+
+## License
+
+MIT License — see [LICENSE](LICENSE)
 
 ---
 
 <p align="center">
-  <em>Made with ❤️ for the ComfyUI community</em>
+  <em>Made for the ComfyUI community</em>
 </p>
+

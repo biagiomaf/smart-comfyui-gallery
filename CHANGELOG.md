@@ -1,5 +1,38 @@
 # Changelog
 
+## [1.53] - 2026-01-07
+
+### Added
+
+#### Automation & Refresh
+- **"Auto-Watch" Folder Mode**: A configurable background monitoring system. Users can set a custom interval (via the refresh menu options) to automatically check for and display new files without manual reloads.
+
+#### Search & Filtering
+- **Recursive Search Mode**: New "Include Subfolders" toggle enables deep searching through all nested directories from the current location.
+- **Smart Filter Persistence**: Active search filters and sorting preferences are preserved when navigating between folders.
+- **Dynamic Filter Discovery**: Dropdowns for file extensions and filename prefixes now update dynamically via AJAX based on the content of subfolders.
+
+#### Video & Workflow Support
+- **ProRes Video Support**: Native-like preview for ProRes `.mov` files directly in the browser via real-time ffmpeg transcoding (no intermediate files required).
+- **Workflow Shortcut**: Press `C` to instantly copy the current image's workflow metadata to the clipboard.
+
+#### Gallery & UI Enhancements
+- **Modernized Design System**: Unified "Glass/Dark" theme using CSS variables and backdrop-filters, offering improved contrast and reduced visual noise.
+- **Seamless Infinite Scrolling**: Images now load dynamically as you scroll, eliminating the need for "Load More" buttons and optimizing memory usage on both desktop and mobile.
+- **Enhanced Notification System**: Improved state persistence to ensure feedback messages remain visible across page reloads.
+- **Collapsible Sidebar**: The folder sidebar can now be resized or completely collapsed to maximize the gallery workspace.
+- **Lightbox Immersive Mode (Hide Toolbar)**: New toggle button (shortcut `H`) to hide the overlay toolbar, allowing for a distraction-free, full-screen viewing experience.
+- **Lightbox Help Overlay**: Added a "Help" toggle that displays text labels for all toolbar icons, significantly improving accessibility on touch devices where hover tooltips are unavailable.
+- **Improved Mobile-First Architecture**: Fully responsive layout with an independently scrollable sidebar and adaptive thumbnail grid for mobile devices.
+- **Asynchronous Modal System**: Replaced blocking native browser alerts with non-blocking "Smart Dialogs" using Promises (async/await) for a smoother user experience.
+
+### Fixed
+- Improved stability during image/video loading when complex filters are active.
+- Fixed sidebar scrolling issues and layout glitches in deeply nested folder structures.
+
+### Changed
+- General UI/UX optimizations for performance, responsiveness, and visual consistency across all devices.
+
 ## [1.51] - 2025-12-17
 
 ### Added
