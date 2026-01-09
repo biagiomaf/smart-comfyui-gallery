@@ -147,6 +147,24 @@ docker_push:
 	@docker push ${DOCKERHUB_REPO}:${DOCKER_TAG}
 	@docker push ${DOCKERHUB_REPO}:${DOCKER_LATEST_TAG}
 
+# This will replace docker_tag and docker_push in the future
+multiarch_buildx_push:
+	docker buildx ls | grep -q multiarch || docker buildx create --name multiarch --driver docker-container
+	docker buildx use multiarch
+	docker buildx inspect --bootstrap
+	docker run --privileged --rm tonistiigi/binfmt --install all
+	docker buildx build \
+		--platform linux/amd64,linux/arm64 \
+		-t ${DOCKERHUB_REPO}:${DOCKER_TAG} \
+		-t ${DOCKERHUB_REPO}:${DOCKER_LATEST_TAG} \
+		--build-arg CHOOSEN_TEMPLATE_FILE=${TEMPLATE_FILE} \
+		--build-arg CHOOSEN_SMARTGALLERY_FILE=${SMARTGALLERY_FILE} \
+		-f ${DOCKERFILE} \
+		--push \
+		.
+	docker buildx use default
+	docker buildx rm multiarch
+
 ##### Maintainer
 # Docker images (mmartial/smart-comfyui-gallery):
 # - Build the images:
