@@ -76,9 +76,8 @@ RUN which python3 && python3 --version
 RUN which uv && uv --version
 
 COPY requirements.txt /app/requirements.txt
-RUN sudo mkdir /uv_cache \ 
-    && sudo chown smartgallerytoo:smartgallerytoo /uv_cache \
-    && export UV_CACHE_DIR=/uv_cache \
+RUN --mount=type=cache,target=/uv_cache,uid=1025,gid=1025,mode=0755 \
+    export UV_CACHE_DIR=/uv_cache \
     && cd /app \
     && uv venv venv \
     && VIRTUAL_ENV=/app/venv uv pip install -r requirements.txt --trusted-host pypi.org --trusted-host files.pythonhosted.org \
@@ -87,14 +86,12 @@ RUN sudo mkdir /uv_cache \
     && test -x /app/venv/bin/python3 \
     && VIRTUAL_ENV=/app/venv uv pip install uv \
     && test -x /app/venv/bin/uv \
-    && sudo rm -rf /uv_cache \
     && unset UV_CACHE_DIR
 
 ARG CHOOSEN_TEMPLATE_FILE
 ARG CHOOSEN_SMARTGALLERY_FILE
 COPY ${CHOOSEN_SMARTGALLERY_FILE} /app/smartgallery.py
 COPY ${CHOOSEN_TEMPLATE_FILE} /app/templates/
-COPY static /app/static
 
 USER root
 
