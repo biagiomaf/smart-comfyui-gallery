@@ -393,7 +393,7 @@ For advanced configuration: 👉 [Complete Installation Guide](docs/installation
 
 ---
 
-## 🧪 Experimental Features
+## Experimental Features
 
 **Testing cutting-edge features before official releases?**
 
