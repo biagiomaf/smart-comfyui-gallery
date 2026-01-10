@@ -8,12 +8,20 @@ This folder is updated regularly with new experimental features. If you're inter
 **Successful experiments will be integrated into official releases** after thorough testing and community feedback.
 ---
 
-## Current experiments: Version 1.53.1 Beta (Hotfix)
+## Current experiments: Version 1.53.1 Beta (Hotfix + New Features)
 ### Files: `templates/index.html` + smartgallery.py 
 
-**Last updated:** 09 January 2026
+**Last updated:** 10 January 2026
 
-### Description
+### Description  
+
+**⚡ Performance: Adaptive Video Streaming**
+Browsing folders with heavy video generations is now significantly faster.  
+- Smart Previews: The gallery now automatically detects large video files (e.g., MP4s > 20MB) and streams a lightweight, optimized version in the grid view instead of attempting to load the full heavy file.  
+- Configurable Threshold: Introduced a new environment variable STREAM_THRESHOLD_MB (default: 20) to customize when this optimization kicks in.  
+- Full Quality Inspection: While the grid uses the optimized stream for speed, opening the video in the Lightbox still loads the original, full-quality file.  
+- Graceful Fallback: If FFmpeg is not detected on the system, the gallery automatically reverts to standard native playback.  
+
 This release contains critical fixes and workflow improvements for the current production version (v1.53).  
 It addresses specific issues reported by macOS users and restores some beloved UI shortcuts.  
 **🛠️ Critical Bug Fixes**  

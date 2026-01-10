@@ -188,6 +188,12 @@ SPECIAL_FOLDERS = ['video', 'audio']
 # Lower this if you run out of memory.
 BATCH_SIZE = int(os.environ.get('BATCH_SIZE', 500))
 
+# Threshold (in MB) above which videos will be streamed (transcoded) 
+# instead of loaded natively in the gallery grid preview.
+# Default: 50 MB. Set to 0 to force streaming for all supported videos.
+STREAM_THRESHOLD_MB = int(os.environ.get('STREAM_THRESHOLD_MB', 20))
+STREAM_THRESHOLD_BYTES = STREAM_THRESHOLD_MB * 1024 * 1024
+
 # Number of parallel processes to use for thumbnail and metadata generation.
 # - None or empty string: use all available CPU cores (fastest, recommended)
 # - 1: disable parallel processing (slowest, like in previous versions)
@@ -383,6 +389,7 @@ def print_configuration():
     print_row("WebP Animated FPS", WEBP_ANIMATED_FPS)
     print_row("Page Size", PAGE_SIZE)
     print_row("Batch Size", BATCH_SIZE)
+    print_row("Stream Threshold", f"{STREAM_THRESHOLD_MB} MB")
     print_row("Max Parallel Workers", MAX_PARALLEL_WORKERS if MAX_PARALLEL_WORKERS else "All Cores")
     print_row("AI Search", "Enabled" if ENABLE_AI_SEARCH else "Disabled")
     print(f"{Colors.HEADER}-----------------------------{Colors.RESET}\n")
@@ -2419,7 +2426,9 @@ def gallery_view(folder_key):
                            app_version=APP_VERSION,
                            github_url=GITHUB_REPO_URL,
                            update_available=UPDATE_AVAILABLE,
-                           remote_version=REMOTE_VERSION)
+                           remote_version=REMOTE_VERSION,
+                           ffmpeg_available=(FFPROBE_EXECUTABLE_PATH is not None),
+                           stream_threshold=STREAM_THRESHOLD_BYTES)
     
 @app.route('/galleryout/upload', methods=['POST'])
 def upload_files():
