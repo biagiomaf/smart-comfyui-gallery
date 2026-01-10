@@ -388,7 +388,19 @@ http://127.0.0.1:8189/galleryout
 
 ---
 
-### For advanced configuration: 👉 [Complete Installation Guide](docs/installation.md) (Docker Compose, reverse proxy, ffmpeg, scripts, and more)
+For advanced configuration: 👉 [Complete Installation Guide](docs/installation.md) (Docker Compose, reverse proxy, ffmpeg, scripts, and more)
+
+---
+
+## 🧪 Experimental Features
+
+**Testing cutting-edge features before official releases?**
+
+The [`/experiments`](experiments/) folder contains beta versions and hotfixes under active development.
+
+⚠️ **Experimental code — use at your own risk. Always backup before testing.**
+
+👉 **[View current experiments & installation guide](experiments/README.md)**
 
 ---
 
