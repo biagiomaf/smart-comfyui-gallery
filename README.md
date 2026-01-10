@@ -401,8 +401,6 @@ The [`/experiments`](experiments/) folder contains beta versions and hotfixes un
 
 ⚠️ **Experimental code — use at your own risk. Always backup before testing.**
 
-👉 **[View current experiments & installation guide](experiments/README.md)**
-
 ---
 
 ## Optional AI Features (Planned)
