@@ -120,12 +120,13 @@ SmartGallery turns your output folder into a **living memory of your creative pr
 
 ## What’s New in v1.53
 - Native preview support for ProRes `.mov` files (optimized for macOS)
-- "Auto-Watch Folder": configurable interval to automatically refresh the gallery when new files appear
-- Recursive search with persistent filters
-- Modernized dark / glass UI
-- Seamless infinite scrolling
-- Fully collapsible folder sidebar
-- Improved mobile-first responsive layout
+- "Auto-Watch Folder": configurable interval to automatically refresh the gallery when new files appear  
+- Shortcut 'C': Copy the current image's workflow metadata to the clipboard  
+- Recursive search with persistent filters  
+- Modernized dark / glass UI  
+- Seamless infinite scrolling  
+- Fully collapsible folder sidebar  
+- Improved mobile-first responsive layout  
 
 This is a curated summary — see the 👉 full [CHANGELOG](CHANGELOG.md) for all technical changes.
 
