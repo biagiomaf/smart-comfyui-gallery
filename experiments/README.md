@@ -18,7 +18,7 @@ This folder is updated regularly with new experimental features. If you're inter
 **🔗 Multi-Drive & External Folder Support**
 Link Any Drive: Easily mount folders from external hard drives, network shares, or different partitions (e.g., D:\MyImages or /mnt/nas) directly into your gallery root.
 - Native Performance: Uses OS-level linking (Junctions on Windows, Symlinks on Linux/Mac) for zero-latency access without duplicating files.  
-- Full Integration: Linked folders act as "first-class citizens": they fully support AI Semantic Search, Real-time Monitoring, and standard file operations (Move/Rename).  
+- Full Integration: Linked folders act as "first-class citizens": they fully support Real-time Monitoring, and standard file operations (Move/Rename).  
 - Visual Browser: Includes a built-in server-side file browser to navigate drives and select paths easily via the Web UI (Mobile friendly).  
 
 **⚡ Performance: Adaptive Video Streaming**
