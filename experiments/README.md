@@ -8,12 +8,18 @@ This folder is updated regularly with new experimental features. If you're inter
 **Successful experiments will be integrated into official releases** after thorough testing and community feedback.
 ---
 
-## Current experiments: Version 1.53.1 Beta (Hotfix + New Features)
+## Current experiments: Version 1.53.2 Beta (Hotfix + New Features)
 ### Files: `templates/index.html` + smartgallery.py 
 
-**Last updated:** 10 January 2026
+**Last updated:** 12 January 2026
 
 ### Description  
+
+**🔗 Multi-Drive & External Folder Support**
+Link Any Drive: Easily mount folders from external hard drives, network shares, or different partitions (e.g., D:\MyImages or /mnt/nas) directly into your gallery root.
+- Native Performance: Uses OS-level linking (Junctions on Windows, Symlinks on Linux/Mac) for zero-latency access without duplicating files.  
+- Full Integration: Linked folders act as "first-class citizens": they fully support AI Semantic Search, Real-time Monitoring, and standard file operations (Move/Rename).  
+- Visual Browser: Includes a built-in server-side file browser to navigate drives and select paths easily via the Web UI (Mobile friendly).  
 
 **⚡ Performance: Adaptive Video Streaming**
 Browsing folders with heavy video generations is now significantly faster.  

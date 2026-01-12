@@ -1,7 +1,7 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025-2026 — MIT License (free to use and modify)
 #
-# Version: 1.53.1 - January 9, 2026
+# Version: 1.53.2 - January 12, 2026
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -303,8 +303,8 @@ ZIP_CACHE_FOLDER_NAME = '.zip_downloads'
 AI_MODELS_FOLDER_NAME = '.AImodels'
 
 # --- APP INFO ---
-APP_VERSION = "1.53.1"
-APP_VERSION_DATE = "January 9, 2026"
+APP_VERSION = "1.53.2-beta"
+APP_VERSION_DATE = "January 12, 2026"
 GITHUB_REPO_URL = "https://github.com/biagiomaf/smart-comfyui-gallery"
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/biagiomaf/smart-comfyui-gallery/main/smartgallery.py"
 
@@ -1160,6 +1160,15 @@ def init_db(conn=None):
         ''')
         
         conn.execute("CREATE TABLE IF NOT EXISTS ai_metadata (key TEXT PRIMARY KEY, value TEXT, updated_at REAL)")
+        
+        # MOUNT POINTS TABLE ---
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS mounted_folders (
+                path TEXT PRIMARY KEY,
+                target_source TEXT,
+                created_at REAL
+            );
+        ''')
 
         # 3. COLUMN MIGRATION
         required_columns = {
@@ -1227,24 +1236,32 @@ def get_dynamic_folder_config(force_refresh=False):
             'children': [],
             'mtime': root_mtime,
             'is_watched': False,
-            'is_explicitly_watched': False # NEW flag
+            'is_explicitly_watched': False,
+            'is_mount': False # Root is never a mount
         }
     }
 
     try:
-        # --- NEW: Fetch Watched Status with Recursive Logic ---
-        # We store tuples of (normalized_path, is_recursive_bool)
+        # 1. Fetch Watched Status
         watched_rules = [] 
         if ENABLE_AI_SEARCH:
             try:
                 with get_db_connection() as conn:
                     rows = conn.execute("SELECT path, recursive FROM ai_watched_folders").fetchall()
                     for r in rows:
-                        # Normalize watched paths for consistent comparison (force forward slashes)
                         w_path = os.path.normpath(r['path']).replace('\\', '/')
                         watched_rules.append((w_path, bool(r['recursive'])))
             except: pass
-        # ---------------------------------
+            
+        # 2. Fetch Mounted Folders (New)
+        mounted_paths = set()
+        try:
+            with get_db_connection() as conn:
+                rows = conn.execute("SELECT path FROM mounted_folders").fetchall()
+                for r in rows:
+                    # Normalize for comparison
+                    mounted_paths.add(os.path.normpath(r['path']).replace('\\', '/'))
+        except: pass
 
         all_folders = {}
         for dirpath, dirnames, _ in os.walk(BASE_OUTPUT_PATH):
@@ -1274,22 +1291,22 @@ def get_dynamic_folder_config(force_refresh=False):
             if parent_key in dynamic_config:
                 dynamic_config[parent_key]['children'].append(key)
 
-            # --- Check if this folder is Watched (Directly or via Parent) ---
             current_path = folder_data['full_path']
-            is_watched_folder = False
-            is_explicitly_watched = False # NEW flag
             
+            # Watch Logic
+            is_watched_folder = False
+            is_explicitly_watched = False
             for w_path, is_recursive in watched_rules:
-                # 1. Exact Match (Explicit)
                 if current_path == w_path:
                     is_watched_folder = True
                     is_explicitly_watched = True
                     break
-                # 2. Child of a Recursive Watched Folder (Implicit)
                 if is_recursive and current_path.startswith(w_path + '/'):
                     is_watched_folder = True
-                    # is_explicitly_watched remains False
                     break
+            
+            # Mount Logic
+            is_mount = (current_path in mounted_paths)
 
             dynamic_config[key] = {
                 'display_name': folder_data['display_name'],
@@ -1299,7 +1316,8 @@ def get_dynamic_folder_config(force_refresh=False):
                 'children': [],
                 'mtime': folder_data['mtime'],
                 'is_watched': is_watched_folder,
-                'is_explicitly_watched': is_explicitly_watched # Pass to frontend
+                'is_explicitly_watched': is_explicitly_watched,
+                'is_mount': is_mount # Pass to frontend
             }
     except FileNotFoundError:
         print(f"WARNING: The base directory '{BASE_OUTPUT_PATH}' was not found.")
@@ -2573,7 +2591,190 @@ def create_folder():
         return jsonify({'status': 'success', 'message': f'Folder "{folder_name}" created successfully.'})
     except FileExistsError: return jsonify({'status': 'error', 'message': 'Folder already exists.'}), 400
     except Exception as e: return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/galleryout/mount_folder', methods=['POST'])
+def mount_folder():
+    data = request.json
+    # The display name for the new folder in gallery
+    link_name_raw = data.get('link_name', '').strip()
+    # The external path on disk
+    target_path_raw = data.get('target_path', '').strip()
     
+    link_name = re.sub(r'[\\/:*?"<>|]', '', link_name_raw)
+    
+    if not link_name or not target_path_raw:
+        return jsonify({'status': 'error', 'message': 'Missing name or target path.'}), 400
+        
+    # Security: Normalize target path
+    target_path = os.path.normpath(target_path_raw)
+    
+    if not os.path.exists(target_path) or not os.path.isdir(target_path):
+        return jsonify({'status': 'error', 'message': f'Target path does not exist or is not a directory: {target_path}'}), 404
+        
+    # Construct link path inside BASE_OUTPUT_PATH (Always in root for simplicity, or allow parent)
+    link_full_path = os.path.join(BASE_OUTPUT_PATH, link_name)
+    
+    if os.path.exists(link_full_path):
+        return jsonify({'status': 'error', 'message': 'A folder with this name already exists in the gallery root.'}), 409
+        
+    try:
+        if os.name == 'nt':
+            # WINDOWS: Use mklink /J (Junction)
+            # Junctions are better than symlinks on Windows because they don't require Admin privileges usually
+            cmd = f'mklink /J "{link_full_path}" "{target_path}"'
+            # Use shell=True for mklink command
+            subprocess.check_call(cmd, shell=True)
+        else:
+            # LINUX/MAC: Use standard symlink
+            os.symlink(target_path, link_full_path)
+            
+        # Register in DB
+        with get_db_connection() as conn:
+            # We store the normalized full path of the link
+            norm_link_path = os.path.normpath(link_full_path).replace('\\', '/')
+            conn.execute("INSERT OR REPLACE INTO mounted_folders (path, target_source, created_at) VALUES (?, ?, ?)", 
+                         (norm_link_path, target_path, time.time()))
+            conn.commit()
+            
+        # Refresh Cache
+        get_dynamic_folder_config(force_refresh=True)
+        
+        return jsonify({'status': 'success', 'message': f'Successfully linked "{link_name}" to "{target_path}".'})
+        
+    except Exception as e:
+        print(f"Mount Error: {e}")
+        return jsonify({'status': 'error', 'message': f'Failed to create link: {str(e)}'}), 500
+
+@app.route('/galleryout/unmount_folder', methods=['POST'])
+def unmount_folder():
+    data = request.json
+    folder_key = data.get('folder_key')
+    
+    folders = get_dynamic_folder_config()
+    if folder_key not in folders: return jsonify({'status':'error', 'message':'Folder not found'}), 404
+    
+    folder_info = folders[folder_key]
+    path_to_remove = folder_info['path']
+    
+    # Security Check: Ensure it is actually in the mounted_folders table
+    # This prevents users from deleting real folders via this API
+    is_safe_mount = False
+    with get_db_connection() as conn:
+        norm_path = os.path.normpath(path_to_remove).replace('\\', '/')
+        row = conn.execute("SELECT path FROM mounted_folders WHERE path = ?", (norm_path,)).fetchone()
+        if row: is_safe_mount = True
+        
+    if not is_safe_mount:
+        return jsonify({'status':'error', 'message':'This folder is not a managed mount point. Cannot unmount.'}), 403
+        
+    try:
+        # Remove the Link (Not the content)
+        if os.name == 'nt':
+            # On Windows, rmdir removes the Junction point safely without deleting content
+            os.rmdir(path_to_remove)
+        else:
+            # On Linux/Mac, unlink removes the symlink
+            os.unlink(path_to_remove)
+            
+        # Cleanup DB
+        with get_db_connection() as conn:
+            # 1. Remove from Mounts registry
+            conn.execute("DELETE FROM mounted_folders WHERE path = ?", (norm_path,))
+            
+            # 2. Remove from AI Watch list (if present)
+            conn.execute("DELETE FROM ai_watched_folders WHERE path = ?", (path_to_remove,))
+            
+            # 3. CRITICAL: Remove the file records associated with this path from the Gallery DB
+            # We use LIKE to match the folder and everything inside it
+            # Standardize path separator for SQL query just in case
+            clean_path_for_query = path_to_remove + os.sep + '%'
+            conn.execute("DELETE FROM files WHERE path LIKE ?", (clean_path_for_query,))
+            
+            # 4. Also clean pending AI jobs for these files
+            # (We need to handle path separators carefully here, usually normalized in AI queue)
+            std_path_prefix = path_to_remove.replace('\\', '/')
+            conn.execute("DELETE FROM ai_indexing_queue WHERE file_path LIKE ?", (std_path_prefix + '/%',))
+            
+            conn.commit()
+            
+        get_dynamic_folder_config(force_refresh=True)
+        return jsonify({'status': 'success', 'message': 'Folder unmounted successfully.'})
+        
+    except Exception as e:
+        print(f"Unmount Error: {e}")
+        return jsonify({'status':'error', 'message':f"Error unmounting: {e}"}), 500
+
+# --- FILESYSTEM BROWSER API ---
+@app.route('/galleryout/api/browse_filesystem', methods=['POST'])
+def browse_filesystem():
+    data = request.json
+    current_path = data.get('path', '').strip()
+    
+    response_data = {
+        'current_path': '',
+        'parent_path': '',
+        'folders': [],
+        'error': None
+    }
+
+    try:
+        # 1. ROOT/DRIVES LISTING
+        if not current_path:
+            # Windows: List Drives
+            if os.name == 'nt':
+                drives = []
+                for letter in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
+                    drive = f'{letter}:\\'
+                    if os.path.exists(drive):
+                        drives.append({
+                            'name': f'Drive ({letter}:)', 
+                            'path': drive, 
+                            'is_drive': True
+                        })
+                response_data['folders'] = drives
+                response_data['current_path'] = 'Computer'
+            # Linux/Mac: Root
+            else:
+                current_path = '/'
+        
+        # 2. FOLDER LISTING
+        if current_path and current_path != 'Computer':
+            # Normalize path
+            current_path = os.path.normpath(current_path)
+            
+            # Security: Basic check (optional, but good practice)
+            # if not os.access(current_path, os.R_OK): raise PermissionError
+            
+            items = []
+            try:
+                with os.scandir(current_path) as it:
+                    for entry in it:
+                        if entry.is_dir() and not entry.name.startswith('.'):
+                            items.append({
+                                'name': entry.name,
+                                'path': entry.path,
+                                'is_drive': False
+                            })
+            except PermissionError:
+                response_data['error'] = "Access Denied"
+            
+            # Sort A-Z
+            items.sort(key=lambda x: x['name'].lower())
+            
+            response_data['folders'] = items
+            response_data['current_path'] = current_path
+            
+            # Calculate Parent
+            parent = os.path.dirname(current_path)
+            if parent == current_path: # Root reached
+                parent = '' 
+            response_data['parent_path'] = parent
+
+    except Exception as e:
+        response_data['error'] = str(e)
+
+    return jsonify(response_data)   
+   
 # --- ZIP BACKGROUND JOB MANAGEMENT ---
 zip_jobs = {}
 def background_zip_task(job_id, file_ids):

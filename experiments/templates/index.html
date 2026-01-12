@@ -150,7 +150,17 @@
             color: white;
             border-color: #0056b3;
         }
-
+        
+        .notification.path-msg {
+            word-break: break-all !important;  
+            white-space: pre-wrap !important;  
+            text-align: left !important;       
+            font-family: monospace;            
+            font-size: 0.85rem;                
+            line-height: 1.4;
+            max-width: 95vw;                   
+        }
+        
         .sidebar {
             width: var(--sidebar-width);
             min-width: var(--sidebar-width);
@@ -606,6 +616,186 @@
             transform: translateY(0);
             background: rgba(0, 123, 255, 0.25);
         }
+        
+        /* --- MOUNT BUTTON (Unified Style) --- */
+        #mount-folder-btn {
+            width: 100%;
+            /* Base Style: Identical to Create Folder (Glass) */
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-color);
+            padding: 0.8rem 1rem;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 0.5rem; /* Gap from create button */
+            flex-shrink: 0;
+        }
+        
+        /* Hover: Green Tint to distinguish functionality */
+        #mount-folder-btn:hover {
+            background: rgba(40, 167, 69, 0.15);
+            border-color: var(--workflow-color);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2);
+        }
+        
+        /* Mobile/Sidebar Hide Logic */
+        .sidebar.nav-collapsed #mount-folder-btn { display: none; }
+        body.sidebar-minimized .sidebar #mount-folder-btn { display: none !important; }
+        
+        /* --- MOUNT MODAL & BROWSER STYLES --- */
+        
+        /* Info Box - Increased Font */
+        .mount-info-box {
+            background: rgba(0, 123, 255, 0.1);
+            border-left: 3px solid var(--primary-color);
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            font-size: 0.95rem; /* Bigger font */
+            color: #ddd;
+            line-height: 1.5;
+            text-align: left;
+        }
+        .mount-info-box strong { color: white; }
+        .mount-info-box code { 
+            background: rgba(0,0,0,0.3); 
+            padding: 2px 5px; 
+            border-radius: 4px; 
+            font-family: monospace; 
+            color: var(--favorite-color);
+        }
+
+        /* Filesystem Browser Container */
+        .fs-browser-container {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            height: 250px; /* Default height for Desktop */
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+        
+        /* Browser Header */
+        .fs-header {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid var(--glass-border);
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+        
+        /* Path Display */
+        .fs-path-display {
+            flex-grow: 1;
+            font-family: monospace;
+            font-size: 0.95rem; /* Bigger font */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--primary-color);
+            direction: rtl; /* Show end of long paths */
+            text-align: left;
+        }
+
+        /* List Area */
+        .fs-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            list-style: none;
+            padding: 5px;
+            margin: 0;
+        }
+
+        /* List Items */
+        .fs-item {
+            padding: 10px 12px; /* Taller touch targets */
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background 0.1s;
+            font-size: 1rem; /* Much readable font */
+            color: var(--text-color);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .fs-item:last-child { border-bottom: none; }
+
+        .fs-item:hover { background: var(--surface-hover); }
+        
+        .fs-item.is-selected {
+            background: rgba(0, 123, 255, 0.2);
+            color: white;
+            font-weight: bold;
+        }
+
+        .fs-icon { color: var(--favorite-color); font-size: 1.2rem; }
+        .fs-drive-icon { color: var(--ai-color); font-size: 1.2rem; }
+        
+        /* --- MOBILE LAYOUT OVERRIDES (Mount Modal Fix) --- */
+        @media (max-width: 768px) {
+            #mount-folder-overlay {
+                align-items: flex-start !important;
+                padding-top: 5px !important; 
+            }
+            
+            #mount-folder-overlay .smart-dialog-panel {
+                /* Let it scroll if screen is small */
+                max-height: 98vh; 
+                overflow-y: auto; 
+                display: block; /* Changed from flex to block to fix overflow issues */
+                
+                /* HUGE bottom padding to ensure buttons are inside the background */
+                padding: 15px 15px 100px 15px !important; 
+                
+                border-radius: 0 0 16px 16px;
+            }
+
+            /* Header adjustments */
+            .smart-dialog-panel h3 {
+                font-size: 1.1rem;
+                margin-bottom: 5px !important; 
+                margin-top: 5px !important;
+            }
+            
+            /* Info Box */
+            .mount-info-box {
+                margin-top: 0 !important;
+                margin-bottom: 10px !important;
+                font-size: 0.95rem !important;
+                line-height: 1.3 !important;
+                padding: 10px !important;
+            }
+            
+            /* Browser List height */
+            .fs-browser-container {
+                height: auto !important; 
+                min-height: 200px !important; 
+                max-height: 35vh !important;
+                margin-bottom: 15px;
+            }
+
+            /* Push the bottom boundary further down explicitly */
+            .sd-actions {
+                margin-bottom: 20px !important;
+                padding-bottom: 10px !important;
+            }
+        }
+        
         .breadcrumbs {
             display: flex;
             justify-content: space-between;
@@ -5139,6 +5329,7 @@
             <ul class="folder-tree" id="folder-tree-nav"></ul>
         </div>
         <button id="create-folder-btn">➕ Create New Folder</button>
+        <button id="mount-folder-btn" onclick="openMountModal()">🔗 Link External Folder</button>
         <!-- VERSION & GITHUB FOOTER -->
         <div class="sidebar-footer">
             <!-- Persuasive GitHub Link -->
@@ -5999,6 +6190,48 @@
             </div>
         </div>
     </div>
+    <!-- MOUNT FOLDER MODAL (Advanced) -->
+    <div id="mount-folder-overlay" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.85);backdrop-filter:blur(5px);z-index:4000;display:none;justify-content:center;align-items:center;">
+        <div class="smart-dialog-panel" style="width:600px; max-width:95vw; height: auto; max-height: 90vh;">
+            <h3 style="margin-top:0; color:white; display:flex; align-items:center; gap:10px;">🔗 Link External Folder</h3>
+            
+            <div class="mount-info-box" style="margin-bottom:10px;">
+                <p style="margin:0 0 8px 0;"><strong>Navigate and select a folder from the server disk.</strong></p>
+                <!-- Rimosso font-size piccolo, aumentata opacità a 1 per massima leggibilità -->
+                <div style="opacity:1; margin-top:5px;">
+                    <span style="color:var(--favorite-color); font-weight:bold;">ℹ️ Docker Users:</span> 
+                    You are browsing the container's internal filesystem. To see external drives, map them as Volumes first.
+                </div>
+            </div>
+
+            <!-- FILE BROWSER UI -->
+            <div class="fs-browser-container">
+                <div class="fs-header">
+                    <button class="glass-btn" onclick="fsNavigate('..')" style="padding:2px 8px; height:24px; min-height:0; font-size:0.8rem;">⬆ Up</button>
+                    <div class="fs-path-display" id="fs-current-path">Reading drives...</div>
+                </div>
+                <ul class="fs-list" id="fs-list-view">
+                    <!-- Folders load here -->
+                </ul>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <div>
+                    <label style="display:block; color:var(--text-muted); font-size:0.85rem; margin-bottom:5px;">Selected Target Path</label>
+                    <input type="text" id="mount-target-path" class="sd-text-input" placeholder="Select a folder above..." readonly style="background:rgba(0,0,0,0.5); cursor:not-allowed; color:var(--success-color);">
+                </div>
+                <div>
+                    <label style="display:block; color:var(--text-muted); font-size:0.85rem; margin-bottom:5px;">Link Name (Folder Name in Gallery)</label>
+                    <input type="text" id="mount-link-name" class="sd-text-input" placeholder="e.g. External Photos">
+                </div>
+            </div>
+
+            <div class="sd-actions" style="margin-top:15px;">
+                <button onclick="closeMountModal()" class="glass-btn">Cancel</button>
+                <button onclick="confirmMountFolder()" id="mount-confirm-btn" class="glass-btn active-blue" disabled>🔗 Create Link</button>
+            </div>
+        </div>
+    </div>
     <div id="loader-overlay">
         <div class="loader"></div>
     </div>
@@ -6357,14 +6590,26 @@
                     const aiBtn = enableAiSearch 
                         ? `<button onclick="indexFolder('${folderKey}')">🧠 AI Index</button>` 
                         : '';
+                    
+                    // --- MOUNT POINT LOGIC ---
+                    let deleteOption = '';
+                    if (folder.is_mount) {
+                        // Change Icon for mounts
+                        folderIconHtml = '🔗';
+                        // Show Unmount instead of Delete
+                        deleteOption = `<button onclick="unmountFolder(event, '${folderKey}', '${folderDisplayName}')" style="color:#ff6b6b; border-top:1px solid rgba(255,255,255,0.1);">⛓️ Unmount</button>`;
+                    } else {
+                        // Standard Delete
+                        deleteOption = `<button onclick="deleteFolder(event, '${folderKey}', '${folderDisplayName}')" style="color:#ff6b6b;">🗑️ Delete</button>`;
+                    }
 
                     actionsHTML = `
                         <div class="folder-menu-container">
                             <button class="folder-menu-btn" onclick="event.stopPropagation(); toggleFolderMenu(this)">⋮</button>
                             <div class="folder-dropdown">
                                 ${aiBtn}
-                                <button onclick="renameFolder(event, '${folderKey}', '${folderDisplayName}')">✏️ Rename</button>
-                                <button onclick="deleteFolder(event, '${folderKey}', '${folderDisplayName}')" style="color:#ff6b6b;">🗑️ Delete</button>
+                                ${!folder.is_mount ? `<button onclick="renameFolder(event, '${folderKey}', '${folderDisplayName}')">✏️ Rename</button>` : ''}
+                                ${deleteOption}
                             </div>
                         </div>`;
                 }
@@ -7366,19 +7611,33 @@
             currentLightboxFile = file;
             updateLightboxTitle();
             
-            // Set Folder Name in Lightbox
+            // Set Folder Name in Lightbox with Full Path Features
             const lightboxFolderEl = document.getElementById('lightbox-folder-name');
             if (file.path) {
                 const parts = file.path.split(/[/\\]/);
                 if (parts.length > 1) {
                     let folderName = parts[parts.length - 2];
                     if (folderName.toLowerCase() === 'output') folderName = 'Main';
-                    lightboxFolderEl.textContent = `📂 ${folderName}`;
+                    
+                    // Display Name
+                    lightboxFolderEl.innerHTML = `📂 ${folderName} <span style="color:var(--favorite-color); font-size:1em; margin-left:6px; cursor:help;" title="Click to see full path">ⓘ</span>`;
+                    
+                    // Desktop Tooltip: Shows full path on hover
+                    lightboxFolderEl.title = file.path; 
+                    
+                    // Interaction: Click to show full path (Mobile friendly)
+                    lightboxFolderEl.style.cursor = 'help';
+                    lightboxFolderEl.onclick = (e) => {
+                        e.stopPropagation(); // Prevent toggling UI
+                        showNotification(`📍 Full Path:\n${file.path}`, 'info path-msg', 6000);
+                    };
                 } else {
                     lightboxFolderEl.textContent = '';
+                    lightboxFolderEl.onclick = null;
                 }
             } else {
                 lightboxFolderEl.textContent = '';
+                lightboxFolderEl.onclick = null;
             }
             
             // Clear the container
@@ -8365,6 +8624,188 @@ async function showNodeSummary(event, fileId) {
         }
 
         updateRecursiveUIState();
+        
+        // --- MOUNT FOLDER & FILESYSTEM BROWSER LOGIC ---
+        
+        let currentFsPath = '';
+
+        function openMountModal() {
+            document.getElementById('mount-folder-overlay').style.display = 'flex';
+            document.getElementById('mount-link-name').value = '';
+            document.getElementById('mount-target-path').value = '';
+            document.getElementById('mount-confirm-btn').disabled = true;
+            
+            // Start browsing from root/drives
+            fsNavigate(''); 
+        }
+
+        function closeMountModal() {
+            document.getElementById('mount-folder-overlay').style.display = 'none';
+        }
+
+        async function fsNavigate(path) {
+            const listView = document.getElementById('fs-list-view');
+            const pathDisplay = document.getElementById('fs-current-path');
+            
+            listView.innerHTML = '<li style="padding:10px; color:#888; text-align:center;">Loading...</li>';
+            
+            // If navigating "Up" from root/drives, go to empty string to trigger drive list again
+            if (path === '..') {
+                if (!currentFsPath || currentFsPath === 'Computer') path = ''; 
+                else path = document.getElementById('fs-parent-path-hidden')?.value || '';
+            }
+
+            try {
+                const response = await fetch('/galleryout/api/browse_filesystem', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ path: path })
+                });
+                const data = await response.json();
+                
+                if (data.error) {
+                    listView.innerHTML = `<li style="color:var(--danger-color); padding:10px;">Error: ${data.error}</li>`;
+                    return;
+                }
+
+                // Update State
+                currentFsPath = data.current_path;
+                pathDisplay.textContent = currentFsPath || 'My Computer';
+                
+                // Save parent for "Up" button logic
+                // Using a hidden data attribute or variable would be cleaner, but let's use a hidden input logic conceptually
+                // We'll just store the parent path in a dataset on the list view
+                listView.dataset.parent = data.parent_path;
+                
+                // Store parent in a hidden input creation on the fly if needed, or better, keep it in DOM
+                let hiddenParent = document.getElementById('fs-parent-path-hidden');
+                if (!hiddenParent) {
+                    hiddenParent = document.createElement('input');
+                    hiddenParent.type = 'hidden';
+                    hiddenParent.id = 'fs-parent-path-hidden';
+                    document.body.appendChild(hiddenParent);
+                }
+                hiddenParent.value = data.parent_path;
+
+                // Render List
+                listView.innerHTML = '';
+                
+                if (data.folders.length === 0) {
+                    listView.innerHTML = '<li style="padding:10px; color:#666; font-style:italic;">(Empty)</li>';
+                }
+
+                data.folders.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'fs-item';
+                    
+                    const iconClass = item.is_drive ? 'fs-drive-icon' : 'fs-icon';
+                    const iconChar = item.is_drive ? '💽' : '📁';
+                    
+                    li.innerHTML = `<span class="${iconClass}">${iconChar}</span> <span>${item.name}</span>`;
+                    
+                    // Click to navigate INTO
+                    li.onclick = () => fsNavigate(item.path);
+                    
+                    // Add a specific select button on the right for this folder? 
+                    // Better UX: Click selects it, Double Click enters it? 
+                    // Let's keep it simple for mobile: Click ENTERS. 
+                    // But we need a way to SELECT the CURRENT folder we are IN.
+                    
+                    listView.appendChild(li);
+                });
+                
+                // UPDATE TARGET SELECTION to current path (if valid)
+                if (currentFsPath && currentFsPath !== 'Computer') {
+                    selectFolderForMount(currentFsPath);
+                } else {
+                    document.getElementById('mount-target-path').value = '';
+                    document.getElementById('mount-confirm-btn').disabled = true;
+                }
+
+            } catch (e) {
+                listView.innerHTML = `<li style="color:var(--danger-color); padding:10px;">Network Error</li>`;
+            }
+        }
+        
+        function selectFolderForMount(path) {
+            const input = document.getElementById('mount-target-path');
+            const confirmBtn = document.getElementById('mount-confirm-btn');
+            
+            input.value = path;
+            
+            // Enable button only if we have a path. 
+            // NOTE: Validation for empty name happens on click.
+            confirmBtn.disabled = false;
+        }
+
+        async function confirmMountFolder() {
+            const linkName = document.getElementById('mount-link-name').value.trim();
+            const targetPath = document.getElementById('mount-target-path').value.trim();
+            
+            // Validation: Name is mandatory
+            if (!linkName) {
+                showNotification("⚠️ Please enter a Name for this folder link.", "warning");
+                document.getElementById('mount-link-name').focus();
+                return;
+            }
+            
+            // Validation: Path is mandatory
+            if (!targetPath) {
+                showNotification("⚠️ Please select a folder from the list.", "warning");
+                return;
+            }
+            
+            // UI Feedback
+            const btn = document.querySelector('#mount-folder-overlay .active-blue');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "⏳ Linking...";
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch('/galleryout/mount_folder', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ link_name: linkName, target_path: targetPath })
+                });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    sessionStorage.setItem('gallery_notification', JSON.stringify({
+                        message: data.message,
+                        type: 'success'
+                    }));
+                    window.location.reload();
+                } else {
+                    showNotification(data.message, "error");
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }
+            } catch (e) {
+                showNotification("Network error: " + e, "error");
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        }
+
+        async function unmountFolder(event, folderKey, folderName) {
+            event.stopPropagation();
+            
+            const confirmed = await smartConfirm(
+                "⛓️ Unmount Folder?", 
+                `Remove the link to "${folderName}"?\n\nThis will NOT delete your actual files on the disk, only the shortcut in the gallery.`, 
+                true // isDanger
+            );
+            
+            if (!confirmed) return;
+            
+            fetch('/galleryout/unmount_folder', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ folder_key: folderKey })
+            })
+            .then(handleGenericResponse)
+            .catch(handleError);
+        }
         
         // --- MAIN INITIALIZATION FUNCTION ---
         document.addEventListener('DOMContentLoaded', () => {
