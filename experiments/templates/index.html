@@ -7601,6 +7601,40 @@
             }
         }
         
+        function updateLightboxPathTooltip(file) {
+            const lightboxFolderEl = document.getElementById('lightbox-folder-name');
+            if (!lightboxFolderEl || !file || !file.path) return;
+
+            lightboxFolderEl.onclick = (e) => {
+                e.stopPropagation();
+
+                // 1. Local helper to normalize paths (ONLY HERE)
+                // Converts every backslash (\) to forward slash (/) for uniformity
+                const normalize = (p) => p ? p.replace(/\\/g, '/') : null;
+
+                const cleanInternal = normalize(file.path);
+                const cleanReal = normalize(file.real_path);
+
+                let msg = "";
+
+                // 2. Robust comparison logic
+                // Check if real path exists AND differs from internal path
+                // Use toLowerCase() to avoid false positives on Windows (C:\A vs c:\a)
+                const isDifferent = cleanReal && (cleanInternal.toLowerCase() !== cleanReal.toLowerCase());
+
+                if (isDifferent) {
+                    // Case: Mounted Folder (Link)
+                    msg = `📍 Gallery Link:\n${cleanInternal}\n\n🔗 Real Source:\n${cleanReal}`;
+                } else {
+                    // Case: Standard Folder (or identical paths)
+                    msg = `📍 File Path:\n${cleanInternal}`;
+                }
+                
+                // Show notification for 10 seconds
+                showNotification(msg, 'info path-msg', 10000);
+            };
+        }
+        
         function showItemAtIndex(index) {
             const item = galleryItems[index];
             if (!item) return;
@@ -7619,18 +7653,13 @@
                     let folderName = parts[parts.length - 2];
                     if (folderName.toLowerCase() === 'output') folderName = 'Main';
                     
-                    // Display Name
                     lightboxFolderEl.innerHTML = `📂 ${folderName} <span style="color:var(--favorite-color); font-size:1em; margin-left:6px; cursor:help;" title="Click to see full path">ⓘ</span>`;
-                    
-                    // Desktop Tooltip: Shows full path on hover
                     lightboxFolderEl.title = file.path; 
-                    
-                    // Interaction: Click to show full path (Mobile friendly)
                     lightboxFolderEl.style.cursor = 'help';
-                    lightboxFolderEl.onclick = (e) => {
-                        e.stopPropagation(); // Prevent toggling UI
-                        showNotification(`📍 Full Path:\n${file.path}`, 'info path-msg', 6000);
-                    };
+                    
+                    // Initial Bind (Internal Path only, until metadata loads)
+                    updateLightboxPathTooltip(file);
+                    
                 } else {
                     lightboxFolderEl.textContent = '';
                     lightboxFolderEl.onclick = null;
@@ -7777,23 +7806,28 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        // 1. Update the cached data object so navigation remembers it
+                        // 1. Update the cached data object
                         const fileIndex = allFilesData.findIndex(f => f.id === fileId);
                         if (fileIndex !== -1) {
                             allFilesData[fileIndex].has_workflow = data.has_workflow;
                             allFilesData[fileIndex].ai_caption = data.ai_caption;
-                            // Aggiorna data cache
-                            allFilesData[fileIndex].ai_last_scanned = data.ai_last_scanned; 
+                            allFilesData[fileIndex].ai_last_scanned = data.ai_last_scanned;
+                            // NEW: Store real path if available
+                            allFilesData[fileIndex].real_path = data.real_path; 
                         }
 
                         // 2. If we are still looking at the same file, update the UI
                         if (currentLightboxFile && currentLightboxFile.id === fileId) {
-                            // Aggiorna oggetto corrente
                             currentLightboxFile.ai_last_scanned = data.ai_last_scanned; 
+                            currentLightboxFile.real_path = data.real_path; // Cache locally
                             
                             updateLightboxButtonsUI(data.has_workflow, data.ai_caption, fileId);
                             
-                            // Se la caption è aperta, aggiornala per mostrare la nuova data/testo
+                            // 3. REFRESH PATH CLICK HANDLER (To include the real path if just discovered)
+                            // We call a helper to re-bind the click event with fresh data
+                            updateLightboxPathTooltip(currentLightboxFile); 
+
+                            // Update open caption if needed
                             const captionBox = document.getElementById('lightbox-ai-caption');
                             if (captionBox.classList.contains('visible') && data.ai_caption) {
                                 toggleAiCaption(true, data.ai_caption);
@@ -8792,7 +8826,7 @@ async function showNodeSummary(event, fileId) {
             
             const confirmed = await smartConfirm(
                 "⛓️ Unmount Folder?", 
-                `Remove the link to "${folderName}"?\n\nThis will NOT delete your actual files on the disk, only the shortcut in the gallery.`, 
+                `Remove the link to "${folderName}"? Confirm with [Delete] button.\n\nThis will NOT delete your actual files on the disk, only the shortcut in the gallery.`, 
                 true // isDanger
             );
             

@@ -1,7 +1,7 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025-2026 — MIT License (free to use and modify)
 #
-# Version: 1.53.2 - January 12, 2026
+# Version: 1.53.2 - January 13, 2026
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -304,7 +304,7 @@ AI_MODELS_FOLDER_NAME = '.AImodels'
 
 # --- APP INFO ---
 APP_VERSION = "1.53.2-beta"
-APP_VERSION_DATE = "January 12, 2026"
+APP_VERSION_DATE = "January 13, 2026"
 GITHUB_REPO_URL = "https://github.com/biagiomaf/smart-comfyui-gallery"
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/biagiomaf/smart-comfyui-gallery/main/smartgallery.py"
 
@@ -3446,21 +3446,37 @@ def serve_input_file(filename):
 def check_metadata(file_id):
     """
     Lightweight endpoint to check real-time status of metadata.
+    Now includes Real Path resolution for mounted folders.
     """
     try:
         with get_db_connection() as conn:
-            # Aggiunto ai_last_scanned alla query
-            row = conn.execute("SELECT has_workflow, ai_caption, ai_last_scanned FROM files WHERE id = ?", (file_id,)).fetchone()
+            # Added 'path' to selection to resolve symlinks
+            row = conn.execute("SELECT path, has_workflow, ai_caption, ai_last_scanned FROM files WHERE id = ?", (file_id,)).fetchone()
             
         if not row:
             return jsonify({'status': 'error', 'message': 'File not found'}), 404
             
+        # Resolve Real Path (Handles Windows Junctions and Linux Symlinks)
+        internal_path = row['path']
+        real_path_resolved = os.path.realpath(internal_path)
+        
+        # Check if they differ (ignore case on Windows for safety)
+        is_different = False
+        if os.name == 'nt':
+            if internal_path.lower() != real_path_resolved.lower():
+                is_different = True
+        else:
+            if internal_path != real_path_resolved:
+                is_different = True
+                
         return jsonify({
             'status': 'success',
             'has_workflow': bool(row['has_workflow']),
             'has_ai_caption': bool(row['ai_caption']),
             'ai_caption': row['ai_caption'] or "",
-            'ai_last_scanned': row['ai_last_scanned'] or 0 # Nuovi dati
+            'ai_last_scanned': row['ai_last_scanned'] or 0,
+            # Send real_path only if it's actually different (a link)
+            'real_path': real_path_resolved if is_different else None
         })
     except Exception as e:
         print(f"Metadata Check Error: {e}")

@@ -8,10 +8,10 @@ This folder is updated regularly with new experimental features. If you're inter
 **Successful experiments will be integrated into official releases** after thorough testing and community feedback.
 ---
 
-## Current experiments: Version 1.53.2 Beta (Hotfix + New Features)
+## Current experiments: Version 1.53.2 Beta (New Features + Hotfix)
 ### Files: `templates/index.html` + smartgallery.py 
 
-**Last updated:** 12 January 2026
+**Last updated:** 13 January 2026
 
 ### Description  
 
