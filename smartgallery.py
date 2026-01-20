@@ -138,10 +138,10 @@ import secrets
 # Common locations:
 #   Windows: C:/ComfyUI/output or C:/Users/YourName/ComfyUI/output
 #   Linux/Mac: /home/username/ComfyUI/output or ~/ComfyUI/output
-BASE_OUTPUT_PATH = os.environ.get('BASE_OUTPUT_PATH', 'C:/ComfyUI/output')
+BASE_OUTPUT_PATH = os.environ.get('BASE_OUTPUT_PATH', 'F:/AI/ComfyUI/output')
 
 # Path to the ComfyUI 'input' folder 
-BASE_INPUT_PATH = os.environ.get('BASE_INPUT_PATH', 'C:/ComfyUI/input')
+BASE_INPUT_PATH = os.environ.get('BASE_INPUT_PATH', 'F:/AI/ComfyUI/input')
 
 # Path for service folders (database, cache, zip files). 
 # If not specified, the ComfyUI output path will be used. 
@@ -257,6 +257,19 @@ WORKFLOW_PROMPT_BLACKLIST = {
     "None"
 }
 
+# ============================================================================
+# MODEL MANAGEMENT CONFIGURATION
+# ============================================================================
+# === MODEL MANAGEMENT CONFIGURATION ===
+BASE_MODELS_PATH = os.environ.get('BASE_MODELS_PATH', 'F:/AI/ComfyUI/models')
+# just scan these folders
+MODEL_SUBFOLDERS = {
+    "checkpoints": ["checkpoints"],
+    "diffusion_models": ["diffusion_models"],
+    "loras": ["loras"],
+    "embeddings": ["embeddings"],
+}
+MODEL_EXTENSIONS = {".ckpt", ".safetensors", ".pt", ".bin"}
 # ============================================================================
 # AI SEARCH CONFIGURATION (FUTURE FEATURE)
 # ============================================================================
@@ -386,6 +399,242 @@ def print_configuration():
     print_row("Max Parallel Workers", MAX_PARALLEL_WORKERS if MAX_PARALLEL_WORKERS else "All Cores")
     print_row("AI Search", "Enabled" if ENABLE_AI_SEARCH else "Disabled")
     print(f"{Colors.HEADER}-----------------------------{Colors.RESET}\n")
+
+# ============================================================================
+# MODEL MANAGEMENT HELPER FUNCTIONS
+# ============================================================================
+def fast_model_id(path):
+    """Schnelle, stabile ID basierend auf Dateiname, Größe und mtime"""
+    import hashlib
+    st = os.stat(path)
+    basis = f"{os.path.basename(path)}|{st.st_size}|{int(st.st_mtime_ns)}".encode("utf-8")
+    h = hashlib.blake2s(digest_size=16)
+    h.update(basis)
+    return h.hexdigest()
+
+def formatSize(bytes):
+    """Format bytes to human readable"""
+    if bytes < 1024: return f"{bytes} B"
+    if bytes < 1024**2: return f"{bytes/1024:.1f} KB"
+    if bytes < 1024**3: return f"{bytes/(1024**2):.1f} MB"
+    return f"{bytes/(1024**3):.2f} GB"
+
+def calculate_file_hash(filepath):
+    """Fast hash using AutoV2 method (head + tail sampling) for large files"""
+    import hashlib
+
+    try:
+        st = os.stat(filepath)
+        file_size = st.st_size
+
+        # Für kleine Dateien (<100MB): vollständiger Hash
+        if file_size < 100 * 1024 * 1024:
+            sha256 = hashlib.sha256()
+            with open(filepath, 'rb') as f:
+                for chunk in iter(lambda: f.read(65536), b''):
+                    sha256.update(chunk)
+            return sha256.hexdigest().upper()
+
+        # Für große Dateien: AutoV2 method (head + tail)
+        sha256 = hashlib.sha256()
+        with open(filepath, 'rb') as f:
+            # Lese ersten 64KB
+            head = f.read(65536)
+            sha256.update(head)
+
+            # Lese letzten 64KB (wenn Datei groß genug)
+            if file_size > 131072:
+                f.seek(-65536, os.SEEK_END)
+                tail = f.read(65536)
+                sha256.update(tail)
+
+        return sha256.hexdigest().upper()
+
+    except Exception as e:
+        print(f"❌ Hash calculation failed for {filepath}: {e}")
+        return None
+
+def read_safetensors_metadata(filepath):
+    """Extract metadata from safetensors file header"""
+    import struct
+    import json
+    try:
+        with open(filepath, 'rb') as f:
+            # First 8 bytes = header length (little-endian uint64)
+            header_len_bytes = f.read(8)
+            if len(header_len_bytes) < 8:
+                return None
+            header_len = struct.unpack('<Q', header_len_bytes)[0]
+
+            # Safety check (max 10MB header)
+            if header_len > 10_000_000:
+                return None
+
+            # Read header JSON
+            header_json = f.read(header_len)
+            header = json.loads(header_json.decode('utf-8'))
+
+            # Metadata is in __metadata__ key
+            return header.get('__metadata__', {})
+    except Exception as e:
+        print(f"  ⚠️  Could not read metadata from {os.path.basename(filepath)}: {e}")
+        return None
+
+def extract_trigger_from_comment(comment):
+    """Extract trigger word from ss_training_comment"""
+    if not comment:
+        return None
+    for prefix in ['trigger word:', 'trigger:']:
+        if prefix in comment.lower():
+            idx = comment.lower().index(prefix)
+            trigger = comment[idx + len(prefix):].strip()
+            trigger = trigger.split(',')[0].split('\n')[0].strip()
+            return trigger if trigger else None
+    return None
+
+def extract_top_tags(tag_frequency, top_n=10):
+    """Extract top N tags from ss_tag_frequency JSON"""
+    import json
+    try:
+        tag_data = json.loads(tag_frequency)
+        all_tags = {}
+        for category_tags in tag_data.values():
+            if isinstance(category_tags, dict):
+                for tag, count in category_tags.items():
+                    all_tags[tag] = all_tags.get(tag, 0) + count
+
+        sorted_tags = sorted(all_tags.items(), key=lambda x: x[1], reverse=True)
+        top_tags = [tag for tag, _ in sorted_tags[:top_n]]
+        return ', '.join(top_tags) if top_tags else None
+    except Exception:
+        return None
+
+def scan_models(force_rescan=False):
+    """Incrementelles Model-Scanning mit DB-Cache"""
+    import sqlite3
+    from datetime import datetime
+
+    db_path = os.path.join(BASE_SMARTGALLERY_PATH, SQLITE_CACHE_FOLDER_NAME, DATABASE_FILENAME)
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    # Lade existierende Models aus DB
+    cursor.execute("SELECT path, mtime, hash FROM models")
+    db_cache = {row[0]: {'mtime': row[1], 'hash': row[2]} for row in cursor.fetchall()}
+
+    scanned_paths = set()
+    items_to_update = []
+
+    for kind, folders in MODEL_SUBFOLDERS.items():
+        for folder in folders:
+            folder_path = os.path.join(BASE_MODELS_PATH, folder)
+            if not os.path.exists(folder_path):
+                continue
+
+            print(f"📁 Scanning {kind} in {folder}...")
+            file_count = 0
+
+            for root, dirs, files in os.walk(folder_path):
+                for file in files:
+                    if not any(file.lower().endswith(ext) for ext in MODEL_EXTENSIONS):
+                        continue
+
+                    full_path = os.path.join(root, file)
+                    scanned_paths.add(full_path)
+
+                    try:
+                        st = os.stat(full_path)
+                        current_mtime = int(st.st_mtime)
+
+                        # Check ob Datei unverändert ist
+                        if not force_rescan and full_path in db_cache:
+                            if db_cache[full_path]['mtime'] == current_mtime:
+                                # Unverändert - skip
+                                continue
+
+                        # Neu oder geändert - Hash berechnen
+                        file_hash = calculate_file_hash(full_path)
+                        name = os.path.splitext(file)[0]
+                        model_id = fast_model_id(full_path)
+
+                        # Metadata extraction für LoRAs
+                        trigger = None
+                        tags = None
+
+                        if kind == 'loras' and full_path.lower().endswith('.safetensors'):
+                            metadata = read_safetensors_metadata(full_path)
+                            if metadata:
+                                # Trigger: Placeholder für CivitAI-Integration
+                                trigger = "CivitAI integration pending"
+
+                                # Tags: Extract from safetensors
+                                tag_frequency = metadata.get('ss_tag_frequency', '')
+                                if tag_frequency:
+                                    tags = extract_top_tags(tag_frequency, top_n=15)
+
+                        file_count += 1
+                        print(f"  ✓ [{file_count}] {name} ({formatSize(st.st_size)}) - Hash: {file_hash[:8] if file_hash else 'ERROR'}...")
+
+                        items_to_update.append({
+                            'id': model_id,
+                            'type': kind,
+                            'name': name,
+                            'path': full_path,
+                            'size': st.st_size,
+                            'hash': file_hash,
+                            'mtime': current_mtime,
+                            'scanned_at': int(datetime.now().timestamp()),
+                            'trigger': trigger,
+                            'tags': tags
+                        })
+
+                    except Exception as e:
+                        print(f"Error scanning {full_path}: {e}")
+                        continue
+
+    # Update DB
+    for item in items_to_update:
+        cursor.execute("""
+            INSERT OR REPLACE INTO models
+            (id, type, name, path, size, hash, mtime, scanned_at, trigger, tags)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (item['id'], item['type'], item['name'], item['path'],
+              item['size'], item['hash'], item['mtime'], item['scanned_at'],
+              item['trigger'], item['tags']))
+
+    # Entferne gelöschte Dateien aus DB
+    cursor.execute("SELECT path FROM models")
+    all_db_paths = {row[0] for row in cursor.fetchall()}
+    deleted_paths = all_db_paths - scanned_paths
+
+    for deleted_path in deleted_paths:
+        cursor.execute("DELETE FROM models WHERE path = ?", (deleted_path,))
+
+    conn.commit()
+
+    # Lade finale Liste aus DB
+    cursor.execute("""
+        SELECT id, type, name, path, size, hash, mtime, trigger, tags
+        FROM models
+        ORDER BY type, name COLLATE NOCASE
+    """)
+
+    models = []
+    for row in cursor.fetchall():
+        models.append({
+            'id': row[0],
+            'type': row[1],
+            'name': row[2],
+            'path': row[3],
+            'size': row[4],
+            'hash': row[5],
+            'mtime': row[6],
+            'trigger': row[7],
+            'tags': row[8]
+        })
+
+    conn.close()
+    return models
 
 # --- FLASK APP INITIALIZATION ---
 app = Flask(__name__)
@@ -1153,6 +1402,24 @@ def init_db(conn=None):
         ''')
         
         conn.execute("CREATE TABLE IF NOT EXISTS ai_metadata (key TEXT PRIMARY KEY, value TEXT, updated_at REAL)")
+
+        # Models Tabelle erstellen
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS models (
+                id TEXT PRIMARY KEY,
+                type TEXT NOT NULL,
+                name TEXT NOT NULL,
+                path TEXT NOT NULL UNIQUE,
+                size INTEGER NOT NULL,
+                hash TEXT,
+                mtime INTEGER NOT NULL,
+                scanned_at INTEGER NOT NULL,
+                trigger TEXT,
+                tags TEXT
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_models_type ON models(type)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_models_mtime ON models(mtime)")
 
         # 3. COLUMN MIGRATION
         required_columns = {
@@ -3390,7 +3657,81 @@ def check_for_updates():
                 
     except Exception:
         print("Skipped (Offline or GitHub unreachable).")
-        
+
+# ============================================================================
+# MODEL MANAGEMENT API ENDPOINTS
+# ============================================================================
+@app.route('/galleryout/api/models/scan', methods=['POST'])
+def api_scan_models():
+    """Scan models (incrementell, nur neue/geänderte)"""
+    try:
+        force = request.json.get('force', False) if request.is_json else False
+        models = scan_models(force_rescan=force)
+        return jsonify({
+            'status': 'success',
+            'count': len(models),
+            'models': models
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/galleryout/api/models/list', methods=['GET'])
+def api_list_models():
+    """Lade Models aus DB (scannt automatisch beim ersten Mal)"""
+    try:
+        import sqlite3
+        db_path = os.path.join(BASE_SMARTGALLERY_PATH, SQLITE_CACHE_FOLDER_NAME, DATABASE_FILENAME)
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        # Check ob DB leer ist
+        cursor.execute("SELECT COUNT(*) FROM models")
+        count = cursor.fetchone()[0]
+        conn.close()
+
+        # Erster Aufruf? Dann scanne!
+        if count == 0:
+            print("Models DB ist leer - starte initialen Scan...")
+            models = scan_models(force_rescan=False)
+            return jsonify({
+                'status': 'success',
+                'count': len(models),
+                'models': models,
+                'initial_scan': True
+            })
+
+        # DB hat Daten - lade aus DB
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, type, name, path, size, hash, mtime, trigger, tags
+            FROM models
+            ORDER BY type, name COLLATE NOCASE
+        """)
+
+        models = []
+        for row in cursor.fetchall():
+            models.append({
+                'id': row[0],
+                'type': row[1],
+                'name': row[2],
+                'path': row[3],
+                'size': row[4],
+                'hash': row[5],
+                'mtime': row[6],
+                'trigger': row[7],
+                'tags': row[8]
+            })
+
+        conn.close()
+        return jsonify({
+            'status': 'success',
+            'count': len(models),
+            'models': models
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
 # --- STARTUP CHECKS AND MAIN ENTRY POINT ---
 def show_config_error_and_exit(path):
     """Shows a critical error message and exits the program."""

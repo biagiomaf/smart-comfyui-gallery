@@ -5072,8 +5072,159 @@
         .mobile-big-actions button:only-child {
             grid-column: 1 / -1; /* Span full width */
         }
-        
-                
+
+        /* ========================================
+           === VIEW MODE TOGGLE (Images/Models) ===
+           ======================================== */
+        .view-toggle-container {
+            display: flex;
+            gap: 4px;
+            background: #2a2a2a;
+            padding: 4px;
+            border-radius: 6px;
+            margin-right: 8px;
+        }
+
+        .view-toggle-btn {
+            padding: 6px 12px;
+            background: transparent;
+            color: #aaa;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .view-toggle-btn:hover {
+            background: #3a3a3a;
+            color: #fff;
+        }
+
+        .view-toggle-btn.active {
+            background: #4a9eff;
+            color: #fff;
+        }
+
+        /* === MODELS VIEW === */
+        .models-container {
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .models-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .models-header h2 {
+            margin: 0;
+            color: #fff;
+        }
+
+        .btn-refresh {
+            padding: 8px 16px;
+            background: #4a9eff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-refresh:hover {
+            background: #3a8eef;
+        }
+
+        .model-type-section {
+            margin-bottom: 30px;
+        }
+
+        .model-type-section h3 {
+            color: #fff;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .model-type-section h3 .count {
+            color: #888;
+            font-size: 14px;
+            font-weight: normal;
+        }
+
+        .models-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #2a2a2a;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .models-table thead {
+            background: #3a3a3a;
+        }
+
+        .models-table th {
+            padding: 12px;
+            text-align: left;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .models-table tbody tr {
+            border-bottom: 1px solid #3a3a3a;
+        }
+
+        .models-table tbody tr:hover {
+            background: #333;
+        }
+
+        .models-table td {
+            padding: 12px;
+            color: #ddd;
+        }
+
+        .path-cell {
+            color: #888;
+            font-size: 12px;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .trigger-cell {
+            color: #4a9eff;
+            font-weight: 500;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .tags-cell {
+            color: #aaa;
+            font-size: 12px;
+            max-width: 400px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            background: #3a3a3a;
+            color: #aaa;
+            text-transform: uppercase;
+        }
+
         </style>
         
 </head>
@@ -5115,6 +5266,12 @@
                     </div>
                 </div>
             </a>
+
+            <!-- View Mode Toggle -->
+            <div class="view-toggle-container">
+                <button id="toggle-images" class="view-toggle-btn active">📷 Images</button>
+                <button id="toggle-models" class="view-toggle-btn">🎨 Models</button>
+            </div>
 
             <!-- Right Actions (Blocco Unico a Destra) -->
             <div class="sidebar-actions">
@@ -6064,7 +6221,23 @@
             </div>
         </div>
     </div>
-    
+
+    <!-- Models View -->
+    <div id="models-view" style="display: none;">
+        <div class="models-container">
+            <div class="models-header">
+                <h2>🎨 Model Management</h2>
+                <button id="refresh-models" class="btn-refresh">🔄 Refresh</button>
+            </div>
+            <div id="models-loading" style="display: none; padding: 40px; text-align: center;">
+                <p>Loading models...</p>
+            </div>
+            <div id="models-content">
+                <!-- Tabellen werden hier pro Typ eingefügt -->
+            </div>
+        </div>
+    </div>
+
     <script>
         // --- DATA INITIALIZATION AND GLOBAL STATE ---
         const foldersData = {{ folders | tojson }};
@@ -10070,7 +10243,198 @@ async function showNodeSummary(event, fileId) {
         document.getElementById('sel-more-menu').addEventListener('click', () => {
              document.getElementById('sel-more-menu').classList.remove('show');
         });
-        
+
+        // ========================================
+        // === VIEW MODE TOGGLE (Images/Models) ===
+        // ========================================
+        let currentView = localStorage.getItem('viewMode') || 'images';
+
+        function switchView(mode) {
+            currentView = mode;
+            localStorage.setItem('viewMode', mode);
+
+            // Toggle active class on buttons
+            document.getElementById('toggle-images').classList.toggle('active', mode === 'images');
+            document.getElementById('toggle-models').classList.toggle('active', mode === 'models');
+
+            // Show/Hide content areas
+            const mainContent = document.querySelector('.main-content');
+            const modelsView = document.getElementById('models-view');
+            const folderTreeContainer = document.querySelector('.folder-tree-container');
+            const folderControls = document.querySelector('.folder-controls');
+            const createFolderBtn = document.getElementById('create-folder-btn');
+
+            if (mode === 'images') {
+                if (mainContent) mainContent.style.display = 'block';
+                if (modelsView) modelsView.style.display = 'none';
+                if (folderTreeContainer) folderTreeContainer.style.display = 'block';
+                if (folderControls) folderControls.style.display = 'flex';
+                if (createFolderBtn) createFolderBtn.style.display = 'block';
+                console.log('✅ Switched to Images view');
+            } else {
+                if (mainContent) mainContent.style.display = 'none';
+                if (modelsView) modelsView.style.display = 'block';
+                if (folderTreeContainer) folderTreeContainer.style.display = 'none';
+                if (folderControls) folderControls.style.display = 'none';
+                if (createFolderBtn) createFolderBtn.style.display = 'none';
+                console.log('✅ Switched to Models view (placeholder)');
+            }
+        }
+
+        // Initialize toggle on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleImages = document.getElementById('toggle-images');
+            const toggleModels = document.getElementById('toggle-models');
+
+            if (toggleImages) toggleImages.addEventListener('click', () => switchView('images'));
+            if (toggleModels) toggleModels.addEventListener('click', () => switchView('models'));
+
+            switchView(currentView);
+        });
+
+        // === MODELS VIEW LOGIC ===
+        async function loadModels() {
+            const loading = document.getElementById('models-loading');
+            const tbody = document.getElementById('models-tbody');
+
+            if (loading) loading.style.display = 'block';
+            if (tbody) tbody.innerHTML = '';
+
+            try {
+                const response = await fetch('/galleryout/api/models/list');
+                const data = await response.json();
+
+                if (loading) loading.style.display = 'none';
+
+                if (data.status === 'success' && data.models) {
+                    renderModels(data.models);
+                }
+            } catch (error) {
+                console.error('Failed to load models:', error);
+                if (loading) loading.style.display = 'none';
+            }
+        }
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+        }
+
+        function formatDate(timestamp) {
+            const date = new Date(timestamp * 1000);
+            return date.toLocaleDateString('de-DE', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+        }
+
+        function renderModels(models) {
+            const content = document.getElementById('models-content');
+            if (!content) return;
+
+            // Gruppiere Models nach Typ
+            const grouped = {};
+            models.forEach(model => {
+                if (!grouped[model.type]) {
+                    grouped[model.type] = [];
+                }
+                grouped[model.type].push(model);
+            });
+
+            // Erstelle Tabelle für jeden Typ
+            const typeLabels = {
+                'checkpoints': '🎨 Checkpoints',
+                'diffusion_models': '⚡ Diffusion Models',
+                'loras': '🎭 LoRAs',
+                'embeddings': '📝 Embeddings'
+            };
+
+            content.innerHTML = Object.keys(grouped).sort().map(type => {
+                const typeModels = grouped[type];
+                const label = typeLabels[type] || type;
+
+                // LoRAs bekommen spezielle Spalten (Trigger + Tags)
+                if (type === 'loras') {
+                    return `
+                        <div class="model-type-section">
+                            <h3>${label} <span class="count">(${typeModels.length})</span></h3>
+                            <table class="models-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Trigger</th>
+                                        <th>Tags</th>
+                                        <th>Size</th>
+                                        <th>Path</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${typeModels.map(model => `
+                                        <tr>
+                                            <td>${model.name}</td>
+                                            <td class="trigger-cell">${model.trigger || '-'}</td>
+                                            <td class="tags-cell" title="${model.tags || ''}">${model.tags || '-'}</td>
+                                            <td>${formatSize(model.size)}</td>
+                                            <td class="path-cell" title="${model.path}">${model.path}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                }
+
+                // Checkpoints, Diffusion Models, Embeddings: Standard-Spalten
+                else {
+                    return `
+                        <div class="model-type-section">
+                            <h3>${label} <span class="count">(${typeModels.length})</span></h3>
+                            <table class="models-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Size</th>
+                                        <th>Modified</th>
+                                        <th>Path</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${typeModels.map(model => `
+                                        <tr>
+                                            <td>${model.name}</td>
+                                            <td>${formatSize(model.size)}</td>
+                                            <td>${formatDate(model.mtime)}</td>
+                                            <td class="path-cell" title="${model.path}">${model.path}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                }
+            }).join('');
+        }
+
+        // Event Listeners für Models View
+        document.addEventListener('DOMContentLoaded', function() {
+            const refreshBtn = document.getElementById('refresh-models');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', loadModels);
+            }
+        });
+
+        // Lade Models wenn Models-View aktiviert wird
+        const originalSwitchView = switchView;
+        switchView = function(mode) {
+            originalSwitchView(mode);
+            if (mode === 'models') {
+                loadModels();
+            }
+        };
+
     </script>
 </body>
 </html>
