@@ -1,7 +1,7 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025-2026 — MIT License (free to use and modify)
 #
-# Version: 1.53 - January 7, 2026
+# Version: 1.54 - January 20, 2026
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -188,6 +188,12 @@ SPECIAL_FOLDERS = ['video', 'audio']
 # Lower this if you run out of memory.
 BATCH_SIZE = int(os.environ.get('BATCH_SIZE', 500))
 
+# Threshold (in MB) above which videos will be streamed (transcoded) 
+# instead of loaded natively in the gallery grid preview.
+# Default: 50 MB. Set to 0 to force streaming for all supported videos.
+STREAM_THRESHOLD_MB = int(os.environ.get('STREAM_THRESHOLD_MB', 20))
+STREAM_THRESHOLD_BYTES = STREAM_THRESHOLD_MB * 1024 * 1024
+
 # Number of parallel processes to use for thumbnail and metadata generation.
 # - None or empty string: use all available CPU cores (fastest, recommended)
 # - 1: disable parallel processing (slowest, like in previous versions)
@@ -297,8 +303,8 @@ ZIP_CACHE_FOLDER_NAME = '.zip_downloads'
 AI_MODELS_FOLDER_NAME = '.AImodels'
 
 # --- APP INFO ---
-APP_VERSION = "1.53"
-APP_VERSION_DATE = "January 7, 2026"
+APP_VERSION = "1.54"
+APP_VERSION_DATE = "January 20, 2026"
 GITHUB_REPO_URL = "https://github.com/biagiomaf/smart-comfyui-gallery"
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/biagiomaf/smart-comfyui-gallery/main/smartgallery.py"
 
@@ -383,6 +389,7 @@ def print_configuration():
     print_row("WebP Animated FPS", WEBP_ANIMATED_FPS)
     print_row("Page Size", PAGE_SIZE)
     print_row("Batch Size", BATCH_SIZE)
+    print_row("Stream Threshold", f"{STREAM_THRESHOLD_MB} MB")
     print_row("Max Parallel Workers", MAX_PARALLEL_WORKERS if MAX_PARALLEL_WORKERS else "All Cores")
     print_row("AI Search", "Enabled" if ENABLE_AI_SEARCH else "Disabled")
     print(f"{Colors.HEADER}-----------------------------{Colors.RESET}\n")
@@ -783,7 +790,21 @@ def format_duration(seconds):
 def analyze_file_metadata(filepath):
     details = {'type': 'unknown', 'duration': '', 'dimensions': '', 'has_workflow': 0}
     ext_lower = os.path.splitext(filepath)[1].lower()
-    type_map = {'.png': 'image', '.jpg': 'image', '.jpeg': 'image', '.gif': 'animated_image', '.mp4': 'video', '.webm': 'video', '.mov': 'video', '.mp3': 'audio', '.wav': 'audio', '.ogg': 'audio', '.flac': 'audio'}
+    #https://aistudio.google.com/prompts/1uYTqxN6LAJZucWaoD5DlOlljhj0eB1uY#:~:text=function%20showItemAtIndex(index) = {'.png': 'image', '.jpg': 'image', '.jpeg': 'image', '.gif': 'animated_image', '.mp4': 'video', '.webm': 'video', '.mov': 'video', '.mp3': 'audio', '.wav': 'audio', '.ogg': 'audio', '.flac': 'audio'}
+    # Extended Type Map for Professional Formats
+    type_map = {
+        # Images
+        '.png': 'image', '.jpg': 'image', '.jpeg': 'image', 
+        '.bmp': 'image', '.tiff': 'image', '.tif': 'image',
+        # Animations
+        '.gif': 'animated_image', 
+        # Videos (Standard & Pro)
+        '.mp4': 'video', '.webm': 'video', '.mov': 'video', 
+        '.mkv': 'video', '.avi': 'video', '.m4v': 'video', 
+        '.wmv': 'video', '.flv': 'video', '.mts': 'video', '.ts': 'video',
+        # Audio
+        '.mp3': 'audio', '.wav': 'audio', '.ogg': 'audio', '.flac': 'audio', '.m4a': 'audio'
+    }
     details['type'] = type_map.get(ext_lower, 'unknown')
     if details['type'] == 'unknown' and ext_lower == '.webp': details['type'] = 'animated_image' if is_webp_animated(filepath) else 'image'
     if 'image' in details['type']:
@@ -813,39 +834,89 @@ def analyze_file_metadata(filepath):
 
 def create_thumbnail(filepath, file_hash, file_type):
     Image.MAX_IMAGE_PIXELS = None 
+    
+    # --- IMAGES / ANIMATIONS ---
     if file_type in ['image', 'animated_image']:
         try:
             with Image.open(filepath) as img:
                 fmt = 'gif' if img.format == 'GIF' else 'webp' if img.format == 'WEBP' else 'jpeg'
                 cache_path = os.path.join(THUMBNAIL_CACHE_DIR, f"{file_hash}.{fmt}")
+                
+                # Handle Animations (Animated WebP / GIF)
                 if file_type == 'animated_image' and getattr(img, 'is_animated', False):
                     frames = [fr.copy() for fr in ImageSequence.Iterator(img)]
                     if frames:
-                        for frame in frames: frame.thumbnail((THUMBNAIL_WIDTH, THUMBNAIL_WIDTH * 2), Image.Resampling.LANCZOS)
+                        for frame in frames: 
+                            frame.thumbnail((THUMBNAIL_WIDTH, THUMBNAIL_WIDTH * 2), Image.Resampling.LANCZOS)
+                        
                         processed_frames = [frame.convert('RGBA').convert('RGB') for frame in frames]
                         if processed_frames:
-                            processed_frames[0].save(cache_path, save_all=True, append_images=processed_frames[1:], duration=img.info.get('duration', 100), loop=img.info.get('loop', 0), optimize=True)
+                            processed_frames[0].save(
+                                cache_path, 
+                                save_all=True, 
+                                append_images=processed_frames[1:], 
+                                duration=img.info.get('duration', 100), 
+                                loop=img.info.get('loop', 0), 
+                                optimize=True
+                            )
+                            return cache_path
+                
+                # Handle Static Images
                 else:
                     img.thumbnail((THUMBNAIL_WIDTH, THUMBNAIL_WIDTH * 2), Image.Resampling.LANCZOS)
                     if img.mode != 'RGB': img = img.convert('RGB')
                     img.save(cache_path, 'JPEG', quality=85)
-                return cache_path
-        except Exception as e: print(f"ERROR (Pillow): Could not create thumbnail for {os.path.basename(filepath)}: {e}")
+                    return cache_path
+                    
+        except Exception as e: 
+            print(f"ERROR (Pillow): Thumbnail failed for {os.path.basename(filepath)}: {e}")
+
+    # --- VIDEOS (MP4, MOV, MKV, AVI, etc.) ---
     elif file_type == 'video':
+        cache_path = os.path.join(THUMBNAIL_CACHE_DIR, f"{file_hash}.jpeg")
+        
+        # Method A: Try OpenCV first (Fastest)
         try:
             cap = cv2.VideoCapture(filepath)
-            success, frame = cap.read()
-            cap.release()
-            if success:
-                cache_path = os.path.join(THUMBNAIL_CACHE_DIR, f"{file_hash}.jpeg")
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                img = Image.fromarray(frame_rgb)
-                img.thumbnail((THUMBNAIL_WIDTH, THUMBNAIL_WIDTH * 2), Image.Resampling.LANCZOS)
-                img.save(cache_path, 'JPEG', quality=80)
-                return cache_path
-        except Exception as e: print(f"ERROR (OpenCV): Could not create thumbnail for {os.path.basename(filepath)}: {e}")
-    return None
+            if cap.isOpened():
+                success, frame = cap.read()
+                cap.release()
+                if success:
+                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    img = Image.fromarray(frame_rgb)
+                    img.thumbnail((THUMBNAIL_WIDTH, THUMBNAIL_WIDTH * 2), Image.Resampling.LANCZOS)
+                    img.save(cache_path, 'JPEG', quality=80)
+                    return cache_path
+        except Exception: 
+            pass # Fallback silently to FFmpeg
 
+        # Method B: Fallback to FFmpeg (Most Robust for MKV/AVI/ProRes)
+        if FFPROBE_EXECUTABLE_PATH:
+            try:
+                ffmpeg_name = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
+                ffmpeg_bin = os.path.join(os.path.dirname(FFPROBE_EXECUTABLE_PATH), ffmpeg_name)
+                if not os.path.exists(ffmpeg_bin): ffmpeg_bin = ffmpeg_name
+                
+                cmd = [
+                    ffmpeg_bin, '-y', 
+                    '-i', filepath, 
+                    '-ss', '00:00:00', # Seek to start
+                    '-vframes', '1',   # Grab 1 frame
+                    '-vf', f'scale={THUMBNAIL_WIDTH}:-1', # Resize directly
+                    '-q:v', '2',       # High Quality
+                    cache_path
+                ]
+                
+                creation_flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+                subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True, creationflags=creation_flags)
+                
+                if os.path.exists(cache_path):
+                    return cache_path
+            except Exception as e:
+                print(f"ERROR (FFmpeg): Thumbnail failed for {os.path.basename(filepath)}: {e}")
+
+    return None
+    
 def extract_workflow_files_string(workflow_json_string):
     """
     Parses workflow and returns a normalized string containing ONLY filenames 
@@ -1153,9 +1224,19 @@ def init_db(conn=None):
         ''')
         
         conn.execute("CREATE TABLE IF NOT EXISTS ai_metadata (key TEXT PRIMARY KEY, value TEXT, updated_at REAL)")
-
+        
+        # MOUNT POINTS TABLE ---
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS mounted_folders (
+                path TEXT PRIMARY KEY,
+                target_source TEXT,
+                created_at REAL
+            );
+        ''')
+        
         # 3. COLUMN MIGRATION
         required_columns = {
+            'size': 'INTEGER DEFAULT 0', 
             'last_scanned': 'REAL DEFAULT 0',
             'workflow_files': "TEXT DEFAULT ''",
             'workflow_prompt': "TEXT DEFAULT ''",
@@ -1220,24 +1301,32 @@ def get_dynamic_folder_config(force_refresh=False):
             'children': [],
             'mtime': root_mtime,
             'is_watched': False,
-            'is_explicitly_watched': False # NEW flag
+            'is_explicitly_watched': False,
+            'is_mount': False # Root is never a mount
         }
     }
 
     try:
-        # --- NEW: Fetch Watched Status with Recursive Logic ---
-        # We store tuples of (normalized_path, is_recursive_bool)
+        # 1. Fetch Watched Status
         watched_rules = [] 
         if ENABLE_AI_SEARCH:
             try:
                 with get_db_connection() as conn:
                     rows = conn.execute("SELECT path, recursive FROM ai_watched_folders").fetchall()
                     for r in rows:
-                        # Normalize watched paths for consistent comparison (force forward slashes)
                         w_path = os.path.normpath(r['path']).replace('\\', '/')
                         watched_rules.append((w_path, bool(r['recursive'])))
             except: pass
-        # ---------------------------------
+            
+        # 2. Fetch Mounted Folders (New)
+        mounted_paths = set()
+        try:
+            with get_db_connection() as conn:
+                rows = conn.execute("SELECT path FROM mounted_folders").fetchall()
+                for r in rows:
+                    # Normalize for comparison
+                    mounted_paths.add(os.path.normpath(r['path']).replace('\\', '/'))
+        except: pass
 
         all_folders = {}
         for dirpath, dirnames, _ in os.walk(BASE_OUTPUT_PATH):
@@ -1267,22 +1356,22 @@ def get_dynamic_folder_config(force_refresh=False):
             if parent_key in dynamic_config:
                 dynamic_config[parent_key]['children'].append(key)
 
-            # --- Check if this folder is Watched (Directly or via Parent) ---
             current_path = folder_data['full_path']
-            is_watched_folder = False
-            is_explicitly_watched = False # NEW flag
             
+            # Watch Logic
+            is_watched_folder = False
+            is_explicitly_watched = False
             for w_path, is_recursive in watched_rules:
-                # 1. Exact Match (Explicit)
                 if current_path == w_path:
                     is_watched_folder = True
                     is_explicitly_watched = True
                     break
-                # 2. Child of a Recursive Watched Folder (Implicit)
                 if is_recursive and current_path.startswith(w_path + '/'):
                     is_watched_folder = True
-                    # is_explicitly_watched remains False
                     break
+            
+            # Mount Logic
+            is_mount = (current_path in mounted_paths)
 
             dynamic_config[key] = {
                 'display_name': folder_data['display_name'],
@@ -1292,7 +1381,8 @@ def get_dynamic_folder_config(force_refresh=False):
                 'children': [],
                 'mtime': folder_data['mtime'],
                 'is_watched': is_watched_folder,
-                'is_explicitly_watched': is_explicitly_watched # Pass to frontend
+                'is_explicitly_watched': is_explicitly_watched,
+                'is_mount': is_mount # Pass to frontend
             }
     except FileNotFoundError:
         print(f"WARNING: The base directory '{BASE_OUTPUT_PATH}' was not found.")
@@ -1418,14 +1508,26 @@ def full_sync_database(conn):
     
     disk_files = {}
     print("INFO: Scanning directories on disk...")
+    
+    # Whitelist approach: Only index valid media files
+    valid_extensions = {
+        '.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif', '.webp', '.gif',  # Images
+        '.mp4', '.mov', '.webm', '.mkv', '.avi', '.m4v', '.wmv', '.flv', '.mts', '.ts', # Videos
+        '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.aac' # Audio
+    }
+
     for folder_data in all_folders.values():
         folder_path = folder_data['path']
         if not os.path.isdir(folder_path): continue
         try:
             for name in os.listdir(folder_path):
                 filepath = os.path.join(folder_path, name)
-                if os.path.isfile(filepath) and os.path.splitext(name)[1].lower() not in ['.json', '.sqlite']:
+                
+                # Check extension against whitelist
+                _, ext = os.path.splitext(name)
+                if os.path.isfile(filepath) and ext.lower() in valid_extensions:
                     disk_files[filepath] = os.path.getmtime(filepath)
+                    
         except OSError as e:
             print(f"WARNING: Could not access folder {folder_path}: {e}")
             
@@ -1438,7 +1540,7 @@ def full_sync_database(conn):
     to_update = {path for path in to_check if int(disk_files.get(path, 0)) > int(db_files.get(path, 0))}
     
     files_to_process = list(to_add.union(to_update))
-    
+    # debug if files_to_process: print(f"{Colors.YELLOW}DEBUG - File to process: {files_to_process}{Colors.RESET}")
     if files_to_process:
         print(f"INFO: Processing {len(files_to_process)} files in parallel using up to {MAX_PARALLEL_WORKERS or 'all'} CPU cores...")
         
@@ -1479,22 +1581,22 @@ def full_sync_database(conn):
                         
                         -- LOGICA CONDIZIONALE:
                         is_favorite = CASE 
-                            WHEN files.mtime != excluded.mtime THEN 0  
+                            WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN 0  
                             ELSE files.is_favorite                     
                         END,
                         
                         ai_caption = CASE 
-                            WHEN files.mtime != excluded.mtime THEN NULL 
+                            WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN NULL 
                             ELSE files.ai_caption                        
                         END,
                         
                         ai_embedding = CASE 
-                            WHEN files.mtime != excluded.mtime THEN NULL 
+                            WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN NULL 
                             ELSE files.ai_embedding 
                         END,
 
                         ai_last_scanned = CASE 
-                            WHEN files.mtime != excluded.mtime THEN 0 
+                            WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN 0 
                             ELSE files.ai_last_scanned 
                         END,
 
@@ -1503,10 +1605,56 @@ def full_sync_database(conn):
                 """, batch) 
                 conn.commit()
 
+    # SAFETY GUARD FOR DISCONNECTED DRIVES
     if to_delete:
-        print(f"INFO: Removing {len(to_delete)} obsolete file entries from the database...")
-        conn.executemany("DELETE FROM files WHERE path = ?", [(p,) for p in to_delete])
-        conn.commit()
+        print(f"INFO: Detecting disconnected drives before cleanup...")
+        
+        # 1. Identify Offline Mounts
+        # We fetch all configured mount points to check if their root is accessible
+        mount_rows = conn.execute("SELECT path FROM mounted_folders").fetchall()
+        offline_prefixes = []
+        
+        for row in mount_rows:
+            m_path = row['path']
+            # If the mount root itself is missing, assume the drive is offline.
+            # note: os.path.exists returns False for broken symlinks/junctions
+            if not os.path.exists(m_path):
+                print(f"{Colors.YELLOW}WARN: Mount point seems offline: {m_path}{Colors.RESET}")
+                offline_prefixes.append(m_path)
+
+        # 2. Filter files to delete
+        # Only delete files if they do NOT belong to an offline mount
+        safe_to_delete = []
+        protected_count = 0
+        
+        for path_to_remove in to_delete:
+            is_protected = False
+            for offline_root in offline_prefixes:
+                # Check if file path starts with the offline root path
+                if path_to_remove.startswith(offline_root):
+                    is_protected = True
+                    break
+            
+            if is_protected:
+                protected_count += 1
+            else:
+                safe_to_delete.append(path_to_remove)
+
+        if protected_count > 0:
+            print(f"{Colors.YELLOW}PROTECTION ACTIVE: Skipped deletion of {protected_count} files because their source drive appears offline.{Colors.RESET}")
+
+        # 3. Proceed with safe deletion
+        if safe_to_delete:
+            print(f"INFO: Removing {len(safe_to_delete)} obsolete file entries from the database...")
+            
+            paths_to_remove = [(p,) for p in safe_to_delete]
+            conn.executemany("DELETE FROM files WHERE path = ?", paths_to_remove)
+            
+            # Clean AI Queue for validly deleted files
+            std_paths_to_remove = [(get_standardized_path(p),) for p in safe_to_delete]
+            conn.executemany("DELETE FROM ai_indexing_queue WHERE file_path = ?", std_paths_to_remove)
+            
+            conn.commit()
 
     print(f"INFO: Full scan completed in {time.time() - start_time:.2f} seconds.")
     
@@ -1578,22 +1726,22 @@ def sync_folder_on_demand(folder_path):
                         
                             -- LOGICA CONDIZIONALE:
                             is_favorite = CASE 
-                                WHEN files.mtime != excluded.mtime THEN 0  
+                                WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN 0  
                                 ELSE files.is_favorite                     
                             END,
                             
                             ai_caption = CASE 
-                                WHEN files.mtime != excluded.mtime THEN NULL 
+                                WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN NULL 
                                 ELSE files.ai_caption                        
                             END,
                             
                             ai_embedding = CASE 
-                                WHEN files.mtime != excluded.mtime THEN NULL 
+                                WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN NULL 
                                 ELSE files.ai_embedding 
                             END,
 
                             ai_last_scanned = CASE 
-                                WHEN files.mtime != excluded.mtime THEN 0 
+                                WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN 0 
                                 ELSE files.ai_last_scanned 
                             END,
 
@@ -1649,8 +1797,27 @@ def scan_folder_and_extract_options(folder_path, recursive=False):
         print(f"ERROR: Could not scan folder '{folder_path}': {e}")
         
     return file_count, sorted(list(extensions)), sorted(list(prefixes))
-    
-def initialize_gallery():
+
+def cleanup_invalid_watched_folders(conn):
+    """
+    Checks if watched folders still exist on disk.
+    [SAFE MODE]: If a folder is missing, we assumes it might be a disconnected drive
+    and we DO NOT remove it automatically to prevent config loss.
+    """
+    try:
+        rows = conn.execute("SELECT path FROM ai_watched_folders").fetchall()
+        
+        for row in rows:
+            path = row['path']
+            if not os.path.exists(path) or not os.path.isdir(path):
+                # We just WARN the user, we do NOT delete the config.
+                print(f"{Colors.YELLOW}WARN: Watched folder not found (Offline or Deleted): {path}")
+                print(f"      Skipping AI checks for this folder. Config preserved.{Colors.RESET}")
+                
+    except Exception as e:
+        print(f"ERROR checking watched folders: {e}")
+        
+def initialize_gallery_fast_no_db_check():
     print("INFO: Initializing gallery...")
     global FFPROBE_EXECUTABLE_PATH
     FFPROBE_EXECUTABLE_PATH = find_ffprobe_path()
@@ -1668,6 +1835,27 @@ def initialize_gallery():
 
         except sqlite3.DatabaseError as e:
             print(f"ERROR initializing database: {e}")
+
+def initialize_gallery():
+    print("INFO: Initializing gallery...")
+    global FFPROBE_EXECUTABLE_PATH
+    FFPROBE_EXECUTABLE_PATH = find_ffprobe_path()
+    os.makedirs(THUMBNAIL_CACHE_DIR, exist_ok=True)
+    os.makedirs(SQLITE_CACHE_DIR, exist_ok=True)
+    
+    with get_db_connection() as conn:
+        try:
+            init_db(conn) 
+            # Cleanup invalid watched folders before full sync
+            if ENABLE_AI_SEARCH:
+                cleanup_invalid_watched_folders(conn)
+            # Force full sync on every startup to clean external deletions
+            print(f"{Colors.BLUE}INFO: Performing startup consistency check...{Colors.RESET}")
+            full_sync_database(conn)
+
+        except sqlite3.DatabaseError as e:
+            print(f"ERROR initializing database: {e}")
+
             
 def get_filter_options_from_db(conn, scope, folder_path=None, recursive=False):
     """
@@ -1807,6 +1995,67 @@ def api_search_options():
         exts, pfxs, limit_reached = get_filter_options_from_db(conn, scope, folder_path, recursive=is_rec)
         
     return jsonify({'extensions': exts, 'prefixes': pfxs, 'prefix_limit_reached': limit_reached})
+
+@app.route('/galleryout/api/compare_files', methods=['POST'])
+def compare_files_api():
+    data = request.json
+    id_a = data.get('id_a')
+    id_b = data.get('id_b')
+    
+    if not id_a or not id_b:
+        return jsonify({'status': 'error', 'message': 'Missing file IDs'}), 400
+
+    def get_flat_params(file_id):
+        try:
+            info = get_file_info_from_db(file_id)
+            wf_json = extract_workflow(info['path'])
+            if not wf_json: return {}
+            
+            # Reuse existing summary logic
+            summary = generate_node_summary(wf_json)
+            if not summary: return {}
+            
+            flat_params = {}
+            for node in summary:
+                node_type = node['type']
+                for p in node['params']:
+                    # Create a readable key like "KSampler > steps"
+                    key = f"{node_type} > {p['name']}"
+                    flat_params[key] = str(p['value'])
+            return flat_params
+        except:
+            return {}
+
+    try:
+        params_a = get_flat_params(id_a)
+        params_b = get_flat_params(id_b)
+        
+        # Identify all unique keys
+        all_keys = sorted(list(set(params_a.keys()) | set(params_b.keys())))
+        
+        diff_table = []
+        for key in all_keys:
+            val_a = params_a.get(key, 'N/A')
+            val_b = params_b.get(key, 'N/A')
+            
+            # Check difference (case insensitive)
+            is_diff = str(val_a).lower() != str(val_b).lower()
+            
+            diff_table.append({
+                'key': key,
+                'val_a': val_a,
+                'val_b': val_b,
+                'is_diff': is_diff
+            })
+            
+        # Sort: Differences at the top, then alphabetical
+        diff_table.sort(key=lambda x: (not x['is_diff'], x['key']))
+        
+        return jsonify({'status': 'success', 'diff': diff_table})
+        
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+        
 
 # --- AI MANAGER API ROUTES ---
 @app.route('/galleryout/ai_indexing/reset', methods=['POST'])
@@ -2419,7 +2668,9 @@ def gallery_view(folder_key):
                            app_version=APP_VERSION,
                            github_url=GITHUB_REPO_URL,
                            update_available=UPDATE_AVAILABLE,
-                           remote_version=REMOTE_VERSION)
+                           remote_version=REMOTE_VERSION,
+                           ffmpeg_available=(FFPROBE_EXECUTABLE_PATH is not None),
+                           stream_threshold=STREAM_THRESHOLD_BYTES)
     
 @app.route('/galleryout/upload', methods=['POST'])
 def upload_files():
@@ -2513,22 +2764,22 @@ def rescan_folder():
                         
                         -- LOGICA CONDIZIONALE:
                         is_favorite = CASE 
-                            WHEN files.mtime != excluded.mtime THEN 0  
+                            WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN 0  
                             ELSE files.is_favorite                     
                         END,
                         
                         ai_caption = CASE 
-                            WHEN files.mtime != excluded.mtime THEN NULL 
+                            WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN NULL 
                             ELSE files.ai_caption                        
                         END,
                         
                         ai_embedding = CASE 
-                            WHEN files.mtime != excluded.mtime THEN NULL 
+                            WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN NULL 
                             ELSE files.ai_embedding 
                         END,
 
                         ai_last_scanned = CASE 
-                            WHEN files.mtime != excluded.mtime THEN 0 
+                            WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN 0 
                             ELSE files.ai_last_scanned 
                         END,
 
@@ -2564,6 +2815,245 @@ def create_folder():
         return jsonify({'status': 'success', 'message': f'Folder "{folder_name}" created successfully.'})
     except FileExistsError: return jsonify({'status': 'error', 'message': 'Folder already exists.'}), 400
     except Exception as e: return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/galleryout/mount_folder', methods=['POST'])
+def mount_folder():
+    data = request.json
+    link_name_raw = data.get('link_name', '').strip()
+    target_path_raw = data.get('target_path', '').strip()
+    
+    # Sanitize name
+    link_name = re.sub(r'[\\/:*?"<>|]', '', link_name_raw)
+    
+    if not link_name or not target_path_raw:
+        return jsonify({'status': 'error', 'message': 'Missing name or target path.'}), 400
+        
+    # Security: Normalize target path
+    target_path = os.path.normpath(target_path_raw)
+    
+    if not os.path.exists(target_path) or not os.path.isdir(target_path):
+        return jsonify({'status': 'error', 'message': f'Target path does not exist: {target_path}'}), 404
+        
+    # Construct link path inside BASE_OUTPUT_PATH
+    link_full_path = os.path.join(BASE_OUTPUT_PATH, link_name)
+    
+    if os.path.exists(link_full_path):
+        return jsonify({'status': 'error', 'message': 'A folder with this name already exists.'}), 409
+        
+    try:
+        if os.name == 'nt':
+            # --- WINDOWS ROBUST LOGIC ---
+            
+            # 1. Force Windows-style backslashes for cmd.exe compatibility
+            # (Fixes issues with mixed slashes like Z:/path\folder)
+            win_link = link_full_path.replace('/', '\\')
+            win_target = target_path.replace('/', '\\')
+            
+            # Attempt 1: Junction (/J)
+            # Ideal for local drives, does not require Admin usually.
+            cmd_junction = f'mklink /J "{win_link}" "{win_target}"'
+            
+            # Use subprocess.run to capture the specific error message from Windows
+            result = subprocess.run(cmd_junction, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            
+            if result.returncode != 0:
+                # Capture the actual error (e.g. "Local volumes are required...")
+                err_junction = result.stderr.strip() or result.stdout.strip() or "Unknown Error"
+                
+                print(f"WARN: Junction failed ({err_junction}). Trying Symlink fallback...")
+                
+                # Attempt 2: Symbolic Link (/D)
+                # Necessary for Network Shares, Virtual Drives, or Cross-Volume links.
+                # NOTE: This usually requires Developer Mode enabled OR running ComfyUI as Administrator.
+                cmd_symlink = f'mklink /D "{win_link}" "{win_target}"'
+                result_sym = subprocess.run(cmd_symlink, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                
+                if result_sym.returncode != 0:
+                    err_sym = result_sym.stderr.strip() or result_sym.stdout.strip()
+                    
+                    # Create a detailed error message for the user
+                    error_msg = (
+                        f"Failed to create link.\n\n"
+                        f"Attempt 1 (Junction): {err_junction}\n"
+                        f"Attempt 2 (Symlink): {err_sym}\n\n"
+                        f"TIP: If using Virtual Drives or Network Shares, try running ComfyUI as Administrator."
+                    )
+                    raise Exception(error_msg)
+                    
+        else:
+            # LINUX/MAC: Standard symlink
+            os.symlink(target_path, link_full_path)
+            
+        # Register in DB
+        with get_db_connection() as conn:
+            norm_link_path = os.path.normpath(link_full_path).replace('\\', '/')
+            conn.execute("INSERT OR REPLACE INTO mounted_folders (path, target_source, created_at) VALUES (?, ?, ?)", 
+                         (norm_link_path, target_path, time.time()))
+            conn.commit()
+            
+        # Refresh Cache
+        get_dynamic_folder_config(force_refresh=True)
+        
+        return jsonify({'status': 'success', 'message': f'Successfully linked "{link_name}".'})
+        
+    except Exception as e:
+        print(f"Mount Error: {e}")
+        # Clean up if partially created
+        if os.path.exists(link_full_path):
+            try: os.rmdir(link_full_path) 
+            except: pass
+            try: os.unlink(link_full_path)
+            except: pass
+            
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+        
+@app.route('/galleryout/unmount_folder', methods=['POST'])
+def unmount_folder():
+    data = request.json
+    folder_key = data.get('folder_key')
+    
+    folders = get_dynamic_folder_config()
+    if folder_key not in folders: return jsonify({'status':'error', 'message':'Folder not found'}), 404
+    
+    folder_info = folders[folder_key]
+    path_to_remove = folder_info['path']
+    
+    # Security Check: Ensure it is actually in the mounted_folders table
+    # This prevents users from deleting real folders via this API
+    is_safe_mount = False
+    with get_db_connection() as conn:
+        norm_path = os.path.normpath(path_to_remove).replace('\\', '/')
+        row = conn.execute("SELECT path FROM mounted_folders WHERE path = ?", (norm_path,)).fetchone()
+        if row: is_safe_mount = True
+        
+    if not is_safe_mount:
+        return jsonify({'status':'error', 'message':'This folder is not a managed mount point. Cannot unmount.'}), 403
+        
+    try:
+        # Remove the Link (Not the content)
+        if os.name == 'nt':
+            # On Windows, rmdir removes the Junction point safely without deleting content
+            os.rmdir(path_to_remove)
+        else:
+            # On Linux/Mac, unlink removes the symlink
+            os.unlink(path_to_remove)
+            
+        # Cleanup DB
+        with get_db_connection() as conn:
+            # 1. Remove from Mounts registry
+            conn.execute("DELETE FROM mounted_folders WHERE path = ?", (norm_path,))
+            
+            # 2. Remove from AI Watch list (if present)
+            conn.execute("DELETE FROM ai_watched_folders WHERE path = ?", (path_to_remove,))
+            
+            # 3. CRITICAL: Remove the file records associated with this path from the Gallery DB
+            # We use LIKE to match the folder and everything inside it
+            # Standardize path separator for SQL query just in case
+            clean_path_for_query = path_to_remove + os.sep + '%'
+            conn.execute("DELETE FROM files WHERE path LIKE ?", (clean_path_for_query,))
+            
+            # 4. Also clean pending AI jobs for these files
+            # (We need to handle path separators carefully here, usually normalized in AI queue)
+            std_path_prefix = path_to_remove.replace('\\', '/')
+            conn.execute("DELETE FROM ai_indexing_queue WHERE file_path LIKE ?", (std_path_prefix + '/%',))
+            
+            conn.commit()
+            
+        get_dynamic_folder_config(force_refresh=True)
+        return jsonify({'status': 'success', 'message': 'Folder unmounted successfully.'})
+        
+    except Exception as e:
+        print(f"Unmount Error: {e}")
+        return jsonify({'status':'error', 'message':f"Error unmounting: {e}"}), 500
+
+@app.route('/galleryout/api/browse_filesystem', methods=['POST'])
+def browse_filesystem():
+    data = request.json
+    # Get path safely, handling None
+    raw_path = data.get('path', '')
+    if raw_path is None: raw_path = ''
+    current_path = str(raw_path).strip()
+    
+    response_data = {
+        'current_path': '',
+        'parent_path': '',
+        'folders': [],
+        'error': None
+    }
+
+    # --- BLOCK 1: LIST DRIVES (WINDOWS) OR ROOT ---
+    # If path is empty or 'Computer', list drives only and EXIT immediately.
+    if not current_path or current_path == 'Computer':
+        response_data['current_path'] = 'Computer'
+        
+        if os.name == 'nt':
+            drives = []
+            import string
+            # Iterate from A to Z
+            for letter in string.ascii_uppercase:
+                drive_path = f'{letter}:\\'
+                try:
+                    # Use isdir which is specific for drives
+                    # Fault-tolerant check inside its own try/except block
+                    if os.path.isdir(drive_path):
+                        drives.append({
+                            'name': f'Drive ({letter}:)', 
+                            'path': drive_path, 
+                            'is_drive': True
+                        })
+                except Exception:
+                    # If a specific drive hangs, is not ready, or errors, 
+                    # skip it and continue to the next letter.
+                    continue
+            
+            response_data['folders'] = drives
+            # Return JSON immediately. Do not execute further code.
+            return jsonify(response_data)
+            
+        else:
+            # On Linux/Mac, root is simply '/'
+            current_path = '/'
+
+    # --- BLOCK 2: SCAN FOLDER CONTENT ---
+    # We reach here only if browsing inside a specific drive or folder
+    try:
+        current_path = os.path.normpath(current_path)
+        items = []
+        
+        # Scandir is faster and allows skipping unreadable files individually
+        with os.scandir(current_path) as it:
+            for entry in it:
+                try:
+                    if entry.is_dir() and not entry.name.startswith('.'):
+                        items.append({
+                            'name': entry.name,
+                            'path': entry.path,
+                            'is_drive': False
+                        })
+                except Exception:
+                    # Skip individual unreadable folders without breaking the list
+                    continue
+        
+        items.sort(key=lambda x: x['name'].lower())
+        response_data['folders'] = items
+        response_data['current_path'] = current_path
+        
+        # Calculate "Up" button (Parent)
+        parent = os.path.dirname(current_path)
+        if parent == current_path: 
+            # If at drive root (e.g. C:\), parent is Computer list
+            if os.name == 'nt':
+                parent = '' 
+            else:
+                parent = '' 
+            
+        response_data['parent_path'] = parent
+
+    except Exception as e:
+        # Catch errors accessing the specific folder (not the drives)
+        response_data['error'] = f"Error accessing folder: {str(e)}"
+
+    return jsonify(response_data)
     
 # --- ZIP BACKGROUND JOB MANAGEMENT ---
 zip_jobs = {}
@@ -2943,7 +3433,86 @@ def move_batch():
     if failed_files or (skipped_count > 0 and moved_count == 0): status = 'partial_success'
         
     return jsonify({'status': status, 'message': message})
+
+@app.route('/galleryout/copy_batch', methods=['POST'])
+def copy_batch():
+    data = request.json
+    file_ids = data.get('file_ids', [])
+    dest_key = data.get('destination_folder')
+    keep_favorites = data.get('keep_favorites', False)
     
+    folders = get_dynamic_folder_config()
+    
+    if not all([file_ids, dest_key, dest_key in folders]):
+        return jsonify({'status': 'error', 'message': 'Invalid data provided.'}), 400
+    
+    dest_path_raw = folders[dest_key]['path']
+    copied_count = 0
+    failed_files = []
+    
+    with get_db_connection() as conn:
+        for file_id in file_ids:
+            try:
+                # 1. Fetch Source info
+                file_info = conn.execute("SELECT * FROM files WHERE id = ?", (file_id,)).fetchone()
+                if not file_info: continue
+                
+                source_path = file_info['path']
+                source_filename = file_info['name']
+                
+                if not os.path.exists(source_path):
+                    failed_files.append(f"{source_filename} (not found)")
+                    continue
+                
+                # 2. Determine Destination Path (Auto-rename logic)
+                # Helper function _get_unique_filepath handles (1), (2) etc.
+                final_dest_path = _get_unique_filepath(dest_path_raw, source_filename)
+                final_filename = os.path.basename(final_dest_path)
+                
+                # 3. Physical Copy (Metadata preserved via copy2)
+                shutil.copy2(source_path, final_dest_path)
+                
+                # 4. Create DB Record
+                new_id = hashlib.md5(final_dest_path.encode()).hexdigest()
+                new_mtime = time.time() # New file gets new import time
+                
+                # Logic for Favorites
+                is_fav = file_info['is_favorite'] if keep_favorites else 0
+                
+                # Insert Copy
+                # We copy AI data too because the image content is identical!
+                conn.execute("""
+                    INSERT INTO files (
+                        id, path, mtime, name, type, duration, dimensions, has_workflow, 
+                        size, is_favorite, last_scanned, workflow_files, workflow_prompt,
+                        ai_last_scanned, ai_caption, ai_embedding, ai_error
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    new_id, final_dest_path, new_mtime, final_filename, 
+                    file_info['type'], file_info['duration'], file_info['dimensions'], 
+                    file_info['has_workflow'], file_info['size'], 
+                    is_fav, # User Choice
+                    file_info['last_scanned'], 
+                    file_info['workflow_files'], file_info['workflow_prompt'],
+                    file_info['ai_last_scanned'], file_info['ai_caption'], file_info['ai_embedding'], file_info['ai_error']
+                ))
+                
+                copied_count += 1
+                
+            except Exception as e:
+                print(f"COPY ERROR: {e}")
+                failed_files.append(source_filename)
+                
+        conn.commit()
+        
+    msg = f"Successfully copied {copied_count} files."
+    status = 'success'
+    if failed_files:
+        status = 'partial_success'
+        msg += f" Failed: {len(failed_files)}"
+        
+    return jsonify({'status': status, 'message': msg}) 
+ 
 @app.route('/galleryout/delete_batch', methods=['POST'])
 def delete_batch():
     try:
@@ -3213,6 +3782,478 @@ def serve_thumbnail(file_id):
     if cache_path and os.path.exists(cache_path): return send_file(cache_path)
     return "Thumbnail generation failed", 404
 
+# --- STORYBOARD (GRID SYSTEM) - FAST + SMART CORRUPTION DETECTION ---
+@app.route('/galleryout/storyboard/<string:file_id>')
+def get_storyboard(file_id):
+    # 1. Validation
+    has_ffmpeg = FFPROBE_EXECUTABLE_PATH is not None
+    
+    try:
+        info = get_file_info_from_db(file_id)
+        if info['type'] not in ['video', 'animated_image']:
+            return jsonify({'status': 'error', 'message': 'Not a video or animated file'}), 400
+
+        if info['type'] == 'video' and not has_ffmpeg:
+             return jsonify({'status': 'error', 'message': 'FFmpeg not available'}), 501
+
+        filepath = info['path']
+        mtime = info['mtime']
+        
+        # 2. Cache Strategy
+        file_hash = hashlib.md5((filepath + str(mtime)).encode()).hexdigest()
+        cache_subdir = os.path.join(THUMBNAIL_CACHE_DIR, file_hash)
+        
+        # Return cached results immediately if available
+        if os.path.exists(cache_subdir):
+            cached_files = sorted(glob.glob(os.path.join(cache_subdir, "frame_*.jpg")))
+            if len(cached_files) > 0:
+                urls = [f"/galleryout/storyboard_frame/{file_hash}/{os.path.basename(f)}" for f in cached_files]
+                return jsonify({'status': 'success', 'cached': True, 'frames': urls})
+
+        os.makedirs(cache_subdir, exist_ok=True)
+
+        # 3. Get Duration + FPS + Frame Count
+        duration = 0
+        fps = 0
+        total_video_frames = 0
+        
+        if info['type'] == 'video' and has_ffmpeg:
+            # Get duration, fps, and frame count in ONE call
+            try:
+                cmd_info = [
+                    FFPROBE_EXECUTABLE_PATH, 
+                    '-v', 'error', 
+                    '-select_streams', 'v:0',
+                    '-show_entries', 'stream=duration,r_frame_rate,nb_frames', 
+                    '-of', 'csv=p=0', 
+                    filepath
+                ]
+                res = subprocess.run(
+                    cmd_info, 
+                    capture_output=True, 
+                    text=True, 
+                    timeout=3,
+                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+                )
+                if res.stdout.strip():
+                    parts = res.stdout.strip().split(',')
+                    
+                    if len(parts) > 0 and parts[0]:
+                        fps_str = parts[0]
+                        if '/' in fps_str:
+                            num, den = fps_str.split('/')
+                            fps = float(num) / float(den)
+                        else:
+                            fps = float(fps_str)
+                    
+                    if len(parts) > 1 and parts[1]:
+                        duration = float(parts[1])
+                    
+                    if len(parts) > 2 and parts[2]:
+                        total_video_frames = int(parts[2])
+                        
+            except Exception as e:
+                print(f"Info probe error: {e}")
+            
+            # Fallback: Try DB duration
+            if duration <= 0 and info.get('duration'):
+                try:
+                    parts = info['duration'].split(':')
+                    parts.reverse()
+                    duration += float(parts[0])
+                    if len(parts) > 1: duration += int(parts[1]) * 60
+                    if len(parts) > 2: duration += int(parts[2]) * 3600
+                except: 
+                    pass
+            
+            # Fallback: Try format duration
+            if duration <= 0:
+                try:
+                    cmd_dur2 = [
+                        FFPROBE_EXECUTABLE_PATH, 
+                        '-v', 'error', 
+                        '-show_entries', 'format=duration', 
+                        '-of', 'default=noprint_wrappers=1:nokey=1', 
+                        filepath
+                    ]
+                    res2 = subprocess.run(
+                        cmd_dur2, 
+                        capture_output=True, 
+                        text=True, 
+                        timeout=3,
+                        creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+                    )
+                    if res2.stdout.strip(): 
+                        duration = float(res2.stdout.strip())
+                except: 
+                    pass
+            
+            # Calculate missing values
+            if total_video_frames == 0 and duration > 0 and fps > 0:
+                total_video_frames = int(duration * fps)
+            elif fps == 0 and duration > 0 and total_video_frames > 0:
+                fps = total_video_frames / duration
+        
+        # Final fallback
+        if duration <= 0 and info['type'] == 'video': 
+            duration = 60
+        if fps <= 0 and info['type'] == 'video':
+            fps = 25
+
+        # 4. SMART CORRUPTION TEST - Test at 50% instead of end (faster + reliable)
+        needs_transcode = False
+        
+        if info['type'] == 'video' and has_ffmpeg and duration > 15:
+            print(f"🔍 Quick test...")
+            
+            ffmpeg_name = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
+            ffmpeg_bin = os.path.join(os.path.dirname(FFPROBE_EXECUTABLE_PATH), ffmpeg_name)
+            if not os.path.exists(ffmpeg_bin): 
+                ffmpeg_bin = ffmpeg_name
+            
+            test_path = os.path.join(cache_subdir, "test.jpg")
+            # Test at 50% - faster seek and still detects corruption
+            test_timestamp = duration * 0.5
+            
+            creation_flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+            
+            # Adaptive timeout based on duration
+            test_timeout = min(20, max(8, int(duration / 100)))  # 8-20s range
+            
+            cmd_test = [
+                ffmpeg_bin, '-y',
+                '-ss', f"{test_timestamp:.3f}",
+                '-i', filepath,
+                '-frames:v', '1',
+                '-vf', 'scale=-2:240:flags=fast_bilinear',
+                '-q:v', '5',
+                test_path
+            ]
+            
+            try:
+                subprocess.run(
+                    cmd_test,
+                    check=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=test_timeout,
+                    creationflags=creation_flags
+                )
+                
+                if os.path.exists(test_path) and os.path.getsize(test_path) > 100:
+                    print(f"✅ Healthy")
+                    needs_transcode = False
+                else:
+                    print(f"⚠️ Corrupted!")
+                    needs_transcode = True
+                    
+            except subprocess.TimeoutExpired:
+                # Timeout on healthy files = just slow, not corrupted
+                print(f"⏱️ Slow seek (normal for large files)")
+                needs_transcode = False
+            except Exception as e:
+                print(f"⚠️ Corrupted: {e}")
+                needs_transcode = True
+                
+            if os.path.exists(test_path):
+                try: os.remove(test_path)
+                except: pass
+
+        # 5. TRANSCODING if needed
+        source_for_extraction = filepath
+        temp_transcoded = None
+        
+        if needs_transcode:
+            print(f"🔧 Transcoding...")
+            
+            try:
+                ffmpeg_name = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
+                ffmpeg_bin = os.path.join(os.path.dirname(FFPROBE_EXECUTABLE_PATH), ffmpeg_name)
+                if not os.path.exists(ffmpeg_bin): 
+                    ffmpeg_bin = ffmpeg_name
+                
+                temp_transcoded = os.path.join(cache_subdir, f"temp_proxy_{uuid.uuid4().hex}.mp4")
+                
+                cmd_transcode = [
+                    ffmpeg_bin, '-y',
+                    '-i', filepath,
+                    '-vf', 'scale=-2:480',
+                    '-c:v', 'libx264',
+                    '-preset', 'ultrafast',
+                    '-crf', '28',
+                    '-an',
+                    '-movflags', '+faststart',
+                    temp_transcoded
+                ]
+                
+                creation_flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+                
+                subprocess.run(
+                    cmd_transcode,
+                    capture_output=True,
+                    text=True,
+                    timeout=300,
+                    creationflags=creation_flags
+                )
+                
+                if os.path.exists(temp_transcoded) and os.path.getsize(temp_transcoded) > 1000:
+                    print(f"✅ Transcoded")
+                    source_for_extraction = temp_transcoded
+                    
+                    # Get corrected info
+                    try:
+                        cmd_info = [
+                            FFPROBE_EXECUTABLE_PATH, 
+                            '-v', 'error', 
+                            '-select_streams', 'v:0',
+                            '-show_entries', 'stream=duration,r_frame_rate,nb_frames', 
+                            '-of', 'csv=p=0', 
+                            temp_transcoded
+                        ]
+                        res = subprocess.run(
+                            cmd_info, 
+                            capture_output=True, 
+                            text=True, 
+                            timeout=2,
+                            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+                        )
+                        if res.stdout.strip():
+                            parts = res.stdout.strip().split(',')
+                            
+                            if len(parts) > 0 and parts[0]:
+                                fps_str = parts[0]
+                                if '/' in fps_str:
+                                    num, den = fps_str.split('/')
+                                    fps = float(num) / float(den)
+                                else:
+                                    fps = float(fps_str)
+                            
+                            if len(parts) > 1 and parts[1]:
+                                duration = float(parts[1])
+                            
+                            if len(parts) > 2 and parts[2]:
+                                total_video_frames = int(parts[2])
+                    except:
+                        pass
+                        
+            except Exception as e:
+                print(f"❌ Transcode failed: {e}")
+                if temp_transcoded and os.path.exists(temp_transcoded):
+                    try: os.remove(temp_transcoded)
+                    except: pass
+                temp_transcoded = None
+
+        # 6. Worker Function (OPTIMIZED)
+        def extract_and_save_frame(index, timestamp):
+            out_filename = f"frame_{index:02d}.jpg"
+            out_path = os.path.join(cache_subdir, out_filename)
+            
+            try:
+                img = None
+                actual_timestamp = timestamp
+                actual_frame_number = None
+                
+                # A. Video Extraction
+                if info['type'] == 'video' and has_ffmpeg:
+                    actual_timestamp = timestamp
+                    
+                    if fps > 0:
+                        actual_frame_number = int(timestamp * fps)
+                    
+                    ffmpeg_name = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
+                    ffmpeg_bin = os.path.join(os.path.dirname(FFPROBE_EXECUTABLE_PATH), ffmpeg_name)
+                    if not os.path.exists(ffmpeg_bin): 
+                        ffmpeg_bin = ffmpeg_name 
+                    
+                    creation_flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+                    
+                    # Fast extraction
+                    cmd = [
+                        ffmpeg_bin, '-y',
+                        '-ss', f"{timestamp:.3f}",
+                        '-i', source_for_extraction,
+                        '-frames:v', '1',
+                        '-vf', 'scale=-2:360:flags=fast_bilinear',
+                        '-q:v', '4',
+                        '-preset', 'ultrafast',
+                        out_path
+                    ]
+                    
+                    try:
+                        subprocess.run(
+                            cmd, 
+                            check=True, 
+                            stdout=subprocess.DEVNULL, 
+                            stderr=subprocess.DEVNULL, 
+                            timeout=8,
+                            creationflags=creation_flags
+                        )
+                        
+                        if os.path.exists(out_path) and os.path.getsize(out_path) > 100:
+                            img = Image.open(out_path)
+                            
+                    except Exception:
+                        if os.path.exists(out_path):
+                            try: os.remove(out_path)
+                            except: pass
+                        
+                        # Slow seek fallback
+                        cmd_slow = [
+                            ffmpeg_bin, '-y',
+                            '-i', source_for_extraction,
+                            '-ss', f"{timestamp:.3f}",
+                            '-frames:v', '1',
+                            '-vf', 'scale=-2:360:flags=fast_bilinear',
+                            '-q:v', '4',
+                            out_path
+                        ]
+                        
+                        try:
+                            subprocess.run(
+                                cmd_slow, 
+                                stdout=subprocess.DEVNULL, 
+                                stderr=subprocess.DEVNULL, 
+                                timeout=40,
+                                creationflags=creation_flags
+                            )
+                            
+                            if os.path.exists(out_path) and os.path.getsize(out_path) > 100:
+                                img = Image.open(out_path)
+                        except:
+                            pass
+
+                # B. Animation Extraction
+                elif info['type'] == 'animated_image':
+                    with Image.open(filepath) as source_img:
+                        is_anim = getattr(source_img, 'is_animated', False)
+                        total_frames = source_img.n_frames if is_anim else 1
+                        pct = index / 10.0
+                        target_frame_idx = int(pct * (total_frames - 1))
+                        source_img.seek(target_frame_idx)
+                        img = source_img.copy().convert('RGB')
+                        img.thumbnail((640, 360))
+                        
+                        actual_timestamp = None
+                        actual_frame_number = target_frame_idx + 1
+
+                # C. Professional Overlay
+                if img:
+                    from PIL import ImageDraw, ImageFont
+                    draw = ImageDraw.Draw(img)
+                    
+                    # Calculate text
+                    if actual_timestamp is None:
+                        # Animation
+                        with Image.open(filepath) as temp_img:
+                            total_frames = temp_img.n_frames if getattr(temp_img, 'is_animated', False) else 1
+                        time_str = f"#{actual_frame_number}/{total_frames}"
+                    else:
+                        # Video: timestamp + frame
+                        display_ts = round(actual_timestamp)
+                        m, s = int(display_ts // 60), int(display_ts % 60)
+                        
+                        if actual_frame_number is not None and total_video_frames > 0:
+                            display_frame_number = actual_frame_number + 1
+                            time_str = f"{m:02d}:{s:02d} | #{display_frame_number}/{total_video_frames}"
+                        else:
+                            time_str = f"{m:02d}:{s:02d}"
+                    
+                    # Font
+                    font_size = 24
+                    font = None
+                    try: 
+                        font = ImageFont.load_default(size=font_size)
+                    except: 
+                        font = ImageFont.load_default()
+
+                    # Measure
+                    left, top, right, bottom = draw.textbbox((0, 0), time_str, font=font)
+                    txt_w = right - left
+                    txt_h = bottom - top
+
+                    # Box
+                    pad_x = 6
+                    pad_y = 4
+                    box_w = txt_w + (pad_x * 2)
+                    box_h = txt_h + (pad_y * 2)
+                    
+                    # Draw
+                    draw.rectangle([0, 0, box_w, box_h], fill="black", outline=None)
+                    draw.text((pad_x - left, pad_y - top), time_str, font=font, fill="#ffffff")
+                    
+                    # Save
+                    img.save(out_path, quality=85)
+                    img.close()
+                    
+                    return f"/galleryout/storyboard_frame/{file_hash}/{out_filename}"
+                    
+            except Exception as e:
+                print(f"Worker error {index}: {e}")
+                
+            return None
+
+        # 7. Parallel Execution
+        timestamps = []
+        
+        if info['type'] == 'video':
+            safe_end = max(0, duration - 0.1)
+            # Generate 11 evenly spaced timestamps, but force the last one (index 10) to be the exact last frame
+            base_timestamps = [(i, (safe_end / 10) * i) for i in range(11)]
+            # Override the last timestamp to point to the very end (or last frame if frame count is known)
+            if total_video_frames > 0 and fps > 0:
+                # Use exact last frame position
+                last_frame_timestamp = (total_video_frames - 1) / fps
+                # Ensure it doesn't exceed duration
+                last_frame_timestamp = min(last_frame_timestamp, duration - 0.001)
+                base_timestamps[-1] = (10, last_frame_timestamp)
+            else:
+                # Fallback: use end of video minus a tiny epsilon
+                base_timestamps[-1] = (10, duration - 0.001)
+            timestamps = base_timestamps
+        else:
+            timestamps = [(i, 0) for i in range(11)]
+        
+        frame_urls = [None] * 11
+        
+        print(f"🎬 Extracting...")
+        with concurrent.futures.ThreadPoolExecutor(max_workers=11) as executor:
+            futures = {executor.submit(extract_and_save_frame, i, ts): i for i, ts in timestamps}
+            for future in concurrent.futures.as_completed(futures):
+                idx = futures[future]
+                res = future.result()
+                if res: 
+                    frame_urls[idx] = res
+
+        success_count = sum(1 for url in frame_urls if url is not None)
+        print(f"✅ {success_count}/11")
+
+        # Cleanup
+        if temp_transcoded and os.path.exists(temp_transcoded):
+            try:
+                os.remove(temp_transcoded)
+            except:
+                pass
+
+        final_urls = [url for url in frame_urls if url is not None]
+        
+        if not final_urls:
+             return jsonify({'status': 'error', 'message': 'Extraction failed completely.'}), 500
+
+        return jsonify({'status': 'success', 'cached': False, 'frames': final_urls})
+
+    except Exception as e:
+        print(f"Storyboard error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/galleryout/storyboard_frame/<string:file_hash>/<string:filename>')
+def serve_storyboard_frame(file_hash, filename):
+    safe_name = secure_filename(filename)
+    directory = os.path.join(THUMBNAIL_CACHE_DIR, file_hash)
+    return send_from_directory(directory, safe_name)
+# Route to serve the cached frames
+
 @app.route('/galleryout/input_file/<path:filename>')
 def serve_input_file(filename):
     """Serves input files directly from the ComfyUI Input folder."""
@@ -3236,21 +4277,37 @@ def serve_input_file(filename):
 def check_metadata(file_id):
     """
     Lightweight endpoint to check real-time status of metadata.
+    Now includes Real Path resolution for mounted folders.
     """
     try:
         with get_db_connection() as conn:
-            # Aggiunto ai_last_scanned alla query
-            row = conn.execute("SELECT has_workflow, ai_caption, ai_last_scanned FROM files WHERE id = ?", (file_id,)).fetchone()
+            # Added 'path' to selection to resolve symlinks
+            row = conn.execute("SELECT path, has_workflow, ai_caption, ai_last_scanned FROM files WHERE id = ?", (file_id,)).fetchone()
             
         if not row:
             return jsonify({'status': 'error', 'message': 'File not found'}), 404
             
+        # Resolve Real Path (Handles Windows Junctions and Linux Symlinks)
+        internal_path = row['path']
+        real_path_resolved = os.path.realpath(internal_path)
+        
+        # Check if they differ (ignore case on Windows for safety)
+        is_different = False
+        if os.name == 'nt':
+            if internal_path.lower() != real_path_resolved.lower():
+                is_different = True
+        else:
+            if internal_path != real_path_resolved:
+                is_different = True
+                
         return jsonify({
             'status': 'success',
             'has_workflow': bool(row['has_workflow']),
             'has_ai_caption': bool(row['ai_caption']),
             'ai_caption': row['ai_caption'] or "",
-            'ai_last_scanned': row['ai_last_scanned'] or 0 # Nuovi dati
+            'ai_last_scanned': row['ai_last_scanned'] or 0,
+            # Send real_path only if it's actually different (a link)
+            'real_path': real_path_resolved if is_different else None
         })
     except Exception as e:
         print(f"Metadata Check Error: {e}")

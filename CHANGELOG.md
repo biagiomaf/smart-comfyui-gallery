@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.54] - 2026-01-20
+
+### Added
+- **Compare Mode:** Implemented a split-view comparison engine for Images and Videos.
+  - **Sync Engine:** Mathematical synchronization of Zoom (`scale`) and Pan (`translate`) coordinates between two viewports.
+  - **Diff Algorithm:** Backend endpoint (`/api/compare_files`) that parses workflow JSONs, flattens nodes, and returns a sorted table of parameter differences.
+  - **UX Tools:** Added image rotation (90° steps) for vertical layouts and interactive floating labels to toggle between filename and resolution.
+- **Link External Folders:** Added capability to mount arbitrary filesystem paths (e.g., external drives, network shares) into the gallery root. Includes a recursive directory browser API (`/api/browse_filesystem`).
+- **Mount Guard:** Implemented a startup safety check that verifies the accessibility of linked mount roots. If a drive is offline, the system prevents the database garbage collector from deleting associated metadata (Favorites, AI Data).
+- **Quick Actions (Grid View):**  
+  - **Keyboard Shortcuts:** Added `T` hotkey to instantly show/hide the Search & Filter overlay panel.
+  - **Quick Delete:** Added `DEL`/`CANC` listener. Hovering over an item and pressing the key executes deletion immediately, bypassing the confirmation modal for rapid culling.
+  - **Quick Favorite:** Added `F` listener. Hovering over an image and pressing `F` toggles the favorite status instantly with visual feedback.
+- **Enhanced Lightbox Metadata:** 
+  - **Megapixel Calculation:** Frontend now dynamically calculates and displays the MP count (e.g., `16.7 MP`) based on image dimensions, essential for verifying upscales.
+  - **Path Resolution:** Clicking the folder name now resolves symlinks/junctions to display the *Real Disk Path* alongside the internal gallery path.
+- **DB Migration:** Added automatic schema verification for the `size` column during initialization to ensure compatibility with legacy databases.
+
+### Changed
+- **Performance (Smart Grid):** Completely rewrote the `IntersectionObserver` logic for video elements. Videos now strictly execute `.pause()` when leaving the viewport and `.play()` when entering, resolving high resource usage in large grids.
+- **Mounting Logic (Windows):** Refactored the `mount_folder` endpoint to handle Windows specifics robustly. It now attempts a Junction (`mklink /J`) first, and automatically falls back to a Symbolic Link (`mklink /D`) if the target is a Virtual Drive (VXHD) or Network Share, capturing specific `stderr` messages for debugging.
+- **Consistency:** The application now enforces a **Full Sync** on every startup (removing the check for empty DB) to guarantee that files deleted or renamed externally via the OS are correctly purged from the internal database.
+- **Scanning Logic:** Switched file indexing from a Blacklist approach to a strict **Whitelist** of valid media extensions. This prevents the scanner from attempting to process temporary files (e.g., `_output_images_will_be_put_here`) or partial downloads.
+
+### Fixed
+- **Mounting Errors:** Fixed generic "returned non-zero exit status 1" errors during folder linking by sanitizing path separators before passing them to the Windows shell.
+- **Video Playback:** Fixed race conditions in the lazy loading logic to ensure the video poster/thumbnail is always visible while the video buffer is loading.
+
 ## [1.53] - 2026-01-07
 
 ### Added

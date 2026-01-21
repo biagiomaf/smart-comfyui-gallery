@@ -52,19 +52,16 @@ SmartGallery turns your output folder into a **living memory of your creative pr
 
 ## Screenshots
 <div align="center">
-  <!-- Sezione Desktop Gallery -->
+  <!-- Desktop Gallery Section -->
   <table style="border-collapse: collapse; width: 100%;">
-    <!-- Titolo Desktop con effetto grigetto -->
     <tr>
       <td align="center"><strong>Desktop Interface</strong></td>
     </tr>
-    <!-- Immagine Desktop -->
     <tr>
       <td align="center" style="padding: 10px;">
         <img src="assets/desktop.png" width="900" alt="Desktop View">
       </td>
     </tr>
-    <!-- Riga Didascalia Desktop (Tecnica adottata per Node Summary) -->
     <tr>
       <td align="center" style="vertical-align: top; padding: 10px;">
         <em>Fast, clean desktop gallery with workflow-aware search</em>
@@ -72,16 +69,14 @@ SmartGallery turns your output folder into a **living memory of your creative pr
     </tr>
   </table>
 
-  <br> <!-- Spazio tra le due tabelle -->
+  <br>
 
-  <!-- Sezione Mobile Gallery -->
+  <!-- Mobile Gallery Section -->
   <table style="border-collapse: collapse; width: 100%;">
-    <!-- Riga 1: Titoli (Effetto rettangolo grigio) -->
     <tr>
       <td align="center" width="50%"><strong>Mobile Interface</strong></td>
       <td align="center" width="50%"><strong>Node Summary</strong></td>
     </tr>
-    <!-- Riga 2: Immagini allineate al TOP -->
     <tr>
       <td align="center" style="vertical-align: top; padding: 10px;">
         <img src="assets/mobile.png" height="500" alt="Mobile View">
@@ -90,7 +85,6 @@ SmartGallery turns your output folder into a **living memory of your creative pr
         <img src="assets/mobile-node-summary.png" height="500" alt="Node Summary">
       </td>
     </tr>
-    <!-- Riga 3: Didascalie -->
     <tr>
       <td align="center" style="vertical-align: top; padding: 10px;">
         <em>Fully usable on mobile</em>
@@ -105,28 +99,39 @@ SmartGallery turns your output folder into a **living memory of your creative pr
 ---
 
 ## Core Features
-- Search with powerful filters: prompt keywords, specific models/LoRAs, file extension, recursive folder scanning, date range, and more
-- Full workflow access for PNG, JPG, WebP, and MP4: view node summary, copy to clipboard, or download as JSON
-- Upload external files to add them to your collection and retrieve their workflow
-- "Auto-Watch" mode to automatically refresh the gallery when new files appear
-- Batch operations (delete, move, re-scan)
-- Full folder management directly from the UI
-- Fully offline and local — works even when ComfyUI is not running
-- Cross-platform: Windows, Linux, macOS + Docker
+- **Search & Filter:** Find files by prompt keywords, specific models/LoRAs, file extension, date range, and more.
+- **Full Workflow Access:** View node summary, copy to clipboard, or download JSON for any PNG, JPG, WebP,WebM or MP4.
+- **Compare Mode:** Professional side-by-side comparison tool for images and videos with synchronized zoom, rotate and parameter diff.
+- **Link External Folders:** Mount external hard drives or network paths directly into the gallery root.
+- **Auto-Watch:** Automatically refreshes the gallery when new files appear.
+- **Batch Operations:** Select multiple files to delete, move, or re-scan in bulk.
+- **Fully Offline:** Works even when ComfyUI is not running.
+- **Cross-platform:** Windows, Linux, macOS + Docker support.
 
 ---
 
 **Actively developed** — frequent updates focused on real ComfyUI workflows.  
 
-## What’s New in v1.53
-- Native preview support for ProRes `.mov` files (optimized for macOS)
-- "Auto-Watch Folder": configurable interval to automatically refresh the gallery when new files appear  
-- Shortcut 'C': Copy the current image's workflow metadata to the clipboard  
-- Recursive search with persistent filters  
-- Modernized dark / glass UI  
-- Seamless infinite scrolling  
-- Fully collapsible folder sidebar  
-- Improved mobile-first responsive layout  
+## What’s New in v1.54
+This release introduces powerful new tools for analyzing images and managing external storage.
+
+<div align="center">
+  <img src="assets/compare2.png" width="900" alt="New Compare Mode Interface">
+  <br>
+  <em>New Compare Mode: Side-by-side view with Parameter Diff Table</em>
+</div>
+<br>
+
+- **NEW: Compare Mode:** Select two images or videos to compare them side-by-side. Features a synchronized zoom/pan/rotate engine (move one image, the other follows) and a "Diff Table" that highlights exactly which parameters changed in the workflow (e.g., CFG, Steps, Seed).
+- **NEW: Link External Folders:** Mount folders from external drives, partitions, or network shares directly into SmartGallery. Includes a visual file browser and robust Windows linking that automatically handles Virtual Drives and Network Shares. 
+- **Enhanced Lightbox Info:** The viewer now displays the exact Megapixel count (e.g., *16.8 MP* - essential for checking upscales) and full directory details, including the real source path for linked external folders.
+- **Mount Guard:** A safety system that detects if a linked drive is offline at startup. It protects your database from deleting metadata (Favorites/Notes) until the drive is reconnected.
+- **Quick Actions & Shortcuts:** Speed up your workflow with new hotkeys:
+  - Press `T` to toggle the Filter Panel instantly.
+  - Hover + `F` to Quick Favorite.
+  - Hover + `DEL` to Quick Delete (skips popup).
+- **Smart Video Grid:** Completely rewritten "Play/Pause on Scroll" engine. Videos strictly pause when leaving the viewport, drastically reducing CPU/GPU usage.
+- **Auto-Consistency:** The system forces a robust Full Sync on every startup to remove "ghost" files deleted externally via OS.
 
 This is a curated summary — see the 👉 full [CHANGELOG](CHANGELOG.md) for all technical changes.
 
@@ -454,4 +459,3 @@ MIT License — see [LICENSE](LICENSE)
 <p align="center">
   <em>Made for the ComfyUI community</em>
 </p>
-
