@@ -427,7 +427,7 @@ def calculate_file_hash(filepath):
         st = os.stat(filepath)
         file_size = st.st_size
 
-        # Für kleine Dateien (<100MB): vollständiger Hash
+        # For small files (<100MB): full hash
         if file_size < 100 * 1024 * 1024:
             sha256 = hashlib.sha256()
             with open(filepath, 'rb') as f:
@@ -435,14 +435,14 @@ def calculate_file_hash(filepath):
                     sha256.update(chunk)
             return sha256.hexdigest().upper()
 
-        # Für große Dateien: AutoV2 method (head + tail)
+        # For large files: AutoV2 method (head + tail)
         sha256 = hashlib.sha256()
         with open(filepath, 'rb') as f:
-            # Lese ersten 64KB
+            # Read first 64KB
             head = f.read(65536)
             sha256.update(head)
 
-            # Lese letzten 64KB (wenn Datei groß genug)
+            # Read last 64KB (if file is large enough)
             if file_size > 131072:
                 f.seek(-65536, os.SEEK_END)
                 tail = f.read(65536)
@@ -452,6 +452,19 @@ def calculate_file_hash(filepath):
 
     except Exception as e:
         print(f"❌ Hash calculation failed for {filepath}: {e}")
+        return None
+
+def calculate_full_sha256(filepath):
+    """Calculate FULL SHA256 hash (for CivitAI compatibility)"""
+    import hashlib
+    try:
+        sha256 = hashlib.sha256()
+        with open(filepath, 'rb') as f:
+            for chunk in iter(lambda: f.read(65536), b''):
+                sha256.update(chunk)
+        return sha256.hexdigest().upper()
+    except Exception as e:
+        print(f"❌ Full hash calculation failed for {filepath}: {e}")
         return None
 
 def read_safetensors_metadata(filepath):
@@ -546,26 +559,26 @@ def scan_models(force_rescan=False):
                         st = os.stat(full_path)
                         current_mtime = int(st.st_mtime)
 
-                        # Check ob Datei unverändert ist
+                        # Check if file is unchanged
                         if not force_rescan and full_path in db_cache:
                             if db_cache[full_path]['mtime'] == current_mtime:
-                                # Unverändert - skip
+                                # Unchanged - skip
                                 continue
 
-                        # Neu oder geändert - Hash berechnen
+                        # New or changed - calculate hash
                         file_hash = calculate_file_hash(full_path)
                         name = os.path.splitext(file)[0]
                         model_id = fast_model_id(full_path)
 
-                        # Metadata extraction für LoRAs
+                        # Metadata extraction for LoRAs
                         trigger = None
                         tags = None
 
                         if kind == 'loras' and full_path.lower().endswith('.safetensors'):
                             metadata = read_safetensors_metadata(full_path)
                             if metadata:
-                                # Trigger: Placeholder für CivitAI-Integration
-                                trigger = "CivitAI integration pending"
+                                # Trigger: Will be filled by CivitAI fetch (leave as None)
+                                # trigger = None (already set above)
 
                                 # Tags: Extract from safetensors
                                 tag_frequency = metadata.get('ss_tag_frequency', '')
@@ -602,7 +615,7 @@ def scan_models(force_rescan=False):
               item['size'], item['hash'], item['mtime'], item['scanned_at'],
               item['trigger'], item['tags']))
 
-    # Entferne gelöschte Dateien aus DB
+    # Remove deleted files from DB
     cursor.execute("SELECT path FROM models")
     all_db_paths = {row[0] for row in cursor.fetchall()}
     deleted_paths = all_db_paths - scanned_paths
@@ -3728,6 +3741,108 @@ def api_list_models():
             'status': 'success',
             'count': len(models),
             'models': models
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/galleryout/api/models/update-civitai', methods=['POST'])
+def api_update_civitai_metadata():
+    """Update model metadata from CivitAI"""
+    try:
+        data = request.json
+        if not data or 'updates' not in data:
+            return jsonify({'status': 'error', 'message': 'Missing updates data'}), 400
+
+        db_path = os.path.join(BASE_SMARTGALLERY_PATH, SQLITE_CACHE_FOLDER_NAME, DATABASE_FILENAME)
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        updated_count = 0
+        for update in data['updates']:
+            model_id = update.get('modelId')
+            civitai_data = update.get('civitaiData', {})
+
+            if not model_id:
+                continue
+
+            # Extract trigger and tags from CivitAI data
+            # 'tags' field from frontend contains the trainedWords (trigger words)
+            trigger = civitai_data.get('tags', '') or None
+            # Store the full name (model + version) in tags field for reference
+            tags = f"{civitai_data.get('name', '')} - {civitai_data.get('versionName', '')}".strip(' -') or None
+            # Use CivitAI model name as the display name
+            model_name = civitai_data.get('name', '') or None
+
+            print(f"Updating model {model_id}: name='{model_name}', trigger='{trigger}', tags='{tags}'")
+
+            cursor.execute("""
+                UPDATE models
+                SET name = ?, trigger = ?, tags = ?
+                WHERE id = ?
+            """, (model_name, trigger, tags, model_id))
+
+            if cursor.rowcount > 0:
+                updated_count += 1
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            'status': 'success',
+            'updated': updated_count,
+            'message': f'Updated {updated_count} models'
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/galleryout/api/models/calculate-full-hash', methods=['POST'])
+def api_calculate_full_hash():
+    """Calculate full SHA256 hash for selected models (for CivitAI compatibility)"""
+    try:
+        data = request.json
+        if not data or 'modelIds' not in data:
+            return jsonify({'status': 'error', 'message': 'Missing modelIds'}), 400
+
+        model_ids = data['modelIds']
+
+        db_path = os.path.join(BASE_SMARTGALLERY_PATH, SQLITE_CACHE_FOLDER_NAME, DATABASE_FILENAME)
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        results = []
+        for model_id in model_ids:
+            # Get model path from DB
+            cursor.execute("SELECT path FROM models WHERE id = ?", (model_id,))
+            row = cursor.fetchone()
+
+            if not row:
+                results.append({'modelId': model_id, 'status': 'error', 'message': 'Model not found'})
+                continue
+
+            filepath = row[0]
+
+            if not os.path.exists(filepath):
+                results.append({'modelId': model_id, 'status': 'error', 'message': 'File not found'})
+                continue
+
+            # Calculate full hash
+            print(f"Calculating full SHA256 for: {os.path.basename(filepath)}")
+            full_hash = calculate_full_sha256(filepath)
+
+            if full_hash:
+                # Update DB with full hash
+                cursor.execute("UPDATE models SET hash = ? WHERE id = ?", (full_hash, model_id))
+                results.append({'modelId': model_id, 'status': 'success', 'hash': full_hash})
+                print(f"  ✓ Full hash: {full_hash[:16]}...")
+            else:
+                results.append({'modelId': model_id, 'status': 'error', 'message': 'Hash calculation failed'})
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            'status': 'success',
+            'results': results
         })
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500

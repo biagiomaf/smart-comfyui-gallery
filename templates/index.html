@@ -5215,6 +5215,30 @@
             white-space: nowrap;
         }
 
+        .model-select-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--primary-color);
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        .btn-civitai {
+            padding: 8px 16px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .btn-civitai:hover {
+            background: #218838;
+        }
+
         .badge {
             padding: 4px 8px;
             border-radius: 4px;
@@ -5369,15 +5393,15 @@
                         <button type="button" id="refresh-btn" class="glass-btn" title="Manual Refresh">🔃 Refresh</button>
                         <button type="button" id="refresh-options-btn" class="glass-btn" title="Auto-Refresh Options">⋮</button>
                     </div>
-                    <div id="auto-refresh-popover">
+                    <div id="auto-refresh-popover-refresh">
                         <h4 style="margin:0 0 10px 0; color:var(--success-color);">⏱️ Auto-Watch</h4>
                         <div class="ar-row">
-                            <label for="ar-toggle">Enable Watch</label>
-                            <input type="checkbox" id="ar-toggle" style="accent-color:var(--success-color);">
+                            <label for="ar-toggle-refresh">Enable Watch</label>
+                            <input type="checkbox" id="ar-toggle-refresh" style="accent-color:var(--success-color);">
                         </div>
                         <div class="ar-row" style="margin-top:8px;">
-                            <label for="ar-interval">Seconds:</label>
-                            <input type="number" id="ar-interval" class="ar-input" value="10" min="5" max="3600">
+                            <label for="ar-interval-refresh">Seconds:</label>
+                            <input type="number" id="ar-interval-refresh" class="ar-input" value="10" min="5" max="3600">
                         </div>
                     </div>
                 </div>
@@ -5446,7 +5470,7 @@
         <div class="mobile-big-actions">
             <!-- Filters Button (Hidden during AI Search) -->
             {% if not is_ai_search %}
-            <button type="button" id="mobile-filter-toggle" class="glass-btn filter-main-btn {% if active_filters_count > 0 %}active-blue{% endif %}">
+            <button type="button" id="mobile-filter-toggle-secondary" class="glass-btn filter-main-btn {% if active_filters_count > 0 %}active-blue{% endif %}">
                 🔍 Filters {% if active_filters_count > 0 %}({{ active_filters_count }}){% endif %}
                 {% if active_filters_count > 0 %}<span class="filter-reset-icon filter-reset-badge">✕</span>{% endif %}
             </button>
@@ -6227,7 +6251,10 @@
         <div class="models-container">
             <div class="models-header">
                 <h2>🎨 Model Management</h2>
-                <button id="refresh-models" class="btn-refresh">🔄 Refresh</button>
+                <div style="display: flex; gap: 10px;">
+                    <button id="refresh-models" class="btn-refresh">🔄 Refresh</button>
+                    <button id="fetch-civitai-btn" class="btn-civitai" style="display: none;">🔍 Fetch CivitAI Metadata</button>
+                </div>
             </div>
             <div id="models-loading" style="display: none; padding: 40px; text-align: center;">
                 <p>Loading models...</p>
@@ -6235,6 +6262,18 @@
             <div id="models-content">
                 <!-- Tabellen werden hier pro Typ eingefügt -->
             </div>
+        </div>
+    </div>
+
+    <!-- CivitAI Progress Overlay -->
+    <div id="civitai-progress-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; align-items: center; justify-content: center;">
+        <div style="background: var(--surface-color); padding: 30px; border-radius: 12px; min-width: 400px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);">
+            <h3 style="margin: 0 0 20px 0; color: var(--primary-color);">🔍 Fetching CivitAI Metadata</h3>
+            <p id="civitai-status-text" style="margin: 0 0 15px 0; color: var(--text-color);">Processing: 0/0 models</p>
+            <div style="background: rgba(0,0,0,0.3); height: 24px; border-radius: 12px; overflow: hidden; margin-bottom: 20px;">
+                <div id="civitai-progress-bar" style="background: var(--primary-color); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+            </div>
+            <button id="civitai-cancel-btn" class="btn-refresh" style="width: 100%; background: var(--danger-color, #dc3545);">✕ Cancel</button>
         </div>
     </div>
 
@@ -7890,17 +7929,32 @@
                     const galleryItem = document.querySelector(`.gallery-item[data-file-id="${fileId}"]`);
                     if (galleryItem) {
                         galleryItem.dataset.fileId = newId;
-                        galleryItem.querySelector('.item-info p strong').textContent = data.new_name;
-                        galleryItem.querySelector('.item-info p').title = data.new_name;
-                        
+
+                        const itemInfoStrong = galleryItem.querySelector('.item-info p strong');
+                        if (itemInfoStrong) itemInfoStrong.textContent = data.new_name;
+
+                        const itemInfoP = galleryItem.querySelector('.item-info p');
+                        if (itemInfoP) itemInfoP.title = data.new_name;
+
                         // Update Handlers
-                        galleryItem.querySelector('.thumbnail-link').setAttribute('onclick', `openLightbox(event, '${newId}'); event.stopPropagation();`);
-                        galleryItem.querySelector('.selection-checkmark').setAttribute('onclick', `toggleSelection(event, '${newId}', this.closest('.gallery-item'))`);
-                        galleryItem.querySelector('.favorite-btn').setAttribute('onclick', `toggleFavorite(event, '${newId}', this)`);
-                        galleryItem.querySelector('.delete-btn').setAttribute('onclick', `deleteFile(event, '${newId}', this)`);
-                        galleryItem.querySelector('a[title="Download"]').href = `/galleryout/download/${newId}`;
+                        const thumbnailLink = galleryItem.querySelector('.thumbnail-link');
+                        if (thumbnailLink) thumbnailLink.setAttribute('onclick', `openLightbox(event, '${newId}'); event.stopPropagation();`);
+
+                        const selectionCheckmark = galleryItem.querySelector('.selection-checkmark');
+                        if (selectionCheckmark) selectionCheckmark.setAttribute('onclick', `toggleSelection(event, '${newId}', this.closest('.gallery-item'))`);
+
+                        const favoriteBtn = galleryItem.querySelector('.favorite-btn');
+                        if (favoriteBtn) favoriteBtn.setAttribute('onclick', `toggleFavorite(event, '${newId}', this)`);
+
+                        const deleteBtn = galleryItem.querySelector('.delete-btn');
+                        if (deleteBtn) deleteBtn.setAttribute('onclick', `deleteFile(event, '${newId}', this)`);
+
+                        const downloadLink = galleryItem.querySelector('a[title="Download"]');
+                        if (downloadLink) downloadLink.href = `/galleryout/download/${newId}`;
+
                         const summaryBtn = galleryItem.querySelector('button[title="Node Summary"]');
                         if (summaryBtn) summaryBtn.setAttribute('onclick', `showNodeSummary(event, '${newId}')`);
+
                         const workflowBadge = galleryItem.querySelector('.workflow-badge');
                         if (workflowBadge) workflowBadge.href = `/galleryout/workflow/${newId}`;
                     }
@@ -8019,9 +8073,21 @@ async function showNodeSummary(event, fileId) {
             }
         }
         function closeNodeSummary() { document.body.classList.remove('modal-open'); summaryOverlay.classList.remove('visible'); summaryContent.innerHTML = ''; }
-        const uploadOverlay = document.getElementById('upload-overlay'); const showUploadModalBtn = document.getElementById('show-upload-modal-btn'); const uploadCancelBtn = document.getElementById('upload-cancel-btn'); const uploadSubmitBtn = document.getElementById('upload-submit-btn'); const dropZone = document.getElementById('drop-zone'); const fileInput = document.getElementById('upload-file-input'); const fileBrowseBtn = document.getElementById('file-upload-btn'); const fileList = document.getElementById('file-list'); const uploadProgressContainer = document.getElementById('upload-progress-container'); const uploadProgressFill = document.getElementById('upload-progress-fill'); const uploadDestinationText = document.getElementById('upload-destination-text').querySelector('strong'); let filesToUpload = [];
+        const uploadOverlay = document.getElementById('upload-overlay');
+        const showUploadModalBtn = document.getElementById('show-upload-modal-btn');
+        const uploadCancelBtn = document.getElementById('upload-cancel-btn');
+        const uploadSubmitBtn = document.getElementById('upload-submit-btn');
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('upload-file-input');
+        const fileBrowseBtn = document.getElementById('file-upload-btn');
+        const fileList = document.getElementById('file-list');
+        const uploadProgressContainer = document.getElementById('upload-progress-container');
+        const uploadProgressFill = document.getElementById('upload-progress-fill');
+        const uploadDestinationTextEl = document.getElementById('upload-destination-text');
+        const uploadDestinationText = uploadDestinationTextEl ? uploadDestinationTextEl.querySelector('strong') : null;
+        let filesToUpload = [];
         function resetUploadModal() { filesToUpload = []; fileList.innerHTML = ''; uploadProgressContainer.style.display = 'none'; uploadProgressFill.style.width = '0%'; fileInput.value = ''; uploadSubmitBtn.disabled = false; }
-        function showUploadModal() { resetUploadModal(); uploadDestinationText.textContent = currentFolderInfo.display_name; document.body.classList.add('modal-open'); uploadOverlay.classList.add('visible'); }
+        function showUploadModal() { resetUploadModal(); if (uploadDestinationText) uploadDestinationText.textContent = currentFolderInfo.display_name; document.body.classList.add('modal-open'); uploadOverlay.classList.add('visible'); }
         function closeUploadModal() { document.body.classList.remove('modal-open'); uploadOverlay.classList.remove('visible'); }
         function handleFiles(files) { filesToUpload = [...filesToUpload, ...Array.from(files)]; renderFileList(); }
         function renderFileList() { fileList.innerHTML = ''; filesToUpload.forEach(file => { const li = document.createElement('li'); const sizeKB = (file.size / 1024).toFixed(1); li.innerHTML = `<span>${file.name}</span> <span class="file-size">${sizeKB} KB</span>`; fileList.appendChild(li); }); }
@@ -8694,31 +8760,37 @@ async function showNodeSummary(event, fileId) {
             }
             // --- MOBILE FILTER TOGGLE LOGIC ---
             const mobileFilterToggle = document.getElementById('mobile-filter-toggle');
+            const mobileFilterToggleSecondary = document.getElementById('mobile-filter-toggle-secondary');
             // We use the same panel ID for both desktop and mobile
-            const searchPanel = document.getElementById('desktop-search-panel'); 
+            const searchPanel = document.getElementById('desktop-search-panel');
 
-            if (mobileFilterToggle && searchPanel) { 
-                mobileFilterToggle.addEventListener('click', (e) => { 
-                    if (e.target.classList.contains('filter-reset-icon')) return;
+            function setupFilterToggle(toggleBtn) {
+                if (toggleBtn && searchPanel) {
+                    toggleBtn.addEventListener('click', function(e) {
+                        if (e.target.classList.contains('filter-reset-icon')) return;
 
-                    e.stopPropagation();
-                    searchPanel.classList.toggle('visible'); 
-                    
-                    // Update button text maintaining the X icon structure
-                    const isVisible = searchPanel.classList.contains('visible');
-                    const activeCount = {{ active_filters_count }};
-                    
-                    let baseText = isVisible ? '✕  Hide Filters' : '⚙️ Filters';
-                    if (!isVisible && activeCount > 0) baseText += ` (${activeCount})`;
-                    
-                    let iconHtml = '';
-                    if (activeCount > 0) {
-                        iconHtml = ' <span class="filter-reset-icon" title="Clear all filters">✕</span>';
-                    }
-                    
-                    mobileFilterToggle.innerHTML = baseText + iconHtml;
-                }); 
+                        e.stopPropagation();
+                        searchPanel.classList.toggle('visible');
+
+                        // Update button text maintaining the X icon structure
+                        const isVisible = searchPanel.classList.contains('visible');
+                        const activeCount = {{ active_filters_count }};
+
+                        let baseText = isVisible ? '✕  Hide Filters' : '⚙️ Filters';
+                        if (!isVisible && activeCount > 0) baseText += ' (' + activeCount + ')';
+
+                        let iconHtml = '';
+                        if (activeCount > 0) {
+                            iconHtml = ' <span class="filter-reset-icon" title="Clear all filters">✕</span>';
+                        }
+
+                        toggleBtn.innerHTML = baseText + iconHtml;
+                    });
+                }
             }
+
+            setupFilterToggle(mobileFilterToggle);
+            setupFilterToggle(mobileFilterToggleSecondary);
             
             // --- NEW: DESKTOP SEARCH PANEL TOGGLE ---
             const searchToggleDesktop = document.getElementById('search-toggle-desktop');
@@ -10247,7 +10319,7 @@ async function showNodeSummary(event, fileId) {
         // ========================================
         // === VIEW MODE TOGGLE (Images/Models) ===
         // ========================================
-        let currentView = localStorage.getItem('viewMode') || 'images';
+        let currentView = 'images';
 
         function switchView(mode) {
             currentView = mode;
@@ -10364,6 +10436,9 @@ async function showNodeSummary(event, fileId) {
                             <table class="models-table">
                                 <thead>
                                     <tr>
+                                        <th style="width: 40px;">
+                                            <input type="checkbox" class="model-select-all" data-type="${type}" style="cursor: pointer;">
+                                        </th>
                                         <th>Name</th>
                                         <th>Trigger</th>
                                         <th>Tags</th>
@@ -10373,9 +10448,12 @@ async function showNodeSummary(event, fileId) {
                                 </thead>
                                 <tbody>
                                     ${typeModels.map(model => `
-                                        <tr>
+                                        <tr data-model-hash="${model.hash || ''}" data-model-id="${model.id}">
+                                            <td>
+                                                <input type="checkbox" class="model-select-checkbox" data-model-hash="${model.hash || ''}" data-model-id="${model.id}">
+                                            </td>
                                             <td>${model.name}</td>
-                                            <td class="trigger-cell">${model.trigger || '-'}</td>
+                                            <td class="trigger-cell" title="${model.trigger || ''}">${model.trigger || '-'}</td>
                                             <td class="tags-cell" title="${model.tags || ''}">${model.tags || '-'}</td>
                                             <td>${formatSize(model.size)}</td>
                                             <td class="path-cell" title="${model.path}">${model.path}</td>
@@ -10395,6 +10473,9 @@ async function showNodeSummary(event, fileId) {
                             <table class="models-table">
                                 <thead>
                                     <tr>
+                                        <th style="width: 40px;">
+                                            <input type="checkbox" class="model-select-all" data-type="${type}" style="cursor: pointer;">
+                                        </th>
                                         <th>Name</th>
                                         <th>Size</th>
                                         <th>Modified</th>
@@ -10403,7 +10484,10 @@ async function showNodeSummary(event, fileId) {
                                 </thead>
                                 <tbody>
                                     ${typeModels.map(model => `
-                                        <tr>
+                                        <tr data-model-hash="${model.hash || ''}" data-model-id="${model.id}">
+                                            <td>
+                                                <input type="checkbox" class="model-select-checkbox" data-model-hash="${model.hash || ''}" data-model-id="${model.id}">
+                                            </td>
                                             <td>${model.name}</td>
                                             <td>${formatSize(model.size)}</td>
                                             <td>${formatDate(model.mtime)}</td>
@@ -10416,6 +10500,228 @@ async function showNodeSummary(event, fileId) {
                     `;
                 }
             }).join('');
+
+            // Setup checkbox event handlers after rendering
+            setupSelectAllHandlers();
+        }
+
+        // === CIVITAI INTEGRATION ===
+        let selectedModels = [];
+        let civitaiCancelled = false;
+
+        // Selection Management
+        function updateSelectedModels() {
+            selectedModels = [];
+            document.querySelectorAll('.model-select-checkbox:checked').forEach(cb => {
+                selectedModels.push({
+                    hash: cb.dataset.modelHash,
+                    id: cb.dataset.modelId
+                });
+            });
+
+            const fetchBtn = document.getElementById('fetch-civitai-btn');
+            if (fetchBtn) {
+                fetchBtn.style.display = selectedModels.length > 0 ? 'block' : 'none';
+                fetchBtn.textContent = `🔍 Fetch CivitAI Metadata (${selectedModels.length})`;
+            }
+        }
+
+        // Toggle individual checkbox
+        function toggleModelSelection(checkbox) {
+            updateSelectedModels();
+        }
+
+        // Select All handler
+        function setupSelectAllHandlers() {
+            document.querySelectorAll('.model-select-all').forEach(selectAll => {
+                selectAll.addEventListener('change', function() {
+                    const type = this.dataset.type;
+                    const checkboxes = this.closest('table').querySelectorAll('.model-select-checkbox');
+                    checkboxes.forEach(cb => {
+                        cb.checked = this.checked;
+                    });
+                    updateSelectedModels();
+                });
+            });
+
+            document.querySelectorAll('.model-select-checkbox').forEach(cb => {
+                cb.addEventListener('change', function() {
+                    updateSelectedModels();
+                });
+            });
+        }
+
+        // CivitAI API Call
+        async function fetchCivitAIMetadata() {
+            if (selectedModels.length === 0) return;
+
+            civitaiCancelled = false;
+            const overlay = document.getElementById('civitai-progress-overlay');
+            const statusText = document.getElementById('civitai-status-text');
+            const progressBar = document.getElementById('civitai-progress-bar');
+            const cancelBtn = document.getElementById('civitai-cancel-btn');
+
+            overlay.style.display = 'flex';
+
+            const total = selectedModels.length;
+            const successfulModels = [];
+            const failedModels = [];
+
+            // Cancel handler
+            cancelBtn.onclick = function() {
+                civitaiCancelled = true;
+            };
+
+            // PHASE 1: Calculate full SHA256 hashes
+            statusText.textContent = 'Calculating full SHA256 hashes...';
+            progressBar.style.width = '0%';
+
+            const modelIds = selectedModels.map(m => m.id);
+            let hashResults = [];
+
+            try {
+                const hashResponse = await fetch('/galleryout/api/models/calculate-full-hash', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ modelIds: modelIds })
+                });
+
+                const hashData = await hashResponse.json();
+
+                if (hashData.status === 'success') {
+                    hashResults = hashData.results;
+                    console.log('Hash calculation results:', hashResults);
+                } else {
+                    showNotification('Failed to calculate hashes: ' + hashData.message, 'error');
+                    overlay.style.display = 'none';
+                    return;
+                }
+            } catch (error) {
+                showNotification('Hash calculation error: ' + error.message, 'error');
+                overlay.style.display = 'none';
+                return;
+            }
+
+            // Update selectedModels with full hashes
+            hashResults.forEach(result => {
+                if (result.status === 'success') {
+                    const model = selectedModels.find(m => m.id === result.modelId);
+                    if (model) {
+                        model.hash = result.hash;
+                    }
+                }
+            });
+
+            // PHASE 2: Fetch from CivitAI
+            let processed = 0;
+            progressBar.style.width = '10%';  // 10% for hash calculation done
+
+            for (const model of selectedModels) {
+                if (civitaiCancelled) {
+                    statusText.textContent = 'Cancelled by user';
+                    break;
+                }
+
+                if (!model.hash) {
+                    failedModels.push({ model, reason: 'Hash calculation failed' });
+                    processed++;
+                    continue;
+                }
+
+                statusText.textContent = `Fetching metadata: ${processed + 1}/${total} models`;
+
+                try {
+                    const response = await fetch(`https://civitai.com/api/v1/model-versions/by-hash/${model.hash}`);
+
+                    if (response.ok) {
+                        const data = await response.json();
+
+                        // LOG COMPLETE RESPONSE FOR DEBUGGING
+                        console.log('=== CivitAI Response ===');
+                        console.log('Full Response:', data);
+                        console.log('Available Fields:', Object.keys(data));
+                        console.log('Model Name:', data.model?.name);
+                        console.log('Version Name:', data.name);
+                        console.log('trainedWords:', data.trainedWords);
+                        console.log('======================');
+
+                        // Extract trigger words - check multiple possible fields
+                        let triggerWords = data.trainedWords || data.triggers || data.activationText || data.triggerWords || [];
+
+                        // Convert array to string if needed
+                        const triggerString = Array.isArray(triggerWords)
+                            ? triggerWords.join(', ')
+                            : (triggerWords || '');
+
+                        successfulModels.push({
+                            modelId: model.id,
+                            civitaiData: {
+                                name: data.model?.name || '',
+                                versionName: data.name || '',
+                                description: data.description || '',
+                                tags: triggerString,  // Use processed trigger words
+                                thumbnailUrl: data.images?.[0]?.url || '',
+                                civitaiModelId: data.modelId,
+                                civitaiVersionId: data.id
+                            }
+                        });
+                    } else {
+                        failedModels.push({ model, reason: `HTTP ${response.status}` });
+                    }
+                } catch (error) {
+                    failedModels.push({ model, reason: error.message });
+                }
+
+                processed++;
+                // Progress: 10% for hash calculation + 90% for fetching (scaled by processed/total)
+                const fetchProgress = 10 + (processed / total * 90);
+                progressBar.style.width = fetchProgress.toFixed(0) + '%';
+                statusText.textContent = `Fetching metadata: ${processed}/${total} models`;
+
+                // Rate limiting - 200ms pause
+                await new Promise(resolve => setTimeout(resolve, 200));
+            }
+
+            // Close overlay
+            setTimeout(function() {
+                overlay.style.display = 'none';
+
+                // Show result toast
+                const message = civitaiCancelled
+                    ? `Cancelled. Fetched ${successfulModels.length}/${total} models`
+                    : `Successfully fetched ${successfulModels.length}/${total} models`;
+
+                if (failedModels.length > 0) {
+                    console.warn('Failed models:', failedModels);
+                }
+
+                showNotification(message, successfulModels.length === total ? 'success' : 'info');
+
+                // Save to backend database
+                if (successfulModels.length > 0) {
+                    fetch('/galleryout/api/models/update-civitai', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ updates: successfulModels })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            console.log(`Saved ${data.updated} models to database`);
+                            // Reload models to show updated data
+                            loadModels();
+                        } else {
+                            console.error('Failed to save to database:', data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error saving to database:', error);
+                    });
+                } else {
+                    // Reload models even if no successful fetches
+                    loadModels();
+                }
+            }, 500);
         }
 
         // Event Listeners für Models View
@@ -10423,6 +10729,11 @@ async function showNodeSummary(event, fileId) {
             const refreshBtn = document.getElementById('refresh-models');
             if (refreshBtn) {
                 refreshBtn.addEventListener('click', loadModels);
+            }
+
+            const fetchCivitaiBtn = document.getElementById('fetch-civitai-btn');
+            if (fetchCivitaiBtn) {
+                fetchCivitaiBtn.addEventListener('click', fetchCivitAIMetadata);
             }
         });
 
