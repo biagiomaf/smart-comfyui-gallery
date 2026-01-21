@@ -113,6 +113,24 @@ SmartGallery turns your output folder into a **living memory of your creative pr
 - Full folder management directly from the UI
 - Fully offline and local — works even when ComfyUI is not running
 - Cross-platform: Windows, Linux, macOS + Docker
+- Model Management - enhance your model files with CivitAI information
+
+---
+
+## Model Management (NEW!)
+
+Toggle between Images and Models view to manage your AI model library:
+
+### Features
+- 📊 View Checkpoints, Diffusion Models, LoRAs, and Embeddings
+- 🔍 CivitAI Integration - Fetch metadata, trigger words, and tags
+- 📝 Display model information: Name, Size, Triggers, Tags
+- ⚡ Fast scanning with incremental updates
+
+### Usage
+1. Click the **Models** toggle in the sidebar
+2. Select models with checkboxes
+3. Click "🔍 Fetch CivitAI Metadata" to enrich model data
 
 ---
 

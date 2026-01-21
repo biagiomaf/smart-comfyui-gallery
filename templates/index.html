@@ -10407,7 +10407,7 @@ async function showNodeSummary(event, fileId) {
             const content = document.getElementById('models-content');
             if (!content) return;
 
-            // Gruppiere Models nach Typ
+            // Group models by type
             const grouped = {};
             models.forEach(model => {
                 if (!grouped[model.type]) {
@@ -10416,7 +10416,7 @@ async function showNodeSummary(event, fileId) {
                 grouped[model.type].push(model);
             });
 
-            // Erstelle Tabelle für jeden Typ
+            // Create a table for each model type
             const typeLabels = {
                 'checkpoints': '🎨 Checkpoints',
                 'diffusion_models': '⚡ Diffusion Models',
@@ -10428,7 +10428,7 @@ async function showNodeSummary(event, fileId) {
                 const typeModels = grouped[type];
                 const label = typeLabels[type] || type;
 
-                // LoRAs bekommen spezielle Spalten (Trigger + Tags)
+                // LoRAs use special columns (trigger + tags)
                 if (type === 'loras') {
                     return `
                         <div class="model-type-section">
@@ -10465,7 +10465,7 @@ async function showNodeSummary(event, fileId) {
                     `;
                 }
 
-                // Checkpoints, Diffusion Models, Embeddings: Standard-Spalten
+                // Checkpoints, diffusion models, embeddings: standard columns
                 else {
                     return `
                         <div class="model-type-section">
@@ -10724,7 +10724,7 @@ async function showNodeSummary(event, fileId) {
             }, 500);
         }
 
-        // Event Listeners für Models View
+        // Event listeners for Models view
         document.addEventListener('DOMContentLoaded', function() {
             const refreshBtn = document.getElementById('refresh-models');
             if (refreshBtn) {
@@ -10737,7 +10737,7 @@ async function showNodeSummary(event, fileId) {
             }
         });
 
-        // Lade Models wenn Models-View aktiviert wird
+        // Load models when the models view is activated
         const originalSwitchView = switchView;
         switchView = function(mode) {
             originalSwitchView(mode);
