@@ -5263,7 +5263,393 @@
             grid-column: 1 / -1; /* Span full width */
         }
         
-                
+        /* --- COMPARE MODE STYLES --- */
+        #compare-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #050505;
+            z-index: 5000;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        #compare-overlay.visible { display: flex; }
+
+        .compare-header {
+            padding: 10px 20px;
+            background: rgba(20, 20, 20, 0.9);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 60px;
+            flex-shrink: 0;
+        }
+        
+        .compare-stage {
+            flex-grow: 1;
+            position: relative;
+            background-color: #111;
+            overflow: hidden;
+            cursor: grab;
+            user-select: none;
+        }
+        .compare-stage:active { cursor: grabbing; }
+
+        .cmp-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        
+        .cmp-media-container {
+            width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .cmp-content {
+            max-width: 90%; max-height: 90%;
+            object-fit: contain;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            will-change: transform; /* Performance for sync zoom */
+        }
+
+        /* The Slider Mechanism */
+        #cmp-after-wrapper {
+            clip-path: inset(0 50% 0 0); /* Dynamic via JS */
+            z-index: 10;
+        }
+
+        /* The Handle */
+        .cmp-handle {
+            position: absolute;
+            top: 0; bottom: 0; left: 50%;
+            width: 4px;
+            background: var(--primary-color);
+            cursor: col-resize;
+            z-index: 20;
+            box-shadow: 0 0 10px rgba(0,0,0,0.8);
+            transform: translateX(-50%);
+            pointer-events: auto;
+        }
+        
+        .cmp-handle::after {
+            content: '↔';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px; height: 40px;
+            background: white;
+            border: 4px solid var(--primary-color);
+            border-radius: 50%;
+            color: var(--primary-color);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        /* Data Panel */
+        .compare-info-panel {
+            height: 30%;
+            min-height: 40px;
+            background: var(--surface-color);
+            border-top: 2px solid var(--ai-color);
+            display: flex; flex-direction: column;
+            transition: height 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative; z-index: 30;
+        }
+        .compare-info-panel.collapsed { height: 40px; }
+
+        .cmp-info-toggle {
+            height: 40px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            background: rgba(255,255,255,0.05);
+            font-size: 0.9rem; color: var(--text-muted); font-weight: bold; gap: 10px;
+        }
+        .cmp-info-toggle:hover { color: white; background: rgba(255,255,255,0.1); }
+
+        .cmp-table-container { flex-grow: 1; overflow-y: auto; padding: 0 20px 20px 20px; }
+
+        .cmp-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; color: #ccc; }
+        .cmp-table th {
+            text-align: left; padding: 10px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-muted);
+            position: sticky; top: 0; background: var(--surface-color);
+        }
+        .cmp-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            vertical-align: top; font-family: monospace; word-break: break-all;
+        }
+        
+        .cmp-row-diff { background: rgba(255, 193, 7, 0.05); }
+        .cmp-row-diff td { color: #fff; }
+        .cmp-row-diff td:first-child { 
+            color: var(--favorite-color); font-weight: bold; 
+            border-left: 3px solid var(--favorite-color);
+        }
+
+        @media (max-width: 768px) {
+            .compare-info-panel { height: 40%; }
+            .cmp-table { font-size: 0.8rem; }
+            .cmp-handle::after { width: 30px; height: 30px; font-size: 16px; }
+            /* Hide the word "Mode" on mobile to save space */
+            .cmp-mode-text {
+                display: none;
+            }
+            
+            /* Reduce padding in compare header */
+            .compare-header {
+                padding: 5px 10px;
+            }
+        }
+ 
+        /* Labels over images in Compare Mode */
+        .cmp-floating-label {
+            position: absolute;
+            top: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.85rem;
+            pointer-events: auto;
+            cursor: help; /* Indicates clickable info */
+            transition: all 0.2s ease;
+            border: 1px solid rgba(255,255,255,0.1);
+            z-index: 50;
+            user-select: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            
+            /* Max width constraints */
+            max-width: 80%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .cmp-floating-label:hover {
+            background: rgba(0, 0, 0, 0.9);
+            transform: scale(1.05);
+            border-color: var(--primary-color);
+        }
+        
+        .cmp-floating-label:active {
+            transform: scale(0.95);
+        }
+
+        /* --- STORYBOARD FULL SCREEN STYLES --- */
+        #storyboard-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.95); z-index: 3000;
+            display: none; justify-content: center; align-items: center;
+            opacity: 0; transition: opacity 0.2s;
+        }
+        #storyboard-overlay.visible { display: flex; opacity: 1; }
+
+        .sb-panel {
+            background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 12px;
+            /* FULL SCREEN GRID as requested */
+            width: 98vw; height: 95vh; max-width: none; max-height: none;
+            display: flex; flex-direction: column; overflow: hidden;
+            transform: scale(0.98); transition: transform 0.2s;
+        }
+        #storyboard-overlay.visible .sb-panel { transform: scale(1); }
+
+        .sb-header {
+            padding: 10px 20px; background: var(--surface-hover); border-bottom: 1px solid var(--border-color);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .sb-header h3 { margin: 0; font-size: 1.2rem; color: #fff; }
+
+        .sb-body {
+            padding: 20px; overflow-y: auto; flex-grow: 1; background: #050505;
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        .sb-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); /* 4 cols */
+            gap: 20px; width: 100%; height: 100%;
+            /* Auto rows to fit content */
+            align-content: start; 
+        }
+
+        .sb-frame {
+            background: #000; border: 1px solid #333; border-radius: 8px; overflow: hidden;
+            cursor: zoom-in; position: relative; width: 100%; aspect-ratio: 16/9;
+            transition: all 0.2s;
+        }
+        .sb-frame:hover { border-color: var(--primary-color); transform: scale(1.02); z-index: 5; }
+        .sb-frame img { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+        .sb-footer {
+            padding: 8px; text-align: center; border-top: 1px solid var(--border-color);
+            color: #777; font-size: 0.8rem; background: var(--surface-hover);
+        }
+
+        #sb-loader { margin-top: 50px; text-align: center; }
+
+        /* --- ZOOM OVERLAY STYLES --- */
+        #sb-zoom-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.95); z-index: 4000; /* Above Storyboard */
+            display: none; justify-content: center; align-items: center; cursor: zoom-out;
+        }
+        #sb-zoom-img {
+            /* Force image to take up space */
+            width: auto;
+            height: auto;
+            min-width: 50vw;  /* Minimum half screen width */
+            max-width: 95vw;
+            max-height: 95vh;
+            
+            /* Clean look */
+            object-fit: contain;
+            box-shadow: 0 0 50px rgba(0,0,0,1);
+            border: 2px solid var(--primary-color);
+            background: #000;
+        }
+
+        @media (max-width: 768px) {
+            .sb-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        }
+
+        /* --- STORYBOARD ZOOM NAVIGATION --- */
+        .sb-nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.5);
+            color: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 1.8rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 4005; /* Must be above the image */
+            transition: all 0.2s ease;
+            backdrop-filter: blur(4px);
+            user-select: none;
+            /* Safe area for mobile touches */
+            padding: 0;
+            line-height: 1;
+        }
+
+        .sb-nav-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border-color: white;
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .sb-nav-btn:active {
+            transform: translateY(-50%) scale(0.95);
+        }
+
+        #sb-nav-prev { left: 20px; }
+        #sb-nav-next { right: 20px; }
+
+        /* Hide nav buttons on very small screens if image covers them, 
+           or adjust position. Here we keep them visible as requested. */
+        @media (max-width: 768px) {
+            .sb-nav-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 1.5rem;
+                background: rgba(0, 0, 0, 0.7); /* Darker for better visibility on mobile */
+            }
+            #sb-nav-prev { left: 10px; }
+            #sb-nav-next { right: 10px; }
+        }
+        
+        /* --- ZOOM STATUS BADGE --- */
+        #sb-zoom-status {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 4005;
+            
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 6px 16px;
+            
+            color: #ddd;
+            font-family: monospace;
+            font-weight: bold;
+            font-size: 1rem;
+            letter-spacing: 1px;
+            pointer-events: none;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(4px);
+        }
+
+        /* Highlight Styles */
+        #sb-zoom-status.is-first {
+            border-color: var(--success-color);
+            color: var(--success-color);
+            box-shadow: 0 0 15px rgba(40, 167, 69, 0.3);
+        }
+
+        #sb-zoom-status.is-last {
+            border-color: var(--danger-color);
+            color: var(--danger-color);
+            box-shadow: 0 0 15px rgba(220, 53, 69, 0.3);
+        }
+        
+        /* --- ZOOM QUALITY WARNING --- */
+        #sb-zoom-quality-msg {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 4005;
+            
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 6px 14px;
+            
+            color: var(--text-muted); /* Grey text to be subtle */
+            font-size: 0.8rem;
+            font-weight: 500;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+            white-space: nowrap;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Hide warning on very small screens if needed, or adjust pos */
+        @media (max-width: 768px) {
+            #sb-zoom-quality-msg {
+                bottom: 80px; /* Move up to avoid overlapping native home bars on mobile */
+                font-size: 0.7rem;
+            }
+        }
+        
+        /* --- TEMPORARY HIDE COMPARE FEATURE --- */
+        
+        #compare-selected-btn, /* The Scale Icon in Selection Bar */
+        #compare-menu-btn,     /* The Menu Item in the dropdown */
+        #compare-menu-sep      /* The Separator line in the menu */
+        { 
+            /* display: none !important; */
+        }
+        
         </style>
         
 </head>
@@ -5690,7 +6076,9 @@
             <button id="index-selected-btn" onclick="indexSelectedFiles()">🧠 Index AI Data</button>
             <div class="sel-separator"></div>
             {% endif %}
-            
+            <button id="compare-menu-btn" onclick="startCompareMode()" style="display:none;">⚖️ Compare</button>
+            <div id="compare-menu-sep" class="sel-separator" style="display:none;"></div>
+            <button id="copy-selected-btn">Cc Copy to Folder...</button>
             <button id="move-selected-btn">📁 Move to Folder...</button>
             <button id="download-zip-btn">📦 Download as Zip</button>
             <button id="unfavorite-selected-btn">☆ Remove Favorite</button>
@@ -5720,6 +6108,7 @@
                 <button id="lightbox-summary-btn" title="Node Summary">📝</button>
                 <button id="lightbox-caption-icon" title="View AI Caption" style="display:none;">🧠</button>
                 <a id="lightbox-workflow" href="#" class="workflow-btn" title="Download Workflow">⚙️</a>
+                <button id="lightbox-filmstrip-btn" title="Generate Storyboard" onclick="openStoryboard(null)" style="display:none;">🎞️</button>
                 <button id="lightbox-copy-json" title="Copy Workflow to Clipboard" style="display:none;">📋</button>
                 <button id="lightbox-delete-btn" title="Delete File">🗑️</button>
                 <a id="lightbox-new-tab" href="#" target="_blank" title="Open in New Tab">↗️</a>
@@ -5730,8 +6119,7 @@
 
         <div id="lightbox-content">
             <div id="lightbox-media"></div>
-            
-            <!-- NEW: Toggle Button Below Image -->
+                        <!-- NEW: Toggle Button Below Image -->
             <div id="lightbox-bottom-controls">
                 <button id="lightbox-ui-toggle" onclick="toggleLightboxUi()" title="Hide Toolbar">
                     👁️ <span>Hide Toolbar</span>
@@ -5787,6 +6175,7 @@
                 <div class="shortcut-item"><span class="key">💾</span> <span class="desc">Download Media File</span></div>
                 <div class="shortcut-item"><span class="key">✏️</span> <span class="desc">Rename File (Keep extension)</span></div>
                 <div class="shortcut-item"><span class="key">📝</span> <span class="desc">View Node Summary (Parameters)</span></div>
+                <div class="shortcut-item"><span class="key">🎞️</span> <span class="desc">Generate Video Storyboard</span></div>
                 <div class="shortcut-item"><span class="key" style="color:var(--ai-color)">🧠</span> <span class="desc">Show/Hide AI Generated Caption</span></div>
                 <div class="shortcut-item"><span class="key">⚙️</span> <span class="desc">Download Workflow JSON</span></div>
                 <div class="shortcut-item"><span class="key">📋</span> <span class="desc">Copy Workflow to Clipboard</span></div>
@@ -6232,6 +6621,72 @@
             </div>
         </div>
     </div>
+    
+    <!-- COMPARE MODE OVERLAY -->
+    <div id="compare-overlay">
+        <div class="compare-header">
+            <h3 class="cmp-title" style="margin:0; color:white; font-size:1.1rem; white-space:nowrap;">
+                ⚖️ Compare <span class="cmp-mode-text">Mode</span>
+            </h3>
+            
+            <div style="display:flex; gap:5px; align-items:center;">
+                <!-- [NEW] Rotate Button -->
+                <button class="glass-btn" onclick="cmpRotate()" title="Rotate 90° (Best for Portrait on Wide Screens)" style="min-width:40px; padding:0;">🔄</button>
+                
+                <div style="width:1px; height:20px; background:rgba(255,255,255,0.2); margin:0 5px;"></div>
+
+                <!-- Zoom Controls -->
+                <button class="glass-btn" onclick="cmpZoom(-0.2)" title="Zoom Out (-)" style="min-width:35px; padding:0;">-</button>
+                <button class="glass-btn" onclick="cmpZoom(0.2)" title="Zoom In (+)" style="min-width:35px; padding:0;">+</button>
+                <button class="glass-btn" onclick="cmpResetZoom()" title="Reset (0)" style="font-size:0.85rem; padding:0 10px;">Original</button>
+                
+                <button class="close-btn" onclick="closeCompareMode()" style="font-size:2rem; background:none; border:none; color:white; cursor:pointer; margin-left:5px;">×</button>
+            </div>
+        </div>
+
+        <div class="compare-stage" id="compare-stage">
+            <!-- IMAGE B (BEFORE/RIGHT) Container -->
+            <div class="cmp-layer" id="cmp-before-wrapper">
+                <div id="cmp-container-b" class="cmp-media-container"></div>
+                <!-- Interactive Label B -->
+                <div id="cmp-label-b" class="cmp-floating-label" style="right:20px;" onclick="showCmpDetails(this)">Image B</div>
+            </div>
+            
+            <!-- IMAGE A (AFTER/LEFT) Container -->
+            <div class="cmp-layer" id="cmp-after-wrapper">
+                <div id="cmp-container-a" class="cmp-media-container"></div>
+                <!-- Interactive Label A -->
+                <div id="cmp-label-a" class="cmp-floating-label" style="left:20px; color:var(--primary-color);" onclick="showCmpDetails(this)">Image A</div>
+            </div>
+
+            <!-- HANDLE -->
+            <div class="cmp-handle" id="cmp-handle"></div>
+        </div>
+
+        <div class="compare-info-panel" id="compare-info-panel">
+            <div class="cmp-info-toggle" onclick="toggleCmpInfo()" title="Shortcut: 'I'">
+                <span>📝 Parameter Differences</span>
+                <span id="cmp-toggle-icon">▼</span>
+            </div>
+            <div class="cmp-table-container">
+                <table class="cmp-table">
+                    <thead>
+                        <tr>
+                            <th style="width:20%">Parameter</th>
+                            <!-- Added IDs to headers to inject filenames -->
+                            <th style="width:40%" id="cmp-header-a">Image A</th>
+                            <th style="width:40%" id="cmp-header-b">Image B</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cmp-table-body">
+                        <!-- Dynamic Content -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+
     <div id="loader-overlay">
         <div class="loader"></div>
     </div>
@@ -6270,6 +6725,7 @@
                 <div class="shortcut-item"><span class="desc">Lightbox view:</span></div>
                 <div class="shortcut-item"><span class="key">O</span> <span class="desc">Open in New Tab</span></div>
                 <div class="shortcut-item"><span class="key">N</span> <span class="desc">Node Summary</span></div>
+                <div class="shortcut-item"><span class="key">E</span> <span class="desc">Toggle Storyboard (Video)</span></div>
                 <div class="shortcut-item"><span class="key">+</span> <span class="key">-</span> <span class="desc">Zoom
                         In/Out</span></div>
                 <div class="shortcut-item"><span class="key">Keypad (Num 789/456/123)</span> <span class="desc">Pan
@@ -6293,10 +6749,46 @@
             </div>
 
             <div class="sd-actions">
+                <!-- Third button for Yes/No/Cancel workflows -->
+                <button id="sd-btn-deny" class="glass-btn" style="display:none; color:var(--danger-color); border-color:var(--danger-color);">No</button>
                 <button id="sd-btn-cancel" class="glass-btn">Cancel</button>
                 <button id="sd-btn-confirm" class="glass-btn active-blue">Confirm</button>
             </div>
         </div>
+    </div>
+    
+    <!-- STORYBOARD MODAL (Full Screen Grid) -->
+    <div id="storyboard-overlay">
+        <div class="sb-panel">
+            <div class="sb-header">
+                <h3>🎞️ Storyboard Overview</h3>
+                <button class="close-btn" onclick="closeStoryboard()">×</button>
+            </div>
+            <div class="sb-body">
+                <div id="sb-loader" style="display:none;">
+                    <div class="loader"></div>
+                    <p style="margin-top:10px; color:var(--text-muted);">Analyzing video frames...</p>
+                </div>
+                <div id="sb-grid" class="sb-grid"></div>
+            </div>
+            <div class="sb-footer">
+                <p>Click a frame to zoom in.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SINGLE FRAME ZOOM OVERLAY -->
+    <div id="sb-zoom-overlay" onclick="if(event.target === this) closeSbZoom()">
+        <!-- Status Badge (First/Last) -->
+        <div id="sb-zoom-status"></div>
+        <!-- Navigation Buttons -->
+        <button id="sb-nav-prev" class="sb-nav-btn" onclick="navigateSbZoom(-1)">‹</button>
+        <img id="sb-zoom-img" src="" alt="Zoomed Frame">
+        <button id="sb-nav-next" class="sb-nav-btn" onclick="navigateSbZoom(1)">›</button>
+        <!-- Low Resolution Warning Badge -->
+        <div id="sb-zoom-quality-msg">⚠️ Low-Res Preview (360p)</div>
+        <!-- Close Button -->
+        <button class="close-btn" onclick="closeSbZoom()" style="position:absolute; top:20px; right:20px; font-size:2rem; z-index:4005;">×</button>
     </div>
     
     <script>
@@ -6334,6 +6826,9 @@
         let currentSearch = { nav: '', move: '' };
         let focusedItemIndex = -1;
         let hoveredItemIndex = -1;
+        let currentDropAction = 'move'; // 'move' or 'copy'
+        let copyKeepFavorites = false; // Store user choice
+        let isFilmstripDragging = false;
 
         // --- UI STATE PERSISTENCE MANAGEMENT ---
         const savedSort = localStorage.getItem('gallerySortPreference');
@@ -6358,52 +6853,75 @@
                 const inputEl = document.getElementById('sd-input');
                 const btnConfirm = document.getElementById('sd-btn-confirm');
                 const btnCancel = document.getElementById('sd-btn-cancel');
+                const btnDeny = document.getElementById('sd-btn-deny');
 
-                // 1. Setup Content
-                titleEl.textContent = title;
-                msgEl.innerHTML = message.replace(/\n/g, '<br>'); // Support newlines
+                // 1. Reset State
+                btnDeny.style.display = 'none';
+                btnConfirm.textContent = 'Confirm';
+                btnCancel.textContent = 'Cancel';
+                btnCancel.style.display = 'inline-flex';
                 
-                // 2. Setup Type (Prompt vs Confirm)
+                // 2. Setup Content
+                titleEl.textContent = title;
+                msgEl.innerHTML = message.replace(/\n/g, '<br>');
+                
+                // 3. Setup Type
                 if (type === 'prompt') {
                     inputContainer.style.display = 'block';
                     inputEl.value = defaultValue;
-                    // Focus trick after animation
                     setTimeout(() => { inputEl.focus(); inputEl.select(); }, 100);
                 } else {
                     inputContainer.style.display = 'none';
                 }
 
-                // 3. Setup Buttons Colors
-                btnConfirm.className = `glass-btn ${confirmColor}`;
-                btnConfirm.textContent = (type === 'confirm_danger') ? 'Delete' : 'OK';
+                // 4. Custom Mode: Yes/No/Cancel
+                if (type === 'yes_no_cancel') {
+                    btnDeny.style.display = 'inline-flex'; // Show "No"
+                    btnDeny.textContent = "No";
+                    btnConfirm.textContent = "Yes";
+                    // Confirm Color usually Blue for Yes
+                } else if (type === 'confirm_danger') {
+                    btnConfirm.textContent = 'Delete';
+                }
 
-                // 4. Show Logic
+                // 5. Setup Buttons Colors
+                btnConfirm.className = `glass-btn ${confirmColor}`;
+
+                // 6. Show
                 overlay.classList.add('visible');
 
-                // 5. Handlers (One-time use)
+                // 7. Handlers
                 const close = (result) => {
                     overlay.classList.remove('visible');
-                    // Remove listeners to avoid stacking
                     btnConfirm.onclick = null;
                     btnCancel.onclick = null;
+                    btnDeny.onclick = null;
                     inputEl.onkeydown = null;
                     resolve(result);
                 };
 
+                // Confirm (Yes)
                 btnConfirm.onclick = () => {
                     if (type === 'prompt') close(inputEl.value);
-                    else close(true);
+                    else close(true); // True = Yes/Confirm
                 };
 
-                btnCancel.onclick = () => close(type === 'prompt' ? null : false);
+                // Deny (No) - Returns FALSE
+                btnDeny.onclick = () => {
+                    close(false); 
+                };
 
-                // Enter Key support
+                // Cancel - Returns NULL (distinct from False)
+                btnCancel.onclick = () => {
+                    close(null); 
+                };
+
                 if (type === 'prompt') {
                     inputEl.onkeydown = (e) => { if(e.key === 'Enter') btnConfirm.click(); };
                 }
             });
         }
-
+        
         // --- PUBLIC API (Use these instead of native) ---
         
         // Replace confirm() -> await smartConfirm("Title", "Text")
@@ -6555,9 +7073,14 @@
             const isActive = !isMovePanel && folderKey === currentFolderKey;
             const folderDisplayName = folder.display_name;
             
-            // Icon Logic
+            // --- GLOBAL ICON LOGIC (Applies to both Sidebar and Move/Copy Panel) ---
             let folderIconHtml = '📁';
-            if (folder.is_watched) {
+            
+            if (folder.is_mount) {
+                // Case 1: External Link / Mount Point - Priority 1
+                folderIconHtml = '🔗';
+            } else if (folder.is_watched) {
+                // Case 2: AI Watched Folder (Purple Hue) - Priority 2
                 folderIconHtml = '<span style="filter: hue-rotate(290deg) saturate(300%) brightness(1.1); display:inline-block;" title="Watched by AI">📁</span>';
             }
 
@@ -6573,7 +7096,8 @@
             // NOTE: HTML must be all in one only row to avoid indentations in the side bar 
             if (isMovePanel) {
                 const isRecursive = document.querySelector('input[name="recursive"]')?.checked || false;
-                const shouldDisable = (folderKey === currentFolderKey && !isAiGlobal && !isGlobalSearch && !isRecursive);
+                // Disable move to current folder unless copying, global/AI search, or recursive
+                const shouldDisable = (currentDropAction !== 'copy' && folderKey === currentFolderKey && !isAiGlobal && !isGlobalSearch && !isRecursive);
                 const disabledAttr = shouldDisable ? 'disabled' : '';
 
                 itemHTML = `
@@ -6584,6 +7108,7 @@
                     </div>`;
             
             } else {
+                // --- SIDEBAR VIEW LOGIC ---
                 let actionsHTML = '';
                 
                 if (folderKey !== '_root_' && !protectedFolderKeys.includes(folderKey)) {
@@ -6591,15 +7116,11 @@
                         ? `<button onclick="indexFolder('${folderKey}')">🧠 AI Index</button>` 
                         : '';
                     
-                    // --- MOUNT POINT LOGIC ---
+                    // --- MOUNT POINT BUTTON LOGIC ---
                     let deleteOption = '';
                     if (folder.is_mount) {
-                        // Change Icon for mounts
-                        folderIconHtml = '🔗';
-                        // Show Unmount instead of Delete
                         deleteOption = `<button onclick="unmountFolder(event, '${folderKey}', '${folderDisplayName}')" style="color:#ff6b6b; border-top:1px solid rgba(255,255,255,0.1);">⛓️ Unmount</button>`;
                     } else {
-                        // Standard Delete
                         deleteOption = `<button onclick="deleteFolder(event, '${folderKey}', '${folderDisplayName}')" style="color:#ff6b6b;">🗑️ Delete</button>`;
                     }
 
@@ -6607,6 +7128,7 @@
                         <div class="folder-menu-container">
                             <button class="folder-menu-btn" onclick="event.stopPropagation(); toggleFolderMenu(this)">⋮</button>
                             <div class="folder-dropdown">
+                                <button onclick="showFolderInfo(event, '${folderKey}')">ℹ️ Info</button>
                                 ${aiBtn}
                                 ${!folder.is_mount ? `<button onclick="renameFolder(event, '${folderKey}', '${folderDisplayName}')">✏️ Rename</button>` : ''}
                                 ${deleteOption}
@@ -7196,7 +7718,59 @@
             
             galleryContainer.innerHTML = htmlContent; 
         }
-        function initializeLazyLoading(elements) { const observer = new IntersectionObserver((entries, obs) => { entries.forEach(entry => { if (entry.isIntersecting) { const el = entry.target; if (el.dataset.src) { el.src = el.dataset.src; if (el.tagName === "VIDEO") el.load(); } el.classList.remove("lazy"); obs.unobserve(el); } }); }, { rootMargin: '50px' }); elements.forEach(el => observer.observe(el)); }
+        function initializeLazyLoading(elements) {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    const el = entry.target;
+                    
+                    // Handle Images (Keep original simple logic: load once)
+                    if (el.tagName === 'IMG') {
+                        if (entry.isIntersecting) {
+                            if (el.dataset.src) {
+                                el.src = el.dataset.src;
+                                el.removeAttribute('data-src');
+                            }
+                            el.classList.remove("lazy");
+                            observer.unobserve(el); // Images are done once loaded
+                        }
+                        return;
+                    }
+
+                    // Handle Videos (Smart Play/Pause logic)
+                    if (el.tagName === 'VIDEO') {
+                        if (entry.isIntersecting) {
+                            // 1. Load source if not loaded yet
+                            if (el.dataset.src) {
+                                el.src = el.dataset.src;
+                                el.load();
+                                el.removeAttribute('data-src');
+                                el.classList.remove("lazy");
+                            }
+                            // 2. Play when visible
+                            const playPromise = el.play();
+                            if (playPromise !== undefined) {
+                                playPromise.catch(error => {
+                                    // Auto-play was prevented (e.g. browser policy or user interaction)
+                                    console.log("Autoplay prevented:", error);
+                                });
+                            }
+                        } else {
+                            // 3. Pause when out of viewport to save resources
+                            if (!el.paused && !el.dataset.src) {
+                                el.pause();
+                            }
+                        }
+                        // Do NOT unobserve video! We need to check it continuously.
+                    }
+                });
+            }, {
+                root: null,
+                rootMargin: '50px', // Preload slightly before appearing
+                threshold: 0.2      // Trigger when 20% visible
+            });
+
+            elements.forEach(el => observer.observe(el));
+        }
         async function createFolder() {
             const folderName = await smartPrompt("📁 New Folder", "Enter a name for the new folder:", "");
             
@@ -7213,6 +7787,30 @@
                 .catch(handleError);
             }
         }
+        
+        // --- SHOW FOLDER INFO FUNCTION ---
+        function showFolderInfo(event, folderKey) {
+            event.stopPropagation();
+            const folder = foldersData[folderKey];
+            if (!folder) return;
+
+            // Prepare the message
+            let msg = `📂 Folder: ${folder.display_name}\n\n📍 Path:\n${folder.path}`;
+            
+            // Add extra info for mounts
+            if (folder.is_mount) {
+                msg += `\n\n🔗 (This is a linked folder)`;
+            }
+
+            // Use 'path-msg' class for monospace font and word wrapping on mobile
+            showNotification(msg, 'info path-msg', 10000);
+            
+            // Close the menu
+            const btn = event.target;
+            const menu = btn.closest('.folder-dropdown');
+            if (menu) menu.classList.remove('show');
+        }
+        
         async function renameFolder(event, folderKey, oldName) {
             event.stopPropagation();
             const newName = await smartPrompt("✏️ Rename Folder", `Enter the new name for "${oldName}":`, oldName);
@@ -7241,22 +7839,7 @@
                 .catch(handleError);
             }
         }
-        //  Sync sort on "Move" panel opening ---
-        function populateAndShowDropPanel() {
-            // Sync the 'move' panel's sort state with the 'nav' panel's state
-            currentSort.move = { ...currentSort.nav };
-
-            document.getElementById('drag-drop-overlay').classList.add('visible');
-            document.getElementById('drop-zone-panel').classList.add('visible');
-
-            // Update the move panel's sort buttons UI to reflect the synced state
-            updateSortButtonsUI('move');
-
-            document.getElementById('move-folder-tree').innerHTML = buildFolderTreeHTML('_root_', true);
-            filterTree('move-folder-tree', currentSearch.move, false);
-        }
-
-        function confirmMoveToFolder(folderKey) { if (!selectedFiles || selectedFiles.size === 0) { showNotification('No files selected.', 'warning'); return; } performBatchAction('/galleryout/move_batch', { file_ids: [...selectedFiles], destination_folder: folderKey }); hideDropZone(); }
+        
         function hideDropZone() { document.getElementById('drag-drop-overlay').classList.remove('visible'); document.getElementById('drop-zone-panel').classList.remove('visible'); }
         function dragStart(event, fileId) {
             event.stopPropagation();
@@ -7343,6 +7926,46 @@
                     rangeBtn.style.display = 'none';
                 }
             }
+            
+            // --- COMPARE BUTTON LOGIC ---
+            const selCount = selectedFiles.size;
+            let compareBtn = document.getElementById('compare-selected-btn');
+            
+            // Inject button if missing
+            if (!compareBtn) {
+                compareBtn = document.createElement('button');
+                compareBtn.id = 'compare-selected-btn';
+                compareBtn.className = 'sel-btn';
+                compareBtn.title = 'Compare 2 Files';
+                compareBtn.innerHTML = '⚖️';
+                compareBtn.onclick = startCompareMode;
+                // Insert before delete button
+                const actionsDiv = document.querySelector('.sel-bar-actions');
+                const deleteBtn = document.getElementById('delete-selected-btn');
+                if(actionsDiv && deleteBtn) actionsDiv.insertBefore(compareBtn, deleteBtn);
+            }
+            
+            // Only show if exactly 2 items are selected
+            if(compareBtn) {
+                compareBtn.style.display = (selCount === 2) ? 'flex' : 'none';
+                if (selCount === 2) compareBtn.style.color = 'var(--ai-color)';
+            }
+            
+            // --- COMPARE MENU ITEM LOGIC (Redundant for Mobile) ---
+            const cmpMenuBtn = document.getElementById('compare-menu-btn');
+            const cmpMenuSep = document.getElementById('compare-menu-sep');
+            
+            if (cmpMenuBtn && cmpMenuSep) {
+                if (count === 2) {
+                    // Show in menu if exactly 2 items selected
+                    cmpMenuBtn.style.display = 'flex';
+                    cmpMenuSep.style.display = 'block';
+                } else {
+                    // Hide otherwise
+                    cmpMenuBtn.style.display = 'none';
+                    cmpMenuSep.style.display = 'none';
+                }
+            }
 
             // 4. Sync the "Select All" toggle button text
             updateSelectAllButtonState();
@@ -7397,30 +8020,71 @@
             else selectAll();
         }
         
-        function toggleFavorite(event, fileId, element) { event.stopPropagation(); const originalContent = element.innerHTML; element.innerHTML = '⏳'; element.disabled = true; fetch(`/galleryout/toggle_favorite/${fileId}`, { method: 'POST' }).then(res => res.json()).then(data => { if (data.status === 'success') { element.classList.toggle('favorited', data.is_favorite); element.innerHTML = data.is_favorite ? '⭐' : '☆'; showNotification(data.is_favorite ? 'Added to favorites!' : 'Removed from favorites!', 'success'); } else { element.innerHTML = originalContent; showNotification('Error toggling favorite', 'error'); } }).catch(error => { element.innerHTML = originalContent; handleError(error); }).finally(() => element.disabled = false); }
+        function toggleFavorite(event, fileId, element) { 
+            event.stopPropagation(); 
+            const originalContent = element.innerHTML; 
+            element.innerHTML = '⏳'; 
+            element.disabled = true; 
+            
+            fetch(`/galleryout/toggle_favorite/${fileId}`, { method: 'POST' })
+            .then(res => res.json())
+            .then(data => { 
+                if (data.status === 'success') { 
+                    // 1. Update UI
+                    element.classList.toggle('favorited', data.is_favorite); 
+                    element.innerHTML = data.is_favorite ? '⭐' : '☆'; 
+                    
+                    // 2. Update Global Data (Critical for Copy logic)
+                    const fileData = allFilesData.find(f => f.id === fileId);
+                    if (fileData) {
+                        fileData.is_favorite = data.is_favorite;
+                    }
+
+                    showNotification(data.is_favorite ? 'Added to favorites!' : 'Removed from favorites!', 'success'); 
+                } else { 
+                    element.innerHTML = originalContent; 
+                    showNotification('Error toggling favorite', 'error'); 
+                } 
+            })
+            .catch(error => { 
+                element.innerHTML = originalContent; 
+                handleError(error); 
+            })
+            .finally(() => element.disabled = false); 
+        }
         
-        async function deleteFile(event, fileId, element) {
-            event.stopPropagation();
+        // Added skipConfirm parameter for Quick Delete via keyboard
+        async function deleteFile(event, fileId, element, skipConfirm = false) {
+            if (event) event.stopPropagation();
 
-            const confirmed = await smartConfirm(
-                "🗑️ Delete File?", 
-                "Are you sure you want to delete this file?\nThis cannot be undone.", 
-                true
-            );
+            // Only ask for confirmation if NOT skipping (Normal click mode)
+            if (!skipConfirm) {
+                const confirmed = await smartConfirm(
+                    "🗑️ Delete File?", 
+                    "Are you sure you want to delete this file?\nThis cannot be undone.", 
+                    true
+                );
+                if (!confirmed) return;
+            }
 
-            if (!confirmed) return;
-
+            // If triggered via keyboard hover, 'element' might be the button or the item itself. 
+            // We need to ensure we find the container item safely.
             const item = element.closest('.gallery-item');
-            element.disabled = true;
+            
+            // Disable button if passed (might be null or undefined in keyboard trigger)
+            if (element && element.tagName === 'BUTTON') element.disabled = true;
 
             fetch(`/galleryout/delete/${fileId}`, { method: 'POST' })
                 .then(res => res.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        item.style.transition = 'all 0.4s ease';
+                        item.style.transition = 'all 0.2s ease'; // Faster transition for quick delete
                         item.style.opacity = '0';
                         item.style.transform = 'scale(0.8)';
+                        
+                        // [CHANGED] Always show notification, even for Quick Delete
                         showNotification('File deleted!', 'success');
+                        
                         setTimeout(() => {
                             item.remove();
                             galleryItems = galleryItems.filter(gi => gi !== item);
@@ -7430,20 +8094,111 @@
                             currentItemCount--;
                             updateFileCountBadge();
                             updateLoadMoreVisibility();
-                        }, 400);
+                        }, 200); // Faster removal
                     } else {
+                        // Always show error notifications
                         showNotification(`Error: ${data.message || 'Deletion failed'}`, 'error');
-                        element.disabled = false;
+                        if (element && element.tagName === 'BUTTON') element.disabled = false;
                     }
                 })
                 .catch(error => {
                     handleError(error);
-                    element.disabled = false;
+                    if (element && element.tagName === 'BUTTON') element.disabled = false;
                 });
         }
         
         function moveSelected() { if (selectedFiles.size > 0) populateAndShowDropPanel(); }
         
+        // --- COPY FILES LOGIC ---
+        // Wrapper to start Move
+        function initiateMove() {
+            if (selectedFiles.size === 0) return;
+            currentDropAction = 'move';
+            populateAndShowDropPanel();
+        }
+        
+         // Wrapper to start Copy
+        async function copySelected() {
+            if (selectedFiles.size === 0) return;
+            
+            // 1. Check for Favorites in selection
+            let hasFavorites = false;
+            const ids = Array.from(selectedFiles);
+            
+            for (const id of ids) {
+                const f = allFilesData.find(x => x.id === id);
+                // Check allows for 1 (int), true (bool)
+                if (f && (f.is_favorite === 1 || f.is_favorite === true)) {
+                    hasFavorites = true;
+                    break;
+                }
+            }
+            
+            copyKeepFavorites = false; // Reset default
+            
+            // 2. Ask User if favorites exist
+            if (hasFavorites) {
+                const choice = await showSmartDialog(
+                    'yes_no_cancel',
+                    '⭐ Handling Favorites',
+                    'Some selected files are marked as Favorites.\n\nDo you want to keep the "Favorite" status on the new copies?',
+                    '',
+                    'active-blue'
+                );
+                
+                if (choice === null) return; // Cancelled
+                copyKeepFavorites = choice; // True (Yes) or False (No)
+            }
+            
+            // 3. Open Panel
+            currentDropAction = 'copy';
+            populateAndShowDropPanel();
+        }
+
+        // Updated Panel Show Logic
+        function populateAndShowDropPanel() {
+            // Update Title based on Action
+            const titleEl = document.querySelector('#drop-zone-panel h3');
+            if (titleEl) {
+                const actionName = (currentDropAction === 'copy') ? 'Cc Copy' : '➜ Move';
+                titleEl.textContent = `${actionName} to Folder:`;
+            }
+
+            // Sync sorting state
+            currentSort.move = { ...currentSort.nav };
+
+            document.getElementById('drag-drop-overlay').classList.add('visible');
+            document.getElementById('drop-zone-panel').classList.add('visible');
+
+            updateSortButtonsUI('move');
+            document.getElementById('move-folder-tree').innerHTML = buildFolderTreeHTML('_root_', true);
+            filterTree('move-folder-tree', currentSearch.move, false);
+        }
+
+        // Updated Confirm Logic
+        function confirmMoveToFolder(folderKey) { 
+            if (!selectedFiles || selectedFiles.size === 0) { 
+                showNotification('No files selected.', 'warning'); 
+                return; 
+            } 
+            
+            if (currentDropAction === 'copy') {
+                // Copy Action
+                performBatchAction('/galleryout/copy_batch', { 
+                    file_ids: [...selectedFiles], 
+                    destination_folder: folderKey,
+                    keep_favorites: copyKeepFavorites
+                });
+            } else {
+                // Move Action
+                performBatchAction('/galleryout/move_batch', { 
+                    file_ids: [...selectedFiles], 
+                    destination_folder: folderKey 
+                }); 
+            }
+            
+            hideDropZone(); 
+        }
         async function deleteSelected() {
             const count = selectedFiles.size;
             if (count > 0) {
@@ -7458,8 +8213,16 @@
                 }
             }
         }
+         function performBatchAction(url, body) { 
+            fetch(url, { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify(body) 
+            })
+            .then(handleGenericResponse)
+            .catch(handleError); 
+        }
         function favoriteSelected(status) { if (selectedFiles.size === 0) return; performBatchAction('/galleryout/favorite_batch', { file_ids: [...selectedFiles], status: status }); }
-        function performBatchAction(url, body) { fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(handleGenericResponse).catch(handleError); }
         function downloadSelectedZip() {
             if (selectedFiles.size === 0) return;
             const fileIds = [...selectedFiles];
@@ -7559,13 +8322,16 @@
         function updateMediaTransform() { const mediaEl = lightboxMedia.querySelector('img, video'); if (!mediaEl) return; mediaEl.style.transform = `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentZoom})`; updateLightboxTitle(); }
         function openLightbox(event, fileId) { if (event.target.closest('a, button')) return; event.stopPropagation(); currentLightboxIndex = galleryItems.findIndex(item => item.dataset.fileId === fileId); if (currentLightboxIndex === -1) return; currentZoom = 1; currentTranslateX = 0; currentTranslateY = 0; panStep = 50; document.body.classList.add('lightbox-open'); lightboxOverlay.classList.add('visible'); showItemAtIndex(currentLightboxIndex); }
         function closeLightbox() {
+            // FIX: Use correct function name for the new Storyboard
+            if (typeof closeStoryboard === "function") {
+                closeStoryboard();
+            }
+            
             const mediaElement = lightboxMedia.querySelector('video, audio');
             if (mediaElement) mediaElement.pause();
             
-            // Close AI Caption if open
             toggleAiCaption(false);
 
-            // Sync grid focus with lightbox position
             if (currentLightboxIndex !== -1 && galleryItems.length > 0) {
                 if (focusedItemIndex !== -1 && galleryItems[focusedItemIndex]) {
                     galleryItems[focusedItemIndex].classList.remove('focused');
@@ -7645,29 +8411,46 @@
             currentLightboxFile = file;
             updateLightboxTitle();
             
-            // Set Folder Name in Lightbox with Full Path Features
+            // Set Folder Name AND Resolution in Lightbox
             const lightboxFolderEl = document.getElementById('lightbox-folder-name');
+            let metaHtml = '';
+            
+            // 1. Folder Path Logic
             if (file.path) {
                 const parts = file.path.split(/[/\\]/);
                 if (parts.length > 1) {
                     let folderName = parts[parts.length - 2];
                     if (folderName.toLowerCase() === 'output') folderName = 'Main';
-                    
-                    lightboxFolderEl.innerHTML = `📂 ${folderName} <span style="color:var(--favorite-color); font-size:1em; margin-left:6px; cursor:help;" title="Click to see full path">ⓘ</span>`;
-                    lightboxFolderEl.title = file.path; 
-                    lightboxFolderEl.style.cursor = 'help';
-                    
-                    // Initial Bind (Internal Path only, until metadata loads)
-                    updateLightboxPathTooltip(file);
-                    
-                } else {
-                    lightboxFolderEl.textContent = '';
-                    lightboxFolderEl.onclick = null;
+                    metaHtml += `📂 ${folderName} `;
                 }
+            }
+            
+            // 2. Resolution & Megapixel Logic (Using Helper)
+            if (file.dimensions) {
+                // Add separator if we already have folder text
+                if (metaHtml) metaHtml += ' <span style="opacity:0.4; margin:0 8px;">|</span> ';
+                
+                // Use the helper function to get "1024x1024 (1 MP)"
+                const resString = getResolutionString(file);
+                metaHtml += `<span style="color:var(--text-muted); font-family:monospace;">📐 ${resString}</span>`;
+            }
+            
+            // 3. Info Icon & Tooltip Binding
+            if (file.path) {
+                metaHtml += ` <span style="color:var(--favorite-color); font-size:1em; margin-left:6px; cursor:help;" title="Click to see full path">ⓘ</span>`;
+                lightboxFolderEl.title = file.path; 
+                lightboxFolderEl.style.cursor = 'help';
+                
+                // Bind the click event for the full path notification
+                updateLightboxPathTooltip(file);
             } else {
-                lightboxFolderEl.textContent = '';
+                lightboxFolderEl.title = '';
+                lightboxFolderEl.style.cursor = 'default';
                 lightboxFolderEl.onclick = null;
             }
+
+            // Apply final HTML
+            lightboxFolderEl.innerHTML = metaHtml;
             
             // Clear the container
             lightboxMedia.innerHTML = '';
@@ -7690,9 +8473,32 @@
             } else if (file.type === 'video') {
                 mediaEl = document.createElement('video');
                 
-                // If it's a .mov or professional format, use the streaming route
-                const isProResCandidate = file.name.toLowerCase().endsWith('.mov');
-                if (isProResCandidate) {
+                const lowerName = file.name.toLowerCase();
+                
+                // LOGIC: NATIVE vs STREAMING
+                // Browsers natively support: .mp4 (h264), .webm
+                // Browsers FAIL on: .mkv, .avi, .mov (ProRes/HEVC), .wmv, .flv
+                // We force streaming for ANY container that isn't strictly standard mp4/webm
+                // or if it's a "heavy" file (streamThresholdBytes).
+                
+                const isNativeContainer = lowerName.endsWith('.mp4') || lowerName.endsWith('.webm');
+                const isHeavy = (file.size > streamThresholdBytes);
+                
+                // Special check for MOV: Browsers play simple h264 MOVs, but crash on ProRes.
+                // To be safe in post-production context, we usually stream MOVs too.
+                
+                let useStream = isHeavy; // Default rule based on size
+                
+                if (!isNativeContainer) {
+                    useStream = true; // Always stream MKV, AVI, WMV, etc.
+                }
+                
+                // Force stream for .mov to support ProRes/DNxHD
+                if (lowerName.endsWith('.mov')) {
+                    useStream = true;
+                }
+
+                if (useStream && ffmpegAvailable) {
                     mediaEl.src = `/galleryout/stream/${file.id}`;
                 } else {
                     mediaEl.src = `/galleryout/file/${file.id}`;
@@ -7798,6 +8604,20 @@
                 // Hide Erase Button
                 if(resetAiBtn) resetAiBtn.style.display = 'none';
             }
+            
+            // --- STORYBOARD BUTTON LOGIC ---
+            const filmstripBtn = document.getElementById('lightbox-filmstrip-btn');
+            if (filmstripBtn && currentLightboxFile) {
+                const isSupported = (currentLightboxFile.type === 'video' || currentLightboxFile.type === 'animated_image');
+                if (isSupported && ffmpegAvailable) {
+                    filmstripBtn.style.display = 'flex';
+                    // Click handler now calls openStoryboard
+                    filmstripBtn.onclick = () => openStoryboard(currentLightboxFile.id);
+                } else {
+                    filmstripBtn.style.display = 'none';
+                }
+            }
+            
         }
         
         // New Function: Fetches real status from server and updates UI
@@ -8061,7 +8881,32 @@
         }
 
         const summaryOverlay = document.getElementById('node-summary-overlay'); const summaryContent = document.getElementById('node-summary-content');
-        function escapeHTML(value) { if (value === null || typeof value === 'undefined') { return '<em>null</em>'; } if (typeof value === 'object') { try { const jsonString = JSON.stringify(value, null, 2); return jsonString.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]); } catch (e) { return '[Unserializable Object]'; } } return value.toString().replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '&quot;': '&quot;', "'": '&#39;' })[m]); }
+        function escapeHTML(value) {
+            if (value === null || typeof value === 'undefined') {
+                return '<em>null</em>';
+            }
+            
+            // Handle Objects (like JSON configs in nodes) by converting to string first
+            if (typeof value === 'object') {
+                try {
+                    value = JSON.stringify(value, null, 2);
+                } catch (e) {
+                    return '[Unserializable Object]';
+                }
+            }
+            
+            // Robust replacement using a switch to avoid 'undefined' mapping errors
+            return String(value).replace(/[&<>"']/g, function(m) {
+                switch (m) {
+                    case '&': return '&amp;';
+                    case '<': return '&lt;';
+                    case '>': return '&gt;';
+                    case '"': return '&quot;';
+                    case "'": return '&#39;';
+                    default: return m;
+                }
+            });
+        }
 async function showNodeSummary(event, fileId) {
             event.stopPropagation();
             const summaryContent = document.getElementById('node-summary-content');
@@ -9196,7 +10041,12 @@ async function showNodeSummary(event, fileId) {
             document.getElementById('cancel-drop-btn').addEventListener('click', hideDropZone);
             document.getElementById('select-all-btn').addEventListener('click', selectAll);
             document.getElementById('deselect-all-btn').addEventListener('click', deselectAll);
-            document.getElementById('move-selected-btn').addEventListener('click', moveSelected);
+            // Listeners for Move and Copy
+            const moveBtn = document.getElementById('move-selected-btn');
+            if (moveBtn) moveBtn.addEventListener('click', initiateMove);
+
+            const copyBtn = document.getElementById('copy-selected-btn');
+            if (copyBtn) copyBtn.addEventListener('click', copySelected);
             document.getElementById('download-zip-btn').addEventListener('click', downloadSelectedZip);
             document.getElementById('delete-selected-btn').addEventListener('click', deleteSelected);
             document.getElementById('favorite-selected-btn').addEventListener('click', () => favoriteSelected(true));
@@ -9252,6 +10102,63 @@ async function showNodeSummary(event, fileId) {
             // --- KEYBOARD SHORTCUTS ---
             document.addEventListener('keydown', (e) => {
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+                // --- NEW: Storyboard Zoom Navigation ---
+                const sbZoomOverlay = document.getElementById('sb-zoom-overlay');
+                if (sbZoomOverlay && sbZoomOverlay.style.display === 'flex') {
+                    if (e.key === 'ArrowLeft') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        navigateSbZoom(-1);
+                        return;
+                    }
+                    if (e.key === 'ArrowRight') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        navigateSbZoom(1);
+                        return;
+                    }
+                    if (e.key === 'Escape') {
+                        e.preventDefault();
+                        closeSbZoom();
+                        return;
+                    }
+                    // Block other keys while zoomed
+                    return;
+                }
+                // --- COMPARE MODE SHORTCUTS ---
+                if (document.getElementById('compare-overlay').classList.contains('visible')) {
+                    if (e.key === 'Escape') {
+                        closeCompareMode();
+                        return;
+                    }
+                    // Zoom In (+ or =)
+                    if (e.key === '+' || e.key === '=') {
+                        e.preventDefault();
+                        cmpZoom(0.2);
+                        return;
+                    }
+                    // Zoom Out (- or _)
+                    if (e.key === '-' || e.key === '_') {
+                        e.preventDefault();
+                        cmpZoom(-0.2);
+                        return;
+                    }
+                    // Reset Zoom (0)
+                    if (e.key === '0') {
+                        e.preventDefault();
+                        cmpResetZoom();
+                        return;
+                    }
+                    // [NEW] Toggle Info Panel (I)
+                    if (e.key === 'i' || e.key === 'I') {
+                        e.preventDefault();
+                        toggleCmpInfo();
+                        return;
+                    }
+                    
+                    e.stopPropagation();
+                    return; 
+                }
 
                 if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) {
                     e.preventDefault();
@@ -9260,6 +10167,18 @@ async function showNodeSummary(event, fileId) {
                 }
 
                 if (e.key === 'Escape') {
+                    // 1. Zoom Frame (Level 3)
+                    const zoomOverlay = document.getElementById('sb-zoom-overlay');
+                    if (zoomOverlay && zoomOverlay.style.display === 'flex') {
+                        closeSbZoom();
+                        return;
+                    }
+                    // 2. Storyboard (Level 2)
+                    const sbOverlay = document.getElementById('storyboard-overlay');
+                    if (sbOverlay && sbOverlay.classList.contains('visible')) {
+                        closeStoryboard();
+                        return; 
+                    }
                     const shortcutsHelp = document.getElementById('shortcuts-help-overlay');
                     if (shortcutsHelp.classList.contains('visible')) {
                         closeShortcutsHelp();
@@ -9422,6 +10341,24 @@ async function showNodeSummary(event, fileId) {
                         case '?':
                             showShortcutsHelp();
                             break;
+                        case 'e':
+                        case 'E':
+                            case 'e':
+                        case 'E':
+                            // Determine file context
+                            let fileToOpen = null;
+                            if (isLightboxOpen && currentLightboxFile) {
+                                fileToOpen = currentLightboxFile;
+                            } else if (!isLightboxOpen && focusedItemIndex !== -1) {
+                                fileToOpen = allFilesData.find(f => f.id === galleryItems[focusedItemIndex].dataset.fileId);
+                            } else if (!isLightboxOpen && hoveredItemIndex !== -1) {
+                                fileToOpen = allFilesData.find(f => f.id === galleryItems[hoveredItemIndex].dataset.fileId);
+                            }
+
+                            if (fileToOpen) {
+                                openStoryboard(fileToOpen.id);
+                            }
+                            break;
                     }
                 } else {
                     if (e.key === 'z' || e.key === 'Z') {
@@ -9484,6 +10421,30 @@ async function showNodeSummary(event, fileId) {
                                 openLightbox(e, item.dataset.fileId);
                             }
                             break;
+                        // Quick Delete on Hover ---
+                        case 'Delete':
+                            // Priority 1: Hovered Item (Quick Delete - No Confirm)
+                            if (hoveredItemIndex !== -1) {
+                                const item = galleryItems[hoveredItemIndex];
+                                const btn = item.querySelector('.delete-btn');
+                                // Pass 'true' to skip confirmation
+                                deleteFile(e, item.dataset.fileId, btn, true); 
+                                return; 
+                            }
+                            
+                            // Priority 2: Selection (Batch Delete - With Confirm)
+                            if (selectedFiles.size > 0) {
+                                deleteSelected();
+                                return;
+                            }
+                            
+                            // Priority 3: Focused Item (Keyboard Nav - With Confirm)
+                            if (focusedItemIndex !== -1) {
+                                const item = galleryItems[focusedItemIndex];
+                                const btn = item.querySelector('.delete-btn');
+                                deleteFile(e, item.dataset.fileId, btn, false);
+                            }
+                            break;
                         case 'd':
                         case 'D':
                             if (selectedFiles.size > 0) {
@@ -9512,6 +10473,60 @@ async function showNodeSummary(event, fileId) {
                                 }
                             }
                             break;
+                            case 'e':
+                            case 'E':
+                            { // OPEN SCOPE BLOCK
+                                let targetIndexE = -1; 
+                                
+                                // 1. Priority Logic: Hover (Mouse) > Focus (Keyboard)
+                                if (typeof hoveredItemIndex !== 'undefined' && hoveredItemIndex !== -1) {
+                                    targetIndexE = hoveredItemIndex;
+                                } else if (focusedItemIndex !== -1) {
+                                    targetIndexE = focusedItemIndex;
+                                }
+                                
+                                // 2. If inside Lightbox, use current lightbox file
+                                if (document.body.classList.contains('lightbox-open') && currentLightboxFile) {
+                                    openStoryboard(currentLightboxFile.id);
+                                    break;
+                                }
+                                
+                                // 3. Execution from GridView
+                                if (targetIndexE !== -1 && galleryItems[targetIndexE]) {
+                                    const item = galleryItems[targetIndexE];
+                                    const fileId = item.dataset.fileId;
+                                    const fileData = allFilesData.find(f => f.id === fileId);
+                                    
+                                    const isSupported = (fileData && (fileData.type === 'video' || fileData.type === 'animated_image'));
+                                    
+                                    if (isSupported && ffmpegAvailable) {
+                                        
+                                        // [NEW] SYNC FOCUS: If triggered via hover, update global focus immediately
+                                        // This ensures that when closing the storyboard, we return to this specific item.
+                                        if (focusedItemIndex !== targetIndexE) {
+                                            // Remove focus from previous item
+                                            if (focusedItemIndex !== -1 && galleryItems[focusedItemIndex]) {
+                                                galleryItems[focusedItemIndex].classList.remove('focused');
+                                            }
+                                            // Update index and visual class
+                                            focusedItemIndex = targetIndexE;
+                                            item.classList.add('focused');
+                                        }
+
+                                        // Visual "Pop" effect
+                                        item.style.transform = "scale(1.05)";
+                                        item.style.transition = "transform 0.1s";
+                                        setTimeout(() => item.style.transform = "", 150);
+                                        
+                                        // Open
+                                        openStoryboard(fileData.id);
+                                        
+                                    } else if (fileData && !isSupported) {
+                                        showNotification("Storyboard available for Video/Animation only.", "warning");
+                                    }
+                                }
+                                break;
+                            } // CLOSE SCOPE BLOCK
                         case 'x':
                         case 'X':
                             if (focusedItemIndex !== -1) {
@@ -10571,6 +11586,294 @@ async function showNodeSummary(event, fileId) {
             menu.classList.toggle('show');
         }
 
+        // --- COMPARE MODE CORE LOGIC (HYBRID IMAGE/VIDEO) ---
+
+        // [NEW] Helper to format resolution string with MegaPixels
+        function getResolutionString(file) {
+            if (!file || !file.dimensions) return "";
+            
+            let result = file.dimensions; // Default: "1024x1024"
+            
+            const dims = file.dimensions.split('x');
+            if (dims.length === 2) {
+                const w = parseInt(dims[0]);
+                const h = parseInt(dims[1]);
+                if (!isNaN(w) && !isNaN(h)) {
+                    // Formula: (Width * Height) / 1,000,000
+                    const mp = (w * h) / 1000000;
+                    // Show 1 decimal (e.g. "12.4 MP") or integer if exact
+                    const mpFormatted = mp % 1 === 0 ? mp.toFixed(0) : mp.toFixed(1);
+                    result += ` (${mpFormatted} MP)`;
+                }
+            }
+            return result;
+        }
+
+        // [NEW] Show full details in notification when label is clicked
+        function showCmpDetails(el) {
+            if (el.dataset.fullInfo) {
+                // Use 'path-msg' class for monospace font and word-wrapping
+                showNotification(el.dataset.fullInfo, 'info path-msg', 5000);
+            }
+        }
+        
+        let cmpState = {
+            active: false,
+            zoom: 1, panX: 0, panY: 0,
+            rotation: 0, // [NEW] Track rotation state
+            isDraggingHandle: false,
+            sliderPos: 50,
+            fileA: null, fileB: null
+        };
+
+        function startCompareMode() {
+            if (selectedFiles.size !== 2) return;
+            const ids = Array.from(selectedFiles);
+            
+            const fileA = allFilesData.find(f => f.id === ids[0]);
+            const fileB = allFilesData.find(f => f.id === ids[1]);
+            
+            if (!fileA || !fileB) return;
+            
+            cmpState.fileA = fileA;
+            cmpState.fileB = fileB;
+            cmpState.active = true;
+            cmpState.zoom = 1; cmpState.panX = 0; cmpState.panY = 0;
+            cmpState.rotation = 0; // Reset rotation
+            cmpState.sliderPos = 50;
+
+            // [NEW] Calculate Resolution Strings (e.g., "1024x1024 (1 MP)")
+            const resA = getResolutionString(fileA);
+            const resB = getResolutionString(fileB);
+
+            // 1. Inject into Table Headers (Detailed Info with Filename)
+            document.getElementById('cmp-header-a').textContent = `A: ${fileA.name}`;
+            document.getElementById('cmp-header-a').title = `${fileA.name}\n${resA}`;
+            
+            document.getElementById('cmp-header-b').textContent = `B: ${fileB.name}`;
+            document.getElementById('cmp-header-b').title = `${fileB.name}\n${resB}`;
+
+            // 2. Setup Floating Labels
+            const lblA = document.getElementById('cmp-label-a');
+            const lblB = document.getElementById('cmp-label-b');
+            
+            // Visual Label (Short: "Image A · 1 MP ℹ")
+            lblA.innerHTML = `Image A ${resA ? '· ' + resA : ''} <span style="opacity:0.7">ℹ</span>`;
+            lblB.innerHTML = `Image B ${resB ? '· ' + resB : ''} <span style="opacity:0.7">ℹ</span>`;
+            
+            // Data for Notification (Full Details on click)
+            lblA.dataset.fullInfo = `Image A\n\n📄 Name:\n${fileA.name}\n\n📐 Resolution:\n${resA || 'N/A'}`;
+            lblB.dataset.fullInfo = `Image B\n\n📄 Name:\n${fileB.name}\n\n📐 Resolution:\n${resB || 'N/A'}`;
+
+            document.getElementById('compare-overlay').classList.add('visible');
+            document.body.classList.add('modal-open');
+
+            // 1. Render Media (Dynamic: Video or Image)
+            const elA = renderCmpMedia(fileA, 'cmp-container-a', 'cmp-media-a');
+            const elB = renderCmpMedia(fileB, 'cmp-container-b', 'cmp-media-b');
+            
+            // 2. Setup Video Sync
+            if (fileA.type === 'video' && fileB.type === 'video') {
+                setupVideoSync(elA, elB);
+            }
+
+            updateCmpTransform();
+            updateCmpSlider();
+            loadCmpDiffData(fileA.id, fileB.id);
+        }
+
+        function closeCompareMode() {
+            document.getElementById('compare-overlay').classList.remove('visible');
+            document.body.classList.remove('modal-open');
+            cmpState.active = false;
+            // Clear containers to stop videos
+            document.getElementById('cmp-container-a').innerHTML = '';
+            document.getElementById('cmp-container-b').innerHTML = '';
+        }
+
+        // Helper: Creates <img> or <video> dynamically
+        function renderCmpMedia(file, containerId, elementId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = ''; 
+            
+            let el;
+            if (file.type === 'video') {
+                el = document.createElement('video');
+                el.src = `/galleryout/stream/${file.id}`;
+                el.loop = true; el.autoplay = true; el.muted = true; el.playsInline = true;
+                el.controls = false;
+            } else {
+                el = document.createElement('img');
+                el.src = `/galleryout/file/${file.id}`;
+            }
+            
+            el.id = elementId;
+            el.className = 'cmp-content';
+            el.draggable = false;
+            container.appendChild(el);
+            return el;
+        }
+
+        // Helper: Syncs Play/Pause/Seek
+        function setupVideoSync(vidA, vidB) {
+            let isSyncing = false;
+            const sync = (source, target) => {
+                if (isSyncing) return;
+                isSyncing = true;
+                
+                if (!source.paused && target.paused) target.play();
+                if (source.paused && !target.paused) target.pause();
+                
+                if (Math.abs(source.currentTime - target.currentTime) > 0.1) {
+                    target.currentTime = source.currentTime;
+                }
+                isSyncing = false;
+            };
+
+            ['play', 'pause', 'seeking', 'seeked', 'timeupdate'].forEach(evt => vidA.addEventListener(evt, () => sync(vidA, vidB)));
+            ['play', 'pause', 'seeking', 'seeked'].forEach(evt => vidB.addEventListener(evt, () => sync(vidB, vidA)));
+            
+            // Double Click to toggle play/pause
+            const stage = document.getElementById('compare-stage');
+            stage.ondblclick = (e) => {
+                if(e.target.id === 'cmp-handle') return;
+                if (vidA.paused) vidA.play(); else vidA.pause();
+            };
+        }
+
+        function updateCmpTransform() {
+            // [UPDATED] Apply Rotation logic
+            const transform = `translate(${cmpState.panX}px, ${cmpState.panY}px) scale(${cmpState.zoom}) rotate(${cmpState.rotation}deg)`;
+            const elA = document.getElementById('cmp-media-a');
+            const elB = document.getElementById('cmp-media-b');
+            if(elA) elA.style.transform = transform;
+            if(elB) elB.style.transform = transform;
+        }
+
+        function updateCmpSlider() {
+            const pct = cmpState.sliderPos;
+            document.getElementById('cmp-after-wrapper').style.clipPath = `inset(0 ${100 - pct}% 0 0)`;
+            document.getElementById('cmp-handle').style.left = `${pct}%`;
+        }
+        
+        // Continuous Rotation Cycle (0 -> 90 -> 180 -> 270 -> 0)
+        function cmpRotate() {
+            // Add 90 degrees and wrap around at 360
+            cmpState.rotation = (cmpState.rotation + 90) % 360;
+            updateCmpTransform();
+        }
+
+        // Helper for Buttons and Keyboard
+        function cmpZoom(amount) {
+            const newZoom = cmpState.zoom + amount;
+            // Clamp zoom level between 0.1x and 20x
+            cmpState.zoom = Math.max(0.1, Math.min(20, newZoom));
+            updateCmpTransform();
+        }
+        
+        function cmpResetZoom() {
+            cmpState.zoom = 1; cmpState.panX = 0; cmpState.panY = 0;
+            cmpState.rotation = 0; // Reset rotation
+            updateCmpTransform();
+        }
+
+        // --- EVENTS: Slider & Pan/Zoom ---
+        const cmpStage = document.getElementById('compare-stage');
+        const cmpHandle = document.getElementById('cmp-handle');
+        
+        const onSliderMove = (clientX) => {
+            const rect = cmpStage.getBoundingClientRect();
+            let pct = ((clientX - rect.left) / rect.width) * 100;
+            cmpState.sliderPos = Math.max(0, Math.min(100, pct));
+            updateCmpSlider();
+        };
+
+        cmpHandle.addEventListener('mousedown', () => cmpState.isDraggingHandle = true);
+        cmpHandle.addEventListener('touchstart', () => cmpState.isDraggingHandle = true, {passive: false});
+        window.addEventListener('mouseup', () => cmpState.isDraggingHandle = false);
+        window.addEventListener('touchend', () => cmpState.isDraggingHandle = false);
+
+        window.addEventListener('mousemove', (e) => {
+            if (cmpState.isDraggingHandle) { e.preventDefault(); onSliderMove(e.clientX); }
+        });
+        window.addEventListener('touchmove', (e) => {
+            if (cmpState.isDraggingHandle) { e.preventDefault(); onSliderMove(e.touches[0].clientX); }
+        }, {passive: false});
+
+        // Pan/Zoom Wheel
+        cmpStage.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (e.ctrlKey) {
+                const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                cmpState.zoom = Math.max(0.1, Math.min(20, cmpState.zoom * delta));
+            } else {
+                cmpState.panX -= e.deltaX; cmpState.panY -= e.deltaY;
+            }
+            updateCmpTransform();
+        }, {passive: false});
+
+        // Pan Drag
+        let isCmpPanning = false;
+        let cmpStartPanX = 0, cmpStartPanY = 0;
+
+        cmpStage.addEventListener('mousedown', (e) => {
+            if (e.target === cmpHandle) return;
+            isCmpPanning = true;
+            cmpStartPanX = e.clientX - cmpState.panX;
+            cmpStartPanY = e.clientY - cmpState.panY;
+            cmpStage.style.cursor = 'grabbing';
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isCmpPanning) {
+                e.preventDefault();
+                cmpState.panX = e.clientX - cmpStartPanX;
+                cmpState.panY = e.clientY - cmpStartPanY;
+                updateCmpTransform();
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            isCmpPanning = false;
+            cmpStage.style.cursor = 'grab';
+        });
+
+        // --- INFO PANEL LOGIC ---
+        function toggleCmpInfo() {
+            const panel = document.getElementById('compare-info-panel');
+            panel.classList.toggle('collapsed');
+            document.getElementById('cmp-toggle-icon').style.transform = panel.classList.contains('collapsed') ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
+
+        async function loadCmpDiffData(idA, idB) {
+            const tbody = document.getElementById('cmp-table-body');
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:20px;">⏳ Analyzing...</td></tr>';
+            try {
+                const res = await fetch('/galleryout/api/compare_files', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ id_a: idA, id_b: idB })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    tbody.innerHTML = '';
+                    if (data.diff.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">No workflow data found.</td></tr>';
+                        return;
+                    }
+                    data.diff.forEach(row => {
+                        const tr = document.createElement('tr');
+                        if (row.is_diff) tr.className = 'cmp-row-diff';
+                        tr.innerHTML = `<td>${row.key}</td><td>${row.val_a || '-'}</td><td>${row.val_b || '-'}</td>`;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="3" style="color:var(--danger-color)">Error: ${data.message}</td></tr>`;
+                }
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="3" style="color:var(--danger-color)">Network Error</td></tr>`;
+            }
+        }
+
         // Close menu when clicking outside
         document.addEventListener('click', (e) => {
             const menu = document.getElementById('sel-more-menu');
@@ -10588,6 +11891,147 @@ async function showNodeSummary(event, fileId) {
              document.getElementById('sel-more-menu').classList.remove('show');
         });
         
+
+        // --- STORYBOARD LOGIC (Updated with Navigation) ---
+        let currentStoryboardFile = null;
+        let currentSbFrames = []; // Store the URLs for navigation
+        let currentSbZoomIndex = 0; // Track current index
+
+        async function openStoryboard(fileId) {
+            // ... (Questa parte rimane identica alla precedente fino al fetch) ...
+            // Context resolution (Grid or Lightbox)
+            let file = null;
+            if (fileId) {
+                file = allFilesData.find(f => f.id === fileId);
+            } else if (currentLightboxFile) {
+                file = currentLightboxFile;
+            } else if (focusedItemIndex !== -1) {
+                file = allFilesData.find(f => f.id === galleryItems[focusedItemIndex].dataset.fileId);
+            }
+
+            if (!file) return;
+            if (!['video', 'animated_image'].includes(file.type)) {
+                showNotification("Storyboard available for Videos/Animations only.", "warning");
+                return;
+            }
+
+            currentStoryboardFile = file;
+            const overlay = document.getElementById('storyboard-overlay');
+            const grid = document.getElementById('sb-grid');
+            const loader = document.getElementById('sb-loader');
+            
+            overlay.classList.add('visible');
+            // document.body.classList.add('modal-open'); // Already handled globally often
+            
+            grid.innerHTML = '';
+            loader.style.display = 'flex';
+            
+            try {
+                const response = await fetch(`/galleryout/storyboard/${file.id}`);
+                const data = await response.json();
+                
+                loader.style.display = 'none';
+                
+                if (data.status === 'success' && data.frames) {
+                    // NEW: Store frames globally
+                    currentSbFrames = data.frames;
+                    renderStoryboardGrid(data.frames);
+                } else {
+                    grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; color:var(--danger-color); padding:20px;">Error: ${data.message}</div>`;
+                }
+            } catch (e) {
+                loader.style.display = 'none';
+                grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; color:var(--danger-color);">Network Error</div>`;
+            }
+        }
+
+        function renderStoryboardGrid(imageUrls) {
+            const grid = document.getElementById('sb-grid');
+            
+            imageUrls.forEach((url, index) => {
+                const div = document.createElement('div');
+                div.className = 'sb-frame';
+                
+                const img = document.createElement('img');
+                img.src = url;
+                img.loading = "lazy";
+                
+                // CLICK ACTION: Pass index instead of just URL
+                div.onclick = (e) => {
+                    e.stopPropagation();
+                    openSbZoom(index);
+                };
+                
+                div.appendChild(img);
+                grid.appendChild(div);
+            });
+        }
+
+        // --- ZOOM & NAVIGATION LOGIC ---
+        
+        function openSbZoom(index) {
+            if (index < 0 || index >= currentSbFrames.length) return;
+            
+            currentSbZoomIndex = index;
+            const url = currentSbFrames[index];
+            const total = currentSbFrames.length;
+            
+            const overlay = document.getElementById('sb-zoom-overlay');
+            const img = document.getElementById('sb-zoom-img');
+            const statusBadge = document.getElementById('sb-zoom-status');
+            
+            // Update Image
+            img.src = url;
+            
+            // Update Status Badge Logic
+            statusBadge.className = ''; // Reset classes
+            let statusText = `${index + 1} / ${total}`;
+            
+            if (index === 0) {
+                statusText = `START • ${statusText}`;
+                statusBadge.classList.add('is-first'); // Green
+            } else if (index === total - 1) {
+                statusText = `${statusText} • END`;
+                statusBadge.classList.add('is-last'); // Red
+            }
+            
+            statusBadge.textContent = statusText;
+            
+            overlay.style.display = 'flex';
+        }
+
+        function navigateSbZoom(direction) {
+            if (currentSbFrames.length === 0) return;
+            
+            // Calculate new index with wrap-around
+            let newIndex = currentSbZoomIndex + direction;
+            if (newIndex < 0) newIndex = currentSbFrames.length - 1;
+            if (newIndex >= currentSbFrames.length) newIndex = 0;
+            
+            openSbZoom(newIndex);
+        }
+
+        function closeSbZoom() {
+            document.getElementById('sb-zoom-overlay').style.display = 'none';
+        }
+
+        function closeStoryboard() {
+            document.getElementById('storyboard-overlay').classList.remove('visible');
+            // Remove modal-open only if Lightbox isn't active
+            if (!document.body.classList.contains('lightbox-open')) {
+                document.body.classList.remove('modal-open');
+                // Ensure the focused item is visible when returning to grid
+                if (focusedItemIndex !== -1 && galleryItems[focusedItemIndex]) {
+                    galleryItems[focusedItemIndex].scrollIntoView({ behavior: 'auto', block: 'nearest' });
+                }
+            }
+        }
+        
+        // Background click close
+        document.getElementById('storyboard-overlay').addEventListener('click', (e) => {
+            if (e.target.id === 'storyboard-overlay') closeStoryboard();
+        });
+
     </script>
 </body>
 </html>

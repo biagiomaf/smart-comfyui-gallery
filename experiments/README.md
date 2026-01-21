@@ -3,49 +3,34 @@
 Files in this folder are under active development and **may contain bugs or break functionality**. Use at your own risk!
 
 ### 👀 Check back often!
-
+ 
 This folder is updated regularly with new experimental features. If you're interested in testing cutting-edge functionality, **check this folder frequently** for updates!
 **Successful experiments will be integrated into official releases** after thorough testing and community feedback.
 ---
 
-## Current experiments: Version 1.53.2 Beta (New Features + Hotfix)
+## Current experiments: Version 1.54.2-beta (New Features)
 ### Files: `templates/index.html` + smartgallery.py 
 
-**Last updated:** 13 January 2026
+**Last updated:** 20 January 2026
 
 ### Description  
 
-**🔗 Multi-Drive & External Folder Support**
-Link Any Drive: Easily mount folders from external hard drives, network shares, or different partitions (e.g., D:\MyImages or /mnt/nas) directly into your gallery root.
-- Native Performance: Uses OS-level linking (Junctions on Windows, Symlinks on Linux/Mac) for zero-latency access without duplicating files.  
-- Full Integration: Linked folders act as "first-class citizens": they fully support Real-time Monitoring, and standard file operations (Move/Rename).  
-- Visual Browser: Includes a built-in server-side file browser to navigate drives and select paths easily via the Web UI (Mobile friendly).  
+### 🎞️ Video Storyboard & Analysis - ffmpeg required 
+*   **Quick Storyboard ('E'):** Hover over any video in the grid and press `E` to instantly open the storyboard. Focus is automatically preserved when closing, ensuring you never lose your spot.
+*   **Grid Overview:** Instantly analyze video content with a clean **11-frame Grid (4-4-3 layout)** covering the entire duration from Start to the **True Last Frame**.
+*   **Quality Awareness:** Includes a non-intrusive **Low-Res Warning (360p)** badge when zooming into frames, reminding users they are viewing a fast proxy, not the source resolution.
+*   **Smart Hybrid Engine:** Uses a sophisticated backend that defaults to **Parallel Extraction** for speed, but automatically detects corrupt indices to switch to a **Safe Transcoding** mode.
 
-**⚡ Performance: Adaptive Video Streaming**
-Browsing folders with heavy video generations is now significantly faster.  
-- Smart Previews: The gallery now automatically detects large video files (e.g., MP4s > 20MB) and streams a lightweight, optimized version in the grid view instead of attempting to load the full heavy file.  
-- Configurable Threshold: Introduced a new environment variable STREAM_THRESHOLD_MB (default: 20) to customize when this optimization kicks in.  
-- Full Quality Inspection: While the grid uses the optimized stream for speed, opening the video in the Lightbox still loads the original, full-quality file.  
-- Graceful Fallback: If FFmpeg is not detected on the system, the gallery automatically reverts to standard native playback.  
+### 📂 Advanced File Management
+*   **Batch Copy:** Organize assets with precision. Now supports **Copy** with conflict resolution (auto-rename `file(1).png`).  
 
-This release contains critical fixes and workflow improvements for the current production version (v1.53).  
-It addresses specific issues reported by macOS users and restores some beloved UI shortcuts.  
-**🛠️ Critical Bug Fixes**  
-- MacOS Metadata Stability: Fixed a critical issue on macOS where Favorites and AI metadata were failing to save or appearing to reset upon page reload.  
-This was caused by microsecond precision differences in file timestamps between the OS and the Database.  
-The system now tolerates negligible timing variations (floating point precision fix).
+This release contains new beta features for the current production version (v1.54).  
 
-**⚡ UI & Workflow Improvements**  
-- "Hover-to-Favorite" Restored: You can now toggle favorites by simply hovering your mouse over an image and pressing F. Clicking to focus the item is no longer required, restoring the faster workflow from previous versions.  
-- New Filter Shortcut: Added the T shortcut to quickly toggle the Filters Panel.  
-Pressing T will toggle the visibility of the search/filter bar.  
-It automatically scrolls the page to the top to ensure the panel is immediately visible and accessible.  
-- Help Menu Updated: The Keyboard Shortcuts legend (?) has been updated to include the new commands.
 
 ## How to install and test this beta version:
 
 **⚠️ IMPORTANT:**
-This version is a candidate for the next stable patch (1.53.1).  
+This beta version is a candidate for the next official release (v1.55).  
 - Always backup your original file before testing
 
 1. **Backup your current file:**
