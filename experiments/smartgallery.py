@@ -138,10 +138,10 @@ import secrets
 # Common locations:
 #   Windows: C:/ComfyUI/output or C:/Users/YourName/ComfyUI/output
 #   Linux/Mac: /home/username/ComfyUI/output or ~/ComfyUI/output
-BASE_OUTPUT_PATH = os.environ.get('BASE_OUTPUT_PATH', 'C:/ComfyUI/output')
+BASE_OUTPUT_PATH = os.environ.get('BASE_OUTPUT_PATH', 'F:/AI/ComfyUI/output')
 
 # Path to the ComfyUI 'input' folder 
-BASE_INPUT_PATH = os.environ.get('BASE_INPUT_PATH', 'C:/ComfyUI/input')
+BASE_INPUT_PATH = os.environ.get('BASE_INPUT_PATH', 'F:/AI/ComfyUI/input')
 
 # Path for service folders (database, cache, zip files). 
 # If not specified, the ComfyUI output path will be used. 
