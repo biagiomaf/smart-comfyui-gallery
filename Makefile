@@ -5,7 +5,7 @@ endif
 
 .PHONY: all build_main build_exp build_core run kill buildx_rm docker_tag docker_push
 
-SMARTGALLERY_VERSION = 1.53
+SMARTGALLERY_VERSION = 1.54
 
 DOCKERFILE = Dockerfile
 DOCKER_TAG_PRE = smartgallery

@@ -10,6 +10,8 @@ services:
       - /comfyui-nvidia/SmartGallery:/mnt/SmartGallery
 #      - /tmp:/deleteto
 #      - /etc/localtime:/etc/localtime:ro
+      # To use the "Link External Folders" feature, add external locations to be mounted within the container
+#      - /path/to/your/ExternalFolder:/mnt/ExternalFolder
     restart: unless-stopped
     environment:
       - BASE_OUTPUT_PATH=/mnt/output

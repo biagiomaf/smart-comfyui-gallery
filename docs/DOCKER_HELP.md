@@ -89,6 +89,8 @@ services:
       - /path/to/your/ComfyUI/output:/mnt/output
       - /path/to/your/ComfyUI/input:/mnt/input
       - /path/to/your/SmartGallery:/mnt/SmartGallery
+      # To use the "Link External Folders" feature, add external locations to be mounted within the container
+#      - /path/to/your/ExternalFolder:/mnt/ExternalFolder
     restart: unless-stopped
     environment:
       # Container paths (DO NOT CHANGE)
