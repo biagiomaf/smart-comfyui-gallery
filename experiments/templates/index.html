@@ -3236,15 +3236,47 @@
             color: var(--danger-color);
         }
 
+        
+        /* --- SHORTCUTS HELP LAYOUT --- */
         .shortcuts-content {
             padding: 1.5rem;
-            display: grid;
-            gap: 0.5rem 2rem;       
-            grid-template-columns: 1fr 1fr; 
-            overflow-y: auto;      
-            align-content: start;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+            overflow-y: auto;
+            align-content: flex-start;
         }
-
+        .sc-column {
+            flex: 1 1 220px;
+            min-width: 220px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+        .sc-header {
+            color: var(--primary-color);
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .sc-sub {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-transform: none;
+            font-weight: normal;
+            margin-top: 2px;
+        }
+        .shortcut-item {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            margin-bottom: 2px;
+        }
         
         @media (max-width: 768px) {
             .shortcuts-panel {
@@ -3253,12 +3285,6 @@
             .shortcuts-content {
                 grid-template-columns: 1fr;
             }
-        }
-
-        .shortcut-item {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
         }
 
         .shortcut-item .key {
@@ -3453,6 +3479,157 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }        
+
+        /* --- GENERATION DATA DASHBOARD --- */
+        .gen-dashboard {
+            background: var(--surface-hover);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+        }
+
+        .gen-section-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Prompts */
+        .gen-prompt-box {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: #eee;
+            position: relative;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .gen-prompt-box.positive {
+            border-left: 3px solid var(--success-color);
+        }
+
+        .gen-prompt-box.negative {
+            border-left: 3px solid var(--danger-color);
+            color: #ffcccc;
+        }
+
+        .copy-prompt-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: var(--text-muted);
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .copy-prompt-btn:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* Tech Grid - Updated Layout */
+        .gen-stats-grid {
+            display: grid;
+            /* Wider columns to accommodate long seeds */
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
+            gap: 10px;
+        }
+
+        .gen-stat-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            display: flex;
+            flex-direction: column;
+            /* Relative positioning needed for absolute elements if any */
+            position: relative; 
+        }
+
+        .gen-stat-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+            /* Flexbox to align Label text and Copy button */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .gen-stat-value {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-color);
+            
+            /* CRITICAL FIX: Allow long strings (like Seeds) to wrap to the next line */
+            white-space: normal; 
+            word-break: break-all; 
+            line-height: 1.2;
+        }
+        
+        .gen-stat-value.seed { color: var(--favorite-color); font-family: monospace; }
+        .gen-stat-value.model { color: var(--primary-color); word-break: break-word; }
+        
+        /* Mini Copy Button for Stats (Seed, etc.) */
+        .stat-copy-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.85rem;
+            padding: 0 4px;
+            transition: color 0.2s;
+        }
+        
+        .stat-copy-btn:hover {
+            color: white;
+            transform: scale(1.1);
+        }
+
+        /* LoRA Chips */
+        .gen-lora-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .gen-lora-chip {
+            background: rgba(155, 48, 255, 0.15);
+            border: 1px solid var(--ai-color);
+            color: #f0a0ff;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .gen-lora-val {
+            background: rgba(0,0,0,0.3);
+            padding: 1px 6px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            color: white;
+        }
 
         /* --- INPUT MEDIA IN NODE SUMMARY --- */
         .input-media-grid {
@@ -6697,42 +6874,52 @@
                 <button class="close-btn" id="close-shortcuts-btn">×</button>
             </div>
             <div class="shortcuts-content">
-                <div class="shortcut-item"><span class="key">?</span> <span class="desc">Show this help</span></div>
-                <div class="shortcut-item"><span class="key">←</span> <span class="key">→</span> <span
-                        class="key">↑</span> <span class="key">↓</span> <span class="desc">Navigate images</span></div>
-                <div class="shortcut-item"><span class="key">V</span> <span class="desc">View image (Lightbox)</span>
+                <!-- COL 1: GLOBAL & BATCH -->
+                <div class="sc-column">
+                    <div class="sc-header">🌍 Global & Nav</div>
+                    <div class="shortcut-item"><span class="key">?</span> <span class="desc">This Help</span></div>
+                    <div class="shortcut-item"><span class="key">T</span> <span class="desc">Toggle Filters</span></div>
+                    <div class="shortcut-item"><span class="key">L</span> <span class="desc">Refresh View</span></div>
+                    <div class="shortcut-item"><span class="key">K</span> <span class="desc">Rescan Folder</span></div>
+                    <div class="shortcut-item"><span class="key">Esc</span> <span class="desc">Close / Deselect</span></div>
+                    
+                    <div class="sc-header" style="margin-top:10px;">✅ Batch / Selection</div>
+                    <div class="shortcut-item"><span class="key">X</span> <span class="desc">Select Item</span></div>
+                    <div class="shortcut-item"><span class="key">Ctrl</span>+<span class="key">A</span> <span class="desc">Select All</span></div>
+                    <div class="shortcut-item"><span class="key">M</span> <span class="desc">Move Selected</span></div>
+                    <div class="shortcut-item"><span class="key">Z</span> <span class="desc">Zip Selected</span></div>
+                    <div class="shortcut-item"><span class="key">Del</span> <span class="desc">Delete Batch</span></div>
                 </div>
-                <div class="shortcut-item"><span class="key">X</span> <span class="desc">Select / Deselect image</span>
+
+                <!-- COL 2: GRID ACTIONS -->
+                <div class="sc-column">
+                    <div class="sc-header">
+                        ▦ Grid Actions
+                        <span class="sc-sub">Target: Mouse Hover (Priority) > Focus</span>
+                    </div>
+                    <div class="shortcut-item"><span class="key">V</span> <span class="desc">Open Lightbox</span></div>
+                    <div class="shortcut-item"><span class="key">N</span> <span class="desc">Node Summary</span></div>
+                    <div class="shortcut-item"><span class="key">F</span> <span class="desc">Toggle Favorite</span></div>
+                    <div class="shortcut-item"><span class="key">W</span> <span class="desc">Download Workflow</span></div>
+                    <div class="shortcut-item"><span class="key">C</span> <span class="desc">Copy Workflow</span></div>
+                    <div class="shortcut-item"><span class="key">S</span> <span class="desc">Download File</span></div>
+                    <div class="shortcut-item"><span class="key">R</span> <span class="desc">Rename File</span></div>
+                    <div class="shortcut-item"><span class="key">E</span> <span class="desc">Video Storyboard</span></div>
+                    <div class="shortcut-item"><span class="key">Del</span> <span class="desc">Quick Delete (Hover)</span></div>
                 </div>
-                <div class="shortcut-item"><span class="key">F</span> <span class="desc">Favorite / Unfavorite</span>
+
+                <!-- COL 3: LIGHTBOX -->
+                <div class="sc-column">
+                    <div class="sc-header">🖼️ Lightbox View</div>
+                    <div class="shortcut-item"><span class="key">Esc</span> <span class="desc">Close Lightbox</span></div>
+                    <div class="shortcut-item"><span class="key">←</span> <span class="key">→</span> <span class="desc">Navigate</span></div>
+                    <div class="shortcut-item"><span class="key">+</span> <span class="key">-</span> <span class="desc">Zoom In / Out</span></div>
+                    <div class="shortcut-item"><span class="key">0</span> <span class="desc">Reset Zoom</span></div>
+                    <div class="shortcut-item"><span class="key">Keypad</span> <span class="desc">Pan Image</span></div>
+                    <div class="shortcut-item"><span class="key">H</span> <span class="desc">Hide/Show UI</span></div>
+                    <div class="shortcut-item"><span class="key">O</span> <span class="desc">Open New Tab</span></div>
+                    <div class="shortcut-item" style="opacity:0.7; font-size:0.85rem;"><span class="desc">Supports: N, F, W, C, S, R, E, Del</span></div>
                 </div>
-                <div class="shortcut-item"><span class="key">S</span> <span class="desc">Download Image</span></div>
-                <div class="shortcut-item"><span class="key">T</span> <span class="desc">Toggle Filters Panel</span></div>
-                <div class="shortcut-item"><span class="key">W</span> <span class="desc">Download Workflow (if
-                        available)</span></div>
-                <div class="shortcut-item"><span class="key">C</span> <span class="desc">Copy Workflow to Clipboard</span></div>
-                <div class="shortcut-item"><span class="key">L</span> <span class="desc">Refresh View</span></div>
-                <div class="shortcut-item"><span class="key">K</span> <span class="desc">Rescan Folder</span></div>
-                <div class="shortcut-item"><span class="key">R</span> <span class="desc">Rename File</span></div>
-                <div class="shortcut-item"><span class="key">Z</span> <span class="desc">Download Zip (Selected)</span>
-                </div>
-                <div class="shortcut-item"><span class="key">D</span> <span class="desc">Delete (Selected)
-                        File(s)</span></div>
-                <div class="shortcut-item"><span class="key">Esc</span> <span class="desc">Close Lightbox / Deselect
-                        All</span></div>
-                <div class="shortcut-item"><span class="key">M</span> <span class="desc">Move Selected Files</span>
-                </div>
-                <div class="shortcut-item"><span class="desc">Lightbox view:</span></div>
-                <div class="shortcut-item"><span class="key">O</span> <span class="desc">Open in New Tab</span></div>
-                <div class="shortcut-item"><span class="key">N</span> <span class="desc">Node Summary</span></div>
-                <div class="shortcut-item"><span class="key">E</span> <span class="desc">Toggle Storyboard (Video)</span></div>
-                <div class="shortcut-item"><span class="key">+</span> <span class="key">-</span> <span class="desc">Zoom
-                        In/Out</span></div>
-                <div class="shortcut-item"><span class="key">Keypad (Num 789/456/123)</span> <span class="desc">Pan
-                        Diagonally/Up/Down/Left/Right</span></div>
-                <div class="shortcut-item"><span class="key">0</span> <span class="desc">Reset Zoom/Pan</span></div>
-                <div class="shortcut-item"><span class="key">.</span> <span class="desc">Cycle Pan Step</span></div>
-                <div class="shortcut-item"><span class="key">H</span> <span class="desc">Hide/Show Toolbar</span></div>
             </div>
         </div>
     </div>
@@ -7788,18 +7975,29 @@
             }
         }
         
-        // --- SHOW FOLDER INFO FUNCTION ---
+        // --- SHOW FOLDER INFO FUNCTION (Advanced) ---
         function showFolderInfo(event, folderKey) {
             event.stopPropagation();
             const folder = foldersData[folderKey];
             if (!folder) return;
 
-            // Prepare the message
-            let msg = `📂 Folder: ${folder.display_name}\n\n📍 Path:\n${folder.path}`;
+            // 1. Base Info (Gallery Logical Path)
+            let msg = `📂 Folder: ${folder.display_name}\n\n📍 Gallery Location:\n${folder.path}`;
             
-            // Add extra info for mounts
-            if (folder.is_mount) {
-                msg += `\n\n🔗 (This is a linked folder)`;
+            // 2. Resolve Paths for comparison (normalize slashes and case)
+            const normPath = (folder.path || "").replace(/\\/g, '/').toLowerCase();
+            const normReal = (folder.real_path || "").replace(/\\/g, '/').toLowerCase();
+
+            // 3. Check if it's a Link or inside a Link
+            // If the logical path differs from the real physical path, it's a link (or child of a link)
+            if (normReal && normPath !== normReal) {
+                msg += `\n\n🔗 Real Physical Source:\n${folder.real_path}`;
+                
+                if (folder.is_mount) {
+                    msg += `\n(Root Link / Mount Point)`;
+                } else {
+                    msg += `\n(Subfolder of a Linked Drive)`;
+                }
             }
 
             // Use 'path-msg' class for monospace font and word wrapping on mobile
@@ -8907,7 +9105,19 @@
                 }
             });
         }
-async function showNodeSummary(event, fileId) {
+        
+        // Helper for Copy with Notification
+        function copyTextAndNotify(text) {
+            if (!text) return;
+            navigator.clipboard.writeText(text).then(() => {
+                showNotification("📋 Copied to clipboard!", "success");
+            }).catch(err => {
+                console.error(err);
+                showNotification("Failed to copy.", "error");
+            });
+        }
+
+        async function showNodeSummary(event, fileId) {
             event.stopPropagation();
             const summaryContent = document.getElementById('node-summary-content');
             const summaryOverlay = document.getElementById('node-summary-overlay');
@@ -8920,14 +9130,111 @@ async function showNodeSummary(event, fileId) {
                 const response = await fetch(`/galleryout/node_summary/${fileId}`);
                 const data = await response.json();
 
-                if (data.status === 'success' && data.summary) {
-                    if (data.summary.length > 0) {
-                        let contentHTML = '';
-                        let mediaCardsHTML = ''; 
+                if (data.status === 'success') {
+                    let dashboardHTML = '';
+                    
+                    // --- 1. GENERATION DASHBOARD (NEW) ---
+                    if (data.meta) {
+                        const m = data.meta;
+                        
+                        // A. Prompts (Using new Copy Notification)
+                        let promptSection = '';
+                        // Positive
+                        const posText = m.positive_prompt_clean || m.positive_prompt;
+                        if (posText) {
+                            // We escape HTML but keep the raw text for copying
+                            const safePos = escapeHTML(posText);
+                            // Use a temporary attribute or pass string directly (careful with quotes)
+                            promptSection += `
+                                <div style="margin-bottom:10px;">
+                                    <div class="gen-section-title">✨ Positive Prompt</div>
+                                    <div class="gen-prompt-box positive">
+                                        ${safePos}
+                                        <button class="copy-prompt-btn" onclick="copyTextAndNotify(this.parentElement.innerText.replace('Copy', '').trim())">Copy</button>
+                                    </div>
+                                </div>`;
+                        }
+                        // Negative
+                        if (m.negative_prompt) {
+                            const safeNeg = escapeHTML(m.negative_prompt);
+                            promptSection += `
+                                <div>
+                                    <div class="gen-section-title">🚫 Negative Prompt</div>
+                                    <div class="gen-prompt-box negative">
+                                        ${safeNeg}
+                                        <button class="copy-prompt-btn" onclick="copyTextAndNotify(this.parentElement.innerText.replace('Copy', '').trim())">Copy</button>
+                                    </div>
+                                </div>`;
+                        }
 
+                        // B. Tech Stats Grid (Updated with Seed Copy)
+                        let statsHTML = '';
+                        
+                        // Helper to create card
+                        const createStatCard = (label, value, extraClass = '', allowCopy = false) => {
+                            const safeVal = escapeHTML(value);
+                            let copyHtml = '';
+                            if (allowCopy) {
+                                copyHtml = `<button class="stat-copy-btn" onclick="copyTextAndNotify('${safeVal}')" title="Copy">📋</button>`;
+                            }
+                            
+                            return `
+                            <div class="gen-stat-card">
+                                <span class="gen-stat-label">${label} ${copyHtml}</span>
+                                <span class="gen-stat-value ${extraClass}" title="${safeVal}">${safeVal}</span>
+                            </div>`;
+                        };
+
+                        if (m.seed) statsHTML += createStatCard('Seed', m.seed, 'seed', true); // Copy Enabled
+                        if (m.model) statsHTML += createStatCard('Model', m.model, 'model');
+                        if (m.steps) statsHTML += createStatCard('Steps', m.steps);
+                        if (m.cfg) statsHTML += createStatCard('CFG', m.cfg);
+                        if (m.sampler) statsHTML += createStatCard('Sampler', m.sampler);
+                        if (m.scheduler) statsHTML += createStatCard('Scheduler', m.scheduler);
+                        if (m.width && m.height) statsHTML += createStatCard('Resolution', `${m.width}x${m.height}`);
+
+                        let statsSection = '';
+                        if (statsHTML) {
+                            statsSection = `
+                                <div style="margin-top:10px;">
+                                    <div class="gen-section-title">⚙️ Generation Parameters</div>
+                                    <div class="gen-stats-grid">${statsHTML}</div>
+                                </div>`;
+                        }
+
+                        // C. LoRAs
+                        let loraSection = '';
+                        if (m.loras && m.loras.length > 0) {
+                            const loraChips = m.loras.map(l => 
+                                `<div class="gen-lora-chip"><span>${escapeHTML(l.name)}</span><span class="gen-lora-val">${l.value}</span></div>`
+                            ).join('');
+                            
+                            loraSection = `
+                                <div style="margin-top:10px;">
+                                    <div class="gen-section-title">💊 Active LoRAs</div>
+                                    <div class="gen-lora-container">${loraChips}</div>
+                                </div>`;
+                        }
+
+                        // Combine Dashboard
+                        if (promptSection || statsSection || loraSection) {
+                            dashboardHTML = `
+                                <div class="gen-dashboard">
+                                    ${promptSection}
+                                    ${statsSection}
+                                    ${loraSection}
+                                </div>`;
+                        }
+                    }
+
+                    // --- 2. EXISTING NODE LIST (Legacy) ---
+                    let contentHTML = '';
+                    let mediaCardsHTML = ''; 
+
+                    if (data.summary && data.summary.length > 0) {
+                        // ... (Il resto della funzione rimane identico a prima per la parte dei nodi raw) ...
                         data.summary.forEach(node => {
                             let paramsHTML = '<ul class="summary-node-params">';
-                            
                             if (node.params && node.params.length > 0) {
                                 node.params.forEach(p => {
                                     paramsHTML += `<li><strong>${escapeHTML(p.name)}:</strong> <code>${escapeHTML(p.value)}</code>`;
@@ -8975,24 +9282,31 @@ async function showNodeSummary(event, fileId) {
                                 ${paramsHTML}
                             </div>`;
                         });
-                        
-                        let finalInputsSection = '';
-                        if (mediaCardsHTML) {
-                            finalInputsSection = `
-                                <h3 style="margin-top:0; border-bottom:1px solid var(--border-color); padding-bottom:10px;">
-                                    🎨 Source Media (Inputs)
-                                </h3>
-                                <div class="input-media-grid">
-                                    ${mediaCardsHTML}
-                                </div>
-                                <hr style="border:0; border-top:1px solid var(--border-color); margin: 2rem 0;">
-                            `;
-                        }
-
-                        summaryContent.innerHTML = finalInputsSection + contentHTML;
                     } else {
-                        summaryContent.innerHTML = '<p>No active nodes found in this workflow.</p>';
+                        contentHTML = '<p class="empty-state">No active nodes found in this workflow.</p>';
                     }
+                    
+                    // --- 3. ASSEMBLE FINAL HTML ---
+                    let finalInputsSection = '';
+                    if (mediaCardsHTML) {
+                        finalInputsSection = `
+                            <h3 style="margin-top:0; border-bottom:1px solid var(--border-color); padding-bottom:10px;">
+                                🎨 Source Media (Inputs)
+                            </h3>
+                            <div class="input-media-grid">
+                                ${mediaCardsHTML}
+                            </div>
+                            <hr style="border:0; border-top:1px solid var(--border-color); margin: 2rem 0;">
+                        `;
+                    }
+                    
+                    let nodesHeader = '';
+                    if (dashboardHTML) {
+                        nodesHeader = `<h3 style="margin: 2rem 0 1rem; border-bottom:1px solid var(--border-color); padding-bottom:10px;">🔌 Raw Node List</h3>`;
+                    }
+
+                    summaryContent.innerHTML = dashboardHTML + finalInputsSection + nodesHeader + contentHTML;
+
                 } else {
                     summaryContent.innerHTML = `<p style="color:var(--danger-color);">Error: ${data.message || 'Could not load summary.'}</p>`;
                 }
@@ -9001,6 +9315,7 @@ async function showNodeSummary(event, fileId) {
                 summaryContent.innerHTML = `<p style="color:var(--danger-color);">A network error occurred.</p>`;
             }
         }
+
         function closeNodeSummary() { document.body.classList.remove('modal-open'); summaryOverlay.classList.remove('visible'); summaryContent.innerHTML = ''; }
         const uploadOverlay = document.getElementById('upload-overlay'); const showUploadModalBtn = document.getElementById('show-upload-modal-btn'); const uploadCancelBtn = document.getElementById('upload-cancel-btn'); const uploadSubmitBtn = document.getElementById('upload-submit-btn'); const dropZone = document.getElementById('drop-zone'); const fileInput = document.getElementById('upload-file-input'); const fileBrowseBtn = document.getElementById('file-upload-btn'); const fileList = document.getElementById('file-list'); const uploadProgressContainer = document.getElementById('upload-progress-container'); const uploadProgressFill = document.getElementById('upload-progress-fill'); const uploadDestinationText = document.getElementById('upload-destination-text').querySelector('strong'); let filesToUpload = [];
         function resetUploadModal() { filesToUpload = []; fileList.innerHTML = ''; uploadProgressContainer.style.display = 'none'; uploadProgressFill.style.width = '0%'; fileInput.value = ''; uploadSubmitBtn.disabled = false; }
@@ -9084,29 +9399,92 @@ async function showNodeSummary(event, fileId) {
             rescanModalOverlay.style.pointerEvents = 'none';
         }
 
+        // --- RESCAN LOGIC WITH POLLING ---
         function performRescan(mode) {
             hideRescanModal();
-            showNotification('Starting rescan...', 'info');
-
-            // Show sync overlay
+            
+            // Show sync overlay immediately
             const syncOverlay = document.getElementById('sync-overlay');
             const syncMessage = document.getElementById('sync-message');
             const syncProgressFill = document.getElementById('sync-progress-fill');
+            
             syncOverlay.style.display = 'flex';
-            syncMessage.textContent = 'Rescanning files...';
-            syncProgressFill.style.width = '100%';
+            syncMessage.textContent = 'Initializing background scan...';
+            syncProgressFill.style.width = '0%';
             syncProgressFill.style.backgroundColor = 'var(--primary-color)';
+            
+            // Store the folder key where the scan started
+            const originFolderKey = currentFolderKey;
             
             fetch('/galleryout/rescan_folder', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ folder_key: currentFolderKey, mode: mode })
+                body: JSON.stringify({ folder_key: originFolderKey, mode: mode })
             })
-                .then(handleGenericResponse)
-                .catch(error => {
-                    handleError(error);
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'started') {
+                    // Start Polling
+                    pollRescanProgress(data.job_id, originFolderKey);
+                } else if (data.status === 'success' && data.count === 0) {
+                    // Immediate success (nothing to do)
                     syncOverlay.style.display = 'none';
-                });
+                    showNotification(data.message, 'info');
+                } else {
+                    syncOverlay.style.display = 'none';
+                    showNotification("Error: " + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                syncOverlay.style.display = 'none';
+                handleError(error);
+            });
+        }
+
+        function pollRescanProgress(jobId, originFolderKey) {
+            const syncOverlay = document.getElementById('sync-overlay');
+            const syncMessage = document.getElementById('sync-message');
+            const syncProgressFill = document.getElementById('sync-progress-fill');
+            
+            const interval = setInterval(() => {
+                fetch(`/galleryout/check_rescan_status/${jobId}`)
+                    .then(res => res.json())
+                    .then(job => {
+                        if (job.status === 'processing') {
+                            // Update UI
+                            const pct = Math.round((job.current / job.total) * 100);
+                            syncMessage.textContent = `Scanning: ${job.current} / ${job.total}`;
+                            syncProgressFill.style.width = `${pct}%`;
+                            
+                        } else if (job.status === 'done') {
+                            clearInterval(interval);
+                            syncOverlay.style.display = 'none';
+                            
+                            // CHECK: Are we still in the same folder?
+                            // 'currentFolderKey' is a global variable in your script
+                            if (currentFolderKey === originFolderKey) {
+                                // Yes -> Reload page to show new data
+                                sessionStorage.setItem('gallery_notification', JSON.stringify({
+                                    message: 'Rescan completed successfully!',
+                                    type: 'success'
+                                }));
+                                window.location.reload();
+                            } else {
+                                // No -> Just show notification (don't reload wrong folder)
+                                showNotification(`Rescan of "${job.folder_name}" completed in background.`, 'success', 8000);
+                            }
+                            
+                        } else if (job.status === 'error' || job.status === 'not_found') {
+                            clearInterval(interval);
+                            syncOverlay.style.display = 'none';
+                            showNotification("Rescan failed or lost connection.", 'error');
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        // Don't stop polling for a single network glitch, keep trying
+                    });
+            }, 1000); // Check every 1 second
         }
         
         // --- AI SEARCH FUNCTIONS ---
@@ -10075,13 +10453,54 @@ async function showNodeSummary(event, fileId) {
                     }
                 });
             }
-            document.getElementById('lightbox-content').addEventListener('wheel', (event) => { if (lightboxOverlay.classList.contains('visible')) { event.preventDefault(); zoomLightbox(event.deltaY < 0 ? 0.1 : -0.1); } });
-            // --- ZOOM IMAGE (existing) ---
+           // --- LIGHTBOX INTERACTIONS (ZOOM & DRAG) ---
+            
+            // 1. ZOOM via Mouse Wheel
             document.getElementById('lightbox-content').addEventListener('wheel', (event) => { 
                 if (lightboxOverlay.classList.contains('visible')) { 
-                    event.preventDefault(); // Blocca lo scroll pagina, fa lo zoom
+                    event.preventDefault(); // Blocca lo scroll della pagina sottostante
+                    // Zoom In se scorri su, Zoom Out se scorri giù
                     zoomLightbox(event.deltaY < 0 ? 0.1 : -0.1); 
                 } 
+            }, { passive: false }); // 'passive: false' è importante per far funzionare preventDefault() sui browser moderni
+
+            // 2. PAN via Mouse Drag
+            const lbMediaContainer = document.getElementById('lightbox-media');
+            let isLbDragging = false;
+            let lbStartX = 0;
+            let lbStartY = 0;
+
+            lbMediaContainer.addEventListener('mousedown', (e) => {
+                // Attiva solo se clicchi sull'immagine o video, non sullo sfondo vuoto
+                if (e.target.tagName !== 'IMG' && e.target.tagName !== 'VIDEO') return;
+                
+                e.preventDefault();
+                isLbDragging = true;
+                lbStartX = e.clientX;
+                lbStartY = e.clientY;
+                
+                e.target.style.cursor = 'grabbing';
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isLbDragging) return;
+                e.preventDefault();
+
+                const dx = e.clientX - lbStartX;
+                const dy = e.clientY - lbStartY;
+
+                lbStartX = e.clientX;
+                lbStartY = e.clientY;
+
+                panLightbox(dx, dy);
+            });
+
+            window.addEventListener('mouseup', () => {
+                if (isLbDragging) {
+                    isLbDragging = false;
+                    const media = lbMediaContainer.querySelector('img, video');
+                    if (media) media.style.cursor = 'grab';
+                }
             });
 
             // --- FIX SCROLL CAPTION ---
@@ -10102,110 +10521,40 @@ async function showNodeSummary(event, fileId) {
             // --- KEYBOARD SHORTCUTS ---
             document.addEventListener('keydown', (e) => {
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
-                // --- NEW: Storyboard Zoom Navigation ---
+
+                // --- 1. Storyboard Zoom Navigation ---
                 const sbZoomOverlay = document.getElementById('sb-zoom-overlay');
                 if (sbZoomOverlay && sbZoomOverlay.style.display === 'flex') {
-                    if (e.key === 'ArrowLeft') {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        navigateSbZoom(-1);
-                        return;
-                    }
-                    if (e.key === 'ArrowRight') {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        navigateSbZoom(1);
-                        return;
-                    }
-                    if (e.key === 'Escape') {
-                        e.preventDefault();
-                        closeSbZoom();
-                        return;
-                    }
-                    // Block other keys while zoomed
+                    if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); navigateSbZoom(-1); return; }
+                    if (e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); navigateSbZoom(1); return; }
+                    if (e.key === 'Escape') { e.preventDefault(); closeSbZoom(); return; }
                     return;
-                }
-                // --- COMPARE MODE SHORTCUTS ---
-                if (document.getElementById('compare-overlay').classList.contains('visible')) {
-                    if (e.key === 'Escape') {
-                        closeCompareMode();
-                        return;
-                    }
-                    // Zoom In (+ or =)
-                    if (e.key === '+' || e.key === '=') {
-                        e.preventDefault();
-                        cmpZoom(0.2);
-                        return;
-                    }
-                    // Zoom Out (- or _)
-                    if (e.key === '-' || e.key === '_') {
-                        e.preventDefault();
-                        cmpZoom(-0.2);
-                        return;
-                    }
-                    // Reset Zoom (0)
-                    if (e.key === '0') {
-                        e.preventDefault();
-                        cmpResetZoom();
-                        return;
-                    }
-                    // [NEW] Toggle Info Panel (I)
-                    if (e.key === 'i' || e.key === 'I') {
-                        e.preventDefault();
-                        toggleCmpInfo();
-                        return;
-                    }
-                    
-                    e.stopPropagation();
-                    return; 
                 }
 
-                if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) {
-                    e.preventDefault();
-                    selectAll();
-                    return;
+                // --- 2. Compare Mode Shortcuts ---
+                if (document.getElementById('compare-overlay').classList.contains('visible')) {
+                    if (e.key === 'Escape') { closeCompareMode(); return; }
+                    if (e.key === '+' || e.key === '=') { e.preventDefault(); cmpZoom(0.2); return; }
+                    if (e.key === '-' || e.key === '_') { e.preventDefault(); cmpZoom(-0.2); return; }
+                    if (e.key === '0') { e.preventDefault(); cmpResetZoom(); return; }
+                    if (e.key === 'i' || e.key === 'I') { e.preventDefault(); toggleCmpInfo(); return; }
+                    e.stopPropagation(); return; 
                 }
+
+                // --- 3. Global Shortcuts ---
+                if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) { e.preventDefault(); selectAll(); return; }
 
                 if (e.key === 'Escape') {
-                    // 1. Zoom Frame (Level 3)
-                    const zoomOverlay = document.getElementById('sb-zoom-overlay');
-                    if (zoomOverlay && zoomOverlay.style.display === 'flex') {
-                        closeSbZoom();
-                        return;
-                    }
-                    // 2. Storyboard (Level 2)
                     const sbOverlay = document.getElementById('storyboard-overlay');
-                    if (sbOverlay && sbOverlay.classList.contains('visible')) {
-                        closeStoryboard();
-                        return; 
-                    }
-                    const shortcutsHelp = document.getElementById('shortcuts-help-overlay');
-                    if (shortcutsHelp.classList.contains('visible')) {
-                        closeShortcutsHelp();
-                        return;
-                    }
-                    if (uploadOverlay.classList.contains('visible')) {
-                        closeUploadModal();
-                        return;
-                    }
-                    if (summaryOverlay.classList.contains('visible')) {
-                        closeNodeSummary();
-                        return;
-                    }
-                    if (document.getElementById('ai-search-overlay').classList.contains('visible')) {
-                        closeAiSearchModal();
-                        return;
-                    }
-                    // Close the new desktop search panel on ESC
+                    if (sbOverlay && sbOverlay.classList.contains('visible')) { closeStoryboard(); return; }
+                    if (document.getElementById('shortcuts-help-overlay').classList.contains('visible')) { closeShortcutsHelp(); return; }
+                    if (document.getElementById('upload-overlay').classList.contains('visible')) { closeUploadModal(); return; }
+                    if (document.getElementById('node-summary-overlay').classList.contains('visible')) { closeNodeSummary(); return; }
+                    if (document.getElementById('ai-search-overlay').classList.contains('visible')) { closeAiSearchModal(); return; }
                     const panel = document.getElementById('desktop-search-panel');
-                    if (panel && panel.classList.contains('visible')) {
-                        panel.classList.remove('visible');
-                        return;
-                    }
+                    if (panel && panel.classList.contains('visible')) { panel.classList.remove('visible'); return; }
                     
-                    if (selectedFiles.size > 0 && !document.body.classList.contains('lightbox-open')) {
-                         deselectAll();
-                    }
+                    if (selectedFiles.size > 0 && !document.body.classList.contains('lightbox-open')) { deselectAll(); }
                     hideDropZone();
                 }
 
@@ -10213,381 +10562,182 @@ async function showNodeSummary(event, fileId) {
 
                 const isLightboxOpen = document.body.classList.contains('lightbox-open');
                 
+                // --- 4. Lightbox Shortcuts ---
                 if (isLightboxOpen) {
                     switch (e.key) {
-                        case 'ArrowLeft':
-                            navigateLightbox(-1);
-                            break;
-                        case 'ArrowRight':
-                            navigateLightbox(1);
-                            break;
-                        case 'v':
-                        case 'V':
-                        case 'Escape':
-                            closeLightbox();
-                            break;
-                        case 'd':
-                        case 'D':
-                        case 'Delete':
-                             deleteFromLightbox(true); 
-                            break;
-                        case 'f':
-                        case 'F':
-                            if (currentLightboxFile) {
-                                const item = galleryItems[currentLightboxIndex];
-                                if (item) {
-                                    const favBtn = item.querySelector('.favorite-btn');
-                                    if (favBtn) toggleFavorite(e, currentLightboxFile.id, favBtn);
-                                }
-                            }
-                            break;
-                        case 's':
-                        case 'S':
-                            if (currentLightboxFile) {
-                                const link = document.createElement('a');
-                                link.href = `/galleryout/download/${currentLightboxFile.id}`;
-                                link.download = '';
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                            }
-                            break;
-                        case 'r':
-                        case 'R':
-                            renameFileFromLightbox();
-                            break;
-                        case 'w':
-                        case 'W':
-                            if (currentLightboxFile && currentLightboxFile.has_workflow) {
-                                const link = document.createElement('a');
-                                link.href = `/galleryout/workflow/${currentLightboxFile.id}`;
-                                link.download = '';
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                            } else {
-                                showNotification('No workflow available for this file.', 'info');
-                            }
-                            break;
-                        case 'c':
-                        case 'C':
-                            // Copy Workflow
-                            if (currentLightboxFile) {
-                                copyWorkflowToClipboard(currentLightboxFile.id);
-                            }
-                            break;
-                        case 'o':
-                        case 'O':
-                            if (currentLightboxFile) {
-                                window.open(`/galleryout/file/${currentLightboxFile.id}`, '_blank');
-                            }
-                            break;
-                        case 'n':
-                        case 'N':
-                            if (currentLightboxFile && currentLightboxFile.has_workflow) {
-                                const summaryBtn = document.getElementById('lightbox-summary-btn');
-                                if (summaryBtn && summaryBtn.style.display !== 'none') {
-                                    summaryBtn.click();
-                                }
-                            } else {
-                                showNotification('No node summary available for this file.', 'info');
-                            }
-                            break;
-                        case '+':
-                        case '=':
-                            zoomLightbox(0.1);
-                            break;
-                        case '-':
-                        case '_':
-                            zoomLightbox(-0.1);
-                            break;
-                        case '0':
-                            currentZoom = 1;
-                            currentTranslateX = 0;
-                            currentTranslateY = 0;
-                            updateMediaTransform();
-                            break;
-                        case '.':
-                            cyclePanStep();
-                            break;
-                        case '8': 
-                            panLightbox(0, panStep);
-                            break;
-                        case '2': 
-                            panLightbox(0, -panStep);
-                            break;
-                        case '4': 
-                            panLightbox(panStep, 0);
-                            break;
-                        case '6': 
-                            panLightbox(-panStep, 0);
-                            break;
-                        case '7': 
-                            panLightbox(panStep, panStep);
-                            break;
-                        case '9': 
-                            panLightbox(-panStep, panStep);
-                            break;
-                        case '1': 
-                            panLightbox(panStep, -panStep);
-                            break;
-                        case '3': 
-                            panLightbox(-panStep, -panStep);
-                            break;
-                        case 'h':
-                        case 'H':
-                            toggleLightboxUi();
-                            break;
-                        case '?':
-                            showShortcutsHelp();
-                            break;
-                        case 'e':
-                        case 'E':
-                            case 'e':
-                        case 'E':
-                            // Determine file context
-                            let fileToOpen = null;
-                            if (isLightboxOpen && currentLightboxFile) {
-                                fileToOpen = currentLightboxFile;
-                            } else if (!isLightboxOpen && focusedItemIndex !== -1) {
-                                fileToOpen = allFilesData.find(f => f.id === galleryItems[focusedItemIndex].dataset.fileId);
-                            } else if (!isLightboxOpen && hoveredItemIndex !== -1) {
-                                fileToOpen = allFilesData.find(f => f.id === galleryItems[hoveredItemIndex].dataset.fileId);
-                            }
-
-                            if (fileToOpen) {
-                                openStoryboard(fileToOpen.id);
-                            }
-                            break;
+                        case 'ArrowLeft': navigateLightbox(-1); break;
+                        case 'ArrowRight': navigateLightbox(1); break;
+                        case 'v': case 'V': case 'Escape': closeLightbox(); break;
+                        case 'd': case 'D': case 'Delete': deleteFromLightbox(true); break;
+                        case 's': case 'S': if(currentLightboxFile) { const l = document.createElement('a'); l.href = `/galleryout/download/${currentLightboxFile.id}`; l.download = ''; document.body.appendChild(l); l.click(); l.remove(); } break;
+                        case 'r': case 'R': renameFileFromLightbox(); break;
+                        case 'w': case 'W': 
+                            if(currentLightboxFile && currentLightboxFile.has_workflow) { const l = document.createElement('a'); l.href = `/galleryout/workflow/${currentLightboxFile.id}`; l.download = ''; document.body.appendChild(l); l.click(); l.remove(); } 
+                            else { showNotification('No workflow available.', 'info'); } break;
+                        case 'c': case 'C': if(currentLightboxFile) copyWorkflowToClipboard(currentLightboxFile.id); break;
+                        case 'o': case 'O': if(currentLightboxFile) window.open(`/galleryout/file/${currentLightboxFile.id}`, '_blank'); break;
+                        case 'n': case 'N': if(currentLightboxFile && currentLightboxFile.has_workflow) document.getElementById('lightbox-summary-btn').click(); else showNotification('No summary available.', 'info'); break;
+                        case 'f': case 'F': if(currentLightboxFile) { const item = galleryItems[currentLightboxIndex]; if(item) toggleFavorite(e, currentLightboxFile.id, item.querySelector('.favorite-btn')); } break;
+                        case '+': case '=': zoomLightbox(0.1); break;
+                        case '-': case '_': zoomLightbox(-0.1); break;
+                        case '0': currentZoom = 1; currentTranslateX = 0; currentTranslateY = 0; updateMediaTransform(); break;
+                        case '.': cyclePanStep(); break;
+                        case '8': panLightbox(0, panStep); break;
+                        case '2': panLightbox(0, -panStep); break;
+                        case '4': panLightbox(panStep, 0); break;
+                        case '6': panLightbox(-panStep, 0); break;
+                        case '7': panLightbox(panStep, panStep); break;
+                        case '9': panLightbox(-panStep, panStep); break;
+                        case '1': panLightbox(panStep, -panStep); break;
+                        case '3': panLightbox(-panStep, -panStep); break;
+                        case 'h': case 'H': toggleLightboxUi(); break;
+                        case '?': showShortcutsHelp(); break;
+                        case 'e': case 'E': if(currentLightboxFile) openStoryboard(currentLightboxFile.id); break;
                     }
-                } else {
-                    if (e.key === 'z' || e.key === 'Z') {
-                        downloadSelectedZip();
-                    }
-                    if (e.key === 'l' || e.key === 'L') {
-                        startSyncProcess(true);
-                    }
-
-                    if (e.key === 'k' || e.key === 'K') {
-                        showRescanModal();
-                    }
-                    if (e.key === '?') {
-                        showShortcutsHelp();
-                        return;
-                    }
-                    
-                    // --- NEW FIX: Toggle Filters (Placed BEFORE the empty check) ---
-                    if (e.key === 't' || e.key === 'T') {
-                        e.preventDefault();
-                        // 1. Scroll to top
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                        // 2. Click visible button
+                } 
+                
+                // --- 5. Grid View Shortcuts ---
+                else {
+                    // Global Grid Actions
+                    if (e.key === 'z' || e.key === 'Z') { downloadSelectedZip(); return; }
+                    if (e.key === 'l' || e.key === 'L') { startSyncProcess(true); return; }
+                    if (e.key === 'k' || e.key === 'K') { showRescanModal(); return; }
+                    if (e.key === '?') { showShortcutsHelp(); return; }
+                    if (e.key === 't' || e.key === 'T') { 
+                        e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' });
                         const deskBtn = document.getElementById('search-toggle-desktop');
                         const mobBtn = document.getElementById('mobile-filter-toggle');
-                        if(deskBtn && deskBtn.offsetParent !== null) deskBtn.click();
-                        else if(mobBtn) mobBtn.click();
-                        return; // Stop here
+                        if(deskBtn && deskBtn.offsetParent !== null) deskBtn.click(); else if(mobBtn) mobBtn.click();
+                        return;
                     }
-                    
+
                     if (galleryItems.length === 0) return;
 
+                    // Navigation
                     const getColumns = () => {
-                        const gridStyle = window.getComputedStyle(galleryContainer);
-                        const gridTemplateColumns = gridStyle.getPropertyValue('grid-template-columns');
-                        return gridTemplateColumns.split(' ').length;
+                        const style = window.getComputedStyle(galleryContainer);
+                        return style.getPropertyValue('grid-template-columns').split(' ').length;
+                    };
+
+                    // Helper: Resolves target (Hover > Focus)
+                    const getTargetIndex = () => {
+                        if (typeof hoveredItemIndex !== 'undefined' && hoveredItemIndex !== -1) return hoveredItemIndex;
+                        if (typeof focusedItemIndex !== 'undefined' && focusedItemIndex !== -1) return focusedItemIndex;
+                        return -1;
                     };
 
                     switch (e.key) {
-                        case 'ArrowRight':
-                            e.preventDefault();
-                            updateFocus(1);
-                            break;
-                        case 'ArrowLeft':
-                            e.preventDefault();
-                            updateFocus(-1);
-                            break;
-                        case 'ArrowDown':
-                            e.preventDefault();
-                            updateFocus(getColumns());
-                            break;
-                        case 'ArrowUp':
-                            e.preventDefault();
-                            updateFocus(-getColumns());
-                            break;
-                        case 'v':
-                        case 'V':
-                            if (focusedItemIndex !== -1) {
-                                const item = galleryItems[focusedItemIndex];
-                                openLightbox(e, item.dataset.fileId);
-                            }
-                            break;
-                        // Quick Delete on Hover ---
-                        case 'Delete':
-                            // Priority 1: Hovered Item (Quick Delete - No Confirm)
-                            if (hoveredItemIndex !== -1) {
+                        case 'ArrowRight': e.preventDefault(); updateFocus(1); break;
+                        case 'ArrowLeft': e.preventDefault(); updateFocus(-1); break;
+                        case 'ArrowDown': e.preventDefault(); updateFocus(getColumns()); break;
+                        case 'ArrowUp': e.preventDefault(); updateFocus(-getColumns()); break;
+                        
+                        case 'Delete': {
+                            // Priority 1: Hover (Quick Delete)
+                            if (typeof hoveredItemIndex !== 'undefined' && hoveredItemIndex !== -1) {
                                 const item = galleryItems[hoveredItemIndex];
-                                const btn = item.querySelector('.delete-btn');
-                                // Pass 'true' to skip confirmation
-                                deleteFile(e, item.dataset.fileId, btn, true); 
-                                return; 
-                            }
-                            
-                            // Priority 2: Selection (Batch Delete - With Confirm)
-                            if (selectedFiles.size > 0) {
-                                deleteSelected();
+                                deleteFile(e, item.dataset.fileId, item.querySelector('.delete-btn'), true); // True = Skip Confirm
                                 return;
                             }
-                            
-                            // Priority 3: Focused Item (Keyboard Nav - With Confirm)
+                            // Priority 2: Selection
+                            if (selectedFiles.size > 0) { deleteSelected(); return; }
+                            // Priority 3: Focus
                             if (focusedItemIndex !== -1) {
                                 const item = galleryItems[focusedItemIndex];
-                                const btn = item.querySelector('.delete-btn');
-                                deleteFile(e, item.dataset.fileId, btn, false);
+                                deleteFile(e, item.dataset.fileId, item.querySelector('.delete-btn'), false);
                             }
                             break;
-                        case 'd':
-                        case 'D':
-                            if (selectedFiles.size > 0) {
-                                deleteSelected();
-                            } else if (focusedItemIndex !== -1) {
-                                const item = galleryItems[focusedItemIndex];
-                                deleteFile(e, item.dataset.fileId, item.querySelector('.delete-btn'));
+                        }
+                        case 'd': case 'D':
+                            if (selectedFiles.size > 0) deleteSelected();
+                            else {
+                                const idx = getTargetIndex();
+                                if(idx !== -1) deleteFile(e, galleryItems[idx].dataset.fileId, galleryItems[idx].querySelector('.delete-btn'));
                             }
                             break;
-                        // --- NEW LOGIC: Hover takes priority over Focus ---
-                        case 'f':
-                        case 'F':
-                            // Determine target: Hover > Focus
-                            const targetIndex = hoveredItemIndex !== -1 ? hoveredItemIndex : focusedItemIndex;
-                            
-                            if (targetIndex !== -1 && galleryItems[targetIndex]) {
-                                const item = galleryItems[targetIndex];
-                                const favBtn = item.querySelector('.favorite-btn');
-                                if (favBtn) {
-                                    // Visual feedback if triggering via hover
-                                    if (hoveredItemIndex !== -1) {
-                                        item.style.transform = "scale(1.02)";
-                                        setTimeout(() => item.style.transform = "", 150);
-                                    }
-                                    toggleFavorite(e, item.dataset.fileId, favBtn);
+                        
+                        // --- UNIFIED TARGET LOGIC FOR ACTIONS ---
+                        case 'v': case 'V': {
+                            const idx = getTargetIndex();
+                            if (idx !== -1) openLightbox(e, galleryItems[idx].dataset.fileId);
+                            break;
+                        }
+                        case 'n': case 'N': {
+                            const idx = getTargetIndex();
+                            if (idx !== -1) {
+                                // Visual pop if hovering
+                                if(typeof hoveredItemIndex !== 'undefined' && hoveredItemIndex === idx) {
+                                    galleryItems[idx].style.transform = "scale(1.02)";
+                                    setTimeout(() => galleryItems[idx].style.transform = "", 150);
                                 }
+                                showNodeSummary(e, galleryItems[idx].dataset.fileId);
                             }
                             break;
-                            case 'e':
-                            case 'E':
-                            { // OPEN SCOPE BLOCK
-                                let targetIndexE = -1; 
-                                
-                                // 1. Priority Logic: Hover (Mouse) > Focus (Keyboard)
-                                if (typeof hoveredItemIndex !== 'undefined' && hoveredItemIndex !== -1) {
-                                    targetIndexE = hoveredItemIndex;
-                                } else if (focusedItemIndex !== -1) {
-                                    targetIndexE = focusedItemIndex;
-                                }
-                                
-                                // 2. If inside Lightbox, use current lightbox file
-                                if (document.body.classList.contains('lightbox-open') && currentLightboxFile) {
-                                    openStoryboard(currentLightboxFile.id);
-                                    break;
-                                }
-                                
-                                // 3. Execution from GridView
-                                if (targetIndexE !== -1 && galleryItems[targetIndexE]) {
-                                    const item = galleryItems[targetIndexE];
-                                    const fileId = item.dataset.fileId;
-                                    const fileData = allFilesData.find(f => f.id === fileId);
-                                    
-                                    const isSupported = (fileData && (fileData.type === 'video' || fileData.type === 'animated_image'));
-                                    
-                                    if (isSupported && ffmpegAvailable) {
-                                        
-                                        // [NEW] SYNC FOCUS: If triggered via hover, update global focus immediately
-                                        // This ensures that when closing the storyboard, we return to this specific item.
-                                        if (focusedItemIndex !== targetIndexE) {
-                                            // Remove focus from previous item
-                                            if (focusedItemIndex !== -1 && galleryItems[focusedItemIndex]) {
-                                                galleryItems[focusedItemIndex].classList.remove('focused');
-                                            }
-                                            // Update index and visual class
-                                            focusedItemIndex = targetIndexE;
-                                            item.classList.add('focused');
-                                        }
-
-                                        // Visual "Pop" effect
-                                        item.style.transform = "scale(1.05)";
-                                        item.style.transition = "transform 0.1s";
-                                        setTimeout(() => item.style.transform = "", 150);
-                                        
-                                        // Open
-                                        openStoryboard(fileData.id);
-                                        
-                                    } else if (fileData && !isSupported) {
-                                        showNotification("Storyboard available for Video/Animation only.", "warning");
-                                    }
-                                }
-                                break;
-                            } // CLOSE SCOPE BLOCK
-                        case 'x':
-                        case 'X':
-                            if (focusedItemIndex !== -1) {
-                                const item = galleryItems[focusedItemIndex];
-                                toggleSelection(e, item.dataset.fileId, item);
+                        }
+                        case 'f': case 'F': {
+                            const idx = getTargetIndex();
+                            if (idx !== -1) {
+                                const btn = galleryItems[idx].querySelector('.favorite-btn');
+                                if(btn) toggleFavorite(e, galleryItems[idx].dataset.fileId, btn);
                             }
                             break;
-                        case 's':
-                        case 'S':
-                            if (focusedItemIndex !== -1) {
-                                const item = galleryItems[focusedItemIndex];
-                                const fileId = item.dataset.fileId;
-                                const link = document.createElement('a');
-                                link.href = `/galleryout/download/${fileId}`;
-                                link.download = '';
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
+                        }
+                        case 'x': case 'X': {
+                            const idx = getTargetIndex();
+                            if (idx !== -1) toggleSelection(e, galleryItems[idx].dataset.fileId, galleryItems[idx]);
+                            break;
+                        }
+                        case 's': case 'S': {
+                            const idx = getTargetIndex();
+                            if (idx !== -1) {
+                                const l = document.createElement('a'); 
+                                l.href = `/galleryout/download/${galleryItems[idx].dataset.fileId}`; 
+                                l.download = ''; document.body.appendChild(l); l.click(); l.remove();
                             }
                             break;
-                        case 'r':
-                        case 'R':
-                            if (focusedItemIndex !== -1) {
-                                const item = galleryItems[focusedItemIndex];
-                                const fileId = item.dataset.fileId;
-                                const file = allFilesData.find(f => f.id === fileId);
-                                if (file) renameFile(fileId, file.name);
+                        }
+                        case 'r': case 'R': {
+                            const idx = getTargetIndex();
+                            if (idx !== -1) {
+                                const f = allFilesData.find(x => x.id === galleryItems[idx].dataset.fileId);
+                                if(f) renameFile(f.id, f.name);
                             }
                             break;
-                        case 'w':
-                        case 'W':
-                            if (focusedItemIndex !== -1) {
-                                const item = galleryItems[focusedItemIndex];
-                                const fileId = item.dataset.fileId;
-                                const file = allFilesData.find(f => f.id === fileId);
-                                if (file && file.has_workflow) {
-                                    const link = document.createElement('a');
-                                    link.href = `/galleryout/workflow/${fileId}`;
-                                    link.download = '';
-                                    document.body.appendChild(link);
-                                    link.click();
-                                    document.body.removeChild(link);
-                                } else {
-                                    showNotification('No workflow available for this file.', 'info');
-                                }
+                        }
+                        case 'w': case 'W': {
+                            const idx = getTargetIndex();
+                            if (idx !== -1) {
+                                const f = allFilesData.find(x => x.id === galleryItems[idx].dataset.fileId);
+                                if(f && f.has_workflow) {
+                                    const l = document.createElement('a');
+                                    l.href = `/galleryout/workflow/${f.id}`; 
+                                    l.download = ''; document.body.appendChild(l); l.click(); l.remove();
+                                } else showNotification('No workflow available.', 'info');
                             }
                             break;
-                        case 'c':
-                        case 'C':
-                            // Copy Workflow (Grid View)
-                            if (focusedItemIndex !== -1) {
-                                const item = galleryItems[focusedItemIndex];
-                                if (item) {
-                                    copyWorkflowToClipboard(item.dataset.fileId);
-                                }
+                        }
+                        case 'c': case 'C': {
+                            const idx = getTargetIndex();
+                            if (idx !== -1) copyWorkflowToClipboard(galleryItems[idx].dataset.fileId);
+                            break;
+                        }
+                        case 'e': case 'E': {
+                            const idx = getTargetIndex();
+                            if (idx !== -1) openStoryboard(galleryItems[idx].dataset.fileId);
+                            break;
+                        }
+                        case 'm': case 'M': {
+                            if (selectedFiles.size > 0) { moveSelected(); break; }
+                            // Auto-select target if no selection
+                            const idx = getTargetIndex();
+                            if (idx !== -1) {
+                                deselectAll();
+                                selectedFiles.add(galleryItems[idx].dataset.fileId);
+                                updateSelectionUI();
+                                initiateMove();
                             }
                             break;
-                        case 'm':
-                        case 'M':
-                            moveSelected();
-                            break;
+                        }
                     }
                 }
             });
