@@ -2882,6 +2882,7 @@ def gallery_view(folder_key):
                            update_available=UPDATE_AVAILABLE,
                            remote_version=REMOTE_VERSION,
                            ffmpeg_available=(FFPROBE_EXECUTABLE_PATH is not None),
+                           path_separator=os.sep,
                            stream_threshold=STREAM_THRESHOLD_BYTES)
     
 @app.route('/galleryout/upload', methods=['POST'])
