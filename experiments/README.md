@@ -63,15 +63,10 @@ The gallery now features a high-performance, hybrid metadata extraction engine d
 - **Platform Detection:** The Shortcuts panel now automatically displays `⌘` symbols for Mac users and `Ctrl` for Windows/Linux.
 
 **Changed**
-- **Selection UI:** Completely overhauled the selection style in Focus Mode. Now uses a high-contrast Double Border (White Inner + Neon Outer) + Drop Shadow to ensure visibility on any image content without altering thumbnail opacity/color.
-- **Shortcuts Panel:** Redesigned into a 4-column layout to include standard browser navigation keys (`Home`, `End`, `PgUp`) and OS selection standards (`Shift+Click`).
 - **Header Layout:** Reorganized the top bar to group tools (`Shortcuts`, `Focus Mode`, `AI Manager`) on the right side for better desktop usability.
 
-**Fixed**
-- **JS Reference Error:** Fixed an issue where the `showShortcutsHelp` function was not accessible from the HTML button context.
-- **Button Alignment:** Fixed vertical misalignment issues between text and emojis in the header buttons.
 
-#### **[1.54.2-beta] - 2026-01-25**
+#### **[1.54.3-beta] - 2026-01-25**
 
 **Added**
 - **Generation Dashboard:** Added a high-fidelity summary panel at the top of the Node Summary to show Seed, Model, Steps, and Prompts at a glance.
