@@ -1,7 +1,7 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025-2026 — MIT License (free to use and modify)
 #
-# Version: 1.54.3-beta - January 25, 2026
+# Version: 1.54.4-beta - January 26, 2026
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -304,8 +304,8 @@ ZIP_CACHE_FOLDER_NAME = '.zip_downloads'
 AI_MODELS_FOLDER_NAME = '.AImodels'
 
 # --- APP INFO ---
-APP_VERSION = "1.54.3-beta"
-APP_VERSION_DATE = "January 25, 2026"
+APP_VERSION = "1.54.4-beta"
+APP_VERSION_DATE = "January 26, 2026"
 GITHUB_REPO_URL = "https://github.com/biagiomaf/smart-comfyui-gallery"
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/biagiomaf/smart-comfyui-gallery/main/smartgallery.py"
 

@@ -2778,16 +2778,17 @@
             position: fixed;
             bottom: 30px;
             left: 50%;
-            transform: translateX(-50%) translateY(150%); /* Start hidden below screen */
+            /* Default hidden state: Spostato giù e non scalato */
+            transform: translateX(-50%) translateY(150%) scale(1);
             width: 90%;
-            max-width: 600px; /* Never too wide on desktop */
+            max-width: 600px;
             
-            /* Premium Glass Look */
+            /* ... (tutto il resto delle proprietà estetiche background, border, ecc. lasciale uguali) ... */
             background: rgba(20, 20, 20, 0.85);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            border-top: 2px solid var(--primary-color); /* Visual Active Indicator */
+            border-top: 2px solid var(--primary-color);
             border-radius: 16px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.6);
             
@@ -2796,12 +2797,15 @@
             align-items: center;
             justify-content: space-between;
             z-index: 1001;
-            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Bouncy entry */
+            
+            /* MODIFICA: Aggiunto transform-origin per scalare dal basso/centro */
+            transform-origin: bottom center; 
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        /* Active State */
+        /* Active State: Usa la variabile --ui-zoom-scale calcolata via JS */
         #selection-bar.visible {
-            transform: translateX(-50%) translateY(0);
+            transform: translateX(-50%) translateY(0) scale(var(--ui-zoom-scale, 1));
         }
 
         /* Left Side: Close & Counter */
@@ -3303,6 +3307,14 @@
         .shortcut-item .desc {
             color: var(--text-muted);
             font-size: 0.95rem;
+        }
+        
+        /* standard UI (Navigating/Selecting from  OS) */
+        .shortcut-item .key.std {
+            background: rgba(0, 123, 255, 0.15); /* Tint Blu */
+            border-color: rgba(0, 123, 255, 0.4);
+            color: #89CFF0; /* Azzurro chiaro */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
         
         /* --- SMART DIALOG (Custom Alert/Confirm/Prompt) --- */
@@ -5318,7 +5330,101 @@
             color: white; 
         }
         
+        /* --- FOCUS MODE STYLES --- */
+        
+        /* Hide UI clutter */
+        body.focus-mode .item-info,
+        body.focus-mode .selection-checkmark,
+        body.focus-mode .file-metadata,
+        body.focus-mode .file-scanned-time {
+            display: none !important;
+        }
 
+        /* BASE STATE: 100% Scale, 100% Opacity, No filters */
+        body.focus-mode .gallery-item {
+            border-radius: 4px; /* Sharper corners for pro look */
+            border: none;
+            transition: none; /* Instant feedback, no lag */
+            opacity: 1 !important;
+            filter: none !important;
+            transform: none !important; /* NO SHRINKING */
+            overflow: visible !important; /* Allow border to bleed out */
+        }
+
+        /* Hover: Only Z-index change to bring it to top, no movement */
+        body.focus-mode .gallery-item:hover {
+            z-index: 50;
+            outline: 1px solid rgba(255,255,255,0.3); /* Subtle hint */
+        }
+
+        /* SELECTED STATE: MASSIVE HIGH-CONTRAST FRAME */
+        body.focus-mode .gallery-item.selected {
+            /* 
+               LAYERED SHADOW TRICK FOR THICK BORDERS:
+               1. 0px - 4px:  SOLID WHITE (Contrast layer against dark images/bg)
+               2. 4px - 10px: SOLID PRIMARY COLOR (The actual selection indicator)
+               3. 10px+:      Drop Shadow (Lift effect)
+            */
+            box-shadow: 
+                0 0 0 4px #ffffff, 
+                0 0 0 10px #FF00FF,
+                0 10px 40px rgba(0,0,0,0.8);
+            
+            z-index: 100; /* Must be on top of everything to show the border overlap */
+            transform: none !important;
+        }
+        
+        /* Ensure thumbnail fills the card perfectly */
+        body.focus-mode .thumbnail-wrapper {
+            border-bottom: none;
+            height: 100%;
+            border-radius: 4px;
+        }
+        
+        /* Active Focus Button Style */
+        #focus-mode-btn.active-focus {
+            background: rgba(255, 193, 7, 0.2) !important;
+            border-color: var(--favorite-color) !important;
+            color: var(--favorite-color) !important;
+            box-shadow: 0 0 10px rgba(255, 193, 7, 0.3);
+        }
+        
+        /* --- FOCUS MODE CHECKMARK (Bottom-Left) --- */
+        
+        /* 1. Force visibility ONLY when selected */
+        body.focus-mode .gallery-item.selected .selection-checkmark {
+            display: flex !important;
+            
+            /* 2. Positioning: Bottom Left */
+            left: 8px;
+            bottom: 8px;
+            right: auto; /* Reset default right position */
+            top: auto;
+            
+            /* 3. Style: White Circle with Fuchsia Icon & Border */
+            background-color: #ffffff;
+            color: #FF00FF;           /* The Checkmark Color */
+            border: 2px solid #FF00FF; /* The Ring Color */
+            
+            /* 4. Size & Shape */
+            width: 28px;
+            height: 28px;
+            font-size: 16px;
+            font-weight: 900; /* Extra Bold Checkmark */
+            border-radius: 50%;
+            
+            /* 5. Polish */
+            box-shadow: 0 4px 10px rgba(0,0,0,0.6); /* Drop shadow to pop from image */
+            z-index: 101; /* Stay on top of the massive border */
+            transform: scale(1);
+        }
+        
+        /* Optional: Hover effect on the checkmark itself */
+        body.focus-mode .gallery-item.selected .selection-checkmark:hover {
+            transform: scale(1.1);
+            cursor: pointer;
+        }
+        
         /* --- MOBILE LAYOUT OVERRIDES --- */
         .mobile-only { display: none !important; }
         
@@ -5916,6 +6022,7 @@
     <!-- === ROW 1: NAVIGATION & AI MANAGER === -->
     <div class="toolbar-container" style="padding-bottom: 0;">
         <div class="toolbar-row mobile-header-row">
+            <!-- Left: Breadcrumbs -->
             <div class="breadcrumbs" style="padding:0; border:none; background:transparent;">
                 <div class="breadcrumb-links" style="{% if (is_ai_search and ' ||| ' not in ai_query) or is_global_search %}display:none;{% endif %}">
                     {% for crumb in breadcrumbs %}
@@ -5925,11 +6032,29 @@
                 </div>
             </div>
 
+            <!-- Right: Desktop Tools Group (Shortcuts -> Focus -> AI) -->
+            <div class="push-right desktop-only" style="display:flex; align-items:center; gap:8px;">
+                <!-- 1. Shortcuts Help -->
+                <button type="button" onclick="showShortcutsHelp()" class="glass-btn" title="View Keyboard Shortcuts" style="height: 42px; display: inline-flex; align-items: center; justify-content: center;">
+                    <span style="font-weight:900; margin-right:5px;">?</span> Shortcuts
+                </button>
+
+                <!-- 2. Focus Mode -->
+                <button type="button" id="focus-mode-btn" class="glass-btn" onclick="toggleFocusMode()" title="Minimal UI, maximum density. Keyboard-first workflow." style="height: 42px; display: inline-flex; align-items: center; justify-content: center;">
+                    <span style="margin-right:5px;">⚡</span> Focus Mode
+                </button>
+
+                <!-- 3. AI Manager (If enabled) -->
+                {% if enable_ai_search %}
+                <button class="glass-btn active-fuxia" id="ai-manager-btn-desk" onclick="toggleAiManager(true)" style="height: 42px; display: inline-flex; align-items: center; justify-content: center;">
+                    <span style="margin-right:5px;">🧠</span> AI Manager
+                </button>
+                {% endif %}
+            </div>
+
+            <!-- Mobile Only: Small AI Button (Keep existing) -->
             {% if enable_ai_search %}
-            <button class="glass-btn active-fuxia push-right desktop-only" id="ai-manager-btn-desk" onclick="toggleAiManager(true)">
-                🧠 AI Manager
-            </button>
-            <button class="glass-btn active-fuxia mobile-only" id="ai-manager-btn-mob" onclick="toggleAiManager(true)" style="width:40px; padding:0;">
+            <button class="glass-btn active-fuxia mobile-only push-right" id="ai-manager-btn-mob" onclick="toggleAiManager(true)" style="width:40px; padding:0;">
                 🧠
             </button>
             {% endif %}
@@ -6868,34 +6993,33 @@
         <div class="loader"></div>
     </div>
     <div id="shortcuts-help-overlay">
-        <div class="shortcuts-panel">
+        <div class="shortcuts-panel" style="width: 1000px; max-width: 95vw;">
             <div class="shortcuts-header">
                 <h2>⌨️ Keyboard Shortcuts</h2>
                 <button class="close-btn" id="close-shortcuts-btn">×</button>
             </div>
             <div class="shortcuts-content">
-                <!-- COL 1: GLOBAL & BATCH -->
+                
+                <!-- COL 1: NAVIGATION & APP GLOBALS -->
                 <div class="sc-column">
-                    <div class="sc-header">🌍 Global & Nav</div>
+                    <div class="sc-header">🌍 App Controls</div>
                     <div class="shortcut-item"><span class="key">?</span> <span class="desc">This Help</span></div>
-                    <div class="shortcut-item"><span class="key">T</span> <span class="desc">Toggle Filters</span></div>
+                    <div class="shortcut-item"><span class="key">Q</span> <span class="desc">Toggle Focus Mode</span></div>
+                    <div class="shortcut-item"><span class="key">T</span> <span class="desc">Toggle Filters/Top</span></div>
                     <div class="shortcut-item"><span class="key">L</span> <span class="desc">Refresh View</span></div>
                     <div class="shortcut-item"><span class="key">K</span> <span class="desc">Rescan Folder</span></div>
-                    <div class="shortcut-item"><span class="key">Esc</span> <span class="desc">Close / Deselect</span></div>
                     
-                    <div class="sc-header" style="margin-top:10px;">✅ Batch / Selection</div>
-                    <div class="shortcut-item"><span class="key">X</span> <span class="desc">Select Item</span></div>
-                    <div class="shortcut-item"><span class="key">Ctrl</span>+<span class="key">A</span> <span class="desc">Select All</span></div>
-                    <div class="shortcut-item"><span class="key">M</span> <span class="desc">Move Selected</span></div>
-                    <div class="shortcut-item"><span class="key">Z</span> <span class="desc">Zip Selected</span></div>
-                    <div class="shortcut-item"><span class="key">Del</span> <span class="desc">Delete Batch</span></div>
+                    <div class="sc-header" style="margin-top:15px;">↕️ Page Nav (Std)</div>
+                    <div class="shortcut-item"><span class="key std">Home</span> <span class="desc">Go to Top</span></div>
+                    <div class="shortcut-item"><span class="key std">End</span> <span class="desc">Go to Bottom</span></div>
+                    <div class="shortcut-item"><span class="key std">PgUp</span> <span class="key std">PgDn</span> <span class="desc">Scroll</span></div>
                 </div>
 
-                <!-- COL 2: GRID ACTIONS -->
+                <!-- COL 2: GRID ITEM ACTIONS -->
                 <div class="sc-column">
                     <div class="sc-header">
-                        ▦ Grid Actions
-                        <span class="sc-sub">Target: Mouse Hover (Priority) > Focus</span>
+                        ▦ Single Item
+                        <span class="sc-sub">Hover or Selected</span>
                     </div>
                     <div class="shortcut-item"><span class="key">V</span> <span class="desc">Open Lightbox</span></div>
                     <div class="shortcut-item"><span class="key">N</span> <span class="desc">Node Summary</span></div>
@@ -6905,20 +7029,60 @@
                     <div class="shortcut-item"><span class="key">S</span> <span class="desc">Download File</span></div>
                     <div class="shortcut-item"><span class="key">R</span> <span class="desc">Rename File</span></div>
                     <div class="shortcut-item"><span class="key">E</span> <span class="desc">Video Storyboard</span></div>
-                    <div class="shortcut-item"><span class="key">Del</span> <span class="desc">Quick Delete (Hover)</span></div>
+                    <div class="shortcut-item"><span class="key">Del</span> <span class="desc">Quick Delete</span></div>
                 </div>
 
-                <!-- COL 3: LIGHTBOX -->
+                <!-- COL 3: SELECTION STANDARD & BATCH -->
                 <div class="sc-column">
+                    <div class="sc-header">🖱️ Selection (Std)</div>
+                    <!-- Mouse Actions -->
+                    <div class="shortcut-item"><span class="key std">Click</span> <span class="desc">Select / Deselect</span></div>
+                    <div class="shortcut-item"><span class="key std cmd-key">Ctrl</span>+<span class="key std">Click</span> <span class="desc">Add One</span></div>
+                    <div class="shortcut-item"><span class="key std">Shift</span>+<span class="key std">Click</span> <span class="desc">Range Select</span></div>
+                    
+                    <!-- Keyboard Actions -->
+                    <div class="shortcut-item"><span class="key std cmd-key">Ctrl</span>+<span class="key std">A</span> <span class="desc">Select All</span></div>
+                    
+                    <div class="sc-header" style="margin-top:15px;">📦 Batch Actions</div>
+                    <div class="shortcut-item"><span class="key">Esc</span> <span class="desc">Deselect All</span></div>
+                    <div class="shortcut-item"><span class="key">M</span> <span class="desc">Move Selected</span></div>
+                    <div class="shortcut-item"><span class="key">Z</span> <span class="desc">Zip Selected</span></div>
+                    <div class="shortcut-item"><span class="key">Del</span> <span class="desc">Delete Batch</span></div>
+                </div>
+
+               <!-- COL 4: LIGHTBOX (SPLIT INTO 3 SUB-COLUMNS) -->
+                <div class="sc-column" style="flex: 2 1 620px; /* Wide priority for 3 cols */">
                     <div class="sc-header">🖼️ Lightbox View</div>
-                    <div class="shortcut-item"><span class="key">Esc</span> <span class="desc">Close Lightbox</span></div>
-                    <div class="shortcut-item"><span class="key">←</span> <span class="key">→</span> <span class="desc">Navigate</span></div>
-                    <div class="shortcut-item"><span class="key">+</span> <span class="key">-</span> <span class="desc">Zoom In / Out</span></div>
-                    <div class="shortcut-item"><span class="key">0</span> <span class="desc">Reset Zoom</span></div>
-                    <div class="shortcut-item"><span class="key">Keypad</span> <span class="desc">Pan Image</span></div>
-                    <div class="shortcut-item"><span class="key">H</span> <span class="desc">Hide/Show UI</span></div>
-                    <div class="shortcut-item"><span class="key">O</span> <span class="desc">Open New Tab</span></div>
-                    <div class="shortcut-item" style="opacity:0.7; font-size:0.85rem;"><span class="desc">Supports: N, F, W, C, S, R, E, Del</span></div>
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:10px 20px;">
+                        
+                        <!-- Sub-Col 1: Navigation & View -->
+                        <div style="display:flex; flex-direction:column; gap:0.4rem;">
+                            <div class="shortcut-item"><span class="key">Esc</span> <span class="desc">Close Lightbox</span></div>
+                            <div class="shortcut-item"><span class="key std">←</span> <span class="key std">→</span> <span class="desc">Navigate</span></div>
+                            <div class="shortcut-item"><span class="key std">+</span> <span class="key std">-</span> <span class="desc">Zoom In / Out</span></div>
+                            <div class="shortcut-item"><span class="key">0</span> <span class="desc">Reset Zoom</span></div>
+                            <div class="shortcut-item"><span class="key">Keypad</span> <span class="desc">Pan Image</span></div>
+                        </div>
+                        
+                        <!-- Sub-Col 2: Display & Info -->
+                        <div style="display:flex; flex-direction:column; gap:0.4rem;">
+                            <div class="shortcut-item"><span class="key">H</span> <span class="desc">Hide/Show UI</span></div>
+                            <div class="shortcut-item"><span class="key">O</span> <span class="desc">Open New Tab</span></div>
+                            <div class="shortcut-item"><span class="key">N</span> <span class="desc">Node Summary</span></div>
+                            <div class="shortcut-item"><span class="key">F</span> <span class="desc">Toggle Favorite</span></div>
+                            <div class="shortcut-item"><span class="key">S</span> <span class="desc">Download File</span></div>
+                        </div>
+
+                        <!-- Sub-Col 3: Workflow & Edits -->
+                        <div style="display:flex; flex-direction:column; gap:0.4rem;">
+                            <div class="shortcut-item"><span class="key">W</span> <span class="desc">Download Workflow</span></div>
+                            <div class="shortcut-item"><span class="key">C</span> <span class="desc">Copy Workflow</span></div>
+                            <div class="shortcut-item"><span class="key">R</span> <span class="desc">Rename File</span></div>
+                            <div class="shortcut-item"><span class="key">E</span> <span class="desc">Video Storyboard</span></div>
+                            <div class="shortcut-item"><span class="key">Del</span> <span class="desc">Quick Delete</span></div>
+                        </div>
+
+                    </div>
                 </div>
             </div>
         </div>
@@ -8085,7 +8249,40 @@
             }
             updateSelectionUI();
         }
+        
+        // --- FOCUS MODE LOGIC ---
+        function toggleFocusMode() {
+            const body = document.body;
+            const btn = document.getElementById('focus-mode-btn');
+            
+            const isActive = body.classList.toggle('focus-mode');
+            
+            if (btn) {
+                if (isActive) {
+                    btn.classList.add('active-focus');
+                    showNotification("⚡ You’re in Focus Mode — Use shortcuts for actions (press '?' for help).", "info", 6000);
+                } else {
+                    btn.classList.remove('active-focus');
+                }
+            }
+            
+            // Save state
+            localStorage.setItem('galleryFocusMode', isActive);
+        }
+
+        function initFocusMode() {
+            const savedState = localStorage.getItem('galleryFocusMode');
+            const btn = document.getElementById('focus-mode-btn');
+            
+            // Only apply on Desktop to avoid confusion on mobile
+            if (savedState === 'true' && window.innerWidth > 1024) {
+                document.body.classList.add('focus-mode');
+                if (btn) btn.classList.add('active-focus');
+            }
+        }
+        
         function updateSelectionUI() {
+            
             // 1. Refresh visual selection on all items
             galleryItems.forEach(item => { 
                 item.classList.toggle('selected', selectedFiles.has(item.dataset.fileId)); 
@@ -8518,7 +8715,31 @@
         const lightboxOverlay = document.getElementById('lightbox-overlay'); const lightboxMedia = document.getElementById('lightbox-media'); const lightboxTitle = document.getElementById('lightbox-title'); const lightboxDownload = document.getElementById('lightbox-download'); const lightboxWorkflow = document.getElementById('lightbox-workflow'); const lightboxNewTab = document.getElementById('lightbox-new-tab'); const lightboxAiCaption = document.getElementById('lightbox-ai-caption'); let currentLightboxIndex = -1; let currentLightboxFile = null; let currentZoom = 1; let currentTranslateX = 0; let currentTranslateY = 0; let panStep = 50;
         function updateLightboxTitle() { if (!currentLightboxFile) return; const zoomPercentage = Math.round(currentZoom * 100); lightboxTitle.textContent = `${currentLightboxFile.name} (Scale: ${zoomPercentage}%)`; }
         function updateMediaTransform() { const mediaEl = lightboxMedia.querySelector('img, video'); if (!mediaEl) return; mediaEl.style.transform = `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentZoom})`; updateLightboxTitle(); }
-        function openLightbox(event, fileId) { if (event.target.closest('a, button')) return; event.stopPropagation(); currentLightboxIndex = galleryItems.findIndex(item => item.dataset.fileId === fileId); if (currentLightboxIndex === -1) return; currentZoom = 1; currentTranslateX = 0; currentTranslateY = 0; panStep = 50; document.body.classList.add('lightbox-open'); lightboxOverlay.classList.add('visible'); showItemAtIndex(currentLightboxIndex); }
+        
+        function openLightbox(event, fileId, forceOpen = false) { 
+            if (event && event.target && event.target.closest('a, button')) return; 
+            if (event && event.stopPropagation) event.stopPropagation(); 
+            
+            // --- FOCUS MODE INTERCEPTION ---
+            // If in Focus Mode AND NOT forcing open (like via 'V' key),
+            // simply toggle selection.
+            if (!forceOpen && document.body.classList.contains('focus-mode')) {
+                const item = galleryItems.find(i => i.dataset.fileId === fileId);
+                if (item) {
+                    toggleSelection(event, fileId, item);
+                }
+                return;
+            }
+            // -------------------------------
+
+            currentLightboxIndex = galleryItems.findIndex(item => item.dataset.fileId === fileId); 
+            if (currentLightboxIndex === -1) return; 
+            currentZoom = 1; currentTranslateX = 0; currentTranslateY = 0; panStep = 50; 
+            document.body.classList.add('lightbox-open'); 
+            lightboxOverlay.classList.add('visible'); 
+            showItemAtIndex(currentLightboxIndex); 
+        }
+        
         function closeLightbox() {
             // FIX: Use correct function name for the new Storyboard
             if (typeof closeStoryboard === "function") {
@@ -10066,6 +10287,17 @@
         
         // --- MAIN INITIALIZATION FUNCTION ---
         document.addEventListener('DOMContentLoaded', () => {
+        
+            // Initialize Focus Mode state
+            initFocusMode();
+            
+            // --- GLOBAL MOUSE TRACKER (INSIDE DOMContentLoaded) ---
+            window.lastMouseX = 0;
+            window.lastMouseY = 0;
+            document.addEventListener('mousemove', (e) => {
+                window.lastMouseX = e.clientX;
+                window.lastMouseY = e.clientY;
+            }, { passive: true, capture: true });
             
             // Check for pending notifications from previous page load
             const pendingMsg = sessionStorage.getItem('gallery_notification');
@@ -10518,7 +10750,7 @@
             fileBrowseBtn.addEventListener('click', () => fileInput.click());
             fileInput.addEventListener('change', () => handleFiles(fileInput.files));
 
-            // --- KEYBOARD SHORTCUTS ---
+            // --- KEYBOARD SHORTCUTS (FIXED ESCAPE PRIORITY) ---
             document.addEventListener('keydown', (e) => {
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
 
@@ -10544,30 +10776,41 @@
                 // --- 3. Global Shortcuts ---
                 if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) { e.preventDefault(); selectAll(); return; }
 
+                // --- 4. Escape Handler (Priority Stack) ---
                 if (e.key === 'Escape') {
+                    // A. High Priority Overlays
                     const sbOverlay = document.getElementById('storyboard-overlay');
                     if (sbOverlay && sbOverlay.classList.contains('visible')) { closeStoryboard(); return; }
                     if (document.getElementById('shortcuts-help-overlay').classList.contains('visible')) { closeShortcutsHelp(); return; }
                     if (document.getElementById('upload-overlay').classList.contains('visible')) { closeUploadModal(); return; }
                     if (document.getElementById('node-summary-overlay').classList.contains('visible')) { closeNodeSummary(); return; }
                     if (document.getElementById('ai-search-overlay').classList.contains('visible')) { closeAiSearchModal(); return; }
+                    
+                    // B. Lightbox (Moved here to ensure it catches the event)
+                    if (document.body.classList.contains('lightbox-open')) { 
+                        closeLightbox(); 
+                        return; 
+                    }
+
+                    // C. Panels & Selection
                     const panel = document.getElementById('desktop-search-panel');
                     if (panel && panel.classList.contains('visible')) { panel.classList.remove('visible'); return; }
                     
-                    if (selectedFiles.size > 0 && !document.body.classList.contains('lightbox-open')) { deselectAll(); }
+                    if (selectedFiles.size > 0) { deselectAll(); }
                     hideDropZone();
+                    return;
                 }
 
                 if (document.body.classList.contains('modal-open')) return;
 
                 const isLightboxOpen = document.body.classList.contains('lightbox-open');
                 
-                // --- 4. Lightbox Shortcuts ---
+                // --- 5. Lightbox Actions ---
                 if (isLightboxOpen) {
                     switch (e.key) {
                         case 'ArrowLeft': navigateLightbox(-1); break;
                         case 'ArrowRight': navigateLightbox(1); break;
-                        case 'v': case 'V': case 'Escape': closeLightbox(); break;
+                        case 'v': case 'V': closeLightbox(); break; // V acts as close inside lightbox
                         case 'd': case 'D': case 'Delete': deleteFromLightbox(true); break;
                         case 's': case 'S': if(currentLightboxFile) { const l = document.createElement('a'); l.href = `/galleryout/download/${currentLightboxFile.id}`; l.download = ''; document.body.appendChild(l); l.click(); l.remove(); } break;
                         case 'r': case 'R': renameFileFromLightbox(); break;
@@ -10596,9 +10839,9 @@
                     }
                 } 
                 
-                // --- 5. Grid View Shortcuts ---
+                // --- 6. Grid View Shortcuts ---
                 else {
-                    // Global Grid Actions
+                    // Global Helpers
                     if (e.key === 'z' || e.key === 'Z') { downloadSelectedZip(); return; }
                     if (e.key === 'l' || e.key === 'L') { startSyncProcess(true); return; }
                     if (e.key === 'k' || e.key === 'K') { showRescanModal(); return; }
@@ -10610,19 +10853,67 @@
                         if(deskBtn && deskBtn.offsetParent !== null) deskBtn.click(); else if(mobBtn) mobBtn.click();
                         return;
                     }
-
+                    // Toggle Focus Mode
+                    if (e.key === 'q' || e.key === 'Q') {
+                        toggleFocusMode();
+                        return;
+                    }
                     if (galleryItems.length === 0) return;
 
-                    // Navigation
+                    // Navigation Helper
                     const getColumns = () => {
                         const style = window.getComputedStyle(galleryContainer);
                         return style.getPropertyValue('grid-template-columns').split(' ').length;
                     };
 
-                    // Helper: Resolves target (Hover > Focus)
+                    // --- ROBUST TARGET LOGIC (V5: Drill-down & State Check) ---
                     const getTargetIndex = () => {
-                        if (typeof hoveredItemIndex !== 'undefined' && hoveredItemIndex !== -1) return hoveredItemIndex;
-                        if (typeof focusedItemIndex !== 'undefined' && focusedItemIndex !== -1) return focusedItemIndex;
+                        let candidateItem = null;
+
+                        // 1. Mouse Priority: Drill through overlays using tracker
+                        if (window.lastMouseX > 0 && window.lastMouseY > 0) {
+                            // Check top element
+                            const topEl = document.elementFromPoint(window.lastMouseX, window.lastMouseY);
+                            if (topEl) {
+                                // If blocked by overlay or body, try to peek under
+                                if (topEl.id === 'lightbox-overlay' || topEl.tagName === 'BODY') {
+                                    const lb = document.getElementById('lightbox-overlay');
+                                    // Temporarily hide overlay to find what's underneath
+                                    const prevDisplay = lb.style.display;
+                                    lb.style.display = 'none'; 
+                                    const realEl = document.elementFromPoint(window.lastMouseX, window.lastMouseY);
+                                    lb.style.display = prevDisplay;
+                                    if (realEl) candidateItem = realEl.closest('.gallery-item');
+                                } else {
+                                    candidateItem = topEl.closest('.gallery-item');
+                                }
+                            }
+                        }
+
+                        // 2. CSS Hover Fallback
+                        if (!candidateItem) {
+                            const hoveredEls = document.querySelectorAll('.gallery-item:hover');
+                            if (hoveredEls.length > 0) candidateItem = hoveredEls[0];
+                        }
+
+                        // Resolve Item to Index
+                        if (candidateItem) {
+                            // Try by ID (Safest against DOM updates)
+                            const fid = candidateItem.dataset.fileId;
+                            if (fid) {
+                                const idx = galleryItems.findIndex(x => x.dataset.fileId === fid);
+                                if (idx !== -1) return idx;
+                            }
+                            // Try by Object Reference
+                            const idxObj = galleryItems.indexOf(candidateItem);
+                            if (idxObj !== -1) return idxObj;
+                        }
+
+                        // 3. Focus Fallback
+                        if (typeof focusedItemIndex !== 'undefined' && focusedItemIndex !== -1 && galleryItems[focusedItemIndex]) {
+                            return focusedItemIndex;
+                        }
+                        
                         return -1;
                     };
 
@@ -10633,18 +10924,19 @@
                         case 'ArrowUp': e.preventDefault(); updateFocus(-getColumns()); break;
                         
                         case 'Delete': {
-                            // Priority 1: Hover (Quick Delete)
-                            if (typeof hoveredItemIndex !== 'undefined' && hoveredItemIndex !== -1) {
-                                const item = galleryItems[hoveredItemIndex];
-                                deleteFile(e, item.dataset.fileId, item.querySelector('.delete-btn'), true); // True = Skip Confirm
+                            const idx = getTargetIndex();
+                            // Quick Delete only if hovering exact element (Safety)
+                            const elAtMouse = (window.lastMouseX > 0) ? document.elementFromPoint(window.lastMouseX, window.lastMouseY) : null;
+                            const itemAtMouse = elAtMouse ? elAtMouse.closest('.gallery-item') : null;
+                            
+                            if (itemAtMouse && galleryItems.indexOf(itemAtMouse) === idx) {
+                                deleteFile(e, galleryItems[idx].dataset.fileId, galleryItems[idx].querySelector('.delete-btn'), true);
                                 return;
                             }
-                            // Priority 2: Selection
+                            // Standard Delete
                             if (selectedFiles.size > 0) { deleteSelected(); return; }
-                            // Priority 3: Focus
-                            if (focusedItemIndex !== -1) {
-                                const item = galleryItems[focusedItemIndex];
-                                deleteFile(e, item.dataset.fileId, item.querySelector('.delete-btn'), false);
+                            if (idx !== -1) {
+                                deleteFile(e, galleryItems[idx].dataset.fileId, galleryItems[idx].querySelector('.delete-btn'), false);
                             }
                             break;
                         }
@@ -10656,21 +10948,23 @@
                             }
                             break;
                         
-                        // --- UNIFIED TARGET LOGIC FOR ACTIONS ---
+                        // --- UNIFIED ACTIONS ---
                         case 'v': case 'V': {
                             const idx = getTargetIndex();
-                            if (idx !== -1) openLightbox(e, galleryItems[idx].dataset.fileId);
+                            if (idx !== -1) {
+                                // Pass dummy event and TRUE for forceOpen
+                                const safeEvent = { target: document.body, stopPropagation: () => {} };
+                                openLightbox(safeEvent, galleryItems[idx].dataset.fileId, true);
+                            }
                             break;
                         }
                         case 'n': case 'N': {
                             const idx = getTargetIndex();
                             if (idx !== -1) {
-                                // Visual pop if hovering
-                                if(typeof hoveredItemIndex !== 'undefined' && hoveredItemIndex === idx) {
-                                    galleryItems[idx].style.transform = "scale(1.02)";
-                                    setTimeout(() => galleryItems[idx].style.transform = "", 150);
-                                }
-                                showNodeSummary(e, galleryItems[idx].dataset.fileId);
+                                const item = galleryItems[idx];
+                                item.style.transform = "scale(1.02)";
+                                setTimeout(() => item.style.transform = "", 150);
+                                showNodeSummary(e, item.dataset.fileId);
                             }
                             break;
                         }
@@ -10728,7 +11022,6 @@
                         }
                         case 'm': case 'M': {
                             if (selectedFiles.size > 0) { moveSelected(); break; }
-                            // Auto-select target if no selection
                             const idx = getTargetIndex();
                             if (idx !== -1) {
                                 deselectAll();
@@ -10836,8 +11129,6 @@
                 }
             }
 
-            function showShortcutsHelp() { document.getElementById('shortcuts-help-overlay').classList.add('visible'); }
-            function closeShortcutsHelp() { document.getElementById('shortcuts-help-overlay').classList.remove('visible'); }
             document.getElementById('shortcuts-help-overlay').addEventListener('click', (e) => { if (e.target.id === 'shortcuts-help-overlay') closeShortcutsHelp(); });
             const closeShortcutsBtn = document.getElementById('close-shortcuts-btn');
             if (closeShortcutsBtn) {
@@ -10884,7 +11175,56 @@
                 }
             });
             
+            // --- SMART UI ZOOM COMPENSATION ---
+            // Keeps the Selection Bar usable even when browser zoom is < 100%
+            function handleBrowserZoom() {
+                // Calculate rough zoom level (e.g., 0.6 for 60%)
+                // Note: window.outerWidth/innerWidth is a reliable proxy on Chrome/Edge desktop
+                const zoomLevel = Math.round(window.outerWidth / window.innerWidth * 100) / 100;
+                
+                // We only compensate if zoom is significantly small (below 90%)
+                if (zoomLevel < 0.9) {
+                    // Calculate inverse scale (e.g., if zoom 0.5, we scale 2.0x)
+                    // We cap it at 2.5x to prevent absurdly huge UI on massive resolutions
+                    let scaleFactor = 1 / zoomLevel;
+                    scaleFactor = Math.min(Math.max(scaleFactor, 1), 2.5);
+                    
+                    document.documentElement.style.setProperty('--ui-zoom-scale', scaleFactor);
+                } else {
+                    // Reset to normal
+                    document.documentElement.style.setProperty('--ui-zoom-scale', '1');
+                }
+            }
+            
+            // --- PLATFORM DETECTION (Mac vs PC) ---
+            // Changes "Ctrl" to "⌘" in the help panel if user is on Mac
+            function detectPlatformLabels() {
+                const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0 || navigator.userAgent.toUpperCase().indexOf('MAC') >= 0;
+                
+                if (isMac) {
+                    document.querySelectorAll('.cmd-key').forEach(el => {
+                        el.textContent = '⌘'; // Sostituisce "Ctrl" con il simbolo Command
+                        el.style.fontFamily = 'system-ui, sans-serif'; // Assicura che il simbolo si veda bene
+                    });
+                }
+            }
+            detectPlatformLabels();
+            
+            // Listen for resize (which triggers on zoom change in modern browsers)
+            window.addEventListener('resize', handleBrowserZoom);
+            
+            // Initial check
+            handleBrowserZoom();
+            
         });
+        
+        // --- GLOBAL HELPER FUNCTIONS (Moved out for HTML access) ---
+        function showShortcutsHelp() { 
+            document.getElementById('shortcuts-help-overlay').classList.add('visible'); 
+        }
+        function closeShortcutsHelp() { 
+            document.getElementById('shortcuts-help-overlay').classList.remove('visible'); 
+        }
         // --- BUTTONS + - LIMIT MAX RESULTS ---
         window.adjustAiLimit = function(delta) {
             const input = document.getElementById('ai-search-limit');

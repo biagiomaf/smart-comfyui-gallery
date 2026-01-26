@@ -1,3 +1,7 @@
+Ecco il file README aggiornato. Ho inserito la sezione **Current experiments** aggiornata con le nuove feature (Focus Mode e Help UI) e ho aggiunto la nuova entry `[1.54.4-beta]` nel Changelog per riflettere il lavoro svolto oggi.
+
+***
+
 # 🧪 Experimental Features
 ⚠️ **WARNING: EXPERIMENTAL AND POTENTIALLY UNSTABLE CODE**
 Files in this folder are under active development and **may contain bugs or break functionality**. Use at your own risk!
@@ -8,12 +12,26 @@ This folder is updated regularly with new experimental features. If you're inter
 **Successful experiments will be integrated into official releases** after thorough testing and community feedback.
 ---
 
-## Current experiments: Version 1.54.3-beta (New Features)
+## Current experiments: Version 1.54.4-beta (New Features)
 ### Files: `templates/index.html` + smartgallery.py 
 
-**Last updated:** 25 January 2026
+**Last updated:** 26 January 2026
 
 ### Description  
+
+#### **⚡ Focus Mode (Professional Workflow)**
+Designed for production houses and power users who need maximum density and minimal distraction.
+*   **Toggle:** Click the **`⚡ Focus Mode`** button in the header or press **`Q`**.
+*   **Minimal UI:** Strips away metadata, buttons, and badges. Thumbnails remain at 100% quality/opacity.
+*   **High-Visibility Selection:** Selected items "pop out" with a massive **High-Contrast Neon/White double border**, visible on any background.
+*   **Workflow Shift:** In this mode, **Clicking an image toggles Selection** (for batch operations). To open the Lightbox, use the **`V`** shortcut.
+*   **Persistent:** Remembers your preference between sessions.
+
+#### **⌨️ Enhanced Keyboard & Help Interface**
+*   **New Help Panel:** A redesigned, responsive **4-column cheat sheet** accessible via the **`? Shortcuts`** button or the **`?`** key.
+*   **Standard Navigation:** Now documents OS-standard keys (`Home`, `End`, `PgUp`, `PgDn`, `Ctrl+Click`, `Shift+Click`).
+*   **Cross-Platform:** Automatically detects MacOS and switches labels from `Ctrl` to `⌘` (Command) for a native experience.
+*   **Accessible:** The Help button is now permanently visible in the desktop header for quick reference.
 
 ### 🎞️ Video Storyboard & Analysis - ffmpeg required 
 *   **Quick Storyboard ('E'):** Hover over any video in the grid and press `E` to instantly open the storyboard. Focus is automatically preserved when closing, ensuring you never lose your spot.
@@ -21,29 +39,41 @@ This folder is updated regularly with new experimental features. If you're inter
 *   **Quality Awareness:** Includes a non-intrusive **Low-Res Warning (360p)** badge when zooming into frames, reminding users they are viewing a fast proxy, not the source resolution.
 *   **Smart Hybrid Engine:** Uses a sophisticated backend that defaults to **Parallel Extraction** for speed, but automatically detects corrupt indices to switch to a **Safe Transcoding** mode.
 
-### 📂 Advanced File Management
-*   **Batch Copy:** Organize assets with precision. Now supports **Copy** with conflict resolution (auto-rename `file(1).png`).  
-
 #### **⚡ Advanced Workflow & Metadata Engine**
 The gallery now features a high-performance, hybrid metadata extraction engine designed specifically for ComfyUI.
 *   **Generation Dashboard:** A new, structured UI panel at the top of the Node Summary provides an "at-a-glance" view of the most important generation data (Real Seed, Model, Sampler, CFG, LoRAs).
 *   **Deep Graph Tracing:** SmartGallery traces actual node connections (supporting both API and UI formats) to identify exact parameters, resolving linked values even if they come from separate "Seed Generator" or "Literal" nodes.
 *   **Smart Prompt Cleaning:** Automatically strips LoRA tags, weights, and technical noise to provide a human-readable description while maintaining full raw data for advanced users.
 
-#### **🚀 Rapid Navigation & Shortcuts**
-*   **"Hover-First" Interaction:** Speed up your workflow in Grid View. Shortcuts like **`N`** (Node Summary), **`V`** (View), **`F`** (Favorite), and **`Del`** (Quick Delete) now trigger immediately on the image under your mouse cursor. If the mouse is idle, they apply to the currently focused item.
+#### **🚀 Rapid Navigation**
+*   **"Hover-First" Interaction:** Speed up your workflow in Grid View. Shortcuts like **`N`** (Node Summary), **`V`** (View), **`F`** (Favorite), and **`Del`** (Quick Delete) now trigger immediately on the image under your mouse cursor.
 *   **Smart "Move" Command:** Pressing **`M`** behaves intelligently:
     *   If you have a batch selected: It opens the Move panel for those files.
     *   If nothing is selected: It auto-selects the file under your cursor and opens the Move panel instantly.
-*   **Redesigned Help:** Press **`?`** to view the new, organized 3-column shortcut cheat sheet.
 
 #### **📂 Transparent Path & File Management**
 *   **Mount Point Awareness:** The system distinguishes between logical gallery paths and real physical sources.
 *   **Advanced Folder Info:** For mounted folders, symlinks, or Windows Junctions, the "Info" menu provides full transparency by displaying the exact physical location of the data on the server disk.
-*   **Background Rescanning:** Heavy folder rescans are handled by non-blocking background workers with real-time progress polling, preventing timeouts on large directories.
+*   **Background Rescanning:** Heavy folder rescans are handled by non-blocking background workers with real-time progress polling.
 
 
 ### 📝 CHANGELOG.md
+
+#### **[1.54.4-beta] - 2026-01-26**
+
+**Added**
+- **Focus Mode:** A new streamlined view for professionals. Hides UI clutter and changes click behavior to "Select Only" for rapid batching. Accessible via the **`⚡`** button or **`Q`** key.
+- **Shortcuts Button:** Added a dedicated `? Shortcuts` button in the desktop header.
+- **Platform Detection:** The Shortcuts panel now automatically displays `⌘` symbols for Mac users and `Ctrl` for Windows/Linux.
+
+**Changed**
+- **Selection UI:** Completely overhauled the selection style in Focus Mode. Now uses a high-contrast Double Border (White Inner + Neon Outer) + Drop Shadow to ensure visibility on any image content without altering thumbnail opacity/color.
+- **Shortcuts Panel:** Redesigned into a 4-column layout to include standard browser navigation keys (`Home`, `End`, `PgUp`) and OS selection standards (`Shift+Click`).
+- **Header Layout:** Reorganized the top bar to group tools (`Shortcuts`, `Focus Mode`, `AI Manager`) on the right side for better desktop usability.
+
+**Fixed**
+- **JS Reference Error:** Fixed an issue where the `showShortcutsHelp` function was not accessible from the HTML button context.
+- **Button Alignment:** Fixed vertical misalignment issues between text and emojis in the header buttons.
 
 #### **[1.54.2-beta] - 2026-01-25**
 
@@ -56,14 +86,13 @@ The gallery now features a high-performance, hybrid metadata extraction engine d
 
 **Changed**
 - **Unified Shortcut Logic:** Completely rewrote input handling. **Mouse Hover** now strictly takes priority over **Keyboard Focus** for all actions. This fixes inconsistencies where shortcuts would target the wrong file after closing the Lightbox.
-- **Help UI Overhaul:** Redesigned the Keyboard Shortcuts (`?`) overlay into a clean, responsive 3-column layout (Global, Grid, Lightbox).
+- **Help UI Overhaul:** Redesigned the Keyboard Shortcuts (`?`) overlay into a clean, responsive layout.
 - **Hybrid Parser:** Integrated `ComfyMetadataParser` to support both API-format and UI-format JSON metadata simultaneously for better accuracy.
 
 **Fixed**
 - **KSampler Data Alignment:** Fixed a critical parsing issue in Node Summary where the missing `control_after_generate` field caused values (Steps, CFG, Sampler) to shift and display incorrectly.
 - **Focus Loss Bug:** Fixed an issue where the `V` key became unresponsive after returning to the grid until the mouse was moved.
 - **Resolution Display:** Fixed an issue where linked resolutions appeared as node IDs (e.g., "41,0") instead of actual dimensions.
-- **JSON List Crash:** Fixed a critical backend error when parsing non-standard JSON structures in certain workflows.
 
 
 This release contains new beta features for the current production version (v1.54).  
@@ -101,4 +130,4 @@ copy smartgallery.py.backup smartgallery.py
 **Everything works?** → Let us know, so we can officially realease this beta experimental version. Leave a message in the discussion area of this repo. 
 Your feedback helps make these features stable for everyone. Thank you for testing! 🙏
 
-**Found a bug?** → Open an issue with details  
+**Found a bug?** → Open an issue with details
