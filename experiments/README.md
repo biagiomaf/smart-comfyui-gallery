@@ -1,7 +1,3 @@
-Ecco il file README aggiornato. Ho inserito la sezione **Current experiments** aggiornata con le nuove feature (Focus Mode e Help UI) e ho aggiunto la nuova entry `[1.54.4-beta]` nel Changelog per riflettere il lavoro svolto oggi.
-
-***
-
 # 🧪 Experimental Features
 ⚠️ **WARNING: EXPERIMENTAL AND POTENTIALLY UNSTABLE CODE**
 Files in this folder are under active development and **may contain bugs or break functionality**. Use at your own risk!
