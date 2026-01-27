@@ -160,6 +160,10 @@
             line-height: 1.4;
             max-width: 95vw;                   
         }
+        .notification.multiline-msg {
+            white-space: pre-wrap !important; /* Forces the \n character to break line */
+            text-align: left !important;      /* Aligns multiple lines to the left */
+        }
         
         .sidebar {
             width: var(--sidebar-width);
@@ -3220,7 +3224,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 1rem 1.5rem;
+            padding: 0rem 1.5rem;
             border-bottom: 1px solid var(--border-color);
             background: var(--surface-hover);
             flex-shrink: 0; 
@@ -4150,6 +4154,7 @@
         }
         
         /* --- POPOVER FIXED POSITIONING --- */
+        #options-popover,
         #auto-refresh-popover {
             display: none;
             position: fixed;
@@ -4169,6 +4174,7 @@
             text-align: left;
         }
 
+        #options-popover.visible,
         #auto-refresh-popover.visible {
             display: flex !important;
             flex-direction: column;
@@ -4269,10 +4275,81 @@
             }
         }
 
-        /* ARROW e INPUTS nel popover */
+        /* ARROW and INPUTS on popover */
         .ar-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
         .ar-row label { margin: 0; font-size: 0.9rem; cursor: pointer; color: var(--text-color); }
         .ar-input { width: 60px; background: var(--glass-bg); border: 1px solid var(--glass-border); color: white; border-radius: 4px; padding: 4px; text-align: center; }
+        
+        /* OPTIONS MENU STYLES */
+        .opt-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px; cursor: pointer; border-radius: 6px;
+            background: rgba(255,255,255,0.05); border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+        .opt-item:hover { background: rgba(255,255,255,0.1); border-color: var(--primary-color); }
+        .opt-item.active { border-left: 3px solid var(--success-color); }
+        .opt-item.inactive { border-left: 3px solid var(--text-muted); opacity: 0.8; }
+        .opt-label { font-weight: 600; font-size: 0.9rem; color: var(--text-color); }
+        .opt-status { font-size: 0.75rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+        .opt-status.on { background: var(--success-color); color: white; }
+        .opt-status.off { background: var(--surface-hover); color: var(--text-muted); border: 1px solid var(--glass-border); }
+        
+        .opt-shortcut-hint { font-size: 0.7rem; color: var(--text-muted); margin: 10px 0 0 0; text-align: right; }
+        
+        /* Video Overlay Icon */
+        .video-play-overlay {
+            /* MOBILE DEFAULT: Centered, Big, Pass-through (Visual only) */
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50px; height: 50px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 1.4rem;
+            padding-left: 4px;
+            z-index: 12; /* Above duration/badges */
+            backdrop-filter: blur(2px);
+            pointer-events: none; /* Mobile: Tap goes through to Lightbox */
+            transition: all 0.2s;
+        }
+
+        /* DESKTOP OVERRIDE: Corner, Small, Clickable */
+        @media (min-width: 1025px) {
+            .video-play-overlay {
+                top: auto; 
+                left: 10px; 
+                bottom: 10px;
+                transform: none; /* Reset center transform */
+                
+                width: 32px; height: 32px; /* Smaller */
+                font-size: 0.9rem;
+                padding-left: 2px;
+                
+                background: rgba(0, 0, 0, 0.6);
+                border: 1px solid rgba(255, 255, 255, 0.4);
+                
+                pointer-events: auto; /* Desktop: Clickable */
+                cursor: pointer;
+            }
+
+            .video-play-overlay:hover {
+                background: var(--primary-color);
+                border-color: white;
+                transform: scale(1.1);
+            }
+            
+            /* Adjustment for Focus Mode to avoid overlapping the Checkmark (which moves to bottom-left) */
+            body.focus-mode .gallery-item.selected .video-play-overlay {
+                bottom: 40px; /* Move up slightly if selected in focus mode */
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .opt-shortcut-hint { display: none; }
+        }
         
         /* --- SIDEBAR FOOTER (Version & Links) --- */
         .sidebar-footer {
@@ -5939,6 +6016,22 @@
 
 <body>
     <div id="notification-container"></div>
+    <!-- GENERAL OPTIONS POPOVER -->
+    <div id="options-popover">
+        <h4 style="margin:0 0 10px 0; color:var(--text-color); border-bottom:1px solid var(--glass-border); padding-bottom:5px;">⚙️ Gallery Options</h4>
+        
+        <div class="opt-item" id="opt-btn-autoplay" onclick="toggleVideoAutoplay()">
+            <div>
+                <div class="opt-label">▶️ Video Autoplay</div>
+                <div style="font-size:0.7rem; color:var(--text-muted);">Save bandwidth (Click-to-play)</div>
+            </div>
+            <span class="opt-status" id="opt-status-autoplay">ON</span>
+        </div>
+        
+        <p class="opt-shortcut-hint">
+            Keyboard Shortcut: <strong>P</strong>
+        </p>
+    </div>
     <!-- AUTO REFRESH SETTINGS POPOVER -->
     <div id="auto-refresh-popover">
         <h4 style="margin:0 0 10px 0; color:var(--primary-color);">🔄 Auto-Watch Folder</h4>
@@ -6032,8 +6125,14 @@
                 </div>
             </div>
 
-            <!-- Right: Desktop Tools Group (Shortcuts -> Focus -> AI) -->
+            <!-- Right: Desktop Tools Group (Options -> Shortcuts -> Focus -> AI) -->
             <div class="push-right desktop-only" style="display:flex; align-items:center; gap:8px;">
+                
+                <!-- 0. Options Menu -->
+                <button type="button" id="options-btn-desk" onclick="toggleOptionsMenu(event)" class="glass-btn" title="Configuration" style="height: 42px; display: inline-flex; align-items: center; justify-content: center;">
+                    <span style="font-size:1.1rem;">⚙️</span>
+                </button>
+
                 <!-- 1. Shortcuts Help -->
                 <button type="button" onclick="showShortcutsHelp()" class="glass-btn" title="View Keyboard Shortcuts" style="height: 42px; display: inline-flex; align-items: center; justify-content: center;">
                     <span style="font-weight:900; margin-right:5px;">?</span> Shortcuts
@@ -6058,6 +6157,10 @@
                 🧠
             </button>
             {% endif %}
+            <!-- Mobile Options Button -->
+            <button class="glass-btn mobile-only push-right" id="options-btn-mob" onclick="toggleOptionsMenu(event)" style="width:40px; padding:0; margin-left:5px;">
+                ⚙️
+            </button>
         </div>
     </div>
 
@@ -7006,6 +7109,7 @@
                     <div class="shortcut-item"><span class="key">?</span> <span class="desc">This Help</span></div>
                     <div class="shortcut-item"><span class="key">Q</span> <span class="desc">Toggle Focus Mode</span></div>
                     <div class="shortcut-item"><span class="key">T</span> <span class="desc">Toggle Filters/Top</span></div>
+                    <div class="shortcut-item"><span class="key">P</span> <span class="desc">Toggle Video Autoplay</span></div>
                     <div class="shortcut-item"><span class="key">L</span> <span class="desc">Refresh View</span></div>
                     <div class="shortcut-item"><span class="key">K</span> <span class="desc">Rescan Folder</span></div>
                     
@@ -7154,7 +7258,10 @@
         let totalFolderFiles = {{ total_folder_files }};
         const currentFolderKey = '{{ current_folder_key }}';
         const ancestorKeys = {{ ancestor_keys | tojson }};
-        
+        // --- USER PREFERENCES (LocalStorage) ---
+        // Default to FALSE (OFF) if not set. User must explicitly enable it.
+        // We check if it equals 'true' string.
+        let videoAutoplay = localStorage.getItem('sg_videoAutoplay') === 'true';
          // --- AI SEARCH VARIABLES ---
         const enableAiSearch = {{ enable_ai_search | tojson }};
         const isAiSearch = {{ is_ai_search | tojson }};
@@ -7965,11 +8072,30 @@
                 
                 const videoSource = useStream ? `/galleryout/stream/${file.id}` : `/galleryout/file/${file.id}`;
                 
-                // We replace the transparent SVG poster with the real static thumbnail generated by the backend.
-                // This ensures that even if the video stream takes a second to start, the user sees an image immediately.
-                mediaHTML = `<video autoplay muted loop playsinline class="lazy" 
-                                data-src="${videoSource}" 
-                                poster="/galleryout/thumbnail/${file.id}"></video>`;
+                // Logic: 
+                // Autoplay ON: Plays automatically, muted.
+                // Autoplay OFF: NO CONTROLS (fixes mobile tap issue), shows Overlay Icon, opens Lightbox on click.
+                // Note: pointer-events-none on video ensures the click hits the parent thumbnail-link
+                
+                let vidAttrs = "";
+                let overlayHTML = "";
+                
+                if (videoAutoplay) {
+                    vidAttrs = "autoplay muted";
+                } else {
+                    // Autoplay OFF:
+                    // CSS handles the interaction difference between Mobile (Pass-through) and Desktop (Clickable).
+                    // We attach the onclick handler here; it will only fire on Desktop thanks to CSS pointer-events.
+                    vidAttrs = 'preload="none" style="pointer-events:none;"'; 
+                    overlayHTML = `<div class="video-play-overlay" title="Play Preview" onclick="playVideoInGrid(event, this)">▶</div>`;
+                }
+
+                mediaHTML = `
+                    <video ${vidAttrs} loop playsinline class="lazy" 
+                        data-src="${videoSource}" 
+                        poster="/galleryout/thumbnail/${file.id}"></video>
+                    ${overlayHTML}
+                `;
             } else {
                 mediaHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:3rem;color:var(--text-muted);">📄</div>`;
             }
@@ -8093,17 +8219,20 @@
                             // 1. Load source if not loaded yet
                             if (el.dataset.src) {
                                 el.src = el.dataset.src;
-                                el.load();
+                                // If Autoplay is OFF (Click-to-play), we DON'T call load() aggressively 
+                                // unless user interacts, but setting src usually triggers loading metadata.
+                                // With preload="none", it should be fine.
+                                if (videoAutoplay) el.load(); 
                                 el.removeAttribute('data-src');
                                 el.classList.remove("lazy");
                             }
-                            // 2. Play when visible
-                            const playPromise = el.play();
-                            if (playPromise !== undefined) {
-                                playPromise.catch(error => {
-                                    // Auto-play was prevented (e.g. browser policy or user interaction)
-                                    console.log("Autoplay prevented:", error);
-                                });
+                            
+                            // 2. Play when visible ONLY if preference is ON
+                            if (videoAutoplay) {
+                                const playPromise = el.play();
+                                if (playPromise !== undefined) {
+                                    playPromise.catch(error => { console.log("Autoplay prevented:", error); });
+                                }
                             }
                         } else {
                             // 3. Pause when out of viewport to save resources
@@ -10843,6 +10972,7 @@
                 else {
                     // Global Helpers
                     if (e.key === 'z' || e.key === 'Z') { downloadSelectedZip(); return; }
+                    if (e.key === 'p' || e.key === 'P') { e.preventDefault(); toggleVideoAutoplay(); return; }
                     if (e.key === 'l' || e.key === 'L') { startSyncProcess(true); return; }
                     if (e.key === 'k' || e.key === 'K') { showRescanModal(); return; }
                     if (e.key === '?') { showShortcutsHelp(); return; }
@@ -11216,6 +11346,22 @@
             // Initial check
             handleBrowserZoom();
             
+            // Close Options on click outside
+            document.addEventListener('click', (e) => {
+                const pop = document.getElementById('options-popover');
+                const btnD = document.getElementById('options-btn-desk');
+                const btnM = document.getElementById('options-btn-mob');
+                
+                if (pop && pop.classList.contains('visible')) {
+                    if (!pop.contains(e.target) && e.target !== btnD && e.target !== btnM && !btnD.contains(e.target) && !btnM.contains(e.target)) {
+                        pop.classList.remove('visible');
+                    }
+                }
+            });
+            
+            // Run Autoplay Notification Check
+            setTimeout(checkVideoAutoplayNotification, 1000); // Small delay to let UI settle
+            
         });
         
         // --- GLOBAL HELPER FUNCTIONS (Moved out for HTML access) ---
@@ -11225,6 +11371,184 @@
         function closeShortcutsHelp() { 
             document.getElementById('shortcuts-help-overlay').classList.remove('visible'); 
         }
+        
+        // --- OPTIONS MENU LOGIC ---
+        function toggleOptionsMenu(e) {
+            e.stopPropagation();
+            const popover = document.getElementById('options-popover');
+            const btn = e.currentTarget; // Works for both desk and mobile buttons
+            
+            if (popover.classList.contains('visible')) {
+                popover.classList.remove('visible');
+            } else {
+                // Position logic (Simple Anchor)
+                const rect = btn.getBoundingClientRect();
+                const pW = 240; // Popover width
+                
+                // Align right edge
+                let left = rect.right - pW;
+                if (left < 10) left = 10; // Mobile safety
+                
+                let top = rect.bottom + 10;
+                
+                popover.style.top = top + 'px';
+                popover.style.left = left + 'px';
+                
+                // Update UI state before showing
+                updateOptionsUI();
+                
+                popover.classList.add('visible');
+            }
+        }
+        
+        function updateOptionsUI() {
+            const statusEl = document.getElementById('opt-status-autoplay');
+            const itemEl = document.getElementById('opt-btn-autoplay');
+            
+            if (videoAutoplay) {
+                statusEl.textContent = "ON";
+                statusEl.className = "opt-status on";
+                itemEl.className = "opt-item active";
+            } else {
+                statusEl.textContent = "OFF";
+                statusEl.className = "opt-status off";
+                itemEl.className = "opt-item inactive";
+            }
+        }
+
+        function toggleVideoAutoplay() {
+            // 1. Toggle State
+            videoAutoplay = !videoAutoplay;
+            localStorage.setItem('sg_videoAutoplay', videoAutoplay);
+            
+            // 2. Immediate Visual Feedback (Toggle switch in menu)
+            updateOptionsUI();
+            
+            // 3. Smart Feedback Notification
+            const status = videoAutoplay ? "ENABLED" : "DISABLED";
+            
+            // Check if we actually need to reload (are there videos?)
+            const hasVideos = allFilesData.some(f => f.type === 'video');
+            
+            if (hasVideos) {
+                // Show notification briefly
+                showNotification(`Autoplay ${status}. Reloading...`, "info", 4000);
+                
+                // Show Loader immediately to block interaction while waiting for refresh
+                setTimeout(() => {
+                    const loader = document.getElementById('loader-overlay');
+                    if (loader) {
+                        loader.style.display = 'flex';
+                        // Force opacity for transition
+                        requestAnimationFrame(() => { loader.style.opacity = '1'; });
+                    }
+                    
+                    // Trigger reload
+                    window.location.reload();
+                }, 500); // 0.5s delay just to let the user glimpse the "Enabled/Disabled" change in the menu
+            } else {
+                // No videos on screen? No need to reload! Just confirm saving.
+                showNotification(`Autoplay ${status} (Saved for next time)`, "success");
+            }
+        }
+        
+        // Function to play video IN GRID (Desktop Only)
+        function playVideoInGrid(event, btnElement) {
+            // Prevent opening Lightbox or Selecting
+            event.stopPropagation();
+            event.preventDefault();
+
+            const wrapper = btnElement.closest('.thumbnail-wrapper');
+            const video = wrapper.querySelector('video');
+            
+            if (!video) return;
+
+            // 1. Hide the overlay button
+            btnElement.style.display = 'none';
+
+            // 2. Enable interaction on the video tag (so users can pause/seek)
+            video.style.pointerEvents = 'auto';
+            
+            // 3. Add controls
+            video.setAttribute('controls', 'true');
+            
+            // 4. Force load and play
+            video.setAttribute('preload', 'auto');
+            video.load(); 
+            
+            const playPromise = video.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(error => console.log("Play failed:", error));
+            }
+
+            // --- FOCUS TRAP FIX ---
+            // Native video controls steal keyboard focus. We must release it manually.
+
+            // A. Release focus immediately on Pause or End
+            video.onpause = () => video.blur();
+            video.onended = () => video.blur();
+
+            // B. Allow Global Shortcuts to break out even while playing
+            video.onkeydown = (e) => {
+                // Allow native player keys (Space, Arrows, F)
+                if ([' ', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'f', 'F'].includes(e.key)) return;
+
+                // If user presses App Shortcuts (V, Q, Esc, Delete, etc.), force blur and re-trigger
+                const appKeys = ['v', 'V', 'q', 'Q', 'Escape', 'Delete', 'Backspace'];
+                if (appKeys.includes(e.key)) {
+                    e.preventDefault(); // Stop video player from absorbing it
+                    video.blur();       // Release focus back to body
+                    document.body.focus();
+                    
+                    // Re-dispatch the event so the global listener catches it immediately
+                    const newEvent = new KeyboardEvent('keydown', {
+                        key: e.key,
+                        code: e.code,
+                        bubbles: true,
+                        cancelable: true,
+                        shiftKey: e.shiftKey,
+                        ctrlKey: e.ctrlKey,
+                        metaKey: e.metaKey
+                    });
+                    document.dispatchEvent(newEvent);
+                }
+            };
+        }
+        
+        
+        // Helper to check for videos and warn user
+        function checkVideoAutoplayNotification() {
+            if (allFilesData.length === 0) return;
+            
+            // Check if there is at least one video (mp4, mov, etc - NOT animated images)
+            const hasVideo = allFilesData.some(f => f.type === 'video');
+            
+            if (hasVideo) {
+                const isMobile = window.innerWidth <= 768;
+                const action = isMobile ? "use Options ⚙️" : "press 'P'";
+                let msg = "";
+                
+                if (videoAutoplay) {
+                    // Message for Autoplay ON
+                    msg = `▶️ Autoplay ON.\n (Slow connection? Disable: ${action})`;
+                    showNotification(msg, "info multiline-msg", 6000); 
+                } else {
+                    // Message for Autoplay OFF (Differentiated by platform)
+                    if (isMobile) {
+                        // Mobile: Tap opens Lightbox
+                        // Usiamo \n e passiamo la nuova classe
+                        msg = `⏸️ Autoplay OFF.\nTap to open the Lightbox and play the video.\n (Enable Autoplay: ${action})`;
+                    } else {
+                        // Desktop: Click the little icon to play in thumbnail
+                        // Usiamo \n e passiamo la nuova classe
+                        msg = `⏸️ Autoplay OFF.\nClick the ▶️ to play inside the thumbnail.\n (Enable Autoplay: ${action})`;
+                    }
+                    // Passiamo "multiline-msg" come parte del parametro 'type' (es: "info multiline-msg")
+                    showNotification(msg, `info multiline-msg`, 6000); 
+                }
+            }
+        }
+        
         // --- BUTTONS + - LIMIT MAX RESULTS ---
         window.adjustAiLimit = function(delta) {
             const input = document.getElementById('ai-search-limit');

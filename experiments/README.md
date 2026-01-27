@@ -8,12 +8,22 @@ This folder is updated regularly with new experimental features. If you're inter
 **Successful experiments will be integrated into official releases** after thorough testing and community feedback.
 ---
 
-## Current experiments: Version 1.54.4-beta (New Features)
+## Current experiments: Version 1.54.5-beta (New Features)
 ### Files: `templates/index.html` + smartgallery.py 
 
-**Last updated:** 26 January 2026
+**Last updated:** 27 January 2026
 
 ### Description  
+
+#### **⚙️ Usability & Bandwidth Control (NEW)**
+The gallery now provides advanced controls to manage video playback and bandwidth usage, especially crucial for servers with slow upload speeds.
+*   **Options Menu:** A new **`⚙️ Options`** button is available next to the Shortcuts button (Desktop & Mobile).
+*   **Video Autoplay Toggle:** This menu introduces a persistent, session-based setting: **`▶️ Video Autoplay`**.
+    *   **Default:** Autoplay is **OFF** (Click-to-Play).
+    *   **Function:** Disabling Autoplay saves bandwidth by preventing the browser from pre-buffering all videos in the grid.
+*   **Keyboard Shortcut:** Toggle Autoplay state instantly by pressing the **`P`** key.
+*   **Smart Interaction (Desktop):** When Autoplay is OFF, clicking the **small corner ▶️ icon** plays the video directly inside the thumbnail without launching the Lightbox. Clicking anywhere else on the thumbnail behaves normally (Selection/Lightbox).
+*   **Smart Interaction (Mobile):** When Autoplay is OFF, tapping anywhere on the thumbnail opens the Lightbox (Click-to-Open).
 
 #### **⚡ Focus Mode (Professional Workflow)**
 Designed for production houses and power users who need maximum density and minimal distraction.
@@ -54,6 +64,17 @@ The gallery now features a high-performance, hybrid metadata extraction engine d
 
 
 ### 📝 CHANGELOG.md
+
+#### **[1.54.5-beta] - 2026-01-27**
+
+**Added**
+- **Options Menu & Autoplay Toggle:** New persistent **`⚙️ Options`** menu (Desktop/Mobile) to manage core gallery settings.
+- **Video Autoplay Control:** Introduced a session-based toggle to explicitly enable/disable video autoplay in the grid. (Default: **OFF** to save bandwidth).
+- **'P' Shortcut:** Added the **`P`** key shortcut to quickly toggle the Video Autoplay setting.
+- **Dynamic UX for Videos:**
+    - On **Desktop**, when Autoplay is OFF, a small **▶️ icon** appears in the corner. Clicking it plays the video **in-grid** for quick preview.
+    - On **Mobile**, the thumbnail is fully clickable to open the Lightbox (Click-to-Open).
+- **Visual Feedback:** Added a full-screen loader (`loader-overlay`) to prevent interaction during the necessary page reload after changing the Autoplay setting.
 
 #### **[1.54.4-beta] - 2026-01-26**
 
