@@ -109,6 +109,24 @@ The gallery now features a high-performance, hybrid metadata extraction engine d
 
 This release contains new beta features for the current production version (v1.54).  
 
+---
+
+## Model Management (NEW!)
+
+Toggle between Images and Models view to manage your AI model library:
+
+### Features
+- 📊 View Checkpoints, Diffusion Models, LoRAs, and Embeddings
+- 🔍 CivitAI Integration - Fetch metadata, trigger words, and tags
+- 📝 Display model information: Name, Size, Triggers, Tags
+- ⚡ Fast scanning with incremental updates
+
+### Usage
+1. Click the **Models** toggle in the sidebar
+2. Select models with checkboxes
+3. Click "🔍 Fetch CivitAI Metadata" to enrich model data
+
+---
 
 ## How to install and test this beta version:
 

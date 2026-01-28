@@ -5293,6 +5293,59 @@
             flex-wrap: wrap;
         }
 
+        .view-hidden {
+            display: none !important;
+        }
+
+        .models-search {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .models-search-input {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-color);
+            padding: 0 0.9rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            backdrop-filter: blur(10px);
+            height: 42px;
+            line-height: 1;
+            width: 160px;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        .models-search-input::placeholder {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .models-search-input:focus {
+            background: var(--surface-hover);
+            border-color: var(--text-muted);
+        }
+
+        .models-search-clear {
+            width: 42px;
+            padding: 0;
+        }
+
+        @media (max-width: 768px) {
+            .models-search {
+                width: 100%;
+            }
+
+            .models-search-input {
+                width: 100%;
+                flex: 1;
+            }
+        }
+
         /* Pushes elements to the right (e.g. AI Manager) */
         .push-right { margin-left: auto; }
 
@@ -6002,14 +6055,221 @@
         }
         
         /* --- TEMPORARY HIDE COMPARE FEATURE --- */
-        
+
         #compare-selected-btn, /* The Scale Icon in Selection Bar */
         #compare-menu-btn,     /* The Menu Item in the dropdown */
         #compare-menu-sep      /* The Separator line in the menu */
-        { 
+        {
             /* display: none !important; */
         }
-        
+
+        /* ========================================
+           === VIEW MODE TOGGLE (Images/Models) ===
+           ======================================== */
+        .view-toggle-container {
+            display: flex;
+            gap: 4px;
+            background: #2a2a2a;
+            padding: 4px;
+            border-radius: 6px;
+            margin-right: 8px;
+        }
+
+        .view-toggle-btn {
+            padding: 6px 12px;
+            background: transparent;
+            color: #aaa;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .view-toggle-btn:hover {
+            background: #3a3a3a;
+            color: #fff;
+        }
+
+        .view-toggle-btn.active {
+            background: #4a9eff;
+            color: #fff;
+        }
+
+        /* === MODELS VIEW === */
+        .models-container {
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .models-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .models-header h2 {
+            margin: 0;
+            color: #fff;
+        }
+
+        .btn-refresh {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-color);
+            padding: 0 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+            backdrop-filter: blur(10px);
+            height: 42px;
+            line-height: 1;
+            white-space: nowrap;
+            text-decoration: none;
+            box-sizing: border-box;
+        }
+
+        .btn-refresh:hover {
+            background: var(--surface-hover);
+            border-color: var(--text-muted);
+            transform: translateY(-1px);
+        }
+
+        .btn-refresh:active { transform: translateY(0); }
+
+        .model-type-section {
+            margin-bottom: 30px;
+        }
+
+        .model-type-section h3 {
+            color: #fff;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .model-type-section h3 .count {
+            color: #888;
+            font-size: 14px;
+            font-weight: normal;
+        }
+
+        .models-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #2a2a2a;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .models-table thead {
+            background: #3a3a3a;
+        }
+
+        .models-table th {
+            padding: 12px;
+            text-align: left;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .models-table tbody tr {
+            border-bottom: 1px solid #3a3a3a;
+        }
+
+        .models-table tbody tr:hover {
+            background: #333;
+        }
+
+        .models-table td {
+            padding: 12px;
+            color: #ddd;
+        }
+
+        .path-cell {
+            color: #888;
+            font-size: 12px;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .trigger-cell {
+            color: #4a9eff;
+            font-weight: 500;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .tags-cell {
+            color: #aaa;
+            font-size: 12px;
+            max-width: 400px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .model-select-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--primary-color);
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        .btn-civitai {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-color);
+            padding: 0 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+            backdrop-filter: blur(10px);
+            height: 42px;
+            line-height: 1;
+            white-space: nowrap;
+            text-decoration: none;
+            box-sizing: border-box;
+        }
+
+        .btn-civitai:hover {
+            background: var(--surface-hover);
+            border-color: var(--text-muted);
+            transform: translateY(-1px);
+        }
+
+        .btn-civitai:active { transform: translateY(0); }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            background: #3a3a3a;
+            color: #aaa;
+            text-transform: uppercase;
+        }
+
         </style>
         
 </head>
@@ -6068,6 +6328,12 @@
                 </div>
             </a>
 
+            <!-- View Mode Toggle -->
+            <div class="view-toggle-container">
+                <button id="toggle-images" class="view-toggle-btn active">📷 Images</button>
+                <button id="toggle-models" class="view-toggle-btn">🎨 Models</button>
+            </div>
+
             <!-- Right Actions (Blocco Unico a Destra) -->
             <div class="sidebar-actions">
                 <button id="sidebar-minify-btn" title="Minimize Sidebar"><span>◀</span></button>
@@ -6113,7 +6379,7 @@
     {% set current_sort_order = request.args.get('sort_order', 'desc') %}
 
     <!-- === ROW 1: NAVIGATION & AI MANAGER === -->
-    <div class="toolbar-container" style="padding-bottom: 0;">
+    <div id="nav-toolbar" class="toolbar-container" style="padding-bottom: 0;">
         <div class="toolbar-row mobile-header-row">
             <!-- Left: Breadcrumbs -->
             <div class="breadcrumbs" style="padding:0; border:none; background:transparent;">
@@ -6170,7 +6436,7 @@
             
             <!-- Filters Button (Hidden during AI Search) -->
             {% if not is_ai_search %}
-            <button type="button" id="search-toggle-desktop" class="glass-btn filter-main-btn {% if active_filters_count > 0 %}active-blue{% endif %}">
+            <button type="button" id="search-toggle-desktop" class="glass-btn filter-main-btn images-only {% if active_filters_count > 0 %}active-blue{% endif %}">
                 🔍 Filters {% if active_filters_count > 0 %}({{ active_filters_count }}){% endif %}
                 {% if active_filters_count > 0 %}
                     <span class="filter-reset-icon filter-reset-badge" title="Clear all filters">✕</span>
@@ -6178,13 +6444,18 @@
             </button>
             {% endif %}
 
+            <div class="models-only view-hidden models-search">
+                <input type="text" id="models-search-input" class="models-search-input" placeholder="Search models..." autocomplete="off">
+                <button type="button" id="models-search-clear" class="glass-btn models-search-clear" title="Clear">✕</button>
+            </div>
+
             {% if enable_ai_search %}
-            <button type="button" id="ai-search-toggle-desktop" class="glass-btn {% if is_ai_search %}active-fuxia{% endif %}">
+            <button type="button" id="ai-search-toggle-desktop" class="glass-btn images-only {% if is_ai_search %}active-fuxia{% endif %}">
                 ✨ AI Search
             </button>
             {% endif %}
 
-            <div style="display:flex; gap:10px; margin-left:20px;">
+            <div class="images-only" style="display:flex; gap:10px; margin-left:20px;">
                 {% if not is_global_search and not (is_ai_search and ' ||| ' not in ai_query) %}
                 <button type="button" id="show-upload-modal-btn" class="glass-btn">📤 Upload</button>
                 <button type="button" id="rescan-folder-btn" class="glass-btn">♻️ Rescan</button>
@@ -6209,8 +6480,13 @@
                 {% endif %}
             </div>
 
+            <div class="models-only view-hidden" style="display:flex; gap:10px; margin-left:20px;">
+                <button id="refresh-models" class="btn-refresh">🔄 Refresh</button>
+                <button id="fetch-civitai-btn" class="btn-civitai" style="display: none;">🔍 Fetch CivitAI Metadata</button>
+            </div>
+
             <div class="push-right toolbar-row" style="gap:10px;">
-                <span class="file-count-badge">
+                <span class="file-count-badge images-only">
                     {% if is_ai_search or is_global_search %}
                         🔍 {{ total_files }} Result{% if total_files != 1 %}s{% endif %}
                         <span style="opacity: 0.6; margin-left: 5px;">(of {{ total_db_files }} Total)</span>
@@ -6222,12 +6498,12 @@
                     {% endif %}
                 </span>
                 
-                <button type="button" id="toggle-select-btn" class="glass-btn toggle-select-all-btn" onclick="toggleSelectAll()">
+                <button type="button" id="toggle-select-btn" class="glass-btn toggle-select-all-btn images-only" onclick="toggleSelectAll()">
                     ✅ Select All
                 </button>
                 
                 {% if not is_ai_search %}
-                <div class="btn-group">
+                <div class="btn-group images-only">
                     <button type="button" onclick="applySort('date')" class="glass-btn {% if current_sort_by == 'date' %}active-blue{% endif %}">
                        📅 Date {% if current_sort_by == 'date' %}{{ '↑' if current_sort_order == 'asc' else '↓' }}{% endif %}
                     </button>
@@ -6247,13 +6523,13 @@
         <div class="mobile-meta-row">
             {% if not enable_ai_search %}
                 <!-- If AI is disabled, show Filters button here next to the badge -->
-                <button type="button" id="mobile-filter-toggle" class="glass-btn filter-main-btn {% if active_filters_count > 0 %}active-blue{% endif %}">
+                <button type="button" id="mobile-filter-toggle" class="glass-btn filter-main-btn images-only {% if active_filters_count > 0 %}active-blue{% endif %}">
                     🔍 Filters {% if active_filters_count > 0 %}({{ active_filters_count }}){% endif %}
                     {% if active_filters_count > 0 %}<span class="filter-reset-icon filter-reset-badge">✕</span>{% endif %}
                 </button>
             {% endif %}
 
-            <span class="file-count-badge">
+            <span class="file-count-badge images-only">
                 {% if is_ai_search or is_global_search %}
                     🔍 {{ total_files }} Result{% if total_files != 1 %}s{% endif %}
                     <span style="opacity: 0.6; margin-left: 5px; font-weight: normal;">(of {{ total_db_files }})</span>
@@ -6264,6 +6540,11 @@
                     {% endif %}
                 {% endif %}
             </span>
+
+            <div class="models-only view-hidden models-search">
+                <input type="text" id="models-search-input-mobile" class="models-search-input" placeholder="Search models..." autocomplete="off">
+                <button type="button" id="models-search-clear-mobile" class="glass-btn models-search-clear" title="Clear">✕</button>
+            </div>
         </div>
         
         <!-- Row 3: Big Actions (Only if AI is enabled) -->
@@ -6271,13 +6552,13 @@
         <div class="mobile-big-actions">
             <!-- Filters Button (Hidden during AI Search) -->
             {% if not is_ai_search %}
-            <button type="button" id="mobile-filter-toggle" class="glass-btn filter-main-btn {% if active_filters_count > 0 %}active-blue{% endif %}">
+            <button type="button" id="mobile-filter-toggle" class="glass-btn filter-main-btn images-only {% if active_filters_count > 0 %}active-blue{% endif %}">
                 🔍 Filters {% if active_filters_count > 0 %}({{ active_filters_count }}){% endif %}
                 {% if active_filters_count > 0 %}<span class="filter-reset-icon filter-reset-badge">✕</span>{% endif %}
             </button>
             {% endif %}
             
-            <button type="button" id="ai-search-toggle-mobile" class="glass-btn {% if is_ai_search %}active-fuxia{% endif %}">
+            <button type="button" id="ai-search-toggle-mobile" class="glass-btn images-only {% if is_ai_search %}active-fuxia{% endif %}">
                 ✨ AI Search
             </button>
         </div>
@@ -6422,6 +6703,34 @@
     
         <div id="gallery-anchor"></div>
         <main class="gallery-container" id="gallery-container"></main>
+
+    <!-- Models View -->
+    <div id="models-view" style="display: none;">
+        <div class="models-container">
+            <div class="models-header">
+                <h2>🎨 Model Management</h2>
+            </div>
+            <div id="models-loading" style="display: none; padding: 40px; text-align: center;">
+                <p>Loading models...</p>
+            </div>
+            <div id="models-content">
+                <!-- Tables will be inserted here per type -->
+            </div>
+        </div>
+    </div>
+
+    <!-- CivitAI Progress Overlay -->
+    <div id="civitai-progress-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; align-items: center; justify-content: center;">
+        <div style="background: var(--surface-color); padding: 30px; border-radius: 12px; min-width: 400px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);">
+            <h3 style="margin: 0 0 20px 0; color: var(--primary-color);">🔍 Fetching CivitAI Metadata</h3>
+            <p id="civitai-status-text" style="margin: 0 0 15px 0; color: var(--text-color);">Processing: 0/0 models</p>
+            <div style="background: rgba(0,0,0,0.3); height: 24px; border-radius: 12px; overflow: hidden; margin-bottom: 20px;">
+                <div id="civitai-progress-bar" style="background: var(--primary-color); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+            </div>
+            <button id="civitai-cancel-btn" class="btn-refresh" style="width: 100%; background: var(--danger-color, #dc3545);">✕ Cancel</button>
+        </div>
+    </div>
+
         <!-- Load More Button with Logic Check -->
         <div id="load-more-container" {% if total_files <= files|length %}style="display:none;"{% endif %}>
             <button id="load-more-btn">
@@ -10604,6 +10913,11 @@
             if (mobileFilterToggle && searchPanel) { 
                 mobileFilterToggle.addEventListener('click', (e) => { 
                     if (e.target.classList.contains('filter-reset-icon')) return;
+                    if (currentView !== 'images') {
+                        const modelsInput = document.getElementById('models-search-input') || document.getElementById('models-search-input-mobile');
+                        if (modelsInput) modelsInput.focus();
+                        return;
+                    }
 
                     e.stopPropagation();
                     searchPanel.classList.toggle('visible'); 
@@ -10634,6 +10948,11 @@
                     // Non eseguire lo stopPropagation (così sale al body per il reset)
                     // e non aprire il pannello.
                     if (e.target.classList.contains('filter-reset-icon')) return;
+                    if (currentView !== 'images') {
+                        const modelsInput = document.getElementById('models-search-input') || document.getElementById('models-search-input-mobile');
+                        if (modelsInput) modelsInput.focus();
+                        return;
+                    }
 
                     e.stopPropagation();
                     desktopSearchPanel.classList.toggle('visible');
@@ -12845,6 +13164,550 @@
         document.getElementById('storyboard-overlay').addEventListener('click', (e) => {
             if (e.target.id === 'storyboard-overlay') closeStoryboard();
         });
+
+        // ========================================
+        // === VIEW MODE TOGGLE (Images/Models) ===
+        // ========================================
+        let currentView = 'images';
+
+        function switchView(mode) {
+            currentView = mode;
+            localStorage.setItem('viewMode', mode);
+
+            // Toggle active class on buttons
+            document.getElementById('toggle-images').classList.toggle('active', mode === 'images');
+            document.getElementById('toggle-models').classList.toggle('active', mode === 'models');
+
+            // Show/Hide content areas
+            const galleryContainer = document.getElementById('gallery-container');
+            const modelsView = document.getElementById('models-view');
+            const folderTreeContainer = document.querySelector('.folder-tree-container');
+            const folderControls = document.querySelector('.folder-controls');
+            const createFolderBtn = document.getElementById('create-folder-btn');
+            const mountFolderBtn = document.getElementById('mount-folder-btn');
+            const loadMoreContainer = document.getElementById('load-more-container');
+
+            // Nav toolbar uses visibility (keeps space), other toolbars use display
+            const navToolbar = document.getElementById('nav-toolbar');
+            const imagesOnly = document.querySelectorAll('.images-only');
+            const modelsOnly = document.querySelectorAll('.models-only');
+
+            if (mode === 'images') {
+                if (galleryContainer) galleryContainer.style.display = '';
+                if (modelsView) modelsView.style.display = 'none';
+                if (folderTreeContainer) folderTreeContainer.style.display = 'block';
+                if (folderControls) folderControls.style.display = 'flex';
+                if (createFolderBtn) createFolderBtn.style.display = 'block';
+                if (mountFolderBtn) mountFolderBtn.style.display = 'block';
+                if (loadMoreContainer) loadMoreContainer.style.display = '';
+                // Nav toolbar: visibility (keeps layout space)
+                if (navToolbar) navToolbar.style.visibility = 'visible';
+                imagesOnly.forEach(el => el.classList.remove('view-hidden'));
+                modelsOnly.forEach(el => el.classList.add('view-hidden'));
+                console.log('✅ Switched to Images view');
+            } else {
+                if (galleryContainer) galleryContainer.style.display = 'none';
+                if (modelsView) modelsView.style.display = 'block';
+                if (folderTreeContainer) folderTreeContainer.style.display = 'none';
+                if (folderControls) folderControls.style.display = 'none';
+                if (createFolderBtn) createFolderBtn.style.display = 'none';
+                if (mountFolderBtn) mountFolderBtn.style.display = 'none';
+                if (loadMoreContainer) loadMoreContainer.style.display = 'none';
+                // Nav toolbar: visibility hidden (keeps layout space, prevents jumping)
+                if (navToolbar) navToolbar.style.visibility = 'hidden';
+                imagesOnly.forEach(el => el.classList.add('view-hidden'));
+                modelsOnly.forEach(el => el.classList.remove('view-hidden'));
+                const desktopSearchPanel = document.getElementById('desktop-search-panel');
+                if (desktopSearchPanel) desktopSearchPanel.classList.remove('visible');
+                console.log('✅ Switched to Models view');
+            }
+        }
+
+        // Initialize toggle on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleImages = document.getElementById('toggle-images');
+            const toggleModels = document.getElementById('toggle-models');
+
+            if (toggleImages) toggleImages.addEventListener('click', () => switchView('images'));
+            if (toggleModels) toggleModels.addEventListener('click', () => switchView('models'));
+
+            switchView(currentView);
+        });
+
+        // === MODELS VIEW LOGIC ===
+        async function loadModels() {
+            const loading = document.getElementById('models-loading');
+            const content = document.getElementById('models-content');
+
+            if (loading) loading.style.display = 'block';
+            if (content) content.innerHTML = '';
+
+            try {
+                const response = await fetch('/galleryout/api/models/list');
+                const data = await response.json();
+
+                if (loading) loading.style.display = 'none';
+
+                if (data.status === 'success' && data.models) {
+                    renderModels(data.models);
+                }
+            } catch (error) {
+                console.error('Failed to load models:', error);
+                if (loading) loading.style.display = 'none';
+            }
+        }
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+        }
+
+        function formatDate(timestamp) {
+            const date = new Date(timestamp * 1000);
+            return date.toLocaleDateString('de-DE', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+        }
+
+        const modelPathSeparator = {{ path_separator | tojson }};
+
+        function formatModelPath(path) {
+            if (!path) return '';
+            const sep = modelPathSeparator || '/';
+            return String(path).replace(/[\\/]/g, sep);
+        }
+
+        function buildModelSearch(model, type, label) {
+            const parts = [
+                model.name,
+                model.type || type,
+                label,
+                formatModelPath(model.path),
+                model.trigger,
+                model.tags
+            ];
+            return parts.filter(Boolean).join(' ').toLowerCase();
+        }
+
+        function escapeAttr(value) {
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
+
+        function getModelsSearchInputs() {
+            return document.querySelectorAll('#models-search-input, #models-search-input-mobile');
+        }
+
+        function getModelsSearchValue() {
+            let value = '';
+            getModelsSearchInputs().forEach(input => {
+                if (input && input.value) value = input.value;
+            });
+            return value;
+        }
+
+        function setModelsSearchValue(value) {
+            getModelsSearchInputs().forEach(input => {
+                if (input) input.value = value;
+            });
+        }
+
+        function applyModelsSearch(rawQuery) {
+            const query = (rawQuery || '').trim().toLowerCase();
+            document.querySelectorAll('#models-view tbody tr').forEach(row => {
+                const haystack = row.dataset.search || '';
+                row.style.display = !query || haystack.includes(query) ? '' : 'none';
+            });
+        }
+
+        function renderModels(models) {
+            const content = document.getElementById('models-content');
+            if (!content) return;
+
+            // Group models by type
+            const grouped = {};
+            models.forEach(model => {
+                if (!grouped[model.type]) {
+                    grouped[model.type] = [];
+                }
+                grouped[model.type].push(model);
+            });
+
+            // Create a table for each model type
+            const typeLabels = {
+                'checkpoints': '🎨 Checkpoints',
+                'diffusion_models': '⚡ Diffusion Models',
+                'loras': '🎭 LoRAs',
+                'embeddings': '📝 Embeddings'
+            };
+
+            content.innerHTML = Object.keys(grouped).sort().map(type => {
+                const typeModels = grouped[type];
+                const label = typeLabels[type] || type;
+
+                // LoRAs use special columns (trigger + tags)
+                if (type === 'loras') {
+                    return `
+                        <div class="model-type-section">
+                            <h3>${label} <span class="count">(${typeModels.length})</span></h3>
+                            <table class="models-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 40px;">
+                                            <input type="checkbox" class="model-select-all" data-type="${type}" style="cursor: pointer;">
+                                        </th>
+                                        <th>Name</th>
+                                        <th>Trigger</th>
+                                        <th>Tags</th>
+                                        <th>Size</th>
+                                        <th>Path</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${typeModels.map(model => `
+                                        <tr data-model-hash="${model.hash || ''}" data-model-id="${model.id}" data-search="${escapeAttr(buildModelSearch(model, type, label))}">
+                                            <td>
+                                                <input type="checkbox" class="model-select-checkbox" data-model-hash="${model.hash || ''}" data-model-id="${model.id}">
+                                            </td>
+                                            <td>${model.name}</td>
+                                            <td class="trigger-cell" title="${model.trigger || ''}">${model.trigger || '-'}</td>
+                                            <td class="tags-cell" title="${model.tags || ''}">${model.tags || '-'}</td>
+                                            <td>${formatSize(model.size)}</td>
+                                        <td class="path-cell" title="${formatModelPath(model.path)}">${formatModelPath(model.path)}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                }
+
+                // Checkpoints, diffusion models, embeddings: standard columns
+                else {
+                    return `
+                        <div class="model-type-section">
+                            <h3>${label} <span class="count">(${typeModels.length})</span></h3>
+                            <table class="models-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 40px;">
+                                            <input type="checkbox" class="model-select-all" data-type="${type}" style="cursor: pointer;">
+                                        </th>
+                                        <th>Name</th>
+                                        <th>Size</th>
+                                        <th>Modified</th>
+                                        <th>Path</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${typeModels.map(model => `
+                                        <tr data-model-hash="${model.hash || ''}" data-model-id="${model.id}" data-search="${escapeAttr(buildModelSearch(model, type, label))}">
+                                            <td>
+                                                <input type="checkbox" class="model-select-checkbox" data-model-hash="${model.hash || ''}" data-model-id="${model.id}">
+                                            </td>
+                                            <td>${model.name}</td>
+                                            <td>${formatSize(model.size)}</td>
+                                            <td>${formatDate(model.mtime)}</td>
+                                        <td class="path-cell" title="${formatModelPath(model.path)}">${formatModelPath(model.path)}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                }
+            }).join('');
+
+            // Setup checkbox event handlers after rendering
+            setupSelectAllHandlers();
+
+            // Apply current models search query after render
+            applyModelsSearch(getModelsSearchValue());
+        }
+
+        // === CIVITAI INTEGRATION ===
+        let selectedModels = [];
+        let civitaiCancelled = false;
+
+        // Selection Management
+        function updateSelectedModels() {
+            selectedModels = [];
+            document.querySelectorAll('.model-select-checkbox:checked').forEach(cb => {
+                selectedModels.push({
+                    hash: cb.dataset.modelHash,
+                    id: cb.dataset.modelId
+                });
+            });
+
+            const fetchBtn = document.getElementById('fetch-civitai-btn');
+            if (fetchBtn) {
+                fetchBtn.style.display = selectedModels.length > 0 ? 'block' : 'none';
+                fetchBtn.textContent = `🔍 Fetch CivitAI Metadata (${selectedModels.length})`;
+            }
+        }
+
+        // Select All handler
+        function setupSelectAllHandlers() {
+            document.querySelectorAll('.model-select-all').forEach(selectAll => {
+                selectAll.addEventListener('change', function() {
+                    const type = this.dataset.type;
+                    const checkboxes = this.closest('table').querySelectorAll('.model-select-checkbox');
+                    checkboxes.forEach(cb => {
+                        cb.checked = this.checked;
+                    });
+                    updateSelectedModels();
+                });
+            });
+
+            document.querySelectorAll('.model-select-checkbox').forEach(cb => {
+                cb.addEventListener('change', function() {
+                    updateSelectedModels();
+                });
+            });
+        }
+
+        // CivitAI API Call
+        let civitaiAbortController = null;
+
+        async function fetchCivitAIMetadata() {
+            if (selectedModels.length === 0) return;
+
+            civitaiCancelled = false;
+            civitaiAbortController = new AbortController();
+
+            const overlay = document.getElementById('civitai-progress-overlay');
+            const statusText = document.getElementById('civitai-status-text');
+            const progressBar = document.getElementById('civitai-progress-bar');
+            const cancelBtn = document.getElementById('civitai-cancel-btn');
+
+            overlay.style.display = 'flex';
+
+            const total = selectedModels.length;
+            const successfulModels = [];
+            const failedModels = [];
+
+            // Cancel handler - immediately close overlay and abort requests
+            cancelBtn.onclick = function() {
+                civitaiCancelled = true;
+                if (civitaiAbortController) {
+                    civitaiAbortController.abort();
+                }
+                overlay.style.display = 'none';
+                showNotification('CivitAI fetch cancelled', 'warning');
+            };
+
+            // PHASE 1: Calculate full SHA256 hashes
+            statusText.textContent = 'Calculating full SHA256 hashes...';
+            progressBar.style.width = '0%';
+
+            const modelIds = selectedModels.map(m => m.id);
+            let hashResults = [];
+
+            try {
+                const hashResponse = await fetch('/galleryout/api/models/calculate-full-hash', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ modelIds: modelIds }),
+                    signal: civitaiAbortController.signal
+                });
+
+                if (civitaiCancelled) return;
+
+                const hashData = await hashResponse.json();
+
+                if (hashData.status === 'success') {
+                    hashResults = hashData.results;
+                    console.log('Hash calculation results:', hashResults);
+                } else {
+                    showNotification('Failed to calculate hashes: ' + hashData.message, 'error');
+                    overlay.style.display = 'none';
+                    return;
+                }
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    console.log('Hash calculation aborted by user');
+                    return;
+                }
+                showNotification('Hash calculation error: ' + error.message, 'error');
+                overlay.style.display = 'none';
+                return;
+            }
+
+            // Update selectedModels with full hashes
+            hashResults.forEach(result => {
+                if (result.status === 'success') {
+                    const model = selectedModels.find(m => m.id === result.modelId);
+                    if (model) {
+                        model.hash = result.hash;
+                    }
+                }
+            });
+
+            // PHASE 2: Fetch from CivitAI
+            let processed = 0;
+            progressBar.style.width = '10%';  // 10% for hash calculation done
+
+            for (const model of selectedModels) {
+                if (civitaiCancelled) {
+                    statusText.textContent = 'Cancelled by user';
+                    break;
+                }
+
+                if (!model.hash) {
+                    failedModels.push({ model, reason: 'Hash calculation failed' });
+                    processed++;
+                    continue;
+                }
+
+                statusText.textContent = `Fetching metadata: ${processed + 1}/${total} models`;
+
+                try {
+                    const response = await fetch(`https://civitai.com/api/v1/model-versions/by-hash/${model.hash}`, {
+                        signal: civitaiAbortController.signal
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+
+                        console.log('=== CivitAI Response ===');
+                        console.log('Full Response:', data);
+                        console.log('Model Name:', data.model?.name);
+                        console.log('Version Name:', data.name);
+                        console.log('trainedWords:', data.trainedWords);
+                        console.log('======================');
+
+                        // Extract trigger words
+                        let triggerWords = data.trainedWords || data.triggers || data.activationText || data.triggerWords || [];
+
+                        // Convert array to string if needed
+                        const triggerString = Array.isArray(triggerWords)
+                            ? triggerWords.join(', ')
+                            : (triggerWords || '');
+
+                        successfulModels.push({
+                            modelId: model.id,
+                            civitaiData: {
+                                name: data.model?.name || '',
+                                versionName: data.name || '',
+                                description: data.description || '',
+                                tags: triggerString,
+                                thumbnailUrl: data.images?.[0]?.url || '',
+                                civitaiModelId: data.modelId,
+                                civitaiVersionId: data.id
+                            }
+                        });
+                    } else {
+                        failedModels.push({ model, reason: `HTTP ${response.status}` });
+                    }
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        console.log('CivitAI fetch aborted by user');
+                        return;
+                    }
+                    failedModels.push({ model, reason: error.message });
+                }
+
+                processed++;
+                const fetchProgress = 10 + (processed / total * 90);
+                progressBar.style.width = fetchProgress.toFixed(0) + '%';
+                statusText.textContent = `Fetching metadata: ${processed}/${total} models`;
+
+                // Rate limiting - 200ms pause
+                await new Promise(resolve => setTimeout(resolve, 200));
+            }
+
+            // If cancelled, don't show the final overlay
+            if (civitaiCancelled) return;
+
+            // Close overlay
+            setTimeout(function() {
+                overlay.style.display = 'none';
+
+                const message = civitaiCancelled
+                    ? `Cancelled. Fetched ${successfulModels.length}/${total} models`
+                    : `Successfully fetched ${successfulModels.length}/${total} models`;
+
+                if (failedModels.length > 0) {
+                    console.warn('Failed models:', failedModels);
+                }
+
+                showNotification(message, successfulModels.length === total ? 'success' : 'info');
+
+                // Save to backend database
+                if (successfulModels.length > 0) {
+                    fetch('/galleryout/api/models/update-civitai', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ updates: successfulModels })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            console.log(`Saved ${data.updated} models to database`);
+                            loadModels();
+                        } else {
+                            console.error('Failed to save to database:', data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error saving to database:', error);
+                    });
+                } else {
+                    loadModels();
+                }
+            }, 500);
+        }
+
+        // Event listeners for Models view
+        document.addEventListener('DOMContentLoaded', function() {
+            const refreshBtn = document.getElementById('refresh-models');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', loadModels);
+            }
+
+            const fetchCivitaiBtn = document.getElementById('fetch-civitai-btn');
+            if (fetchCivitaiBtn) {
+                fetchCivitaiBtn.addEventListener('click', fetchCivitAIMetadata);
+            }
+
+            const storedQuery = localStorage.getItem('modelsSearchQuery') || '';
+            setModelsSearchValue(storedQuery);
+
+            getModelsSearchInputs().forEach(input => {
+                if (!input) return;
+                input.addEventListener('input', () => {
+                    setModelsSearchValue(input.value);
+                    localStorage.setItem('modelsSearchQuery', input.value);
+                    applyModelsSearch(input.value);
+                });
+            });
+
+            document.querySelectorAll('#models-search-clear, #models-search-clear-mobile').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    setModelsSearchValue('');
+                    localStorage.removeItem('modelsSearchQuery');
+                    applyModelsSearch('');
+                    const firstInput = document.getElementById('models-search-input') || document.getElementById('models-search-input-mobile');
+                    if (firstInput) firstInput.focus();
+                });
+            });
+        });
+
+        // Load models when the models view is activated
+        const originalSwitchView = switchView;
+        switchView = function(mode) {
+            originalSwitchView(mode);
+            if (mode === 'models') {
+                loadModels();
+            }
+        };
 
     </script>
 </body>
