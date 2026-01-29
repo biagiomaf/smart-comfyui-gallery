@@ -8,12 +8,17 @@ This folder is updated regularly with new experimental features. If you're inter
 **Successful experiments will be integrated into official releases** after thorough testing and community feedback.
 ---
 
-## Current experiments: Version 1.54.5-beta (New Features)
+## Current experiments: Version 1.54.6-beta (New Features)
 ### Files: `templates/index.html` + smartgallery.py 
 
-**Last updated:** 27 January 2026
+**Last updated:** 29 January 2026
 
 ### Description  
+
+### Thumbnail Grid Size Option in the new ⚙️Options Menu  
+*   **Adjustable Thumbnail Size:** Users can choose between `Normal` (320px width) and `Compact` (220px width) thumbnail sizes.
+*   **Persistent Preference:** The selected thumbnail size is saved in the browser's local storage, ensuring that the user's preference is remembered across sessions.
+*   **Improved Information Density:** The `Compact` view allows more files to be displayed on screen simultaneously, making it easier to browse large collections.
 
 #### **⚙️ Usability & Bandwidth Control (NEW)**
 The gallery now provides advanced controls to manage video playback and bandwidth usage, especially crucial for servers with slow upload speeds.
@@ -64,6 +69,11 @@ The gallery now features a high-performance, hybrid metadata extraction engine d
 
 
 ### 📝 CHANGELOG.md
+
+#### **[1.54.6-beta] - 2026-01-29**
+
+**Added**
+*   **Thumbnail Grid Size:** Added a new toggle in the Options menu (`⚙️`) allowing users to switch between **Normal** and **Compact** view on desktop. This preference is saved automatically.
 
 #### **[1.54.5-beta] - 2026-01-27**
 

@@ -1620,7 +1620,8 @@
 
         .gallery-container {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            /* Use variable with 320px fallback */
+            grid-template-columns: repeat(auto-fill, minmax(var(--grid-item-size, 320px), 1fr));
             gap: 2rem;
             padding: 2rem;
             min-height: 50vh;
@@ -6010,6 +6011,13 @@
             /* display: none !important; */
         }
         
+        /* --- FORCE HIDE OPTIONS ON MOBILE (Bulletproof) --- */
+        @media (max-width: 1024px) {
+            .opt-desktop-only {
+                display: none !important;
+            }
+        }
+        
         </style>
         
 </head>
@@ -6018,19 +6026,43 @@
     <div id="notification-container"></div>
     <!-- GENERAL OPTIONS POPOVER -->
     <div id="options-popover">
-        <h4 style="margin:0 0 10px 0; color:var(--text-color); border-bottom:1px solid var(--glass-border); padding-bottom:5px;">⚙️ Gallery Options</h4>
-        
-        <div class="opt-item" id="opt-btn-autoplay" onclick="toggleVideoAutoplay()">
-            <div>
-                <div class="opt-label">▶️ Video Autoplay</div>
-                <div style="font-size:0.7rem; color:var(--text-muted);">Save bandwidth (Click-to-play)</div>
-            </div>
-            <span class="opt-status" id="opt-status-autoplay">ON</span>
+        <!-- Header with Title and Close Button -->
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); margin-bottom: 10px; padding-bottom: 5px;">
+            <h4 style="margin: 0; color: var(--text-color);">⚙️ Gallery Options</h4>
+            <button onclick="toggleOptionsMenu(event)" title="Close Menu" style="background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; line-height: 1; padding: 0 5px; transition: color 0.2s;">
+                &times;
+            </button>
         </div>
         
-        <p class="opt-shortcut-hint">
-            Keyboard Shortcut: <strong>P</strong>
-        </p>
+        <!-- Autoplay Option (Visible Everyone) -->
+        <div class="opt-item" id="opt-btn-autoplay" onclick="toggleVideoAutoplay()">
+            <div>
+                <div class="opt-label" style="display: flex; align-items: center; gap: 8px;">
+                    ▶️ Video Autoplay 
+                    <span style="font-size: 0.65rem; background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border); padding: 1px 5px; border-radius: 4px; color: var(--primary-color);">Key: P</span>
+                </div>
+                <div style="font-size:0.75rem; color:var(--text-muted); line-height: 1.3; margin-top: 4px;">
+                    When enabled, videos play automatically on hover (Desktop) or load instantly.<br>
+                    <strong>Disable</strong> to save bandwidth/CPU or if scrolling feels choppy.
+                </div>
+            </div>
+            <span class="opt-status" id="opt-status-autoplay" style="align-self: center;">ON</span>
+        </div>
+
+        <!-- Separator (Desktop Only via Class) -->
+        <div class="opt-desktop-only" style="height:1px; background:rgba(255,255,255,0.1); margin:10px 0;"></div>
+
+        <!-- Thumbnail Size Option (Desktop Only via Class) -->
+        <div class="opt-item opt-desktop-only" id="opt-btn-size" onclick="toggleGridSize()">
+            <div>
+                <div class="opt-label">🖼️ Thumbnail Size</div>
+                <div style="font-size:0.75rem; color:var(--text-muted); line-height: 1.3; margin-top: 4px;">
+                    Toggle between <strong>Normal</strong> (320px) and <strong>Compact</strong> (220px) view.<br>
+                    Useful for viewing more items at once on smaller screens.
+                </div>
+            </div>
+            <span class="opt-status" id="opt-status-size" style="align-self: center;">NORMAL</span>
+        </div>
     </div>
     <!-- AUTO REFRESH SETTINGS POPOVER -->
     <div id="auto-refresh-popover">
@@ -7262,6 +7294,8 @@
         // Default to FALSE (OFF) if not set. User must explicitly enable it.
         // We check if it equals 'true' string.
         let videoAutoplay = localStorage.getItem('sg_videoAutoplay') === 'true';
+        // Grid Size Preference (Default: 'normal')
+        let gridSizePref = localStorage.getItem('sg_gridSize') || 'normal';
          // --- AI SEARCH VARIABLES ---
         const enableAiSearch = {{ enable_ai_search | tojson }};
         const isAiSearch = {{ is_ai_search | tojson }};
@@ -11361,6 +11395,8 @@
             
             // Run Autoplay Notification Check
             setTimeout(checkVideoAutoplayNotification, 1000); // Small delay to let UI settle
+            // Apply saved grid size preference
+            applyGridSize();
             
         });
         
@@ -11402,18 +11438,64 @@
         }
         
         function updateOptionsUI() {
+            // 1. Autoplay UI
             const statusEl = document.getElementById('opt-status-autoplay');
             const itemEl = document.getElementById('opt-btn-autoplay');
             
             if (videoAutoplay) {
                 statusEl.textContent = "ON";
                 statusEl.className = "opt-status on";
-                itemEl.className = "opt-item active";
+                // FIX: Usa classList per non cancellare altre classi esistenti
+                itemEl.classList.add('active');
+                itemEl.classList.remove('inactive');
             } else {
                 statusEl.textContent = "OFF";
                 statusEl.className = "opt-status off";
-                itemEl.className = "opt-item inactive";
+                // FIX: Usa classList
+                itemEl.classList.remove('active');
+                itemEl.classList.add('inactive');
             }
+
+            // 2. Grid Size UI
+            const sizeStatusEl = document.getElementById('opt-status-size');
+            const sizeItemEl = document.getElementById('opt-btn-size');
+            
+            if (sizeStatusEl && sizeItemEl) {
+                if (gridSizePref === 'small') {
+                    sizeStatusEl.textContent = "COMPACT";
+                    sizeStatusEl.className = "opt-status on";
+                    sizeStatusEl.style.backgroundColor = "var(--primary-color)";
+                    
+                    // FIX CRITICO: Non usare .className = ... altrimenti cancelli 'opt-desktop-only'
+                    sizeItemEl.classList.add('active');
+                } else {
+                    sizeStatusEl.textContent = "NORMAL";
+                    sizeStatusEl.className = "opt-status off";
+                    sizeStatusEl.style.backgroundColor = ""; 
+                    
+                    sizeItemEl.classList.remove('active');
+                }
+            }
+        }
+
+        function applyGridSize() {
+            const container = document.getElementById('gallery-container');
+            if (!container) return;
+            
+            if (gridSizePref === 'small') {
+                container.style.setProperty('--grid-item-size', '220px');
+            } else {
+                container.style.setProperty('--grid-item-size', '320px');
+            }
+            updateOptionsUI();
+        }
+
+        function toggleGridSize() {
+            gridSizePref = (gridSizePref === 'normal') ? 'small' : 'normal';
+            localStorage.setItem('sg_gridSize', gridSizePref);
+            applyGridSize();
+            // Optional: Re-layout lazy loading check
+            window.dispatchEvent(new Event('resize')); 
         }
 
         function toggleVideoAutoplay() {
