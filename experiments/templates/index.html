@@ -1652,8 +1652,8 @@
         }
 
         .gallery-item.focused {
-            outline: 2px solid var(--text-color);
-            outline-offset: 2px;
+            outline: 4px solid var(--text-color)!important;
+            outline-offset: 4px!important;
         }
 
         /* Disable selection in Global AI Mode */
@@ -5409,13 +5409,14 @@
         }
         
         /* --- FOCUS MODE STYLES --- */
-        
+
         /* Hide UI clutter */
         body.focus-mode .item-info,
         body.focus-mode .selection-checkmark,
         body.focus-mode .file-metadata,
-        body.focus-mode .file-scanned-time {
-            display: none !important;
+        body.focus-mode .file-scanned-time,
+        body.focus-mode .workflow-badge { 
+            display: none !important;   
         }
 
         /* BASE STATE: 100% Scale, 100% Opacity, No filters */
@@ -7157,7 +7158,8 @@
                         ▦ Single Item
                         <span class="sc-sub">Hover or Selected</span>
                     </div>
-                    <div class="shortcut-item"><span class="key">V</span> <span class="desc">Open Lightbox</span></div>
+                    <div class="shortcut-item"><span class="key">V</span> or <span class="key">Enter</span> <span class="desc">Open Lightbox</span></div>
+                    <div class="shortcut-item"><span class="key">X</span> or <span class="key">Spacebar</span> <span class="desc">Select / Deselect</span></div>
                     <div class="shortcut-item"><span class="key">N</span> <span class="desc">Node Summary</span></div>
                     <div class="shortcut-item"><span class="key">F</span> <span class="desc">Toggle Favorite</span></div>
                     <div class="shortcut-item"><span class="key">W</span> <span class="desc">Download Workflow</span></div>
@@ -7172,7 +7174,8 @@
                 <div class="sc-column">
                     <div class="sc-header">🖱️ Selection (Std)</div>
                     <!-- Mouse Actions -->
-                    <div class="shortcut-item"><span class="key std">Click</span> <span class="desc">Select / Deselect</span></div>
+                    <div class="shortcut-item"><span class="key std">Click</span> <span class="desc">Focus mode OFF-> Open Lightbox</span></div>
+                    <div class="shortcut-item"><span class="key std">Click</span> <span class="desc">Focus mode ON- > Select / Deselect</span></div>
                     <div class="shortcut-item"><span class="key std cmd-key">Ctrl</span>+<span class="key std">Click</span> <span class="desc">Add One</span></div>
                     <div class="shortcut-item"><span class="key std">Shift</span>+<span class="key std">Click</span> <span class="desc">Range Select</span></div>
                     
@@ -8186,7 +8189,26 @@
             `;
             
             // --- NEW: Hover Listeners for Shortcuts ---
-            item.addEventListener('mouseenter', () => { hoveredItemIndex = galleryItems.indexOf(item); });
+            // Focus follows Mouse ONLY on active movement (prevents scroll-jumping)
+            item.addEventListener('mousemove', (e) => {
+                // If coordinates are same as last recorded, it's a scroll, not a move. Ignore.
+                if (e.clientX === window.lastActiveX && e.clientY === window.lastActiveY) {
+                    return;
+                }
+                
+                // Update active coordinates
+                window.lastActiveX = e.clientX;
+                window.lastActiveY = e.clientY;
+
+                // Sync focus
+                if (focusedItemIndex !== galleryItems.indexOf(item)) {
+                    if (focusedItemIndex !== -1 && galleryItems[focusedItemIndex]) {
+                        galleryItems[focusedItemIndex].classList.remove('focused');
+                    }
+                    focusedItemIndex = galleryItems.indexOf(item);
+                    item.classList.add('focused');
+                }
+            });
             item.addEventListener('mouseleave', () => { hoveredItemIndex = -1; });
             
             return item;
@@ -11032,56 +11054,32 @@
 
                     // --- ROBUST TARGET LOGIC (V5: Drill-down & State Check) ---
                     const getTargetIndex = () => {
-                        let candidateItem = null;
-
-                        // 1. Mouse Priority: Drill through overlays using tracker
-                        if (window.lastMouseX > 0 && window.lastMouseY > 0) {
-                            // Check top element
-                            const topEl = document.elementFromPoint(window.lastMouseX, window.lastMouseY);
-                            if (topEl) {
-                                // If blocked by overlay or body, try to peek under
-                                if (topEl.id === 'lightbox-overlay' || topEl.tagName === 'BODY') {
-                                    const lb = document.getElementById('lightbox-overlay');
-                                    // Temporarily hide overlay to find what's underneath
-                                    const prevDisplay = lb.style.display;
-                                    lb.style.display = 'none'; 
-                                    const realEl = document.elementFromPoint(window.lastMouseX, window.lastMouseY);
-                                    lb.style.display = prevDisplay;
-                                    if (realEl) candidateItem = realEl.closest('.gallery-item');
-                                } else {
-                                    candidateItem = topEl.closest('.gallery-item');
-                                }
-                            }
-                        }
-
-                        // 2. CSS Hover Fallback
-                        if (!candidateItem) {
-                            const hoveredEls = document.querySelectorAll('.gallery-item:hover');
-                            if (hoveredEls.length > 0) candidateItem = hoveredEls[0];
-                        }
-
-                        // Resolve Item to Index
-                        if (candidateItem) {
-                            // Try by ID (Safest against DOM updates)
-                            const fid = candidateItem.dataset.fileId;
-                            if (fid) {
-                                const idx = galleryItems.findIndex(x => x.dataset.fileId === fid);
-                                if (idx !== -1) return idx;
-                            }
-                            // Try by Object Reference
-                            const idxObj = galleryItems.indexOf(candidateItem);
-                            if (idxObj !== -1) return idxObj;
-                        }
-
-                        // 3. Focus Fallback
-                        if (typeof focusedItemIndex !== 'undefined' && focusedItemIndex !== -1 && galleryItems[focusedItemIndex]) {
-                            return focusedItemIndex;
-                        }
-                        
-                        return -1;
+                        // The focused element is now the single source of truth
+                        return (focusedItemIndex !== -1) ? focusedItemIndex : -1;
                     };
 
+                    // --- Inside keydown listener, Grid View section ---
                     switch (e.key) {
+                        case 'Enter': {
+                            const idx = getTargetIndex();
+                            if (idx !== -1) {
+                                e.preventDefault(); // Prevent accidental form submissions or page jumps
+                                // PRIMARY ACTION: Open Lightbox
+                                // We pass 'true' for forceOpen to bypass Focus Mode selection logic
+                                openLightbox(null, galleryItems[idx].dataset.fileId, true);
+                            }
+                            break;
+                        }
+                        case ' ': { // Spacebar
+                            const idx = getTargetIndex();
+                            if (idx !== -1) {
+                                e.preventDefault(); // CRITICAL: Stop the page from scrolling down!
+                                // TOGGLE SELECTION: Same as 'X' key or clicking the checkmark
+                                toggleSelection(e, galleryItems[idx].dataset.fileId, galleryItems[idx]);
+                            }
+                            break;
+                        }
+                        case 'ArrowRight': // ... rest of the navigation code ...
                         case 'ArrowRight': e.preventDefault(); updateFocus(1); break;
                         case 'ArrowLeft': e.preventDefault(); updateFocus(-1); break;
                         case 'ArrowDown': e.preventDefault(); updateFocus(getColumns()); break;

@@ -8,10 +8,10 @@ This folder is updated regularly with new experimental features. If you're inter
 **Successful experiments will be integrated into official releases** after thorough testing and community feedback.
 ---
 
-## Current experiments: Version 1.54.6-beta (New Features)
+## Current experiments: Version 1.54.7-beta (New Features + fixes)
 ### Files: `templates/index.html` + smartgallery.py 
 
-**Last updated:** 29 January 2026
+**Last updated:** 01 February 2026
 
 ### Description  
 
