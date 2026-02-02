@@ -1625,6 +1625,7 @@
             gap: 2rem;
             padding: 2rem;
             min-height: 50vh;
+            align-items: start; 
         }
 
         .gallery-item {
@@ -1639,6 +1640,7 @@
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             backdrop-filter: blur(20px);
             border: 1px solid var(--glass-border);
+            height: fit-content; 
         }
 
         .gallery-item:hover {
@@ -5460,12 +5462,49 @@
             border-radius: 4px;
         }
         
-        /* Active Focus Button Style */
-        #focus-mode-btn.active-focus {
-            background: rgba(255, 193, 7, 0.2) !important;
-            border-color: var(--favorite-color) !important;
-            color: var(--favorite-color) !important;
-            box-shadow: 0 0 10px rgba(255, 193, 7, 0.3);
+        /* --- FOCUS MODE BADGES (Professional Style) --- */
+        .focus-badge {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 800;
+            margin-left: 8px;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            text-transform: uppercase;
+        }
+        
+        .focus-badge.on {
+            background: var(--success-color); /* Green */
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .focus-badge.off {
+            background: rgba(220, 53, 69, 0.2); /* Transparent Red */
+            color: #ff6b6b; /* Soft red text */
+            border: 1px solid var(--danger-color);
+        }
+        
+        /* Ensure readable text when button is hovered */
+        #focus-mode-btn:hover .focus-badge.off {
+            background: var(--danger-color);
+            color: white;
+        }
+        
+        body.focus-mode .gallery-item:has(.favorite-btn.favorited) .thumbnail-wrapper::after {
+            content: '⭐';
+            position: absolute;
+            bottom: 8px;
+            left: 8px;
+            z-index: 15;
+            font-size: 1.1rem;
+            filter: drop-shadow(0 0 4px rgba(0, 0, 0, 1)) drop-shadow(0 0 2px rgba(0, 0, 0, 1));
+            pointer-events: none; 
+            transition: bottom 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        body.focus-mode .gallery-item.selected:has(.favorite-btn.favorited) .thumbnail-wrapper::after {
+            bottom: 42px; 
         }
         
         /* --- FOCUS MODE CHECKMARK (Bottom-Left) --- */
@@ -6171,11 +6210,11 @@
                     <span style="font-weight:900; margin-right:5px;">?</span> Shortcuts
                 </button>
 
-                <!-- 2. Focus Mode -->
+                <!-- 2. Focus Mode with Dynamic Badges -->
                 <button type="button" id="focus-mode-btn" class="glass-btn" onclick="toggleFocusMode()" title="Minimal UI, maximum density. Keyboard-first workflow." style="height: 42px; display: inline-flex; align-items: center; justify-content: center;">
-                    <span style="margin-right:5px;">⚡</span> Focus Mode
+                    <span style="margin-right:0px;">⚡</span> Focus <span class="focus-badge off" id="focus-badge-state">OFF</span>
                 </button>
-
+                
                 <!-- 3. AI Manager (If enabled) -->
                 {% if enable_ai_search %}
                 <button class="glass-btn active-fuxia" id="ai-manager-btn-desk" onclick="toggleAiManager(true)" style="height: 42px; display: inline-flex; align-items: center; justify-content: center;">
@@ -8435,35 +8474,46 @@
             updateSelectionUI();
         }
         
-        // --- FOCUS MODE LOGIC ---
-        function toggleFocusMode() {
-            const body = document.body;
-            const btn = document.getElementById('focus-mode-btn');
-            
-            const isActive = body.classList.toggle('focus-mode');
-            
-            if (btn) {
+        // --- FOCUS MODE LOGIC (State & UI Management) ---
+        // Helper to update the visual badge and classes
+        function updateFocusButtonUI(isActive) {
+            const badge = document.getElementById('focus-badge-state');
+            if (badge) {
                 if (isActive) {
-                    btn.classList.add('active-focus');
-                    showNotification("⚡ You’re in Focus Mode — Use shortcuts for actions (press '?' for help).", "info", 6000);
+                    badge.textContent = "ON";
+                    badge.className = "focus-badge on";
                 } else {
-                    btn.classList.remove('active-focus');
+                    badge.textContent = "OFF";
+                    badge.className = "focus-badge off";
                 }
             }
-            
-            // Save state
+        }
+        // Main toggle function
+        function toggleFocusMode() {
+            const body = document.body;
+            // Toggle the class on body for CSS rules to take effect
+            const isActive = body.classList.toggle('focus-mode');
+            // Sync the button UI
+            updateFocusButtonUI(isActive);
+            if (isActive) {
+                showNotification("⚡ Focus Mode Enabled", "success", 2000);
+            }
+            // Persist preference in localStorage
             localStorage.setItem('galleryFocusMode', isActive);
         }
 
+        // Initialize state on page load
         function initFocusMode() {
             const savedState = localStorage.getItem('galleryFocusMode');
-            const btn = document.getElementById('focus-mode-btn');
+            // Apply only on Desktop (width > 1024) to avoid mobile UX issues
+            const isActive = (savedState === 'true' && window.innerWidth > 1024);
             
-            // Only apply on Desktop to avoid confusion on mobile
-            if (savedState === 'true' && window.innerWidth > 1024) {
+            if (isActive) {
                 document.body.classList.add('focus-mode');
-                if (btn) btn.classList.add('active-focus');
             }
+            
+            // Always ensure the button badge reflects the current state
+            updateFocusButtonUI(isActive);
         }
         
         function updateSelectionUI() {
