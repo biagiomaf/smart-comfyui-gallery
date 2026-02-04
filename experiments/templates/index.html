@@ -3403,6 +3403,48 @@
             min-width: 80px;
         }
         
+        /* --- SMART DIALOG BUTTON FOCUS STATES --- */
+        
+        .sd-actions button:focus {
+            outline: 3px solid #ffffff !important;
+            outline-offset: 2px !important;
+            transform: scale(1.08) !important;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.5) !important;
+            z-index: 10;
+            position: relative;
+        }
+
+        /* General style when any button in the dialog receives keyboard focus */
+        .sd-actionsxx button:focus {
+            outline: 3px solid #ffffff !important;
+            outline-offset: 2px !important;
+            transform: scale(1.05) !important;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.4) !important;
+            position: relative; 
+            /* Ensure the focused button stays on top of neighbors when scaled */
+            z-index: 1; 
+        }
+
+        /* Specific focus style for the DELETE/DANGER button */
+        .sd-actions .btn-reset:focus {
+            background-color: #ff4d4d !important;
+            border-color: #ffffff !important;
+            box-shadow: 0 0 20px rgba(220, 53, 69, 0.6) !important;
+        }
+
+        /* Specific focus style for the STANDARD CONFIRM button */
+        .sd-actions .active-blue:focus {
+            background-color: #007bff !important;
+            border-color: #ffffff !important;
+            box-shadow: 0 0 20px rgba(0, 123, 255, 0.6) !important;
+        }
+
+        /* Specific focus style for the CANCEL button */
+        .sd-actions button:not(.active-blue):not(.btn-reset):focus {
+            background-color: var(--surface-hover) !important;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2) !important;
+        }
+        
         /* --- LIGHTBOX SHORTCUTS BAR --- */
         #lightbox-shortcuts {
             position: absolute;
@@ -7389,6 +7431,8 @@
                 const btnCancel = document.getElementById('sd-btn-cancel');
                 const btnDeny = document.getElementById('sd-btn-deny');
 
+                document.body.classList.add('modal-open');
+                
                 // 1. Reset State
                 btnDeny.style.display = 'none';
                 btnConfirm.textContent = 'Confirm';
@@ -7439,10 +7483,11 @@
                     }
                 };
                 document.addEventListener('keydown', handleKeyDown);
-
+                
                 const close = (result) => {
-                    document.removeEventListener('keydown', handleKeyDown);
                     overlay.classList.remove('visible');
+                    // ADDED: Restore background interactions
+                    document.body.classList.remove('modal-open');
                     btnConfirm.onclick = null;
                     btnCancel.onclick = null;
                     btnDeny.onclick = null;
@@ -10999,7 +11044,49 @@
 
             // --- KEYBOARD SHORTCUTS (FIXED ESCAPE PRIORITY) ---
             document.addEventListener('keydown', (e) => {
+                // 1. Always ignore if typing in a form
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+
+                // 2. SMART DIALOG TRAP (Total Isolation)
+                const smartOverlay = document.getElementById('smart-dialog-overlay');
+                if (smartOverlay && smartOverlay.classList.contains('visible')) {
+                    
+                    if (e.key === 'Escape') { 
+                        // Let it pass to the Escape handler below 
+                    } 
+                    else if (['ArrowLeft', 'ArrowRight', 'Tab', 'Enter', ' '].includes(e.key)) {
+                        e.stopPropagation(); // Stop gallery from hearing this!
+
+                        const buttons = Array.from(smartOverlay.querySelectorAll('.sd-actions button')).filter(b => b.style.display !== 'none');
+                        const currentIndex = buttons.indexOf(document.activeElement);
+
+                        // Handle Arrows to move focus
+                        if (e.key === 'ArrowRight' || (e.key === 'Tab' && !e.shiftKey)) {
+                            e.preventDefault();
+                            const nextIndex = (currentIndex + 1) % buttons.length;
+                            buttons[nextIndex].focus();
+                        } 
+                        else if (e.key === 'ArrowLeft' || (e.key === 'Tab' && e.shiftKey)) {
+                            e.preventDefault();
+                            const prevIndex = (currentIndex - 1 + buttons.length) % buttons.length;
+                            buttons[prevIndex].focus();
+                        }
+                        // Handle Enter / Space on the FOCUSED button
+                        else if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            if (currentIndex !== -1) {
+                                buttons[currentIndex].click(); // Trigger the focused button
+                            }
+                        }
+                        return;
+                    } 
+                    else {
+                        // Block all other keys (E, N, V, etc.)
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return;
+                    }
+                }
 
                 // --- 1. Storyboard Zoom Navigation ---
                 const sbZoomOverlay = document.getElementById('sb-zoom-overlay');

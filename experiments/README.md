@@ -8,10 +8,10 @@ This folder is updated regularly with new experimental features. If you're inter
 **Successful experiments will be integrated into official releases** after thorough testing and community feedback.
 ---
 
-## Current experiments: Version 1.54.8-beta (New Features + fixes)
+## Current experiments: Version 1.54.8a-beta (New Features + fixes)
 ### Files: `templates/index.html` + smartgallery.py 
 
-**Last updated:** 02 February 2026
+**Last updated:** 04 February 2026
 
 ### Description  
 
@@ -69,6 +69,15 @@ The gallery now features a high-performance, hybrid metadata extraction engine d
 
 
 ### 📝 CHANGELOG.md
+
+#### **[1.54.8a-beta] - 2026-02-04**
+**Smart Dialog Accessibility & Interaction Overhaul**
+*   **Enhanced Keyboard Navigation**: Added full support for `ArrowLeft` and `ArrowRight` keys to navigate between action buttons, supplementing the standard `Tab` behavior.
+*   **Context Isolation (Input Trap)**: Implemented a strict keyboard event shield that prevents background shortcuts (such as grid navigation or storyboard triggers) from firing while a confirmation dialog is active.
+*   **Focus Logic Fix**: Resolved a critical issue where pressing `Enter` would trigger the default action regardless of current button focus. The system now correctly executes the specific button currently highlighted.
+*   **Visual UX Improvements**: 
+    *   Added automatic initial focus on confirmation buttons to streamline the "Key-Sequence" workflow (e.g., Delete -> Enter).
+
 
 #### **[1.54.6-beta] - 2026-01-29**
 
