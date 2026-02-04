@@ -7406,6 +7406,8 @@
                     setTimeout(() => { inputEl.focus(); inputEl.select(); }, 100);
                 } else {
                     inputContainer.style.display = 'none';
+                    // Focus confirm button for accessibility
+                    setTimeout(() => btnConfirm.focus(), 100);
                 }
 
                 // 4. Custom Mode: Yes/No/Cancel
@@ -7425,7 +7427,21 @@
                 overlay.classList.add('visible');
 
                 // 7. Handlers
+
+                // Global Key Handler (Enter to Confirm, Esc to Cancel)
+                const handleKeyDown = (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        btnConfirm.click();
+                    } else if (e.key === 'Escape') {
+                         e.preventDefault();
+                         btnCancel.click();
+                    }
+                };
+                document.addEventListener('keydown', handleKeyDown);
+
                 const close = (result) => {
+                    document.removeEventListener('keydown', handleKeyDown);
                     overlay.classList.remove('visible');
                     btnConfirm.onclick = null;
                     btnCancel.onclick = null;
@@ -7449,10 +7465,6 @@
                 btnCancel.onclick = () => {
                     close(null); 
                 };
-
-                if (type === 'prompt') {
-                    inputEl.onkeydown = (e) => { if(e.key === 'Enter') btnConfirm.click(); };
-                }
             });
         }
         
