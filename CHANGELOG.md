@@ -3,7 +3,7 @@
 #### **[1.55] - 2026-02-05**
 
 **Added**  
-- ** Video Storyboard & Analysis - ffmpeg required  **
+- **Video Storyboard & Analysis - ffmpeg required**
 *   **Quick Storyboard ('E'):** Hover over any video in the grid and press `E` to instantly open the storyboard.
 *   **Grid Overview:** Instantly analyze video content with a clean **11-frame Grid** covering the entire duration from Start to the **True Last Frame**.  
 - **Thumbnail Grid Size:** Added a new toggle in the Options menu (`⚙️`) allowing users to switch between **Normal** and **Compact** view on desktop. This preference is saved automatically.  
