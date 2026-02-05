@@ -2,11 +2,11 @@
 
 #### **[1.55] - 2026-02-05**
 
-**Added**
-** Video Storyboard & Analysis - ffmpeg required  **
+**Added**  
+- ** Video Storyboard & Analysis - ffmpeg required  **
 *   **Quick Storyboard ('E'):** Hover over any video in the grid and press `E` to instantly open the storyboard.
-*   **Grid Overview:** Instantly analyze video content with a clean **11-frame Grid** covering the entire duration from Start to the **True Last Frame**.
-- **Thumbnail Grid Size:** Added a new toggle in the Options menu (`⚙️`) allowing users to switch between **Normal** and **Compact** view on desktop. This preference is saved automatically.
+*   **Grid Overview:** Instantly analyze video content with a clean **11-frame Grid** covering the entire duration from Start to the **True Last Frame**.  
+- **Thumbnail Grid Size:** Added a new toggle in the Options menu (`⚙️`) allowing users to switch between **Normal** and **Compact** view on desktop. This preference is saved automatically.  
 - **Options Menu & Autoplay Toggle:** New persistent **`⚙️ Options`** menu (Desktop/Mobile) to manage core gallery settings.
 - **Video Autoplay Control:** Introduced a session-based toggle to explicitly enable/disable video autoplay in the grid. (Default: **OFF** to save bandwidth).
 - **'P' Shortcut:** Added the **`P`** key shortcut to quickly toggle the Video Autoplay setting.
