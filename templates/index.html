@@ -160,6 +160,10 @@
             line-height: 1.4;
             max-width: 95vw;                   
         }
+        .notification.multiline-msg {
+            white-space: pre-wrap !important; /* Forces the \n character to break line */
+            text-align: left !important;      /* Aligns multiple lines to the left */
+        }
         
         .sidebar {
             width: var(--sidebar-width);
@@ -1616,10 +1620,12 @@
 
         .gallery-container {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            /* Use variable with 320px fallback */
+            grid-template-columns: repeat(auto-fill, minmax(var(--grid-item-size, 320px), 1fr));
             gap: 2rem;
             padding: 2rem;
             min-height: 50vh;
+            align-items: start; 
         }
 
         .gallery-item {
@@ -1634,6 +1640,7 @@
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             backdrop-filter: blur(20px);
             border: 1px solid var(--glass-border);
+            height: fit-content; 
         }
 
         .gallery-item:hover {
@@ -1647,8 +1654,8 @@
         }
 
         .gallery-item.focused {
-            outline: 2px solid var(--text-color);
-            outline-offset: 2px;
+            outline: 4px solid var(--text-color)!important;
+            outline-offset: 4px!important;
         }
 
         /* Disable selection in Global AI Mode */
@@ -2778,16 +2785,17 @@
             position: fixed;
             bottom: 30px;
             left: 50%;
-            transform: translateX(-50%) translateY(150%); /* Start hidden below screen */
+            /* Default hidden state: Spostato giù e non scalato */
+            transform: translateX(-50%) translateY(150%) scale(1);
             width: 90%;
-            max-width: 600px; /* Never too wide on desktop */
+            max-width: 600px;
             
-            /* Premium Glass Look */
+            /* ... (tutto il resto delle proprietà estetiche background, border, ecc. lasciale uguali) ... */
             background: rgba(20, 20, 20, 0.85);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            border-top: 2px solid var(--primary-color); /* Visual Active Indicator */
+            border-top: 2px solid var(--primary-color);
             border-radius: 16px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.6);
             
@@ -2796,12 +2804,15 @@
             align-items: center;
             justify-content: space-between;
             z-index: 1001;
-            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Bouncy entry */
+            
+            /* MODIFICA: Aggiunto transform-origin per scalare dal basso/centro */
+            transform-origin: bottom center; 
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        /* Active State */
+        /* Active State: Usa la variabile --ui-zoom-scale calcolata via JS */
         #selection-bar.visible {
-            transform: translateX(-50%) translateY(0);
+            transform: translateX(-50%) translateY(0) scale(var(--ui-zoom-scale, 1));
         }
 
         /* Left Side: Close & Counter */
@@ -3216,7 +3227,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 1rem 1.5rem;
+            padding: 0rem 1.5rem;
             border-bottom: 1px solid var(--border-color);
             background: var(--surface-hover);
             flex-shrink: 0; 
@@ -3236,15 +3247,47 @@
             color: var(--danger-color);
         }
 
+        
+        /* --- SHORTCUTS HELP LAYOUT --- */
         .shortcuts-content {
             padding: 1.5rem;
-            display: grid;
-            gap: 0.5rem 2rem;       
-            grid-template-columns: 1fr 1fr; 
-            overflow-y: auto;      
-            align-content: start;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+            overflow-y: auto;
+            align-content: flex-start;
         }
-
+        .sc-column {
+            flex: 1 1 220px;
+            min-width: 220px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+        .sc-header {
+            color: var(--primary-color);
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .sc-sub {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-transform: none;
+            font-weight: normal;
+            margin-top: 2px;
+        }
+        .shortcut-item {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            margin-bottom: 2px;
+        }
         
         @media (max-width: 768px) {
             .shortcuts-panel {
@@ -3253,12 +3296,6 @@
             .shortcuts-content {
                 grid-template-columns: 1fr;
             }
-        }
-
-        .shortcut-item {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
         }
 
         .shortcut-item .key {
@@ -3277,6 +3314,14 @@
         .shortcut-item .desc {
             color: var(--text-muted);
             font-size: 0.95rem;
+        }
+        
+        /* standard UI (Navigating/Selecting from  OS) */
+        .shortcut-item .key.std {
+            background: rgba(0, 123, 255, 0.15); /* Tint Blu */
+            border-color: rgba(0, 123, 255, 0.4);
+            color: #89CFF0; /* Azzurro chiaro */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
         
         /* --- SMART DIALOG (Custom Alert/Confirm/Prompt) --- */
@@ -3356,6 +3401,48 @@
         
         .sd-actions button {
             min-width: 80px;
+        }
+        
+        /* --- SMART DIALOG BUTTON FOCUS STATES --- */
+        
+        .sd-actions button:focus {
+            outline: 3px solid #ffffff !important;
+            outline-offset: 2px !important;
+            transform: scale(1.08) !important;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.5) !important;
+            z-index: 10;
+            position: relative;
+        }
+
+        /* General style when any button in the dialog receives keyboard focus */
+        .sd-actionsxx button:focus {
+            outline: 3px solid #ffffff !important;
+            outline-offset: 2px !important;
+            transform: scale(1.05) !important;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.4) !important;
+            position: relative; 
+            /* Ensure the focused button stays on top of neighbors when scaled */
+            z-index: 1; 
+        }
+
+        /* Specific focus style for the DELETE/DANGER button */
+        .sd-actions .btn-reset:focus {
+            background-color: #ff4d4d !important;
+            border-color: #ffffff !important;
+            box-shadow: 0 0 20px rgba(220, 53, 69, 0.6) !important;
+        }
+
+        /* Specific focus style for the STANDARD CONFIRM button */
+        .sd-actions .active-blue:focus {
+            background-color: #007bff !important;
+            border-color: #ffffff !important;
+            box-shadow: 0 0 20px rgba(0, 123, 255, 0.6) !important;
+        }
+
+        /* Specific focus style for the CANCEL button */
+        .sd-actions button:not(.active-blue):not(.btn-reset):focus {
+            background-color: var(--surface-hover) !important;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2) !important;
         }
         
         /* --- LIGHTBOX SHORTCUTS BAR --- */
@@ -3453,6 +3540,157 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }        
+
+        /* --- GENERATION DATA DASHBOARD --- */
+        .gen-dashboard {
+            background: var(--surface-hover);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+        }
+
+        .gen-section-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Prompts */
+        .gen-prompt-box {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: #eee;
+            position: relative;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .gen-prompt-box.positive {
+            border-left: 3px solid var(--success-color);
+        }
+
+        .gen-prompt-box.negative {
+            border-left: 3px solid var(--danger-color);
+            color: #ffcccc;
+        }
+
+        .copy-prompt-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: var(--text-muted);
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .copy-prompt-btn:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* Tech Grid - Updated Layout */
+        .gen-stats-grid {
+            display: grid;
+            /* Wider columns to accommodate long seeds */
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
+            gap: 10px;
+        }
+
+        .gen-stat-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            display: flex;
+            flex-direction: column;
+            /* Relative positioning needed for absolute elements if any */
+            position: relative; 
+        }
+
+        .gen-stat-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+            /* Flexbox to align Label text and Copy button */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .gen-stat-value {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-color);
+            
+            /* CRITICAL FIX: Allow long strings (like Seeds) to wrap to the next line */
+            white-space: normal; 
+            word-break: break-all; 
+            line-height: 1.2;
+        }
+        
+        .gen-stat-value.seed { color: var(--favorite-color); font-family: monospace; }
+        .gen-stat-value.model { color: var(--primary-color); word-break: break-word; }
+        
+        /* Mini Copy Button for Stats (Seed, etc.) */
+        .stat-copy-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.85rem;
+            padding: 0 4px;
+            transition: color 0.2s;
+        }
+        
+        .stat-copy-btn:hover {
+            color: white;
+            transform: scale(1.1);
+        }
+
+        /* LoRA Chips */
+        .gen-lora-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .gen-lora-chip {
+            background: rgba(155, 48, 255, 0.15);
+            border: 1px solid var(--ai-color);
+            color: #f0a0ff;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .gen-lora-val {
+            background: rgba(0,0,0,0.3);
+            padding: 1px 6px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            color: white;
+        }
 
         /* --- INPUT MEDIA IN NODE SUMMARY --- */
         .input-media-grid {
@@ -3961,6 +4199,7 @@
         }
         
         /* --- POPOVER FIXED POSITIONING --- */
+        #options-popover,
         #auto-refresh-popover {
             display: none;
             position: fixed;
@@ -3980,6 +4219,7 @@
             text-align: left;
         }
 
+        #options-popover.visible,
         #auto-refresh-popover.visible {
             display: flex !important;
             flex-direction: column;
@@ -4080,10 +4320,81 @@
             }
         }
 
-        /* ARROW e INPUTS nel popover */
+        /* ARROW and INPUTS on popover */
         .ar-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
         .ar-row label { margin: 0; font-size: 0.9rem; cursor: pointer; color: var(--text-color); }
         .ar-input { width: 60px; background: var(--glass-bg); border: 1px solid var(--glass-border); color: white; border-radius: 4px; padding: 4px; text-align: center; }
+        
+        /* OPTIONS MENU STYLES */
+        .opt-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px; cursor: pointer; border-radius: 6px;
+            background: rgba(255,255,255,0.05); border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+        .opt-item:hover { background: rgba(255,255,255,0.1); border-color: var(--primary-color); }
+        .opt-item.active { border-left: 3px solid var(--success-color); }
+        .opt-item.inactive { border-left: 3px solid var(--text-muted); opacity: 0.8; }
+        .opt-label { font-weight: 600; font-size: 0.9rem; color: var(--text-color); }
+        .opt-status { font-size: 0.75rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+        .opt-status.on { background: var(--success-color); color: white; }
+        .opt-status.off { background: var(--surface-hover); color: var(--text-muted); border: 1px solid var(--glass-border); }
+        
+        .opt-shortcut-hint { font-size: 0.7rem; color: var(--text-muted); margin: 10px 0 0 0; text-align: right; }
+        
+        /* Video Overlay Icon */
+        .video-play-overlay {
+            /* MOBILE DEFAULT: Centered, Big, Pass-through (Visual only) */
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 50px; height: 50px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            color: white; font-size: 1.4rem;
+            padding-left: 4px;
+            z-index: 12; /* Above duration/badges */
+            backdrop-filter: blur(2px);
+            pointer-events: none; /* Mobile: Tap goes through to Lightbox */
+            transition: all 0.2s;
+        }
+
+        /* DESKTOP OVERRIDE: Corner, Small, Clickable */
+        @media (min-width: 1025px) {
+            .video-play-overlay {
+                top: auto; 
+                left: 10px; 
+                bottom: 10px;
+                transform: none; /* Reset center transform */
+                
+                width: 32px; height: 32px; /* Smaller */
+                font-size: 0.9rem;
+                padding-left: 2px;
+                
+                background: rgba(0, 0, 0, 0.6);
+                border: 1px solid rgba(255, 255, 255, 0.4);
+                
+                pointer-events: auto; /* Desktop: Clickable */
+                cursor: pointer;
+            }
+
+            .video-play-overlay:hover {
+                background: var(--primary-color);
+                border-color: white;
+                transform: scale(1.1);
+            }
+            
+            /* Adjustment for Focus Mode to avoid overlapping the Checkmark (which moves to bottom-left) */
+            body.focus-mode .gallery-item.selected .video-play-overlay {
+                bottom: 40px; /* Move up slightly if selected in focus mode */
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .opt-shortcut-hint { display: none; }
+        }
         
         /* --- SIDEBAR FOOTER (Version & Links) --- */
         .sidebar-footer {
@@ -5141,7 +5452,139 @@
             color: white; 
         }
         
+        /* --- FOCUS MODE STYLES --- */
 
+        /* Hide UI clutter */
+        body.focus-mode .item-info,
+        body.focus-mode .selection-checkmark,
+        body.focus-mode .file-metadata,
+        body.focus-mode .file-scanned-time,
+        body.focus-mode .workflow-badge { 
+            display: none !important;   
+        }
+
+        /* BASE STATE: 100% Scale, 100% Opacity, No filters */
+        body.focus-mode .gallery-item {
+            border-radius: 4px; /* Sharper corners for pro look */
+            border: none;
+            transition: none; /* Instant feedback, no lag */
+            opacity: 1 !important;
+            filter: none !important;
+            transform: none !important; /* NO SHRINKING */
+            overflow: visible !important; /* Allow border to bleed out */
+        }
+
+        /* Hover: Only Z-index change to bring it to top, no movement */
+        body.focus-mode .gallery-item:hover {
+            z-index: 50;
+            outline: 1px solid rgba(255,255,255,0.3); /* Subtle hint */
+        }
+
+        /* SELECTED STATE: MASSIVE HIGH-CONTRAST FRAME */
+        body.focus-mode .gallery-item.selected {
+            /* 
+               LAYERED SHADOW TRICK FOR THICK BORDERS:
+               1. 0px - 4px:  SOLID WHITE (Contrast layer against dark images/bg)
+               2. 4px - 10px: SOLID PRIMARY COLOR (The actual selection indicator)
+               3. 10px+:      Drop Shadow (Lift effect)
+            */
+            box-shadow: 
+                0 0 0 4px #ffffff, 
+                0 0 0 10px #FF00FF,
+                0 10px 40px rgba(0,0,0,0.8);
+            
+            z-index: 100; /* Must be on top of everything to show the border overlap */
+            transform: none !important;
+        }
+        
+        /* Ensure thumbnail fills the card perfectly */
+        body.focus-mode .thumbnail-wrapper {
+            border-bottom: none;
+            height: 100%;
+            border-radius: 4px;
+        }
+        
+        /* --- FOCUS MODE BADGES (Professional Style) --- */
+        .focus-badge {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 800;
+            margin-left: 8px;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            text-transform: uppercase;
+        }
+        
+        .focus-badge.on {
+            background: var(--success-color); /* Green */
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .focus-badge.off {
+            background: rgba(220, 53, 69, 0.2); /* Transparent Red */
+            color: #ff6b6b; /* Soft red text */
+            border: 1px solid var(--danger-color);
+        }
+        
+        /* Ensure readable text when button is hovered */
+        #focus-mode-btn:hover .focus-badge.off {
+            background: var(--danger-color);
+            color: white;
+        }
+        
+        body.focus-mode .gallery-item:has(.favorite-btn.favorited) .thumbnail-wrapper::after {
+            content: '⭐';
+            position: absolute;
+            bottom: 8px;
+            left: 8px;
+            z-index: 15;
+            font-size: 1.1rem;
+            filter: drop-shadow(0 0 4px rgba(0, 0, 0, 1)) drop-shadow(0 0 2px rgba(0, 0, 0, 1));
+            pointer-events: none; 
+            transition: bottom 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        body.focus-mode .gallery-item.selected:has(.favorite-btn.favorited) .thumbnail-wrapper::after {
+            bottom: 42px; 
+        }
+        
+        /* --- FOCUS MODE CHECKMARK (Bottom-Left) --- */
+        
+        /* 1. Force visibility ONLY when selected */
+        body.focus-mode .gallery-item.selected .selection-checkmark {
+            display: flex !important;
+            
+            /* 2. Positioning: Bottom Left */
+            left: 8px;
+            bottom: 8px;
+            right: auto; /* Reset default right position */
+            top: auto;
+            
+            /* 3. Style: White Circle with Fuchsia Icon & Border */
+            background-color: #ffffff;
+            color: #FF00FF;           /* The Checkmark Color */
+            border: 2px solid #FF00FF; /* The Ring Color */
+            
+            /* 4. Size & Shape */
+            width: 28px;
+            height: 28px;
+            font-size: 16px;
+            font-weight: 900; /* Extra Bold Checkmark */
+            border-radius: 50%;
+            
+            /* 5. Polish */
+            box-shadow: 0 4px 10px rgba(0,0,0,0.6); /* Drop shadow to pop from image */
+            z-index: 101; /* Stay on top of the massive border */
+            transform: scale(1);
+        }
+        
+        /* Optional: Hover effect on the checkmark itself */
+        body.focus-mode .gallery-item.selected .selection-checkmark:hover {
+            transform: scale(1.1);
+            cursor: pointer;
+        }
+        
         /* --- MOBILE LAYOUT OVERRIDES --- */
         .mobile-only { display: none !important; }
         
@@ -5650,12 +6093,59 @@
             /* display: none !important; */
         }
         
+        /* --- FORCE HIDE OPTIONS ON MOBILE (Bulletproof) --- */
+        @media (max-width: 1024px) {
+            .opt-desktop-only {
+                display: none !important;
+            }
+        }
+        
         </style>
         
 </head>
 
 <body>
     <div id="notification-container"></div>
+    <!-- GENERAL OPTIONS POPOVER -->
+    <div id="options-popover">
+        <!-- Header with Title and Close Button -->
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); margin-bottom: 10px; padding-bottom: 5px;">
+            <h4 style="margin: 0; color: var(--text-color);">⚙️ Gallery Options</h4>
+            <button onclick="toggleOptionsMenu(event)" title="Close Menu" style="background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; line-height: 1; padding: 0 5px; transition: color 0.2s;">
+                &times;
+            </button>
+        </div>
+        
+        <!-- Autoplay Option (Visible Everyone) -->
+        <div class="opt-item" id="opt-btn-autoplay" onclick="toggleVideoAutoplay()">
+            <div>
+                <div class="opt-label" style="display: flex; align-items: center; gap: 8px;">
+                    ▶️ Video Autoplay 
+                    <span style="font-size: 0.65rem; background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border); padding: 1px 5px; border-radius: 4px; color: var(--primary-color);">Key: P</span>
+                </div>
+                <div style="font-size:0.75rem; color:var(--text-muted); line-height: 1.3; margin-top: 4px;">
+                    When enabled, videos play automatically on hover (Desktop) or load instantly.<br>
+                    <strong>Disable</strong> to save bandwidth/CPU or if scrolling feels choppy.
+                </div>
+            </div>
+            <span class="opt-status" id="opt-status-autoplay" style="align-self: center;">ON</span>
+        </div>
+
+        <!-- Separator (Desktop Only via Class) -->
+        <div class="opt-desktop-only" style="height:1px; background:rgba(255,255,255,0.1); margin:10px 0;"></div>
+
+        <!-- Thumbnail Size Option (Desktop Only via Class) -->
+        <div class="opt-item opt-desktop-only" id="opt-btn-size" onclick="toggleGridSize()">
+            <div>
+                <div class="opt-label">🖼️ Thumbnail Size</div>
+                <div style="font-size:0.75rem; color:var(--text-muted); line-height: 1.3; margin-top: 4px;">
+                    Toggle between <strong>Normal</strong> (320px) and <strong>Compact</strong> (220px) view.<br>
+                    Useful for viewing more items at once on smaller screens.
+                </div>
+            </div>
+            <span class="opt-status" id="opt-status-size" style="align-self: center;">NORMAL</span>
+        </div>
+    </div>
     <!-- AUTO REFRESH SETTINGS POPOVER -->
     <div id="auto-refresh-popover">
         <h4 style="margin:0 0 10px 0; color:var(--primary-color);">🔄 Auto-Watch Folder</h4>
@@ -5739,6 +6229,7 @@
     <!-- === ROW 1: NAVIGATION & AI MANAGER === -->
     <div class="toolbar-container" style="padding-bottom: 0;">
         <div class="toolbar-row mobile-header-row">
+            <!-- Left: Breadcrumbs -->
             <div class="breadcrumbs" style="padding:0; border:none; background:transparent;">
                 <div class="breadcrumb-links" style="{% if (is_ai_search and ' ||| ' not in ai_query) or is_global_search %}display:none;{% endif %}">
                     {% for crumb in breadcrumbs %}
@@ -5748,14 +6239,42 @@
                 </div>
             </div>
 
+            <!-- Right: Desktop Tools Group (Options -> Shortcuts -> Focus -> AI) -->
+            <div class="push-right desktop-only" style="display:flex; align-items:center; gap:8px;">
+                
+                <!-- 0. Options Menu -->
+                <button type="button" id="options-btn-desk" onclick="toggleOptionsMenu(event)" class="glass-btn" title="Configuration" style="height: 42px; display: inline-flex; align-items: center; justify-content: center;">
+                    <span style="font-size:1.1rem;">⚙️</span>
+                </button>
+
+                <!-- 1. Shortcuts Help -->
+                <button type="button" onclick="showShortcutsHelp()" class="glass-btn" title="View Keyboard Shortcuts" style="height: 42px; display: inline-flex; align-items: center; justify-content: center;">
+                    <span style="font-weight:900; margin-right:5px;">?</span> Shortcuts
+                </button>
+
+                <!-- 2. Focus Mode with Dynamic Badges -->
+                <button type="button" id="focus-mode-btn" class="glass-btn" onclick="toggleFocusMode()" title="Minimal UI, maximum density. Keyboard-first workflow." style="height: 42px; display: inline-flex; align-items: center; justify-content: center;">
+                    <span style="margin-right:0px;">⚡</span> Focus <span class="focus-badge off" id="focus-badge-state">OFF</span>
+                </button>
+                
+                <!-- 3. AI Manager (If enabled) -->
+                {% if enable_ai_search %}
+                <button class="glass-btn active-fuxia" id="ai-manager-btn-desk" onclick="toggleAiManager(true)" style="height: 42px; display: inline-flex; align-items: center; justify-content: center;">
+                    <span style="margin-right:5px;">🧠</span> AI Manager
+                </button>
+                {% endif %}
+            </div>
+
+            <!-- Mobile Only: Small AI Button (Keep existing) -->
             {% if enable_ai_search %}
-            <button class="glass-btn active-fuxia push-right desktop-only" id="ai-manager-btn-desk" onclick="toggleAiManager(true)">
-                🧠 AI Manager
-            </button>
-            <button class="glass-btn active-fuxia mobile-only" id="ai-manager-btn-mob" onclick="toggleAiManager(true)" style="width:40px; padding:0;">
+            <button class="glass-btn active-fuxia mobile-only push-right" id="ai-manager-btn-mob" onclick="toggleAiManager(true)" style="width:40px; padding:0;">
                 🧠
             </button>
             {% endif %}
+            <!-- Mobile Options Button -->
+            <button class="glass-btn mobile-only push-right" id="options-btn-mob" onclick="toggleOptionsMenu(event)" style="width:40px; padding:0; margin-left:5px;">
+                ⚙️
+            </button>
         </div>
     </div>
 
@@ -6078,7 +6597,7 @@
             {% endif %}
             <button id="compare-menu-btn" onclick="startCompareMode()" style="display:none;">⚖️ Compare</button>
             <div id="compare-menu-sep" class="sel-separator" style="display:none;"></div>
-            <button id="copy-selected-btn" style="display:none;">Cc Copy to Folder...</button>
+            <button id="copy-selected-btn">Cc Copy to Folder...</button>
             <button id="move-selected-btn">📁 Move to Folder...</button>
             <button id="download-zip-btn">📦 Download as Zip</button>
             <button id="unfavorite-selected-btn">☆ Remove Favorite</button>
@@ -6691,48 +7210,100 @@
         <div class="loader"></div>
     </div>
     <div id="shortcuts-help-overlay">
-        <div class="shortcuts-panel">
+        <div class="shortcuts-panel" style="width: 1000px; max-width: 95vw;">
             <div class="shortcuts-header">
                 <h2>⌨️ Keyboard Shortcuts</h2>
                 <button class="close-btn" id="close-shortcuts-btn">×</button>
             </div>
             <div class="shortcuts-content">
-                <div class="shortcut-item"><span class="key">?</span> <span class="desc">Show this help</span></div>
-                <div class="shortcut-item"><span class="key">←</span> <span class="key">→</span> <span
-                        class="key">↑</span> <span class="key">↓</span> <span class="desc">Navigate images</span></div>
-                <div class="shortcut-item"><span class="key">V</span> <span class="desc">View image (Lightbox)</span>
+                
+                <!-- COL 1: NAVIGATION & APP GLOBALS -->
+                <div class="sc-column">
+                    <div class="sc-header">🌍 App Controls</div>
+                    <div class="shortcut-item"><span class="key">?</span> <span class="desc">This Help</span></div>
+                    <div class="shortcut-item"><span class="key">Q</span> <span class="desc">Toggle Focus Mode</span></div>
+                    <div class="shortcut-item"><span class="key">T</span> <span class="desc">Toggle Filters/Top</span></div>
+                    <div class="shortcut-item"><span class="key">P</span> <span class="desc">Toggle Video Autoplay</span></div>
+                    <div class="shortcut-item"><span class="key">L</span> <span class="desc">Refresh View</span></div>
+                    <div class="shortcut-item"><span class="key">K</span> <span class="desc">Rescan Folder</span></div>
+                    
+                    <div class="sc-header" style="margin-top:15px;">↕️ Page Nav (Std)</div>
+                    <div class="shortcut-item"><span class="key std">Home</span> <span class="desc">Go to Top</span></div>
+                    <div class="shortcut-item"><span class="key std">End</span> <span class="desc">Go to Bottom</span></div>
+                    <div class="shortcut-item"><span class="key std">PgUp</span> <span class="key std">PgDn</span> <span class="desc">Scroll</span></div>
                 </div>
-                <div class="shortcut-item"><span class="key">X</span> <span class="desc">Select / Deselect image</span>
+
+                <!-- COL 2: GRID ITEM ACTIONS -->
+                <div class="sc-column">
+                    <div class="sc-header">
+                        ▦ Single Item
+                        <span class="sc-sub">Hover or Selected</span>
+                    </div>
+                    <div class="shortcut-item"><span class="key">V</span> or <span class="key">Enter</span> <span class="desc">Open Lightbox</span></div>
+                    <div class="shortcut-item"><span class="key">X</span> or <span class="key">Spacebar</span> <span class="desc">Select / Deselect</span></div>
+                    <div class="shortcut-item"><span class="key">N</span> <span class="desc">Node Summary</span></div>
+                    <div class="shortcut-item"><span class="key">F</span> <span class="desc">Toggle Favorite</span></div>
+                    <div class="shortcut-item"><span class="key">W</span> <span class="desc">Download Workflow</span></div>
+                    <div class="shortcut-item"><span class="key">C</span> <span class="desc">Copy Workflow</span></div>
+                    <div class="shortcut-item"><span class="key">S</span> <span class="desc">Download File</span></div>
+                    <div class="shortcut-item"><span class="key">R</span> <span class="desc">Rename File</span></div>
+                    <div class="shortcut-item"><span class="key">E</span> <span class="desc">Video Storyboard</span></div>
+                    <div class="shortcut-item"><span class="key">Del</span> <span class="desc">Quick Delete</span></div>
                 </div>
-                <div class="shortcut-item"><span class="key">F</span> <span class="desc">Favorite / Unfavorite</span>
+
+                <!-- COL 3: SELECTION STANDARD & BATCH -->
+                <div class="sc-column">
+                    <div class="sc-header">🖱️ Selection (Std)</div>
+                    <!-- Mouse Actions -->
+                    <div class="shortcut-item"><span class="key std">Click</span> <span class="desc">Focus mode OFF-> Open Lightbox</span></div>
+                    <div class="shortcut-item"><span class="key std">Click</span> <span class="desc">Focus mode ON- > Select / Deselect</span></div>
+                    <div class="shortcut-item"><span class="key std cmd-key">Ctrl</span>+<span class="key std">Click</span> <span class="desc">Add One</span></div>
+                    <div class="shortcut-item"><span class="key std">Shift</span>+<span class="key std">Click</span> <span class="desc">Range Select</span></div>
+                    
+                    <!-- Keyboard Actions -->
+                    <div class="shortcut-item"><span class="key std cmd-key">Ctrl</span>+<span class="key std">A</span> <span class="desc">Select All</span></div>
+                    
+                    <div class="sc-header" style="margin-top:15px;">📦 Batch Actions</div>
+                    <div class="shortcut-item"><span class="key">Esc</span> <span class="desc">Deselect All</span></div>
+                    <div class="shortcut-item"><span class="key">M</span> <span class="desc">Move Selected</span></div>
+                    <div class="shortcut-item"><span class="key">Z</span> <span class="desc">Zip Selected</span></div>
+                    <div class="shortcut-item"><span class="key">Del</span> <span class="desc">Delete Batch</span></div>
                 </div>
-                <div class="shortcut-item"><span class="key">S</span> <span class="desc">Download Image</span></div>
-                <div class="shortcut-item"><span class="key">T</span> <span class="desc">Toggle Filters Panel</span></div>
-                <div class="shortcut-item"><span class="key">W</span> <span class="desc">Download Workflow (if
-                        available)</span></div>
-                <div class="shortcut-item"><span class="key">C</span> <span class="desc">Copy Workflow to Clipboard</span></div>
-                <div class="shortcut-item"><span class="key">L</span> <span class="desc">Refresh View</span></div>
-                <div class="shortcut-item"><span class="key">K</span> <span class="desc">Rescan Folder</span></div>
-                <div class="shortcut-item"><span class="key">R</span> <span class="desc">Rename File</span></div>
-                <div class="shortcut-item"><span class="key">Z</span> <span class="desc">Download Zip (Selected)</span>
+
+               <!-- COL 4: LIGHTBOX (SPLIT INTO 3 SUB-COLUMNS) -->
+                <div class="sc-column" style="flex: 2 1 620px; /* Wide priority for 3 cols */">
+                    <div class="sc-header">🖼️ Lightbox View</div>
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:10px 20px;">
+                        
+                        <!-- Sub-Col 1: Navigation & View -->
+                        <div style="display:flex; flex-direction:column; gap:0.4rem;">
+                            <div class="shortcut-item"><span class="key">Esc</span> <span class="desc">Close Lightbox</span></div>
+                            <div class="shortcut-item"><span class="key std">←</span> <span class="key std">→</span> <span class="desc">Navigate</span></div>
+                            <div class="shortcut-item"><span class="key std">+</span> <span class="key std">-</span> <span class="desc">Zoom In / Out</span></div>
+                            <div class="shortcut-item"><span class="key">0</span> <span class="desc">Reset Zoom</span></div>
+                            <div class="shortcut-item"><span class="key">Keypad</span> <span class="desc">Pan Image</span></div>
+                        </div>
+                        
+                        <!-- Sub-Col 2: Display & Info -->
+                        <div style="display:flex; flex-direction:column; gap:0.4rem;">
+                            <div class="shortcut-item"><span class="key">H</span> <span class="desc">Hide/Show UI</span></div>
+                            <div class="shortcut-item"><span class="key">O</span> <span class="desc">Open New Tab</span></div>
+                            <div class="shortcut-item"><span class="key">N</span> <span class="desc">Node Summary</span></div>
+                            <div class="shortcut-item"><span class="key">F</span> <span class="desc">Toggle Favorite</span></div>
+                            <div class="shortcut-item"><span class="key">S</span> <span class="desc">Download File</span></div>
+                        </div>
+
+                        <!-- Sub-Col 3: Workflow & Edits -->
+                        <div style="display:flex; flex-direction:column; gap:0.4rem;">
+                            <div class="shortcut-item"><span class="key">W</span> <span class="desc">Download Workflow</span></div>
+                            <div class="shortcut-item"><span class="key">C</span> <span class="desc">Copy Workflow</span></div>
+                            <div class="shortcut-item"><span class="key">R</span> <span class="desc">Rename File</span></div>
+                            <div class="shortcut-item"><span class="key">E</span> <span class="desc">Video Storyboard</span></div>
+                            <div class="shortcut-item"><span class="key">Del</span> <span class="desc">Quick Delete</span></div>
+                        </div>
+
+                    </div>
                 </div>
-                <div class="shortcut-item"><span class="key">D</span> <span class="desc">Delete (Selected)
-                        File(s)</span></div>
-                <div class="shortcut-item"><span class="key">Esc</span> <span class="desc">Close Lightbox / Deselect
-                        All</span></div>
-                <div class="shortcut-item"><span class="key">M</span> <span class="desc">Move Selected Files</span>
-                </div>
-                <div class="shortcut-item"><span class="desc">Lightbox view:</span></div>
-                <div class="shortcut-item"><span class="key">O</span> <span class="desc">Open in New Tab</span></div>
-                <div class="shortcut-item"><span class="key">N</span> <span class="desc">Node Summary</span></div>
-                <!-- <div class="shortcut-item"><span class="key">E</span> <span class="desc">Toggle Storyboard (Video)</span></div> -->
-                <div class="shortcut-item"><span class="key">+</span> <span class="key">-</span> <span class="desc">Zoom
-                        In/Out</span></div>
-                <div class="shortcut-item"><span class="key">Keypad (Num 789/456/123)</span> <span class="desc">Pan
-                        Diagonally/Up/Down/Left/Right</span></div>
-                <div class="shortcut-item"><span class="key">0</span> <span class="desc">Reset Zoom/Pan</span></div>
-                <div class="shortcut-item"><span class="key">.</span> <span class="desc">Cycle Pan Step</span></div>
-                <div class="shortcut-item"><span class="key">H</span> <span class="desc">Hide/Show Toolbar</span></div>
             </div>
         </div>
     </div>
@@ -6803,7 +7374,12 @@
         let totalFolderFiles = {{ total_folder_files }};
         const currentFolderKey = '{{ current_folder_key }}';
         const ancestorKeys = {{ ancestor_keys | tojson }};
-        
+        // --- USER PREFERENCES (LocalStorage) ---
+        // Default to FALSE (OFF) if not set. User must explicitly enable it.
+        // We check if it equals 'true' string.
+        let videoAutoplay = localStorage.getItem('sg_videoAutoplay') === 'true';
+        // Grid Size Preference (Default: 'normal')
+        let gridSizePref = localStorage.getItem('sg_gridSize') || 'normal';
          // --- AI SEARCH VARIABLES ---
         const enableAiSearch = {{ enable_ai_search | tojson }};
         const isAiSearch = {{ is_ai_search | tojson }};
@@ -6855,6 +7431,8 @@
                 const btnCancel = document.getElementById('sd-btn-cancel');
                 const btnDeny = document.getElementById('sd-btn-deny');
 
+                document.body.classList.add('modal-open');
+                
                 // 1. Reset State
                 btnDeny.style.display = 'none';
                 btnConfirm.textContent = 'Confirm';
@@ -6872,6 +7450,8 @@
                     setTimeout(() => { inputEl.focus(); inputEl.select(); }, 100);
                 } else {
                     inputContainer.style.display = 'none';
+                    // Focus confirm button for accessibility
+                    setTimeout(() => btnConfirm.focus(), 100);
                 }
 
                 // 4. Custom Mode: Yes/No/Cancel
@@ -6891,8 +7471,23 @@
                 overlay.classList.add('visible');
 
                 // 7. Handlers
+
+                // Global Key Handler (Enter to Confirm, Esc to Cancel)
+                const handleKeyDown = (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        btnConfirm.click();
+                    } else if (e.key === 'Escape') {
+                         e.preventDefault();
+                         btnCancel.click();
+                    }
+                };
+                document.addEventListener('keydown', handleKeyDown);
+                
                 const close = (result) => {
                     overlay.classList.remove('visible');
+                    // ADDED: Restore background interactions
+                    document.body.classList.remove('modal-open');
                     btnConfirm.onclick = null;
                     btnCancel.onclick = null;
                     btnDeny.onclick = null;
@@ -6915,10 +7510,6 @@
                 btnCancel.onclick = () => {
                     close(null); 
                 };
-
-                if (type === 'prompt') {
-                    inputEl.onkeydown = (e) => { if(e.key === 'Enter') btnConfirm.click(); };
-                }
             });
         }
         
@@ -7614,11 +8205,30 @@
                 
                 const videoSource = useStream ? `/galleryout/stream/${file.id}` : `/galleryout/file/${file.id}`;
                 
-                // We replace the transparent SVG poster with the real static thumbnail generated by the backend.
-                // This ensures that even if the video stream takes a second to start, the user sees an image immediately.
-                mediaHTML = `<video autoplay muted loop playsinline class="lazy" 
-                                data-src="${videoSource}" 
-                                poster="/galleryout/thumbnail/${file.id}"></video>`;
+                // Logic: 
+                // Autoplay ON: Plays automatically, muted.
+                // Autoplay OFF: NO CONTROLS (fixes mobile tap issue), shows Overlay Icon, opens Lightbox on click.
+                // Note: pointer-events-none on video ensures the click hits the parent thumbnail-link
+                
+                let vidAttrs = "";
+                let overlayHTML = "";
+                
+                if (videoAutoplay) {
+                    vidAttrs = "autoplay muted";
+                } else {
+                    // Autoplay OFF:
+                    // CSS handles the interaction difference between Mobile (Pass-through) and Desktop (Clickable).
+                    // We attach the onclick handler here; it will only fire on Desktop thanks to CSS pointer-events.
+                    vidAttrs = 'preload="none" style="pointer-events:none;"'; 
+                    overlayHTML = `<div class="video-play-overlay" title="Play Preview" onclick="playVideoInGrid(event, this)">▶</div>`;
+                }
+
+                mediaHTML = `
+                    <video ${vidAttrs} loop playsinline class="lazy" 
+                        data-src="${videoSource}" 
+                        poster="/galleryout/thumbnail/${file.id}"></video>
+                    ${overlayHTML}
+                `;
             } else {
                 mediaHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:3rem;color:var(--text-muted);">📄</div>`;
             }
@@ -7675,7 +8285,26 @@
             `;
             
             // --- NEW: Hover Listeners for Shortcuts ---
-            item.addEventListener('mouseenter', () => { hoveredItemIndex = galleryItems.indexOf(item); });
+            // Focus follows Mouse ONLY on active movement (prevents scroll-jumping)
+            item.addEventListener('mousemove', (e) => {
+                // If coordinates are same as last recorded, it's a scroll, not a move. Ignore.
+                if (e.clientX === window.lastActiveX && e.clientY === window.lastActiveY) {
+                    return;
+                }
+                
+                // Update active coordinates
+                window.lastActiveX = e.clientX;
+                window.lastActiveY = e.clientY;
+
+                // Sync focus
+                if (focusedItemIndex !== galleryItems.indexOf(item)) {
+                    if (focusedItemIndex !== -1 && galleryItems[focusedItemIndex]) {
+                        galleryItems[focusedItemIndex].classList.remove('focused');
+                    }
+                    focusedItemIndex = galleryItems.indexOf(item);
+                    item.classList.add('focused');
+                }
+            });
             item.addEventListener('mouseleave', () => { hoveredItemIndex = -1; });
             
             return item;
@@ -7742,17 +8371,20 @@
                             // 1. Load source if not loaded yet
                             if (el.dataset.src) {
                                 el.src = el.dataset.src;
-                                el.load();
+                                // If Autoplay is OFF (Click-to-play), we DON'T call load() aggressively 
+                                // unless user interacts, but setting src usually triggers loading metadata.
+                                // With preload="none", it should be fine.
+                                if (videoAutoplay) el.load(); 
                                 el.removeAttribute('data-src');
                                 el.classList.remove("lazy");
                             }
-                            // 2. Play when visible
-                            const playPromise = el.play();
-                            if (playPromise !== undefined) {
-                                playPromise.catch(error => {
-                                    // Auto-play was prevented (e.g. browser policy or user interaction)
-                                    console.log("Autoplay prevented:", error);
-                                });
+                            
+                            // 2. Play when visible ONLY if preference is ON
+                            if (videoAutoplay) {
+                                const playPromise = el.play();
+                                if (playPromise !== undefined) {
+                                    playPromise.catch(error => { console.log("Autoplay prevented:", error); });
+                                }
                             }
                         } else {
                             // 3. Pause when out of viewport to save resources
@@ -7788,18 +8420,29 @@
             }
         }
         
-        // --- SHOW FOLDER INFO FUNCTION ---
+        // --- SHOW FOLDER INFO FUNCTION (Advanced) ---
         function showFolderInfo(event, folderKey) {
             event.stopPropagation();
             const folder = foldersData[folderKey];
             if (!folder) return;
 
-            // Prepare the message
-            let msg = `📂 Folder: ${folder.display_name}\n\n📍 Path:\n${folder.path}`;
+            // 1. Base Info (Gallery Logical Path)
+            let msg = `📂 Folder: ${folder.display_name}\n\n📍 Gallery Location:\n${folder.path}`;
             
-            // Add extra info for mounts
-            if (folder.is_mount) {
-                msg += `\n\n🔗 (This is a linked folder)`;
+            // 2. Resolve Paths for comparison (normalize slashes and case)
+            const normPath = (folder.path || "").replace(/\\/g, '/').toLowerCase();
+            const normReal = (folder.real_path || "").replace(/\\/g, '/').toLowerCase();
+
+            // 3. Check if it's a Link or inside a Link
+            // If the logical path differs from the real physical path, it's a link (or child of a link)
+            if (normReal && normPath !== normReal) {
+                msg += `\n\n🔗 Real Physical Source:\n${folder.real_path}`;
+                
+                if (folder.is_mount) {
+                    msg += `\n(Root Link / Mount Point)`;
+                } else {
+                    msg += `\n(Subfolder of a Linked Drive)`;
+                }
             }
 
             // Use 'path-msg' class for monospace font and word wrapping on mobile
@@ -7887,7 +8530,51 @@
             }
             updateSelectionUI();
         }
+        
+        // --- FOCUS MODE LOGIC (State & UI Management) ---
+        // Helper to update the visual badge and classes
+        function updateFocusButtonUI(isActive) {
+            const badge = document.getElementById('focus-badge-state');
+            if (badge) {
+                if (isActive) {
+                    badge.textContent = "ON";
+                    badge.className = "focus-badge on";
+                } else {
+                    badge.textContent = "OFF";
+                    badge.className = "focus-badge off";
+                }
+            }
+        }
+        // Main toggle function
+        function toggleFocusMode() {
+            const body = document.body;
+            // Toggle the class on body for CSS rules to take effect
+            const isActive = body.classList.toggle('focus-mode');
+            // Sync the button UI
+            updateFocusButtonUI(isActive);
+            if (isActive) {
+                showNotification("⚡ Focus Mode Enabled", "success", 2000);
+            }
+            // Persist preference in localStorage
+            localStorage.setItem('galleryFocusMode', isActive);
+        }
+
+        // Initialize state on page load
+        function initFocusMode() {
+            const savedState = localStorage.getItem('galleryFocusMode');
+            // Apply only on Desktop (width > 1024) to avoid mobile UX issues
+            const isActive = (savedState === 'true' && window.innerWidth > 1024);
+            
+            if (isActive) {
+                document.body.classList.add('focus-mode');
+            }
+            
+            // Always ensure the button badge reflects the current state
+            updateFocusButtonUI(isActive);
+        }
+        
         function updateSelectionUI() {
+            
             // 1. Refresh visual selection on all items
             galleryItems.forEach(item => { 
                 item.classList.toggle('selected', selectedFiles.has(item.dataset.fileId)); 
@@ -8320,7 +9007,31 @@
         const lightboxOverlay = document.getElementById('lightbox-overlay'); const lightboxMedia = document.getElementById('lightbox-media'); const lightboxTitle = document.getElementById('lightbox-title'); const lightboxDownload = document.getElementById('lightbox-download'); const lightboxWorkflow = document.getElementById('lightbox-workflow'); const lightboxNewTab = document.getElementById('lightbox-new-tab'); const lightboxAiCaption = document.getElementById('lightbox-ai-caption'); let currentLightboxIndex = -1; let currentLightboxFile = null; let currentZoom = 1; let currentTranslateX = 0; let currentTranslateY = 0; let panStep = 50;
         function updateLightboxTitle() { if (!currentLightboxFile) return; const zoomPercentage = Math.round(currentZoom * 100); lightboxTitle.textContent = `${currentLightboxFile.name} (Scale: ${zoomPercentage}%)`; }
         function updateMediaTransform() { const mediaEl = lightboxMedia.querySelector('img, video'); if (!mediaEl) return; mediaEl.style.transform = `translate(${currentTranslateX}px, ${currentTranslateY}px) scale(${currentZoom})`; updateLightboxTitle(); }
-        function openLightbox(event, fileId) { if (event.target.closest('a, button')) return; event.stopPropagation(); currentLightboxIndex = galleryItems.findIndex(item => item.dataset.fileId === fileId); if (currentLightboxIndex === -1) return; currentZoom = 1; currentTranslateX = 0; currentTranslateY = 0; panStep = 50; document.body.classList.add('lightbox-open'); lightboxOverlay.classList.add('visible'); showItemAtIndex(currentLightboxIndex); }
+        
+        function openLightbox(event, fileId, forceOpen = false) { 
+            if (event && event.target && event.target.closest('a, button')) return; 
+            if (event && event.stopPropagation) event.stopPropagation(); 
+            
+            // --- FOCUS MODE INTERCEPTION ---
+            // If in Focus Mode AND NOT forcing open (like via 'V' key),
+            // simply toggle selection.
+            if (!forceOpen && document.body.classList.contains('focus-mode')) {
+                const item = galleryItems.find(i => i.dataset.fileId === fileId);
+                if (item) {
+                    toggleSelection(event, fileId, item);
+                }
+                return;
+            }
+            // -------------------------------
+
+            currentLightboxIndex = galleryItems.findIndex(item => item.dataset.fileId === fileId); 
+            if (currentLightboxIndex === -1) return; 
+            currentZoom = 1; currentTranslateX = 0; currentTranslateY = 0; panStep = 50; 
+            document.body.classList.add('lightbox-open'); 
+            lightboxOverlay.classList.add('visible'); 
+            showItemAtIndex(currentLightboxIndex); 
+        }
+        
         function closeLightbox() {
             // FIX: Use correct function name for the new Storyboard
             if (typeof closeStoryboard === "function") {
@@ -8607,11 +9318,6 @@
             
             // --- STORYBOARD BUTTON LOGIC ---
             const filmstripBtn = document.getElementById('lightbox-filmstrip-btn');
-            if (filmstripBtn) {
-                // FEATURE DISABLED FOR RELEASE
-                filmstripBtn.style.display = 'none';
-            }
-            /* 
             if (filmstripBtn && currentLightboxFile) {
                 const isSupported = (currentLightboxFile.type === 'video' || currentLightboxFile.type === 'animated_image');
                 if (isSupported && ffmpegAvailable) {
@@ -8622,7 +9328,6 @@
                     filmstripBtn.style.display = 'none';
                 }
             }
-            */
             
         }
         
@@ -8913,7 +9618,19 @@
                 }
             });
         }
-async function showNodeSummary(event, fileId) {
+        
+        // Helper for Copy with Notification
+        function copyTextAndNotify(text) {
+            if (!text) return;
+            navigator.clipboard.writeText(text).then(() => {
+                showNotification("📋 Copied to clipboard!", "success");
+            }).catch(err => {
+                console.error(err);
+                showNotification("Failed to copy.", "error");
+            });
+        }
+
+        async function showNodeSummary(event, fileId) {
             event.stopPropagation();
             const summaryContent = document.getElementById('node-summary-content');
             const summaryOverlay = document.getElementById('node-summary-overlay');
@@ -8926,14 +9643,111 @@ async function showNodeSummary(event, fileId) {
                 const response = await fetch(`/galleryout/node_summary/${fileId}`);
                 const data = await response.json();
 
-                if (data.status === 'success' && data.summary) {
-                    if (data.summary.length > 0) {
-                        let contentHTML = '';
-                        let mediaCardsHTML = ''; 
+                if (data.status === 'success') {
+                    let dashboardHTML = '';
+                    
+                    // --- 1. GENERATION DASHBOARD (NEW) ---
+                    if (data.meta) {
+                        const m = data.meta;
+                        
+                        // A. Prompts (Using new Copy Notification)
+                        let promptSection = '';
+                        // Positive
+                        const posText = m.positive_prompt_clean || m.positive_prompt;
+                        if (posText) {
+                            // We escape HTML but keep the raw text for copying
+                            const safePos = escapeHTML(posText);
+                            // Use a temporary attribute or pass string directly (careful with quotes)
+                            promptSection += `
+                                <div style="margin-bottom:10px;">
+                                    <div class="gen-section-title">✨ Positive Prompt</div>
+                                    <div class="gen-prompt-box positive">
+                                        ${safePos}
+                                        <button class="copy-prompt-btn" onclick="copyTextAndNotify(this.parentElement.innerText.replace('Copy', '').trim())">Copy</button>
+                                    </div>
+                                </div>`;
+                        }
+                        // Negative
+                        if (m.negative_prompt) {
+                            const safeNeg = escapeHTML(m.negative_prompt);
+                            promptSection += `
+                                <div>
+                                    <div class="gen-section-title">🚫 Negative Prompt</div>
+                                    <div class="gen-prompt-box negative">
+                                        ${safeNeg}
+                                        <button class="copy-prompt-btn" onclick="copyTextAndNotify(this.parentElement.innerText.replace('Copy', '').trim())">Copy</button>
+                                    </div>
+                                </div>`;
+                        }
 
+                        // B. Tech Stats Grid (Updated with Seed Copy)
+                        let statsHTML = '';
+                        
+                        // Helper to create card
+                        const createStatCard = (label, value, extraClass = '', allowCopy = false) => {
+                            const safeVal = escapeHTML(value);
+                            let copyHtml = '';
+                            if (allowCopy) {
+                                copyHtml = `<button class="stat-copy-btn" onclick="copyTextAndNotify('${safeVal}')" title="Copy">📋</button>`;
+                            }
+                            
+                            return `
+                            <div class="gen-stat-card">
+                                <span class="gen-stat-label">${label} ${copyHtml}</span>
+                                <span class="gen-stat-value ${extraClass}" title="${safeVal}">${safeVal}</span>
+                            </div>`;
+                        };
+
+                        if (m.seed) statsHTML += createStatCard('Seed', m.seed, 'seed', true); // Copy Enabled
+                        if (m.model) statsHTML += createStatCard('Model', m.model, 'model');
+                        if (m.steps) statsHTML += createStatCard('Steps', m.steps);
+                        if (m.cfg) statsHTML += createStatCard('CFG', m.cfg);
+                        if (m.sampler) statsHTML += createStatCard('Sampler', m.sampler);
+                        if (m.scheduler) statsHTML += createStatCard('Scheduler', m.scheduler);
+                        if (m.width && m.height) statsHTML += createStatCard('Resolution', `${m.width}x${m.height}`);
+
+                        let statsSection = '';
+                        if (statsHTML) {
+                            statsSection = `
+                                <div style="margin-top:10px;">
+                                    <div class="gen-section-title">⚙️ Generation Parameters</div>
+                                    <div class="gen-stats-grid">${statsHTML}</div>
+                                </div>`;
+                        }
+
+                        // C. LoRAs
+                        let loraSection = '';
+                        if (m.loras && m.loras.length > 0) {
+                            const loraChips = m.loras.map(l => 
+                                `<div class="gen-lora-chip"><span>${escapeHTML(l.name)}</span><span class="gen-lora-val">${l.value}</span></div>`
+                            ).join('');
+                            
+                            loraSection = `
+                                <div style="margin-top:10px;">
+                                    <div class="gen-section-title">💊 Active LoRAs</div>
+                                    <div class="gen-lora-container">${loraChips}</div>
+                                </div>`;
+                        }
+
+                        // Combine Dashboard
+                        if (promptSection || statsSection || loraSection) {
+                            dashboardHTML = `
+                                <div class="gen-dashboard">
+                                    ${promptSection}
+                                    ${statsSection}
+                                    ${loraSection}
+                                </div>`;
+                        }
+                    }
+
+                    // --- 2. EXISTING NODE LIST (Legacy) ---
+                    let contentHTML = '';
+                    let mediaCardsHTML = ''; 
+
+                    if (data.summary && data.summary.length > 0) {
+                        // ... (Il resto della funzione rimane identico a prima per la parte dei nodi raw) ...
                         data.summary.forEach(node => {
                             let paramsHTML = '<ul class="summary-node-params">';
-                            
                             if (node.params && node.params.length > 0) {
                                 node.params.forEach(p => {
                                     paramsHTML += `<li><strong>${escapeHTML(p.name)}:</strong> <code>${escapeHTML(p.value)}</code>`;
@@ -8981,24 +9795,31 @@ async function showNodeSummary(event, fileId) {
                                 ${paramsHTML}
                             </div>`;
                         });
-                        
-                        let finalInputsSection = '';
-                        if (mediaCardsHTML) {
-                            finalInputsSection = `
-                                <h3 style="margin-top:0; border-bottom:1px solid var(--border-color); padding-bottom:10px;">
-                                    🎨 Source Media (Inputs)
-                                </h3>
-                                <div class="input-media-grid">
-                                    ${mediaCardsHTML}
-                                </div>
-                                <hr style="border:0; border-top:1px solid var(--border-color); margin: 2rem 0;">
-                            `;
-                        }
-
-                        summaryContent.innerHTML = finalInputsSection + contentHTML;
                     } else {
-                        summaryContent.innerHTML = '<p>No active nodes found in this workflow.</p>';
+                        contentHTML = '<p class="empty-state">No active nodes found in this workflow.</p>';
                     }
+                    
+                    // --- 3. ASSEMBLE FINAL HTML ---
+                    let finalInputsSection = '';
+                    if (mediaCardsHTML) {
+                        finalInputsSection = `
+                            <h3 style="margin-top:0; border-bottom:1px solid var(--border-color); padding-bottom:10px;">
+                                🎨 Source Media (Inputs)
+                            </h3>
+                            <div class="input-media-grid">
+                                ${mediaCardsHTML}
+                            </div>
+                            <hr style="border:0; border-top:1px solid var(--border-color); margin: 2rem 0;">
+                        `;
+                    }
+                    
+                    let nodesHeader = '';
+                    if (dashboardHTML) {
+                        nodesHeader = `<h3 style="margin: 2rem 0 1rem; border-bottom:1px solid var(--border-color); padding-bottom:10px;">🔌 Raw Node List</h3>`;
+                    }
+
+                    summaryContent.innerHTML = dashboardHTML + finalInputsSection + nodesHeader + contentHTML;
+
                 } else {
                     summaryContent.innerHTML = `<p style="color:var(--danger-color);">Error: ${data.message || 'Could not load summary.'}</p>`;
                 }
@@ -9007,6 +9828,7 @@ async function showNodeSummary(event, fileId) {
                 summaryContent.innerHTML = `<p style="color:var(--danger-color);">A network error occurred.</p>`;
             }
         }
+
         function closeNodeSummary() { document.body.classList.remove('modal-open'); summaryOverlay.classList.remove('visible'); summaryContent.innerHTML = ''; }
         const uploadOverlay = document.getElementById('upload-overlay'); const showUploadModalBtn = document.getElementById('show-upload-modal-btn'); const uploadCancelBtn = document.getElementById('upload-cancel-btn'); const uploadSubmitBtn = document.getElementById('upload-submit-btn'); const dropZone = document.getElementById('drop-zone'); const fileInput = document.getElementById('upload-file-input'); const fileBrowseBtn = document.getElementById('file-upload-btn'); const fileList = document.getElementById('file-list'); const uploadProgressContainer = document.getElementById('upload-progress-container'); const uploadProgressFill = document.getElementById('upload-progress-fill'); const uploadDestinationText = document.getElementById('upload-destination-text').querySelector('strong'); let filesToUpload = [];
         function resetUploadModal() { filesToUpload = []; fileList.innerHTML = ''; uploadProgressContainer.style.display = 'none'; uploadProgressFill.style.width = '0%'; fileInput.value = ''; uploadSubmitBtn.disabled = false; }
@@ -9090,29 +9912,92 @@ async function showNodeSummary(event, fileId) {
             rescanModalOverlay.style.pointerEvents = 'none';
         }
 
+        // --- RESCAN LOGIC WITH POLLING ---
         function performRescan(mode) {
             hideRescanModal();
-            showNotification('Starting rescan...', 'info');
-
-            // Show sync overlay
+            
+            // Show sync overlay immediately
             const syncOverlay = document.getElementById('sync-overlay');
             const syncMessage = document.getElementById('sync-message');
             const syncProgressFill = document.getElementById('sync-progress-fill');
+            
             syncOverlay.style.display = 'flex';
-            syncMessage.textContent = 'Rescanning files...';
-            syncProgressFill.style.width = '100%';
+            syncMessage.textContent = 'Initializing background scan...';
+            syncProgressFill.style.width = '0%';
             syncProgressFill.style.backgroundColor = 'var(--primary-color)';
+            
+            // Store the folder key where the scan started
+            const originFolderKey = currentFolderKey;
             
             fetch('/galleryout/rescan_folder', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ folder_key: currentFolderKey, mode: mode })
+                body: JSON.stringify({ folder_key: originFolderKey, mode: mode })
             })
-                .then(handleGenericResponse)
-                .catch(error => {
-                    handleError(error);
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'started') {
+                    // Start Polling
+                    pollRescanProgress(data.job_id, originFolderKey);
+                } else if (data.status === 'success' && data.count === 0) {
+                    // Immediate success (nothing to do)
                     syncOverlay.style.display = 'none';
-                });
+                    showNotification(data.message, 'info');
+                } else {
+                    syncOverlay.style.display = 'none';
+                    showNotification("Error: " + data.message, 'error');
+                }
+            })
+            .catch(error => {
+                syncOverlay.style.display = 'none';
+                handleError(error);
+            });
+        }
+
+        function pollRescanProgress(jobId, originFolderKey) {
+            const syncOverlay = document.getElementById('sync-overlay');
+            const syncMessage = document.getElementById('sync-message');
+            const syncProgressFill = document.getElementById('sync-progress-fill');
+            
+            const interval = setInterval(() => {
+                fetch(`/galleryout/check_rescan_status/${jobId}`)
+                    .then(res => res.json())
+                    .then(job => {
+                        if (job.status === 'processing') {
+                            // Update UI
+                            const pct = Math.round((job.current / job.total) * 100);
+                            syncMessage.textContent = `Scanning: ${job.current} / ${job.total}`;
+                            syncProgressFill.style.width = `${pct}%`;
+                            
+                        } else if (job.status === 'done') {
+                            clearInterval(interval);
+                            syncOverlay.style.display = 'none';
+                            
+                            // CHECK: Are we still in the same folder?
+                            // 'currentFolderKey' is a global variable in your script
+                            if (currentFolderKey === originFolderKey) {
+                                // Yes -> Reload page to show new data
+                                sessionStorage.setItem('gallery_notification', JSON.stringify({
+                                    message: 'Rescan completed successfully!',
+                                    type: 'success'
+                                }));
+                                window.location.reload();
+                            } else {
+                                // No -> Just show notification (don't reload wrong folder)
+                                showNotification(`Rescan of "${job.folder_name}" completed in background.`, 'success', 8000);
+                            }
+                            
+                        } else if (job.status === 'error' || job.status === 'not_found') {
+                            clearInterval(interval);
+                            syncOverlay.style.display = 'none';
+                            showNotification("Rescan failed or lost connection.", 'error');
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        // Don't stop polling for a single network glitch, keep trying
+                    });
+            }, 1000); // Check every 1 second
         }
         
         // --- AI SEARCH FUNCTIONS ---
@@ -9694,6 +10579,17 @@ async function showNodeSummary(event, fileId) {
         
         // --- MAIN INITIALIZATION FUNCTION ---
         document.addEventListener('DOMContentLoaded', () => {
+        
+            // Initialize Focus Mode state
+            initFocusMode();
+            
+            // --- GLOBAL MOUSE TRACKER (INSIDE DOMContentLoaded) ---
+            window.lastMouseX = 0;
+            window.lastMouseY = 0;
+            document.addEventListener('mousemove', (e) => {
+                window.lastMouseX = e.clientX;
+                window.lastMouseY = e.clientY;
+            }, { passive: true, capture: true });
             
             // Check for pending notifications from previous page load
             const pendingMsg = sessionStorage.getItem('gallery_notification');
@@ -10081,13 +10977,54 @@ async function showNodeSummary(event, fileId) {
                     }
                 });
             }
-            document.getElementById('lightbox-content').addEventListener('wheel', (event) => { if (lightboxOverlay.classList.contains('visible')) { event.preventDefault(); zoomLightbox(event.deltaY < 0 ? 0.1 : -0.1); } });
-            // --- ZOOM IMAGE (existing) ---
+           // --- LIGHTBOX INTERACTIONS (ZOOM & DRAG) ---
+            
+            // 1. ZOOM via Mouse Wheel
             document.getElementById('lightbox-content').addEventListener('wheel', (event) => { 
                 if (lightboxOverlay.classList.contains('visible')) { 
-                    event.preventDefault(); // Blocca lo scroll pagina, fa lo zoom
+                    event.preventDefault(); // Blocca lo scroll della pagina sottostante
+                    // Zoom In se scorri su, Zoom Out se scorri giù
                     zoomLightbox(event.deltaY < 0 ? 0.1 : -0.1); 
                 } 
+            }, { passive: false }); // 'passive: false' è importante per far funzionare preventDefault() sui browser moderni
+
+            // 2. PAN via Mouse Drag
+            const lbMediaContainer = document.getElementById('lightbox-media');
+            let isLbDragging = false;
+            let lbStartX = 0;
+            let lbStartY = 0;
+
+            lbMediaContainer.addEventListener('mousedown', (e) => {
+                // Attiva solo se clicchi sull'immagine o video, non sullo sfondo vuoto
+                if (e.target.tagName !== 'IMG' && e.target.tagName !== 'VIDEO') return;
+                
+                e.preventDefault();
+                isLbDragging = true;
+                lbStartX = e.clientX;
+                lbStartY = e.clientY;
+                
+                e.target.style.cursor = 'grabbing';
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isLbDragging) return;
+                e.preventDefault();
+
+                const dx = e.clientX - lbStartX;
+                const dy = e.clientY - lbStartY;
+
+                lbStartX = e.clientX;
+                lbStartY = e.clientY;
+
+                panLightbox(dx, dy);
+            });
+
+            window.addEventListener('mouseup', () => {
+                if (isLbDragging) {
+                    isLbDragging = false;
+                    const media = lbMediaContainer.querySelector('img, video');
+                    if (media) media.style.cursor = 'grab';
+                }
             });
 
             // --- FIX SCROLL CAPTION ---
@@ -10105,499 +11042,306 @@ async function showNodeSummary(event, fileId) {
             fileBrowseBtn.addEventListener('click', () => fileInput.click());
             fileInput.addEventListener('change', () => handleFiles(fileInput.files));
 
-            // --- KEYBOARD SHORTCUTS ---
+            // --- KEYBOARD SHORTCUTS (FIXED ESCAPE PRIORITY) ---
             document.addEventListener('keydown', (e) => {
+                // 1. Always ignore if typing in a form
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
-                // --- NEW: Storyboard Zoom Navigation ---
+
+                // 2. SMART DIALOG TRAP (Total Isolation)
+                const smartOverlay = document.getElementById('smart-dialog-overlay');
+                if (smartOverlay && smartOverlay.classList.contains('visible')) {
+                    
+                    if (e.key === 'Escape') { 
+                        // Let it pass to the Escape handler below 
+                    } 
+                    else if (['ArrowLeft', 'ArrowRight', 'Tab', 'Enter', ' '].includes(e.key)) {
+                        e.stopPropagation(); // Stop gallery from hearing this!
+
+                        const buttons = Array.from(smartOverlay.querySelectorAll('.sd-actions button')).filter(b => b.style.display !== 'none');
+                        const currentIndex = buttons.indexOf(document.activeElement);
+
+                        // Handle Arrows to move focus
+                        if (e.key === 'ArrowRight' || (e.key === 'Tab' && !e.shiftKey)) {
+                            e.preventDefault();
+                            const nextIndex = (currentIndex + 1) % buttons.length;
+                            buttons[nextIndex].focus();
+                        } 
+                        else if (e.key === 'ArrowLeft' || (e.key === 'Tab' && e.shiftKey)) {
+                            e.preventDefault();
+                            const prevIndex = (currentIndex - 1 + buttons.length) % buttons.length;
+                            buttons[prevIndex].focus();
+                        }
+                        // Handle Enter / Space on the FOCUSED button
+                        else if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            if (currentIndex !== -1) {
+                                buttons[currentIndex].click(); // Trigger the focused button
+                            }
+                        }
+                        return;
+                    } 
+                    else {
+                        // Block all other keys (E, N, V, etc.)
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return;
+                    }
+                }
+
+                // --- 1. Storyboard Zoom Navigation ---
                 const sbZoomOverlay = document.getElementById('sb-zoom-overlay');
                 if (sbZoomOverlay && sbZoomOverlay.style.display === 'flex') {
-                    if (e.key === 'ArrowLeft') {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        navigateSbZoom(-1);
-                        return;
-                    }
-                    if (e.key === 'ArrowRight') {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        navigateSbZoom(1);
-                        return;
-                    }
-                    if (e.key === 'Escape') {
-                        e.preventDefault();
-                        closeSbZoom();
-                        return;
-                    }
-                    // Block other keys while zoomed
+                    if (e.key === 'ArrowLeft') { e.preventDefault(); e.stopPropagation(); navigateSbZoom(-1); return; }
+                    if (e.key === 'ArrowRight') { e.preventDefault(); e.stopPropagation(); navigateSbZoom(1); return; }
+                    if (e.key === 'Escape') { e.preventDefault(); closeSbZoom(); return; }
                     return;
                 }
-                // --- COMPARE MODE SHORTCUTS ---
+
+                // --- 2. Compare Mode Shortcuts ---
                 if (document.getElementById('compare-overlay').classList.contains('visible')) {
-                    if (e.key === 'Escape') {
-                        closeCompareMode();
-                        return;
-                    }
-                    // Zoom In (+ or =)
-                    if (e.key === '+' || e.key === '=') {
-                        e.preventDefault();
-                        cmpZoom(0.2);
-                        return;
-                    }
-                    // Zoom Out (- or _)
-                    if (e.key === '-' || e.key === '_') {
-                        e.preventDefault();
-                        cmpZoom(-0.2);
-                        return;
-                    }
-                    // Reset Zoom (0)
-                    if (e.key === '0') {
-                        e.preventDefault();
-                        cmpResetZoom();
-                        return;
-                    }
-                    // [NEW] Toggle Info Panel (I)
-                    if (e.key === 'i' || e.key === 'I') {
-                        e.preventDefault();
-                        toggleCmpInfo();
-                        return;
-                    }
-                    
-                    e.stopPropagation();
-                    return; 
+                    if (e.key === 'Escape') { closeCompareMode(); return; }
+                    if (e.key === '+' || e.key === '=') { e.preventDefault(); cmpZoom(0.2); return; }
+                    if (e.key === '-' || e.key === '_') { e.preventDefault(); cmpZoom(-0.2); return; }
+                    if (e.key === '0') { e.preventDefault(); cmpResetZoom(); return; }
+                    if (e.key === 'i' || e.key === 'I') { e.preventDefault(); toggleCmpInfo(); return; }
+                    e.stopPropagation(); return; 
                 }
 
-                if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) {
-                    e.preventDefault();
-                    selectAll();
-                    return;
-                }
+                // --- 3. Global Shortcuts ---
+                if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) { e.preventDefault(); selectAll(); return; }
 
+                // --- 4. Escape Handler (Priority Stack) ---
                 if (e.key === 'Escape') {
-                    // 1. Zoom Frame (Level 3)
-                    const zoomOverlay = document.getElementById('sb-zoom-overlay');
-                    if (zoomOverlay && zoomOverlay.style.display === 'flex') {
-                        closeSbZoom();
-                        return;
-                    }
-                    // 2. Storyboard (Level 2)
+                    // A. High Priority Overlays
                     const sbOverlay = document.getElementById('storyboard-overlay');
-                    if (sbOverlay && sbOverlay.classList.contains('visible')) {
-                        closeStoryboard();
+                    if (sbOverlay && sbOverlay.classList.contains('visible')) { closeStoryboard(); return; }
+                    if (document.getElementById('shortcuts-help-overlay').classList.contains('visible')) { closeShortcutsHelp(); return; }
+                    if (document.getElementById('upload-overlay').classList.contains('visible')) { closeUploadModal(); return; }
+                    if (document.getElementById('node-summary-overlay').classList.contains('visible')) { closeNodeSummary(); return; }
+                    if (document.getElementById('ai-search-overlay').classList.contains('visible')) { closeAiSearchModal(); return; }
+                    
+                    // B. Lightbox (Moved here to ensure it catches the event)
+                    if (document.body.classList.contains('lightbox-open')) { 
+                        closeLightbox(); 
                         return; 
                     }
-                    const shortcutsHelp = document.getElementById('shortcuts-help-overlay');
-                    if (shortcutsHelp.classList.contains('visible')) {
-                        closeShortcutsHelp();
-                        return;
-                    }
-                    if (uploadOverlay.classList.contains('visible')) {
-                        closeUploadModal();
-                        return;
-                    }
-                    if (summaryOverlay.classList.contains('visible')) {
-                        closeNodeSummary();
-                        return;
-                    }
-                    if (document.getElementById('ai-search-overlay').classList.contains('visible')) {
-                        closeAiSearchModal();
-                        return;
-                    }
-                    // Close the new desktop search panel on ESC
+
+                    // C. Panels & Selection
                     const panel = document.getElementById('desktop-search-panel');
-                    if (panel && panel.classList.contains('visible')) {
-                        panel.classList.remove('visible');
-                        return;
-                    }
+                    if (panel && panel.classList.contains('visible')) { panel.classList.remove('visible'); return; }
                     
-                    if (selectedFiles.size > 0 && !document.body.classList.contains('lightbox-open')) {
-                         deselectAll();
-                    }
+                    if (selectedFiles.size > 0) { deselectAll(); }
                     hideDropZone();
+                    return;
                 }
 
                 if (document.body.classList.contains('modal-open')) return;
 
                 const isLightboxOpen = document.body.classList.contains('lightbox-open');
                 
+                // --- 5. Lightbox Actions ---
                 if (isLightboxOpen) {
                     switch (e.key) {
-                        case 'ArrowLeft':
-                            navigateLightbox(-1);
-                            break;
-                        case 'ArrowRight':
-                            navigateLightbox(1);
-                            break;
-                        case 'v':
-                        case 'V':
-                        case 'Escape':
-                            closeLightbox();
-                            break;
-                        case 'd':
-                        case 'D':
-                        case 'Delete':
-                             deleteFromLightbox(true); 
-                            break;
-                        case 'f':
-                        case 'F':
-                            if (currentLightboxFile) {
-                                const item = galleryItems[currentLightboxIndex];
-                                if (item) {
-                                    const favBtn = item.querySelector('.favorite-btn');
-                                    if (favBtn) toggleFavorite(e, currentLightboxFile.id, favBtn);
-                                }
-                            }
-                            break;
-                        case 's':
-                        case 'S':
-                            if (currentLightboxFile) {
-                                const link = document.createElement('a');
-                                link.href = `/galleryout/download/${currentLightboxFile.id}`;
-                                link.download = '';
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                            }
-                            break;
-                        case 'r':
-                        case 'R':
-                            renameFileFromLightbox();
-                            break;
-                        case 'w':
-                        case 'W':
-                            if (currentLightboxFile && currentLightboxFile.has_workflow) {
-                                const link = document.createElement('a');
-                                link.href = `/galleryout/workflow/${currentLightboxFile.id}`;
-                                link.download = '';
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                            } else {
-                                showNotification('No workflow available for this file.', 'info');
-                            }
-                            break;
-                        case 'c':
-                        case 'C':
-                            // Copy Workflow
-                            if (currentLightboxFile) {
-                                copyWorkflowToClipboard(currentLightboxFile.id);
-                            }
-                            break;
-                        case 'o':
-                        case 'O':
-                            if (currentLightboxFile) {
-                                window.open(`/galleryout/file/${currentLightboxFile.id}`, '_blank');
-                            }
-                            break;
-                        case 'n':
-                        case 'N':
-                            if (currentLightboxFile && currentLightboxFile.has_workflow) {
-                                const summaryBtn = document.getElementById('lightbox-summary-btn');
-                                if (summaryBtn && summaryBtn.style.display !== 'none') {
-                                    summaryBtn.click();
-                                }
-                            } else {
-                                showNotification('No node summary available for this file.', 'info');
-                            }
-                            break;
-                        case '+':
-                        case '=':
-                            zoomLightbox(0.1);
-                            break;
-                        case '-':
-                        case '_':
-                            zoomLightbox(-0.1);
-                            break;
-                        case '0':
-                            currentZoom = 1;
-                            currentTranslateX = 0;
-                            currentTranslateY = 0;
-                            updateMediaTransform();
-                            break;
-                        case '.':
-                            cyclePanStep();
-                            break;
-                        case '8': 
-                            panLightbox(0, panStep);
-                            break;
-                        case '2': 
-                            panLightbox(0, -panStep);
-                            break;
-                        case '4': 
-                            panLightbox(panStep, 0);
-                            break;
-                        case '6': 
-                            panLightbox(-panStep, 0);
-                            break;
-                        case '7': 
-                            panLightbox(panStep, panStep);
-                            break;
-                        case '9': 
-                            panLightbox(-panStep, panStep);
-                            break;
-                        case '1': 
-                            panLightbox(panStep, -panStep);
-                            break;
-                        case '3': 
-                            panLightbox(-panStep, -panStep);
-                            break;
-                        case 'h':
-                        case 'H':
-                            toggleLightboxUi();
-                            break;
-                        case '?':
-                            showShortcutsHelp();
-                            break;
-                        /* Disabled
-                        case 'e':
-                        case 'E':
-                            case 'e':
-                        case 'E':
-                            // Determine file context
-                            let fileToOpen = null;
-                            if (isLightboxOpen && currentLightboxFile) {
-                                fileToOpen = currentLightboxFile;
-                            } else if (!isLightboxOpen && focusedItemIndex !== -1) {
-                                fileToOpen = allFilesData.find(f => f.id === galleryItems[focusedItemIndex].dataset.fileId);
-                            } else if (!isLightboxOpen && hoveredItemIndex !== -1) {
-                                fileToOpen = allFilesData.find(f => f.id === galleryItems[hoveredItemIndex].dataset.fileId);
-                            }
-
-                            if (fileToOpen) {
-                                openStoryboard(fileToOpen.id);
-                            }
-                            break;
-                         */
+                        case 'ArrowLeft': navigateLightbox(-1); break;
+                        case 'ArrowRight': navigateLightbox(1); break;
+                        case 'v': case 'V': closeLightbox(); break; // V acts as close inside lightbox
+                        case 'd': case 'D': case 'Delete': deleteFromLightbox(true); break;
+                        case 's': case 'S': if(currentLightboxFile) { const l = document.createElement('a'); l.href = `/galleryout/download/${currentLightboxFile.id}`; l.download = ''; document.body.appendChild(l); l.click(); l.remove(); } break;
+                        case 'r': case 'R': renameFileFromLightbox(); break;
+                        case 'w': case 'W': 
+                            if(currentLightboxFile && currentLightboxFile.has_workflow) { const l = document.createElement('a'); l.href = `/galleryout/workflow/${currentLightboxFile.id}`; l.download = ''; document.body.appendChild(l); l.click(); l.remove(); } 
+                            else { showNotification('No workflow available.', 'info'); } break;
+                        case 'c': case 'C': if(currentLightboxFile) copyWorkflowToClipboard(currentLightboxFile.id); break;
+                        case 'o': case 'O': if(currentLightboxFile) window.open(`/galleryout/file/${currentLightboxFile.id}`, '_blank'); break;
+                        case 'n': case 'N': if(currentLightboxFile && currentLightboxFile.has_workflow) document.getElementById('lightbox-summary-btn').click(); else showNotification('No summary available.', 'info'); break;
+                        case 'f': case 'F': if(currentLightboxFile) { const item = galleryItems[currentLightboxIndex]; if(item) toggleFavorite(e, currentLightboxFile.id, item.querySelector('.favorite-btn')); } break;
+                        case '+': case '=': zoomLightbox(0.1); break;
+                        case '-': case '_': zoomLightbox(-0.1); break;
+                        case '0': currentZoom = 1; currentTranslateX = 0; currentTranslateY = 0; updateMediaTransform(); break;
+                        case '.': cyclePanStep(); break;
+                        case '8': panLightbox(0, panStep); break;
+                        case '2': panLightbox(0, -panStep); break;
+                        case '4': panLightbox(panStep, 0); break;
+                        case '6': panLightbox(-panStep, 0); break;
+                        case '7': panLightbox(panStep, panStep); break;
+                        case '9': panLightbox(-panStep, panStep); break;
+                        case '1': panLightbox(panStep, -panStep); break;
+                        case '3': panLightbox(-panStep, -panStep); break;
+                        case 'h': case 'H': toggleLightboxUi(); break;
+                        case '?': showShortcutsHelp(); break;
+                        case 'e': case 'E': if(currentLightboxFile) openStoryboard(currentLightboxFile.id); break;
                     }
-                } else {
-                    if (e.key === 'z' || e.key === 'Z') {
-                        downloadSelectedZip();
-                    }
-                    if (e.key === 'l' || e.key === 'L') {
-                        startSyncProcess(true);
-                    }
-
-                    if (e.key === 'k' || e.key === 'K') {
-                        showRescanModal();
-                    }
-                    if (e.key === '?') {
-                        showShortcutsHelp();
-                        return;
-                    }
-                    
-                    // --- NEW FIX: Toggle Filters (Placed BEFORE the empty check) ---
-                    if (e.key === 't' || e.key === 'T') {
-                        e.preventDefault();
-                        // 1. Scroll to top
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                        // 2. Click visible button
+                } 
+                
+                // --- 6. Grid View Shortcuts ---
+                else {
+                    // Global Helpers
+                    if (e.key === 'z' || e.key === 'Z') { downloadSelectedZip(); return; }
+                    if (e.key === 'p' || e.key === 'P') { e.preventDefault(); toggleVideoAutoplay(); return; }
+                    if (e.key === 'l' || e.key === 'L') { startSyncProcess(true); return; }
+                    if (e.key === 'k' || e.key === 'K') { showRescanModal(); return; }
+                    if (e.key === '?') { showShortcutsHelp(); return; }
+                    if (e.key === 't' || e.key === 'T') { 
+                        e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' });
                         const deskBtn = document.getElementById('search-toggle-desktop');
                         const mobBtn = document.getElementById('mobile-filter-toggle');
-                        if(deskBtn && deskBtn.offsetParent !== null) deskBtn.click();
-                        else if(mobBtn) mobBtn.click();
-                        return; // Stop here
+                        if(deskBtn && deskBtn.offsetParent !== null) deskBtn.click(); else if(mobBtn) mobBtn.click();
+                        return;
                     }
-                    
+                    // Toggle Focus Mode
+                    if (e.key === 'q' || e.key === 'Q') {
+                        toggleFocusMode();
+                        return;
+                    }
                     if (galleryItems.length === 0) return;
 
+                    // Navigation Helper
                     const getColumns = () => {
-                        const gridStyle = window.getComputedStyle(galleryContainer);
-                        const gridTemplateColumns = gridStyle.getPropertyValue('grid-template-columns');
-                        return gridTemplateColumns.split(' ').length;
+                        const style = window.getComputedStyle(galleryContainer);
+                        return style.getPropertyValue('grid-template-columns').split(' ').length;
                     };
 
+                    // --- ROBUST TARGET LOGIC (V5: Drill-down & State Check) ---
+                    const getTargetIndex = () => {
+                        // The focused element is now the single source of truth
+                        return (focusedItemIndex !== -1) ? focusedItemIndex : -1;
+                    };
+
+                    // --- Inside keydown listener, Grid View section ---
                     switch (e.key) {
-                        case 'ArrowRight':
-                            e.preventDefault();
-                            updateFocus(1);
-                            break;
-                        case 'ArrowLeft':
-                            e.preventDefault();
-                            updateFocus(-1);
-                            break;
-                        case 'ArrowDown':
-                            e.preventDefault();
-                            updateFocus(getColumns());
-                            break;
-                        case 'ArrowUp':
-                            e.preventDefault();
-                            updateFocus(-getColumns());
-                            break;
-                        case 'v':
-                        case 'V':
-                            if (focusedItemIndex !== -1) {
-                                const item = galleryItems[focusedItemIndex];
-                                openLightbox(e, item.dataset.fileId);
+                        case 'Enter': {
+                            const idx = getTargetIndex();
+                            if (idx !== -1) {
+                                e.preventDefault(); // Prevent accidental form submissions or page jumps
+                                // PRIMARY ACTION: Open Lightbox
+                                // We pass 'true' for forceOpen to bypass Focus Mode selection logic
+                                openLightbox(null, galleryItems[idx].dataset.fileId, true);
                             }
                             break;
-                        // Quick Delete on Hover ---
-                        case 'Delete':
-                            // Priority 1: Hovered Item (Quick Delete - No Confirm)
-                            if (hoveredItemIndex !== -1) {
-                                const item = galleryItems[hoveredItemIndex];
-                                const btn = item.querySelector('.delete-btn');
-                                // Pass 'true' to skip confirmation
-                                deleteFile(e, item.dataset.fileId, btn, true); 
-                                return; 
+                        }
+                        case ' ': { // Spacebar
+                            const idx = getTargetIndex();
+                            if (idx !== -1) {
+                                e.preventDefault(); // CRITICAL: Stop the page from scrolling down!
+                                // TOGGLE SELECTION: Same as 'X' key or clicking the checkmark
+                                toggleSelection(e, galleryItems[idx].dataset.fileId, galleryItems[idx]);
                             }
+                            break;
+                        }
+                        case 'ArrowRight': // ... rest of the navigation code ...
+                        case 'ArrowRight': e.preventDefault(); updateFocus(1); break;
+                        case 'ArrowLeft': e.preventDefault(); updateFocus(-1); break;
+                        case 'ArrowDown': e.preventDefault(); updateFocus(getColumns()); break;
+                        case 'ArrowUp': e.preventDefault(); updateFocus(-getColumns()); break;
+                        
+                        case 'Delete': {
+                            const idx = getTargetIndex();
+                            // Quick Delete only if hovering exact element (Safety)
+                            const elAtMouse = (window.lastMouseX > 0) ? document.elementFromPoint(window.lastMouseX, window.lastMouseY) : null;
+                            const itemAtMouse = elAtMouse ? elAtMouse.closest('.gallery-item') : null;
                             
-                            // Priority 2: Selection (Batch Delete - With Confirm)
-                            if (selectedFiles.size > 0) {
-                                deleteSelected();
+                            if (itemAtMouse && galleryItems.indexOf(itemAtMouse) === idx) {
+                                deleteFile(e, galleryItems[idx].dataset.fileId, galleryItems[idx].querySelector('.delete-btn'), true);
                                 return;
                             }
-                            
-                            // Priority 3: Focused Item (Keyboard Nav - With Confirm)
-                            if (focusedItemIndex !== -1) {
-                                const item = galleryItems[focusedItemIndex];
-                                const btn = item.querySelector('.delete-btn');
-                                deleteFile(e, item.dataset.fileId, btn, false);
+                            // Standard Delete
+                            if (selectedFiles.size > 0) { deleteSelected(); return; }
+                            if (idx !== -1) {
+                                deleteFile(e, galleryItems[idx].dataset.fileId, galleryItems[idx].querySelector('.delete-btn'), false);
                             }
                             break;
-                        case 'd':
-                        case 'D':
-                            if (selectedFiles.size > 0) {
-                                deleteSelected();
-                            } else if (focusedItemIndex !== -1) {
-                                const item = galleryItems[focusedItemIndex];
-                                deleteFile(e, item.dataset.fileId, item.querySelector('.delete-btn'));
+                        }
+                        case 'd': case 'D':
+                            if (selectedFiles.size > 0) deleteSelected();
+                            else {
+                                const idx = getTargetIndex();
+                                if(idx !== -1) deleteFile(e, galleryItems[idx].dataset.fileId, galleryItems[idx].querySelector('.delete-btn'));
                             }
                             break;
-                        // --- NEW LOGIC: Hover takes priority over Focus ---
-                        case 'f':
-                        case 'F':
-                            // Determine target: Hover > Focus
-                            const targetIndex = hoveredItemIndex !== -1 ? hoveredItemIndex : focusedItemIndex;
-                            
-                            if (targetIndex !== -1 && galleryItems[targetIndex]) {
-                                const item = galleryItems[targetIndex];
-                                const favBtn = item.querySelector('.favorite-btn');
-                                if (favBtn) {
-                                    // Visual feedback if triggering via hover
-                                    if (hoveredItemIndex !== -1) {
-                                        item.style.transform = "scale(1.02)";
-                                        setTimeout(() => item.style.transform = "", 150);
-                                    }
-                                    toggleFavorite(e, item.dataset.fileId, favBtn);
-                                }
+                        
+                        // --- UNIFIED ACTIONS ---
+                        case 'v': case 'V': {
+                            const idx = getTargetIndex();
+                            if (idx !== -1) {
+                                // Pass dummy event and TRUE for forceOpen
+                                const safeEvent = { target: document.body, stopPropagation: () => {} };
+                                openLightbox(safeEvent, galleryItems[idx].dataset.fileId, true);
                             }
                             break;
-                            /* DISABLED
-                            case 'e':
-                            case 'E':
-                            { // OPEN SCOPE BLOCK
-                                let targetIndexE = -1; 
-                                
-                                // 1. Priority Logic: Hover (Mouse) > Focus (Keyboard)
-                                if (typeof hoveredItemIndex !== 'undefined' && hoveredItemIndex !== -1) {
-                                    targetIndexE = hoveredItemIndex;
-                                } else if (focusedItemIndex !== -1) {
-                                    targetIndexE = focusedItemIndex;
-                                }
-                                
-                                // 2. If inside Lightbox, use current lightbox file
-                                if (document.body.classList.contains('lightbox-open') && currentLightboxFile) {
-                                    openStoryboard(currentLightboxFile.id);
-                                    break;
-                                }
-                                
-                                // 3. Execution from GridView
-                                if (targetIndexE !== -1 && galleryItems[targetIndexE]) {
-                                    const item = galleryItems[targetIndexE];
-                                    const fileId = item.dataset.fileId;
-                                    const fileData = allFilesData.find(f => f.id === fileId);
-                                    
-                                    const isSupported = (fileData && (fileData.type === 'video' || fileData.type === 'animated_image'));
-                                    
-                                    if (isSupported && ffmpegAvailable) {
-                                        
-                                        // [NEW] SYNC FOCUS: If triggered via hover, update global focus immediately
-                                        // This ensures that when closing the storyboard, we return to this specific item.
-                                        if (focusedItemIndex !== targetIndexE) {
-                                            // Remove focus from previous item
-                                            if (focusedItemIndex !== -1 && galleryItems[focusedItemIndex]) {
-                                                galleryItems[focusedItemIndex].classList.remove('focused');
-                                            }
-                                            // Update index and visual class
-                                            focusedItemIndex = targetIndexE;
-                                            item.classList.add('focused');
-                                        }
-
-                                        // Visual "Pop" effect
-                                        item.style.transform = "scale(1.05)";
-                                        item.style.transition = "transform 0.1s";
-                                        setTimeout(() => item.style.transform = "", 150);
-                                        
-                                        // Open
-                                        openStoryboard(fileData.id);
-                                        
-                                    } else if (fileData && !isSupported) {
-                                        showNotification("Storyboard available for Video/Animation only.", "warning");
-                                    }
-                                }
-                                break;
-                            } // CLOSE SCOPE BLOCK
-                         */
-                        case 'x':
-                        case 'X':
-                            if (focusedItemIndex !== -1) {
-                                const item = galleryItems[focusedItemIndex];
-                                toggleSelection(e, item.dataset.fileId, item);
+                        }
+                        case 'n': case 'N': {
+                            const idx = getTargetIndex();
+                            if (idx !== -1) {
+                                const item = galleryItems[idx];
+                                item.style.transform = "scale(1.02)";
+                                setTimeout(() => item.style.transform = "", 150);
+                                showNodeSummary(e, item.dataset.fileId);
                             }
                             break;
-                        case 's':
-                        case 'S':
-                            if (focusedItemIndex !== -1) {
-                                const item = galleryItems[focusedItemIndex];
-                                const fileId = item.dataset.fileId;
-                                const link = document.createElement('a');
-                                link.href = `/galleryout/download/${fileId}`;
-                                link.download = '';
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
+                        }
+                        case 'f': case 'F': {
+                            const idx = getTargetIndex();
+                            if (idx !== -1) {
+                                const btn = galleryItems[idx].querySelector('.favorite-btn');
+                                if(btn) toggleFavorite(e, galleryItems[idx].dataset.fileId, btn);
                             }
                             break;
-                        case 'r':
-                        case 'R':
-                            if (focusedItemIndex !== -1) {
-                                const item = galleryItems[focusedItemIndex];
-                                const fileId = item.dataset.fileId;
-                                const file = allFilesData.find(f => f.id === fileId);
-                                if (file) renameFile(fileId, file.name);
+                        }
+                        case 'x': case 'X': {
+                            const idx = getTargetIndex();
+                            if (idx !== -1) toggleSelection(e, galleryItems[idx].dataset.fileId, galleryItems[idx]);
+                            break;
+                        }
+                        case 's': case 'S': {
+                            const idx = getTargetIndex();
+                            if (idx !== -1) {
+                                const l = document.createElement('a'); 
+                                l.href = `/galleryout/download/${galleryItems[idx].dataset.fileId}`; 
+                                l.download = ''; document.body.appendChild(l); l.click(); l.remove();
                             }
                             break;
-                        case 'w':
-                        case 'W':
-                            if (focusedItemIndex !== -1) {
-                                const item = galleryItems[focusedItemIndex];
-                                const fileId = item.dataset.fileId;
-                                const file = allFilesData.find(f => f.id === fileId);
-                                if (file && file.has_workflow) {
-                                    const link = document.createElement('a');
-                                    link.href = `/galleryout/workflow/${fileId}`;
-                                    link.download = '';
-                                    document.body.appendChild(link);
-                                    link.click();
-                                    document.body.removeChild(link);
-                                } else {
-                                    showNotification('No workflow available for this file.', 'info');
-                                }
+                        }
+                        case 'r': case 'R': {
+                            const idx = getTargetIndex();
+                            if (idx !== -1) {
+                                const f = allFilesData.find(x => x.id === galleryItems[idx].dataset.fileId);
+                                if(f) renameFile(f.id, f.name);
                             }
                             break;
-                        case 'c':
-                        case 'C':
-                            // Copy Workflow (Grid View)
-                            if (focusedItemIndex !== -1) {
-                                const item = galleryItems[focusedItemIndex];
-                                if (item) {
-                                    copyWorkflowToClipboard(item.dataset.fileId);
-                                }
+                        }
+                        case 'w': case 'W': {
+                            const idx = getTargetIndex();
+                            if (idx !== -1) {
+                                const f = allFilesData.find(x => x.id === galleryItems[idx].dataset.fileId);
+                                if(f && f.has_workflow) {
+                                    const l = document.createElement('a');
+                                    l.href = `/galleryout/workflow/${f.id}`; 
+                                    l.download = ''; document.body.appendChild(l); l.click(); l.remove();
+                                } else showNotification('No workflow available.', 'info');
                             }
                             break;
-                        case 'm':
-                        case 'M':
-                            moveSelected();
+                        }
+                        case 'c': case 'C': {
+                            const idx = getTargetIndex();
+                            if (idx !== -1) copyWorkflowToClipboard(galleryItems[idx].dataset.fileId);
                             break;
+                        }
+                        case 'e': case 'E': {
+                            const idx = getTargetIndex();
+                            if (idx !== -1) openStoryboard(galleryItems[idx].dataset.fileId);
+                            break;
+                        }
+                        case 'm': case 'M': {
+                            if (selectedFiles.size > 0) { moveSelected(); break; }
+                            const idx = getTargetIndex();
+                            if (idx !== -1) {
+                                deselectAll();
+                                selectedFiles.add(galleryItems[idx].dataset.fileId);
+                                updateSelectionUI();
+                                initiateMove();
+                            }
+                            break;
+                        }
                     }
                 }
             });
@@ -10696,8 +11440,6 @@ async function showNodeSummary(event, fileId) {
                 }
             }
 
-            function showShortcutsHelp() { document.getElementById('shortcuts-help-overlay').classList.add('visible'); }
-            function closeShortcutsHelp() { document.getElementById('shortcuts-help-overlay').classList.remove('visible'); }
             document.getElementById('shortcuts-help-overlay').addEventListener('click', (e) => { if (e.target.id === 'shortcuts-help-overlay') closeShortcutsHelp(); });
             const closeShortcutsBtn = document.getElementById('close-shortcuts-btn');
             if (closeShortcutsBtn) {
@@ -10744,7 +11486,298 @@ async function showNodeSummary(event, fileId) {
                 }
             });
             
+            // --- SMART UI ZOOM COMPENSATION ---
+            // Keeps the Selection Bar usable even when browser zoom is < 100%
+            function handleBrowserZoom() {
+                // Calculate rough zoom level (e.g., 0.6 for 60%)
+                // Note: window.outerWidth/innerWidth is a reliable proxy on Chrome/Edge desktop
+                const zoomLevel = Math.round(window.outerWidth / window.innerWidth * 100) / 100;
+                
+                // We only compensate if zoom is significantly small (below 90%)
+                if (zoomLevel < 0.9) {
+                    // Calculate inverse scale (e.g., if zoom 0.5, we scale 2.0x)
+                    // We cap it at 2.5x to prevent absurdly huge UI on massive resolutions
+                    let scaleFactor = 1 / zoomLevel;
+                    scaleFactor = Math.min(Math.max(scaleFactor, 1), 2.5);
+                    
+                    document.documentElement.style.setProperty('--ui-zoom-scale', scaleFactor);
+                } else {
+                    // Reset to normal
+                    document.documentElement.style.setProperty('--ui-zoom-scale', '1');
+                }
+            }
+            
+            // --- PLATFORM DETECTION (Mac vs PC) ---
+            // Changes "Ctrl" to "⌘" in the help panel if user is on Mac
+            function detectPlatformLabels() {
+                const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0 || navigator.userAgent.toUpperCase().indexOf('MAC') >= 0;
+                
+                if (isMac) {
+                    document.querySelectorAll('.cmd-key').forEach(el => {
+                        el.textContent = '⌘'; // Sostituisce "Ctrl" con il simbolo Command
+                        el.style.fontFamily = 'system-ui, sans-serif'; // Assicura che il simbolo si veda bene
+                    });
+                }
+            }
+            detectPlatformLabels();
+            
+            // Listen for resize (which triggers on zoom change in modern browsers)
+            window.addEventListener('resize', handleBrowserZoom);
+            
+            // Initial check
+            handleBrowserZoom();
+            
+            // Close Options on click outside
+            document.addEventListener('click', (e) => {
+                const pop = document.getElementById('options-popover');
+                const btnD = document.getElementById('options-btn-desk');
+                const btnM = document.getElementById('options-btn-mob');
+                
+                if (pop && pop.classList.contains('visible')) {
+                    if (!pop.contains(e.target) && e.target !== btnD && e.target !== btnM && !btnD.contains(e.target) && !btnM.contains(e.target)) {
+                        pop.classList.remove('visible');
+                    }
+                }
+            });
+            
+            // Run Autoplay Notification Check
+            setTimeout(checkVideoAutoplayNotification, 1000); // Small delay to let UI settle
+            // Apply saved grid size preference
+            applyGridSize();
+            
         });
+        
+        // --- GLOBAL HELPER FUNCTIONS (Moved out for HTML access) ---
+        function showShortcutsHelp() { 
+            document.getElementById('shortcuts-help-overlay').classList.add('visible'); 
+        }
+        function closeShortcutsHelp() { 
+            document.getElementById('shortcuts-help-overlay').classList.remove('visible'); 
+        }
+        
+        // --- OPTIONS MENU LOGIC ---
+        function toggleOptionsMenu(e) {
+            e.stopPropagation();
+            const popover = document.getElementById('options-popover');
+            const btn = e.currentTarget; // Works for both desk and mobile buttons
+            
+            if (popover.classList.contains('visible')) {
+                popover.classList.remove('visible');
+            } else {
+                // Position logic (Simple Anchor)
+                const rect = btn.getBoundingClientRect();
+                const pW = 240; // Popover width
+                
+                // Align right edge
+                let left = rect.right - pW;
+                if (left < 10) left = 10; // Mobile safety
+                
+                let top = rect.bottom + 10;
+                
+                popover.style.top = top + 'px';
+                popover.style.left = left + 'px';
+                
+                // Update UI state before showing
+                updateOptionsUI();
+                
+                popover.classList.add('visible');
+            }
+        }
+        
+        function updateOptionsUI() {
+            // 1. Autoplay UI
+            const statusEl = document.getElementById('opt-status-autoplay');
+            const itemEl = document.getElementById('opt-btn-autoplay');
+            
+            if (videoAutoplay) {
+                statusEl.textContent = "ON";
+                statusEl.className = "opt-status on";
+                // FIX: Usa classList per non cancellare altre classi esistenti
+                itemEl.classList.add('active');
+                itemEl.classList.remove('inactive');
+            } else {
+                statusEl.textContent = "OFF";
+                statusEl.className = "opt-status off";
+                // FIX: Usa classList
+                itemEl.classList.remove('active');
+                itemEl.classList.add('inactive');
+            }
+
+            // 2. Grid Size UI
+            const sizeStatusEl = document.getElementById('opt-status-size');
+            const sizeItemEl = document.getElementById('opt-btn-size');
+            
+            if (sizeStatusEl && sizeItemEl) {
+                if (gridSizePref === 'small') {
+                    sizeStatusEl.textContent = "COMPACT";
+                    sizeStatusEl.className = "opt-status on";
+                    sizeStatusEl.style.backgroundColor = "var(--primary-color)";
+                    
+                    // FIX CRITICO: Non usare .className = ... altrimenti cancelli 'opt-desktop-only'
+                    sizeItemEl.classList.add('active');
+                } else {
+                    sizeStatusEl.textContent = "NORMAL";
+                    sizeStatusEl.className = "opt-status off";
+                    sizeStatusEl.style.backgroundColor = ""; 
+                    
+                    sizeItemEl.classList.remove('active');
+                }
+            }
+        }
+
+        function applyGridSize() {
+            const container = document.getElementById('gallery-container');
+            if (!container) return;
+            
+            if (gridSizePref === 'small') {
+                container.style.setProperty('--grid-item-size', '220px');
+            } else {
+                container.style.setProperty('--grid-item-size', '320px');
+            }
+            updateOptionsUI();
+        }
+
+        function toggleGridSize() {
+            gridSizePref = (gridSizePref === 'normal') ? 'small' : 'normal';
+            localStorage.setItem('sg_gridSize', gridSizePref);
+            applyGridSize();
+            // Optional: Re-layout lazy loading check
+            window.dispatchEvent(new Event('resize')); 
+        }
+
+        function toggleVideoAutoplay() {
+            // 1. Toggle State
+            videoAutoplay = !videoAutoplay;
+            localStorage.setItem('sg_videoAutoplay', videoAutoplay);
+            
+            // 2. Immediate Visual Feedback (Toggle switch in menu)
+            updateOptionsUI();
+            
+            // 3. Smart Feedback Notification
+            const status = videoAutoplay ? "ENABLED" : "DISABLED";
+            
+            // Check if we actually need to reload (are there videos?)
+            const hasVideos = allFilesData.some(f => f.type === 'video');
+            
+            if (hasVideos) {
+                // Show notification briefly
+                showNotification(`Autoplay ${status}. Reloading...`, "info", 4000);
+                
+                // Show Loader immediately to block interaction while waiting for refresh
+                setTimeout(() => {
+                    const loader = document.getElementById('loader-overlay');
+                    if (loader) {
+                        loader.style.display = 'flex';
+                        // Force opacity for transition
+                        requestAnimationFrame(() => { loader.style.opacity = '1'; });
+                    }
+                    
+                    // Trigger reload
+                    window.location.reload();
+                }, 500); // 0.5s delay just to let the user glimpse the "Enabled/Disabled" change in the menu
+            } else {
+                // No videos on screen? No need to reload! Just confirm saving.
+                showNotification(`Autoplay ${status} (Saved for next time)`, "success");
+            }
+        }
+        
+        // Function to play video IN GRID (Desktop Only)
+        function playVideoInGrid(event, btnElement) {
+            // Prevent opening Lightbox or Selecting
+            event.stopPropagation();
+            event.preventDefault();
+
+            const wrapper = btnElement.closest('.thumbnail-wrapper');
+            const video = wrapper.querySelector('video');
+            
+            if (!video) return;
+
+            // 1. Hide the overlay button
+            btnElement.style.display = 'none';
+
+            // 2. Enable interaction on the video tag (so users can pause/seek)
+            video.style.pointerEvents = 'auto';
+            
+            // 3. Add controls
+            video.setAttribute('controls', 'true');
+            
+            // 4. Force load and play
+            video.setAttribute('preload', 'auto');
+            video.load(); 
+            
+            const playPromise = video.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(error => console.log("Play failed:", error));
+            }
+
+            // --- FOCUS TRAP FIX ---
+            // Native video controls steal keyboard focus. We must release it manually.
+
+            // A. Release focus immediately on Pause or End
+            video.onpause = () => video.blur();
+            video.onended = () => video.blur();
+
+            // B. Allow Global Shortcuts to break out even while playing
+            video.onkeydown = (e) => {
+                // Allow native player keys (Space, Arrows, F)
+                if ([' ', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'f', 'F'].includes(e.key)) return;
+
+                // If user presses App Shortcuts (V, Q, Esc, Delete, etc.), force blur and re-trigger
+                const appKeys = ['v', 'V', 'q', 'Q', 'Escape', 'Delete', 'Backspace'];
+                if (appKeys.includes(e.key)) {
+                    e.preventDefault(); // Stop video player from absorbing it
+                    video.blur();       // Release focus back to body
+                    document.body.focus();
+                    
+                    // Re-dispatch the event so the global listener catches it immediately
+                    const newEvent = new KeyboardEvent('keydown', {
+                        key: e.key,
+                        code: e.code,
+                        bubbles: true,
+                        cancelable: true,
+                        shiftKey: e.shiftKey,
+                        ctrlKey: e.ctrlKey,
+                        metaKey: e.metaKey
+                    });
+                    document.dispatchEvent(newEvent);
+                }
+            };
+        }
+        
+        
+        // Helper to check for videos and warn user
+        function checkVideoAutoplayNotification() {
+            if (allFilesData.length === 0) return;
+            
+            // Check if there is at least one video (mp4, mov, etc - NOT animated images)
+            const hasVideo = allFilesData.some(f => f.type === 'video');
+            
+            if (hasVideo) {
+                const isMobile = window.innerWidth <= 768;
+                const action = isMobile ? "use Options ⚙️" : "press 'P'";
+                let msg = "";
+                
+                if (videoAutoplay) {
+                    // Message for Autoplay ON
+                    msg = `▶️ Autoplay ON.\n (Slow connection? Disable: ${action})`;
+                    showNotification(msg, "info multiline-msg", 6000); 
+                } else {
+                    // Message for Autoplay OFF (Differentiated by platform)
+                    if (isMobile) {
+                        // Mobile: Tap opens Lightbox
+                        // Usiamo \n e passiamo la nuova classe
+                        msg = `⏸️ Autoplay OFF.\nTap to open the Lightbox and play the video.\n (Enable Autoplay: ${action})`;
+                    } else {
+                        // Desktop: Click the little icon to play in thumbnail
+                        // Usiamo \n e passiamo la nuova classe
+                        msg = `⏸️ Autoplay OFF.\nClick the ▶️ to play inside the thumbnail.\n (Enable Autoplay: ${action})`;
+                    }
+                    // Passiamo "multiline-msg" come parte del parametro 'type' (es: "info multiline-msg")
+                    showNotification(msg, `info multiline-msg`, 6000); 
+                }
+            }
+        }
+        
         // --- BUTTONS + - LIMIT MAX RESULTS ---
         window.adjustAiLimit = function(delta) {
             const input = document.getElementById('ai-search-limit');

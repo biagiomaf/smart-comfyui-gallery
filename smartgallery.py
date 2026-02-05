@@ -1,7 +1,7 @@
 # Smart Gallery for ComfyUI
 # Author: Biagio Maffettone © 2025-2026 — MIT License (free to use and modify)
 #
-# Version: 1.54 - January 20, 2026
+# Version: 1.55 - Febraury 5, 2026
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -40,6 +40,7 @@ except ImportError:
     # tkinter not available (e.g., in Docker containers) - will fall back to console output
 import urllib.request 
 import secrets
+from typing import Dict, List, Any, Optional, Union # Added for type hinting in new tools
 
 
 # ============================================================================
@@ -303,8 +304,8 @@ ZIP_CACHE_FOLDER_NAME = '.zip_downloads'
 AI_MODELS_FOLDER_NAME = '.AImodels'
 
 # --- APP INFO ---
-APP_VERSION = "1.54"
-APP_VERSION_DATE = "January 20, 2026"
+APP_VERSION = "1.55"
+APP_VERSION_DATE = "Febraury 5, 2026"
 GITHUB_REPO_URL = "https://github.com/biagiomaf/smart-comfyui-gallery"
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/biagiomaf/smart-comfyui-gallery/main/smartgallery.py"
 
@@ -415,8 +416,8 @@ NODE_CATEGORIES = {
 }
 NODE_PARAM_NAMES = {
     "CLIPTextEncode": ["text"],
-    "KSampler": ["seed", "steps", "cfg", "sampler_name", "scheduler", "denoise"],
-    "KSamplerAdvanced": ["add_noise", "noise_seed", "steps", "cfg", "sampler_name", "scheduler", "start_at_step", "end_at_step", "return_with_leftover_noise"],
+    "KSampler": ["seed", "control_after_generate", "steps", "cfg", "sampler_name", "scheduler", "denoise"],
+    "KSamplerAdvanced": ["add_noise", "noise_seed", "control_after_generate", "steps", "cfg", "sampler_name", "scheduler", "start_at_step", "end_at_step", "return_with_leftover_noise"],
     "Load Checkpoint": ["ckpt_name"],
     "CheckpointLoaderSimple": ["ckpt_name"],
     "Empty Latent Image": ["width", "height", "batch_size"],
@@ -581,6 +582,258 @@ def generate_node_summary(workflow_json_string):
     
 # --- ALL UTILITY AND HELPER FUNCTIONS ARE DEFINED HERE, BEFORE ANY ROUTES ---
 
+# ============================================================================
+# NEW INTEGRATED TOOLS (ADVANCED METADATA EXTRACTION)
+# This section contains the new parsing logic integrated directly into the source
+# ============================================================================
+
+# --- Regex Patterns for Prompt Parsing ---
+RE_LORA_PROMPT = re.compile(r"<lora:([\w_\s.-]+)(?::([\d.]+))*>", re.IGNORECASE)
+RE_LYCO_PROMPT = re.compile(r"<lyco:([\w_\s.]+):([\d.]+)>", re.IGNORECASE)
+RE_PARENS = re.compile(r"[\\/\[\](){}]+")
+RE_LORA_CLOSE = re.compile(r">\s+")
+
+def clean_prompt_text(x: str) -> Dict[str, Any]:
+    """
+    Cleans a raw prompt string: removes LoRA tags, normalizes whitespace,
+    and extracts LoRA usage into a separate list.
+    """
+    if not x:
+        return {"text": "", "loras": []}
+        
+    x = re.sub(r'\sBREAK\s', ' , BREAK , ', x)
+    x = re.sub(RE_LORA_CLOSE, "> , ", x)
+    x = x.replace("，", ",").replace("-", " ").replace("_", " ")
+    
+    clean_text = re.sub(RE_PARENS, "", x)
+    
+    tag_list = [t.strip() for t in x.split(",")]
+    lora_list = []
+    final_tags = []
+    
+    for tag in tag_list:
+        if not tag: continue
+        
+        lora_match = re.search(RE_LORA_PROMPT, tag)
+        lyco_match = re.search(RE_LYCO_PROMPT, tag)
+        
+        if lora_match:
+            val = float(lora_match.group(2)) if lora_match.group(2) else 1.0
+            lora_list.append({"name": lora_match.group(1), "value": val})
+        elif lyco_match:
+            lora_list.append({"name": lyco_match.group(1), "value": float(lyco_match.group(2))})
+        else:
+            clean_tag = re.sub(RE_PARENS, "", tag).strip()
+            if clean_tag:
+                final_tags.append(clean_tag)
+
+    return {
+        "text": ", ".join(final_tags),
+        "loras": lora_list
+    }
+
+class ComfyMetadataParser:
+    """
+    Advanced parser that traces the workflow graph to find real generation parameters.
+    Updated to resolve links for Width, Height, and other linked numeric values.
+    """
+    def __init__(self, workflow_json: Dict):
+        self.data = workflow_json
+
+    def parse(self) -> Dict[str, Any]:
+        """
+        Main parsing method. Returns a standardized dictionary.
+        """
+        meta = {
+            "seed": None, "steps": None, "cfg": None, "sampler": None,
+            "scheduler": None, "model": None, "positive_prompt": "",
+            "negative_prompt": "", "positive_prompt_clean": "",
+            "width": None, "height": None, "loras": []
+        }
+
+        # Strategy A: Trace from KSampler (Most accurate for Prompts/Model)
+        sampler_node_id = self._find_sampler_node()
+        
+        if sampler_node_id:
+            self._extract_sampler_params(sampler_node_id, meta)
+            self._extract_prompts_from_sampler(sampler_node_id, meta)
+            self._extract_model_from_sampler(sampler_node_id, meta)
+            self._extract_size_from_sampler(sampler_node_id, meta)
+
+        # Strategy B: Fallback Scan (Scans specific nodes if Strategy A missed data)
+        self._fallback_scan(meta)
+        
+        # Cleanup
+        if meta["positive_prompt"]:
+            cleaned = clean_prompt_text(meta["positive_prompt"])
+            meta["positive_prompt_clean"] = cleaned["text"]
+            meta["loras"] = cleaned["loras"]
+            
+        # Deduplicate Prompts if they are identical due to tracing overlaps
+        if meta["negative_prompt"] == meta["positive_prompt"]:
+            meta["negative_prompt"] = ""
+            
+        return meta
+
+    def _find_sampler_node(self):
+        """Finds the main KSampler node ID."""
+        if not isinstance(self.data, dict): return None
+        for node_id, node in self.data.items():
+            if not isinstance(node, dict): continue
+            class_type = node.get("class_type", "")
+            if "KSampler" in class_type or "SamplerCustom" in class_type:
+                return node_id
+        return None
+
+    def _get_real_value(self, value):
+        """
+        Follows links recursively to find the actual value.
+        Improved to handle UI format where values are in widgets_values.
+        """
+        if not isinstance(value, list):
+            return value
+            
+        try:
+            source_id = str(value[0])
+            if source_id in self.data:
+                node = self.data[source_id]
+                
+                # Check Inputs (API Format)
+                inputs = node.get("inputs", {})
+                for key in ["value", "int", "float", "string", "text"]:
+                    if key in inputs:
+                        return self._get_real_value(inputs[key])
+                
+                # Check Widgets (UI Format)
+                widgets = node.get("widgets_values", [])
+                if widgets and not isinstance(widgets[0], (list, dict)):
+                    return widgets[0]
+                    
+                # If it's another link in widgets (ComfyUI logic), follow it
+                if widgets and isinstance(widgets[0], list):
+                    return self._get_real_value(widgets[0])
+        except:
+            pass
+        return None
+
+    def _extract_size_from_sampler(self, node_id, meta):
+        """
+        Traces the latent image link. 
+        If direct tracing fails, it attempts to find any 'EmptyLatentImage' node.
+        """
+        inputs = self.data[node_id].get("inputs", {})
+        found_size = False
+
+        if "latent_image" in inputs:
+            link = inputs["latent_image"]
+            if isinstance(link, list):
+                source_id = str(link[0])
+                node = self.data.get(source_id, {})
+                node_inputs = node.get("inputs", {})
+                
+                if "width" in node_inputs: 
+                    meta["width"] = self._get_real_value(node_inputs["width"])
+                    found_size = True
+                if "height" in node_inputs: 
+                    meta["height"] = self._get_real_value(node_inputs["height"])
+
+        # Final attempt: if still no size, scan for any EmptyLatentImage node in the graph
+        if not found_size:
+            for n in self.data.values():
+                if n.get("class_type") == "EmptyLatentImage":
+                    meta["width"] = self._get_real_value(n.get("inputs", {}).get("width"))
+                    meta["height"] = self._get_real_value(n.get("inputs", {}).get("height"))
+                    break
+
+    def _extract_sampler_params(self, node_id, meta):
+        """Extracts simple scalar values from the Sampler, resolving links."""
+        inputs = self.data[node_id].get("inputs", {})
+        
+        # Use the new resolver to get actual values instead of links
+        if "seed" in inputs: meta["seed"] = self._get_real_value(inputs["seed"])
+        if "noise_seed" in inputs: meta["seed"] = self._get_real_value(inputs["noise_seed"])
+        if "steps" in inputs: meta["steps"] = self._get_real_value(inputs["steps"])
+        if "cfg" in inputs: meta["cfg"] = self._get_real_value(inputs["cfg"])
+        if "sampler_name" in inputs: meta["sampler"] = self._get_real_value(inputs["sampler_name"])
+        if "scheduler" in inputs: meta["scheduler"] = self._get_real_value(inputs["scheduler"])
+        if "denoise" in inputs: meta["denoise"] = self._get_real_value(inputs["denoise"])
+
+    def _extract_prompts_from_sampler(self, node_id, meta):
+        """Traces 'positive' and 'negative' links to find text."""
+        inputs = self.data[node_id].get("inputs", {})
+        if "positive" in inputs:
+            meta["positive_prompt"] = self._trace_text(inputs["positive"])
+        if "negative" in inputs:
+            meta["negative_prompt"] = self._trace_text(inputs["negative"])
+
+    def _trace_text(self, link_info) -> str:
+        """Recursive helper to find text content from a link."""
+        if not isinstance(link_info, list): return ""
+        source_id = str(link_info[0])
+        if source_id not in self.data: return ""
+        
+        node = self.data[source_id]
+        inputs = node.get("inputs", {})
+
+        # Handle direct text encoders
+        if "text" in inputs and isinstance(inputs["text"], str):
+            return inputs["text"]
+        
+        # Handle SD3/Flux
+        if "t5xxl" in inputs and isinstance(inputs["t5xxl"], str):
+            return inputs["t5xxl"]
+
+        # Handle concatenated or linked text
+        if "text" in inputs and isinstance(inputs["text"], list):
+            return self._trace_text(inputs["text"])
+
+        # Handle Conditioning / Guidance nodes
+        if "conditioning" in inputs:
+             return self._trace_text(inputs["conditioning"])
+        
+        # Fallback to widgets for UI format nodes
+        widgets = node.get("widgets_values", [])
+        for w in widgets:
+            if isinstance(w, str) and len(w) > 5: return w
+
+        return ""
+
+    def _extract_model_from_sampler(self, node_id, meta):
+        """Follows the model wire to find the Checkpoint name."""
+        inputs = self.data[node_id].get("inputs", {})
+        if "model" in inputs:
+            model_link = inputs["model"]
+            if isinstance(model_link, list):
+                source_id = str(model_link[0])
+                if source_id in self.data:
+                    node = self.data[source_id]
+                    # Check for loader inputs
+                    if "ckpt_name" in node.get("inputs", {}):
+                        meta["model"] = node["inputs"]["ckpt_name"]
+                    # Follow further if it's a LoRA or Model handler
+                    elif "model" in node.get("inputs", {}) and isinstance(node["inputs"]["model"], list):
+                         self._extract_model_from_sampler(source_id, meta)
+    
+    def _fallback_scan(self, meta):
+        """Scans all nodes for specific types if direct tracing missed data."""
+        if not isinstance(self.data, dict): return
+        for node_id, node in self.data.items():
+            if not isinstance(node, dict): continue
+            class_type = node.get("class_type", "")
+            inputs = node.get("inputs", {})
+
+            if meta["seed"] is None and class_type == "RandomNoise":
+                if "noise_seed" in inputs: meta["seed"] = self._get_real_value(inputs["noise_seed"])
+
+            if meta["cfg"] is None and "Guider" in class_type:
+                if "cfg" in inputs: meta["cfg"] = self._get_real_value(inputs["cfg"])
+
+            if meta["steps"] is None and "Scheduler" in class_type:
+                if "steps" in inputs: meta["steps"] = self._get_real_value(inputs["steps"])
+# ============================================================================
+# END OF INTEGRATED TOOLS
+# ============================================================================
+
 def safe_delete_file(filepath):
     """
     Safely delete a file by either moving it to trash (if DELETE_TO is configured)
@@ -694,88 +947,89 @@ def _scan_bytes_for_workflow(content_bytes):
             # If loop finishes without open_braces hitting 0, no more valid JSON here
             break
             
-def extract_workflow(filepath):
+def extract_workflow(filepath, target_type='ui'):
+    """
+    Extracts workflow JSON from image/video files.
+    
+    Args:
+        filepath (str): Path to the file.
+        target_type (str): 'ui' (for visual node graph/version) or 'api' (for real execution values like Seed).
+                           Defaults to 'ui' to restore original compatibility.
+    """
     ext = os.path.splitext(filepath)[1].lower()
     video_exts = ['.mp4', '.mkv', '.webm', '.mov', '.avi']
     
-    best_workflow = None
+    found_workflows = {} # Stores {'ui': json_str, 'api': json_str}
     
-    def update_best(wf, wf_type):
-        nonlocal best_workflow
-        if wf_type == 'ui':
-            best_workflow = wf
-            return True # Found best, stop searching
-        if wf_type == 'api' and best_workflow is None:
-            best_workflow = wf
-        return False
+    def analyze_json(json_str):
+        # Helper to classify and store found workflows
+        wf, wf_type = _validate_and_get_workflow(json_str)
+        if wf and wf_type:
+            if wf_type not in found_workflows:
+                found_workflows[wf_type] = wf
 
     if ext in video_exts:
-        # --- FIX: Risoluzione del path anche nei processi Worker ---
-        # Se la variabile globale è vuota (succede nel multiprocessing), la cerchiamo ora.
+        # --- FIX: Path resolution in worker processes ---
         current_ffprobe_path = FFPROBE_EXECUTABLE_PATH
         if not current_ffprobe_path:
              current_ffprobe_path = find_ffprobe_path()
-        # -----------------------------------------------------------
 
         if current_ffprobe_path:
             try:
-                # Usiamo current_ffprobe_path invece della globale
                 cmd = [current_ffprobe_path, '-v', 'quiet', '-print_format', 'json', '-show_format', filepath]
                 result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True, creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
                 data = json.loads(result.stdout)
                 if 'format' in data and 'tags' in data['format']:
                     for value in data['format']['tags'].values():
                         if isinstance(value, str) and value.strip().startswith('{'):
-                            wf, wf_type = _validate_and_get_workflow(value)
-                            if wf:
-                                if update_best(wf, wf_type): return best_workflow
+                            analyze_json(value)
             except Exception: pass
     else:
         try:
             with Image.open(filepath) as img:
-                # Check standard keys first
+                # Check standard keys
                 for key in ['workflow', 'prompt']:
                     val = img.info.get(key)
-                    if val:
-                        wf, wf_type = _validate_and_get_workflow(val)
-                        if wf:
-                            if update_best(wf, wf_type): return best_workflow
+                    if val: analyze_json(val)
 
+                # Check Exif/UserComment (for WebP/JPG)
                 exif_data = img.info.get('exif')
                 if exif_data and isinstance(exif_data, bytes):
-                    # Check for "workflow:" prefix which some tools use
                     try:
                         exif_str = exif_data.decode('utf-8', errors='ignore')
+                        # Fast path: check for workflow marker
                         if 'workflow:{' in exif_str:
-                            # Extract the JSON part after "workflow:"
                             start = exif_str.find('workflow:{') + len('workflow:')
-                            # Try to parse this specific part first
                             for json_candidate in _scan_bytes_for_workflow(exif_str[start:].encode('utf-8')):
-                                wf, wf_type = _validate_and_get_workflow(json_candidate)
-                                if wf:
-                                    if update_best(wf, wf_type): return best_workflow
-                                    break 
+                                analyze_json(json_candidate)
                     except Exception: pass
                     
-                    # Fallback to standard scan of the entire exif_data if not already returned
-                    if best_workflow is None:
-                        for json_str in _scan_bytes_for_workflow(exif_data):
-                            wf, wf_type = _validate_and_get_workflow(json_str)
-                            if wf:
-                                if update_best(wf, wf_type): return best_workflow
+                    # Full scan fallback
+                    for json_str in _scan_bytes_for_workflow(exif_data):
+                        analyze_json(json_str)
         except Exception: pass
 
-    # Raw byte scan (fallback for any file type)
-    try:
-        with open(filepath, 'rb') as f:
-            content = f.read()
-        for json_str in _scan_bytes_for_workflow(content):
-            wf, wf_type = _validate_and_get_workflow(json_str)
-            if wf:
-                if update_best(wf, wf_type): return best_workflow
-    except Exception: pass
+    # Raw byte scan (ultimate fallback)
+    if not found_workflows:
+        try:
+            with open(filepath, 'rb') as f:
+                content = f.read()
+            for json_str in _scan_bytes_for_workflow(content):
+                analyze_json(json_str)
+                # Optimization: Stop if we found what we wanted
+                if target_type in found_workflows: break
+        except Exception: pass
                 
-    return best_workflow
+    # Return Logic:
+    # 1. Return the requested type if found
+    if target_type in found_workflows:
+        return found_workflows[target_type]
+    
+    # 2. Fallback: If we wanted API but only have UI (or vice versa), return what we have
+    if found_workflows:
+        return list(found_workflows.values())[0]
+        
+    return None
     
 def is_webp_animated(filepath):
     try:
@@ -921,6 +1175,8 @@ def extract_workflow_files_string(workflow_json_string):
     """
     Parses workflow and returns a normalized string containing ONLY filenames 
     (models, images, videos) used in the workflow.
+    
+    Robust version: Handles both UI (widgets_values) and API (inputs) formats safely.
     Filters out prompts, settings, and comments based on extensions and path structure.
     """
     if not workflow_json_string: return ""
@@ -932,16 +1188,17 @@ def extract_workflow_files_string(workflow_json_string):
 
     # Normalize structure (UI vs API format)
     nodes = []
-    if 'nodes' in data and isinstance(data['nodes'], list):
-        nodes = data['nodes'] # UI Format
-    else:
-        # API Format fallback
-        for nid, n in data.items():
-            if isinstance(n, dict):
-                n['id'] = nid
-                nodes.append(n)
+    if isinstance(data, dict):
+        if 'nodes' in data and isinstance(data['nodes'], list):
+            nodes = data['nodes'] # UI Format
+        else:
+            # API Format fallback (Dict of nodes)
+            # We convert it to a list for uniform processing
+            nodes = list(data.values())
+    elif isinstance(data, list):
+        nodes = data # Raw list format
 
-    # 1. Blocklist Nodes (Comments)
+    # 1. Blocklist Nodes (Comments and structural nodes)
     ignored_types = {'Note', 'NotePrimitive', 'Reroute', 'PrimitiveNode'}
     
     # 2. Whitelist Extensions (The most important filter)
@@ -957,24 +1214,31 @@ def extract_workflow_files_string(workflow_json_string):
     found_tokens = set()
     
     for node in nodes:
+        if not isinstance(node, dict): continue
+        
         node_type = node.get('type', node.get('class_type', ''))
         
         # Skip comment nodes
         if node_type in ignored_types:
             continue
             
-        # Collect values from widgets_values (UI) or inputs (API)
+        # Collect values to check from BOTH formats to be safe
         values_to_check = []
         
         # UI Format values
-        if 'widgets_values' in node and isinstance(node['widgets_values'], list):
-            values_to_check.extend(node['widgets_values'])
+        w_vals = node.get('widgets_values')
+        if isinstance(w_vals, list):
+            values_to_check.extend(w_vals)
             
         # API Format inputs
-        if 'inputs' in node and isinstance(node['inputs'], dict):
-            values_to_check.extend(node['inputs'].values())
+        inputs = node.get('inputs')
+        if isinstance(inputs, dict):
+            values_to_check.extend(inputs.values())
+        elif isinstance(inputs, list):
+            values_to_check.extend(inputs)
 
         for val in values_to_check:
+            # CRITICAL: Only process Strings. API inputs contain Ints/Floats/Lists(links).
             if isinstance(val, str) and val.strip():
                 # Normalize immediately
                 norm_val = normalize_smart_path(val.strip())
@@ -999,16 +1263,65 @@ def extract_workflow_files_string(workflow_json_string):
 
     return " ||| ".join(sorted(list(found_tokens)))
 
+# --- Helper to filter out garbage text (Markdown, Stats, Instructions, UI values) ---
+def _is_garbage_text(text):
+    if not text: return True
+    t = text.strip()
+    # Ignore very short strings
+    if len(t) < 3: return True
+    
+    # 1. Detect Markdown Tables / System Stats
+    if '|' in t and ('---' in t or 'VRAM' in t or 'Model' in t): return True
+    if 'GPU:' in t or 'RTX' in t or 'it/s' in t: return True
+    
+    # 2. Detect Instructions / Notes / Shortcuts / UI Trash
+    t_lower = t.lower()
+
+    # List of phrases that identify non-prompt text. 
+    # Simply add or remove strings here to update the filter.
+    GARBAGE_MARKERS = (
+        "ctrl +", "box-select", "don't forget to use", "partial - execution",
+        "creative prompt", "bad quality", "embedding:", "🟢", "select wildcard",
+        "by percentage", "what is art?", "send none", "you are an ai artist",
+        "jpeg压缩残留", "/", "select the wildcard"
+    )
+
+    # If any of the markers are found in the text, it is considered garbage
+    if any(marker in t_lower for marker in GARBAGE_MARKERS):
+        return True
+
+    
+    # 3. Detect URLs
+    if "http://" in t_lower or "https://" in t_lower: return True
+    
+    # 4. Detect Numbered Lists (common in notes: "1. do this")
+    if len(t) > 3 and t[0].isdigit() and t[1] == '.' and t[2] == ' ': return True
+
+    # 5. Detect Technical/UI Parameters (Extended Blacklist)
+    ui_keywords = {
+        'enable', 'disable', 'fixed', 'randomize', 'auto', 'simple', 'always', 
+        'center', 'left', 'top', 'bottom', 'right', 'nearest', 'bilinear', 
+        'bicubic', 'lanczos', 'keep proportion', 'image', 'default', 'comfyui', 
+        'wan', 'crop', 'input', 'output', 'float', 'int', 'boolean',
+        # Samplers & Schedulers
+        'euler', 'euler_a', 'heun', 'dpm_2', 'dpmpp_2m', 'dpmpp_sde', 'ddim', 
+        'uni_pc', 'lms', 'karras', 'exponential', 'sgd', 'normal'
+    }
+    
+    # Check exact match or if it looks like a parameter
+    if t_lower in ui_keywords: return True
+    
+    # 6. Detect Unresolved variables
+    if t.startswith('%') or '${' in t: return True
+    
+    return False
+
+
 def extract_workflow_prompt_string(workflow_json_string):
     """
-    Parses workflow and extracts ALL text prompts found in nodes.
-    
-    New Logic (Broad Extraction with Blacklist):
-    Scans all nodes for text parameters, filtering out technical values,
-    filenames, specific default prompt examples defined in global config,
-    and strictly ignoring Comment/Note nodes (including Markdown notes).
-    
-    Returns: A joined string of all found text prompts.
+    Broad extraction for Database Indexing (Searchable Keywords).
+    This function scans ALL nodes to ensure keyword searches work as expected,
+    while filtering out known UI noise and technical instructions.
     """
     if not workflow_json_string: return ""
     
@@ -1017,82 +1330,60 @@ def extract_workflow_prompt_string(workflow_json_string):
     except:
         return ""
 
+    # Normalize structure (UI vs API format)
     nodes = []
-    
-    # Normalize Structure
-    if 'nodes' in data and isinstance(data['nodes'], list):
-        nodes = data['nodes'] # UI Format
-    else:
-        # API Format fallback
-        for nid, n in data.items():
-            if isinstance(n, dict):
-                n['id'] = nid
-                nodes.append(n)
+    if isinstance(data, dict):
+        if 'nodes' in data and isinstance(data['nodes'], list):
+            nodes = data['nodes'] # UI Format
+        else:
+            nodes = list(data.values()) # API Format
+    elif isinstance(data, list):
+        nodes = data 
     
     found_texts = set()
     
-    # 1. Types to strictly ignore (Comments, Routing, structural nodes)
-    # Updated to include MarkdownNote and other common note types
+    # Nodes to strictly ignore for text extraction
     ignored_types = {
         'Note', 'NotePrimitive', 'Reroute', 'PrimitiveNode', 
-        'ShowText', 'PreviewText', 'ViewInfo', 'SaveImage', 'PreviewImage',
-        'MarkdownNote', 'Text Note', 'StickyNote'
+        'ShowText', 'Display Text', 'Simple Text', 'Text Box', 'ComfyUI', 'ExtraMetadata',
+        'SaveImage', 'PreviewImage', 'VHS_VideoCombine', 'VHS_LoadVideo'
     }
     
     for node in nodes:
+        if not isinstance(node, dict): continue
         node_type = node.get('type', node.get('class_type', '')).strip()
         
-        # Skip ignored node types
         if node_type in ignored_types: continue
 
-        # Gather values to check
+        # Collect all possible string values from widgets and inputs
         values_to_check = []
-        
-        # UI Format: check 'widgets_values'
         if 'widgets_values' in node and isinstance(node['widgets_values'], list):
             values_to_check.extend(node['widgets_values'])
-            
-        # API Format: check 'inputs' values
         if 'inputs' in node and isinstance(node['inputs'], dict):
             values_to_check.extend(node['inputs'].values())
 
-        # Analyze values
         for val in values_to_check:
-            # We are only interested in Strings
             if isinstance(val, str) and val.strip():
                 text = val.strip()
                 
-                # --- FILTERING LOGIC ---
+                # --- BROAD FILTERING FOR SEARCH ACCURACY ---
                 
-                # A. Blacklist Check (Uses the Global Configuration Variable)
-                if text in WORKFLOW_PROMPT_BLACKLIST:
+                # A. Global Blacklist check
+                if text in WORKFLOW_PROMPT_BLACKLIST: continue
+                
+                # B. Advanced Garbage filtering (Instructions, technical values, etc.)
+                if _is_garbage_text(text): continue
+                
+                # C. Ignore filenames and short numeric strings
+                if text.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.safetensors', '.ckpt', '.pt')):
                     continue
                 
-                # B. Ignore short strings (likely garbage or symbols)
-                if len(text) < 2: continue
-                
-                # C. Ignore numeric strings (seeds, steps, cfg, dimensions)
-                try:
-                    float(text)
-                    continue 
-                except ValueError:
-                    pass 
-                
-                # D. Ignore filenames (extensions)
-                if '.' in text and ' ' not in text:
-                    ext = os.path.splitext(text)[1].lower()
-                    if ext in ['.safetensors', '.ckpt', '.pt', '.png', '.jpg', '.webp']:
-                        continue
+                # D. Minimum length for a searchable keyword
+                if len(text) < 3: continue
 
-                # E. Ignore common tech keywords
-                tech_keywords = {'euler', 'dpm', 'normal', 'karras', 'gpu', 'cpu', 'auto', 'enable', 'disable', 'fixed', 'increment', 'randomized'}
-                if text.lower() in tech_keywords:
-                    continue
-
-                # If passed all filters, it's likely a prompt
                 found_texts.add(text)
 
-    # Join with a separator
+    # Join everything with a separator for the Database field
     return " , ".join(list(found_texts))
     
 def process_single_file(filepath):
@@ -1116,17 +1407,20 @@ def process_single_file(filepath):
         workflow_prompt_content = "" 
         
         if metadata['has_workflow']:
-            wf_json = extract_workflow(filepath)
+            # UPDATED: Request 'api' format for indexing to get real execution values (seeds, clean prompts)
+            # If not found, extract_workflow will automatically fallback to 'ui'
+            wf_json = extract_workflow(filepath, target_type='api')
+            
             if wf_json:
                 workflow_files_content = extract_workflow_files_string(wf_json)
-                workflow_prompt_content = extract_workflow_prompt_string(wf_json) # NEW
+                workflow_prompt_content = extract_workflow_prompt_string(wf_json) 
         
         return (
             file_id, filepath, mtime, os.path.basename(filepath),
             metadata['type'], metadata['duration'], metadata['dimensions'], 
             metadata['has_workflow'], file_size, time.time(), 
             workflow_files_content, 
-            workflow_prompt_content # NEW return value
+            workflow_prompt_content 
         )
     except Exception as e:
         print(f"ERROR: Failed to process file {os.path.basename(filepath)} in worker: {e}")
@@ -1369,20 +1663,24 @@ def get_dynamic_folder_config(force_refresh=False):
                 if is_recursive and current_path.startswith(w_path + '/'):
                     is_watched_folder = True
                     break
-            
+           
             # Mount Logic
             is_mount = (current_path in mounted_paths)
+
+            # NEW: Resolve the physical path (handles Symlinks/Junctions for subfolders too)
+            real_path = os.path.realpath(current_path).replace('\\', '/')
 
             dynamic_config[key] = {
                 'display_name': folder_data['display_name'],
                 'path': current_path,
+                'real_path': real_path, # <--- NEW FIELD
                 'relative_path': rel_path,
                 'parent': parent_key,
                 'children': [],
                 'mtime': folder_data['mtime'],
                 'is_watched': is_watched_folder,
                 'is_explicitly_watched': is_explicitly_watched,
-                'is_mount': is_mount # Pass to frontend
+                'is_mount': is_mount
             }
     except FileNotFoundError:
         print(f"WARNING: The base directory '{BASE_OUTPUT_PATH}' was not found.")
@@ -2691,61 +2989,45 @@ def upload_files():
     if success_count > 0: sync_folder_on_demand(destination_path)
     if errors: return jsonify({'status': 'partial_success', 'message': f'Successfully uploaded {success_count} files. The following files failed: {", ".join(errors.keys())}'}), 207
     return jsonify({'status': 'success', 'message': f'Successfully uploaded {success_count} files.'})
-                           
-@app.route('/galleryout/rescan_folder', methods=['POST'])
-def rescan_folder():
-    data = request.json
-    folder_key = data.get('folder_key')
-    mode = data.get('mode', 'all') # 'all' or 'recent'
-    
-    if not folder_key: return jsonify({'status': 'error', 'message': 'No folder provided.'}), 400
-    folders = get_dynamic_folder_config()
-    if folder_key not in folders: return jsonify({'status': 'error', 'message': 'Folder not found.'}), 404
-    
-    folder_path = folders[folder_key]['path']
+
+# Global dictionary to track active background jobs
+# Structure: { 'job_id': {'status': 'processing', 'current': 0, 'total': 100, 'folder_key': '...'} }
+rescan_jobs = {}
+
+def background_rescan_worker(job_id, files_to_process):
+    """
+    Background worker that updates a global job status so the UI can poll for progress.
+    """
+    if not files_to_process: 
+        rescan_jobs[job_id]['status'] = 'done'
+        return
+
+    print(f"INFO: [Background] Job {job_id}: Rescanning {len(files_to_process)} files...")
     
     try:
+        total = len(files_to_process)
+        rescan_jobs[job_id]['total'] = total
+        
         with get_db_connection() as conn:
-            # Get all files in this folder
-            query = "SELECT path, last_scanned FROM files WHERE path LIKE ?"
-            params = (folder_path + os.sep + '%',)
-            rows = conn.execute(query, params).fetchall()
-            
-            # Filter files strictly within this folder (not subfolders)
-            folder_path_norm = os.path.normpath(folder_path)
-            files_in_folder = [
-                {'path': row['path'], 'last_scanned': row['last_scanned']} 
-                for row in rows 
-                if os.path.normpath(os.path.dirname(row['path'])) == folder_path_norm
-            ]
-            
-            files_to_process = []
-            current_time = time.time()
-            
-            if mode == 'recent':
-                # Process files not scanned in the last 60 minutes (3600 seconds)
-                cutoff_time = current_time - 3600
-                files_to_process = [f['path'] for f in files_in_folder if (f['last_scanned'] or 0) < cutoff_time]
-            else:
-                # Process all files
-                files_to_process = [f['path'] for f in files_in_folder]
-            
-            if not files_to_process:
-                return jsonify({'status': 'success', 'message': 'No files needed rescanning.', 'count': 0})
-            
-            print(f"INFO: Rescanning {len(files_to_process)} files in '{folder_path}' (Mode: {mode})...")
-            
             processed_count = 0
             results = []
             
             with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_PARALLEL_WORKERS) as executor:
                 futures = {executor.submit(process_single_file, path): path for path in files_to_process}
+                
                 for future in concurrent.futures.as_completed(futures):
-                    result = future.result()
-                    if result:
-                        results.append(result)
-                    processed_count += 1
-            
+                    try:
+                        result = future.result()
+                        if result:
+                            results.append(result)
+                        
+                        processed_count += 1
+                        # UPDATE PROGRESS
+                        rescan_jobs[job_id]['current'] = processed_count
+                        
+                    except Exception as e:
+                        print(f"ERROR: Worker failed for a file: {e}")
+
             if results:
                 conn.executemany("""
                     INSERT INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned, workflow_files, workflow_prompt) 
@@ -2761,39 +3043,90 @@ def rescan_folder():
                         last_scanned = excluded.last_scanned,
                         workflow_files = excluded.workflow_files,
                         workflow_prompt = excluded.workflow_prompt,
-                        
-                        -- LOGICA CONDIZIONALE:
-                        is_favorite = CASE 
-                            WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN 0  
-                            ELSE files.is_favorite                     
-                        END,
-                        
-                        ai_caption = CASE 
-                            WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN NULL 
-                            ELSE files.ai_caption                        
-                        END,
-                        
-                        ai_embedding = CASE 
-                            WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN NULL 
-                            ELSE files.ai_embedding 
-                        END,
-
-                        ai_last_scanned = CASE 
-                            WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN 0 
-                            ELSE files.ai_last_scanned 
-                        END,
-
-                        -- Aggiorna mtime alla fine
+                        is_favorite = CASE WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN 0 ELSE files.is_favorite END,
+                        ai_caption = CASE WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN NULL ELSE files.ai_caption END,
+                        ai_embedding = CASE WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN NULL ELSE files.ai_embedding END,
+                        ai_last_scanned = CASE WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN 0 ELSE files.ai_last_scanned END,
                         mtime = excluded.mtime
                 """, results) 
                 conn.commit()
                 
-        return jsonify({'status': 'success', 'message': f'Successfully rescanned {len(results)} files.', 'count': len(results)})
+        print(f"INFO: [Background] Job {job_id} finished.")
+        rescan_jobs[job_id]['status'] = 'done'
         
     except Exception as e:
-        print(f"ERROR: Rescan failed: {e}")
+        print(f"CRITICAL ERROR in Background Rescan: {e}")
+        rescan_jobs[job_id]['status'] = 'error'
+        rescan_jobs[job_id]['error'] = str(e)
+        
+@app.route('/galleryout/rescan_folder', methods=['POST'])
+def rescan_folder():
+    data = request.json
+    folder_key = data.get('folder_key')
+    mode = data.get('mode', 'all')
+    
+    if not folder_key: return jsonify({'status': 'error', 'message': 'No folder provided.'}), 400
+    folders = get_dynamic_folder_config()
+    if folder_key not in folders: return jsonify({'status': 'error', 'message': 'Folder not found.'}), 404
+    
+    folder_path = folders[folder_key]['path']
+    folder_name = folders[folder_key]['display_name']
+    
+    try:
+        files_to_process = []
+        with get_db_connection() as conn:
+            query = "SELECT path, last_scanned FROM files WHERE path LIKE ?"
+            rows = conn.execute(query, (folder_path + os.sep + '%',)).fetchall()
+            
+            folder_path_norm = os.path.normpath(folder_path)
+            files_in_folder = [
+                {'path': row['path'], 'last_scanned': row['last_scanned']} 
+                for row in rows 
+                if os.path.normpath(os.path.dirname(row['path'])) == folder_path_norm
+            ]
+            
+            current_time = time.time()
+            if mode == 'recent':
+                cutoff_time = current_time - 3600
+                files_to_process = [f['path'] for f in files_in_folder if (f['last_scanned'] or 0) < cutoff_time]
+            else:
+                files_to_process = [f['path'] for f in files_in_folder]
+            
+        if not files_to_process:
+            return jsonify({'status': 'success', 'message': 'No files needed rescanning.', 'count': 0})
+        
+        # --- JOB CREATION ---
+        job_id = str(uuid.uuid4())
+        rescan_jobs[job_id] = {
+            'status': 'processing', 
+            'current': 0, 
+            'total': len(files_to_process),
+            'folder_key': folder_key,
+            'folder_name': folder_name
+        }
+        
+        # Start Worker with Job ID
+        threading.Thread(target=background_rescan_worker, args=(job_id, files_to_process), daemon=True).start()
+                
+        return jsonify({
+            'status': 'started', 
+            'job_id': job_id,
+            'total': len(files_to_process),
+            'message': 'Background process started.'
+        })
+        
+    except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+@app.route('/galleryout/check_rescan_status/<job_id>')
+def check_rescan_status(job_id):
+    job = rescan_jobs.get(job_id)
+    if not job:
+        return jsonify({'status': 'not_found'})
+    
+    # Return copy of job data
+    return jsonify(job)
+    
 @app.route('/galleryout/create_folder', methods=['POST'])
 def create_folder():
     data = request.json
@@ -3055,6 +3388,7 @@ def browse_filesystem():
 
     return jsonify(response_data)
     
+   
 # --- ZIP BACKGROUND JOB MANAGEMENT ---
 zip_jobs = {}
 def background_zip_task(job_id, file_ids):
@@ -3747,7 +4081,11 @@ def download_workflow(file_id):
     info = get_file_info_from_db(file_id)
     filepath = info['path']
     original_filename = info['name']
-    workflow_json = extract_workflow(filepath)
+    
+    # EXPLICITLY request 'ui' format to ensure Groups, Notes and Positions are preserved.
+    # If we used 'api', the download would lack visual layout data.
+    workflow_json = extract_workflow(filepath, target_type='ui')
+    
     if workflow_json:
         base_name, _ = os.path.splitext(original_filename)
         new_filename = f"{base_name}.json"
@@ -3758,17 +4096,71 @@ def download_workflow(file_id):
 @app.route('/galleryout/node_summary/<string:file_id>')
 def get_node_summary(file_id):
     try:
-        filepath = get_file_info_from_db(file_id, 'path')
-        workflow_json = extract_workflow(filepath)
-        if not workflow_json:
+        # 1. Fetch basic info from DB
+        file_info = get_file_info_from_db(file_id)
+        filepath = file_info['path']
+        db_dimensions = file_info.get('dimensions')
+        
+        # 2. Extract UI version for the Raw Node List (Always reliable)
+        ui_json = extract_workflow(filepath, target_type='ui')
+        if not ui_json:
             return jsonify({'status': 'error', 'message': 'Workflow not found for this file.'}), 404
-        summary_data = generate_node_summary(workflow_json)
-        if summary_data is None:
-            return jsonify({'status': 'error', 'message': 'Failed to parse workflow JSON.'}), 400
-        return jsonify({'status': 'success', 'summary': summary_data})
+            
+        summary_data = generate_node_summary(ui_json)
+        
+        # 3. Extract API version for high-quality Metadata Dashboard
+        api_json = extract_workflow(filepath, target_type='api')
+        meta_data = {}
+        
+        try:
+            # We prefer API format for real values (Seed, CFG, etc.)
+            json_source = api_json if api_json else ui_json
+            wf_data = json.loads(json_source)
+            if isinstance(wf_data, list):
+                wf_data = {str(i): n for i, n in enumerate(wf_data)}
+            
+            parser = ComfyMetadataParser(wf_data)
+            parsed_meta = parser.parse()
+            
+            # --- STRICT VALIDATION LOGIC ---
+            # We only show the Dashboard if we have a "Solid Set" of data.
+            # Criteria: Must have a Positive Prompt AND at least 2 technical parameters (Seed, Model, Steps, etc.)
+            # This prevents showing a "messy" or near-empty dashboard for complex/unsupported workflows.
+            
+            tech_count = 0
+            if parsed_meta.get('seed'): tech_count += 1
+            if parsed_meta.get('model'): tech_count += 1
+            if parsed_meta.get('steps'): tech_count += 1
+            if parsed_meta.get('sampler'): tech_count += 1
+            
+            has_prompt = len(parsed_meta.get('positive_prompt', '')) > 5
+            
+            # If data is solid, we populate meta_data for the frontend dashboard
+            if has_prompt and tech_count >= 2:
+                meta_data = parsed_meta
+                # Ensure resolution is always present using DB fallback
+                if not meta_data.get('width') or not meta_data.get('height'):
+                    if db_dimensions and 'x' in db_dimensions:
+                        w, h = db_dimensions.split('x')
+                        meta_data['width'], meta_data['height'] = w.strip(), h.strip()
+            else:
+                # Data is too sparse or unreliable. 
+                # We return empty meta to hide the dashboard and show only the Raw Node List.
+                meta_data = {}
+                
+        except Exception as e:
+            print(f"Metadata Validation Warning: {e}")
+            meta_data = {}
+
+        return jsonify({
+            'status': 'success', 
+            'summary': summary_data, # Raw Node List (Always shown)
+            'meta': meta_data        # Dashboard Data (Only if valid/complete)
+        })
+        
     except Exception as e:
-        print(f"ERROR generating node summary for {file_id}: {e}")
-        return jsonify({'status': 'error', 'message': f'An internal error occurred: {e}'}), 500
+        print(f"ERROR generating node summary: {e}")
+        return jsonify({'status': 'error', 'message': str(e)})
 
 @app.route('/galleryout/thumbnail/<string:file_id>')
 def serve_thumbnail(file_id):

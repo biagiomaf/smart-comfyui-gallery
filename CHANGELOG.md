@@ -1,5 +1,42 @@
 # Changelog
 
+#### **[1.55] - 2026-02-05**
+
+**Added**
+** Video Storyboard & Analysis - ffmpeg required  **
+*   **Quick Storyboard ('E'):** Hover over any video in the grid and press `E` to instantly open the storyboard.
+*   **Grid Overview:** Instantly analyze video content with a clean **11-frame Grid** covering the entire duration from Start to the **True Last Frame**.
+- **Thumbnail Grid Size:** Added a new toggle in the Options menu (`⚙️`) allowing users to switch between **Normal** and **Compact** view on desktop. This preference is saved automatically.
+- **Options Menu & Autoplay Toggle:** New persistent **`⚙️ Options`** menu (Desktop/Mobile) to manage core gallery settings.
+- **Video Autoplay Control:** Introduced a session-based toggle to explicitly enable/disable video autoplay in the grid. (Default: **OFF** to save bandwidth).
+- **'P' Shortcut:** Added the **`P`** key shortcut to quickly toggle the Video Autoplay setting.
+- **Dynamic UX for Videos:**
+    - On **Desktop**, when Autoplay is OFF, a small **▶ icon** appears in the corner. Clicking it plays the video **in-grid** for quick preview.
+    - On **Mobile**, the thumbnail is fully clickable to open the Lightbox (Click-to-Open).
+- **Visual Feedback:** Added a full-screen loader (`loader-overlay`) to prevent interaction during the necessary page reload after changing the Autoplay setting.
+- **Focus Mode:** A new streamlined view for professionals. Hides UI clutter and changes click behavior to "Select Only" for rapid batching. Accessible via the **`⚡`** button or **`Q`** key.
+- **Shortcuts Button:** Added a dedicated `? Shortcuts` button in the desktop header.
+- **Platform Detection:** The Shortcuts panel now automatically displays `⌘` symbols for Mac users and `Ctrl` for Windows/Linux.
+- **Generation Dashboard:** Added a high-fidelity summary panel at the top of the Node Summary to show Seed, Model, Steps, and Prompts at a glance.
+- **Grid View Shortcuts:** Enabled `N` (Node Summary) and other action keys directly in Grid View via mouse hover.
+- **Smart Move (`M`):** The Move shortcut now detects context: if no files are selected, it automatically selects the hovered item and opens the dialog.
+- **Real Path Resolution:** New "Folder Info" tool that resolves and displays the physical path on disk (useful for Docker volumes and Symlinks).
+- **Asynchronous Rescan:** Re-engineered the "Rescan Folder" feature to run in a background thread to avoid 502/Timeout errors on massive libraries.
+
+**Changed**
+- **Unified Shortcut Logic:** Completely rewrote input handling. **Mouse Hover** now strictly takes priority over **Keyboard Focus** for all actions. This fixes inconsistencies where shortcuts would target the wrong file after closing the Lightbox.
+- **Help UI Overhaul:** Redesigned the Keyboard Shortcuts (`?`) overlay into a clean, responsive layout.
+- **Hybrid Parser:** Integrated `ComfyMetadataParser` to support both API-format and UI-format JSON metadata simultaneously for better accuracy.
+- **Header Layout:** Reorganized the top bar to group tools (`Shortcuts`, `Focus Mode`, `AI Manager`) on the right side for better desktop usability.
+- **Smart Dialog Accessibility & Interaction Overhaul** Enhanced Keyboard Navigation
+
+
+**Fixed**
+- **KSampler Data Alignment:** Fixed a critical parsing issue in Node Summary where the missing `control_after_generate` field caused values (Steps, CFG, Sampler) to shift and display incorrectly.
+- **Focus Loss Bug:** Fixed an issue where the `V` key became unresponsive after returning to the grid until the mouse was moved.
+- **Resolution Display:** Fixed an issue where linked resolutions appeared as node IDs (e.g., "41,0") instead of actual dimensions.
+
+
 ## [1.54] - 2026-01-20
 
 ### Added
