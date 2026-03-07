@@ -13,6 +13,7 @@ SmartGallery works fully offline and does **not** require ComfyUI to be running.
 - [FFmpeg / FFprobe Notes](#ffmpeg--ffprobe-notes)
 - [First Launch & Performance Notes](#first-launch--performance)
 - [Docker Deployment (from 'Installation & Update' -> select 'Docker')](#installation--update)
+- [ComfyUI Plugin](#comfyui-plugin)
 - [Reverse Proxy Setup](#reverse-proxy-setup)
 - [Troubleshooting](#troubleshooting)
 
@@ -291,6 +292,53 @@ SERVER_PORT = int(os.environ.get('SERVER_PORT', 8189))
 ```
 
 > Always use forward slashes (`/`) even on Windows.
+
+---
+
+## ComfyUI Plugin
+
+<details>
+<summary><strong>Run as a ComfyUI custom_nodes Plugin</strong></summary>
+This repository can run **inside ComfyUI** as a `custom_nodes`:
+
+- No separate web server port (no `8189`)
+- The UI is served by ComfyUI at `http://127.0.0.1:8188/galleryout/view/_root_`
+- The Gallery tab appears in the ComfyUI sidebar as **Gallery**
+
+### 1) Install the plugin
+
+1. Go to your ComfyUI `custom_nodes` folder.
+2. Clone (or symlink) this repository into `custom_nodes/`.
+
+Example (Linux/macOS):
+```bash
+cd /path/to/ComfyUI/custom_nodes
+git clone <THIS_REPO_URL> smart-comfyui-gallery
+```
+
+### 2) Install Python dependencies (ComfyUI venv)
+
+Install the dependencies into the same Python environment used by ComfyUI:
+```bash
+cd /path/to/ComfyUI
+./.venv/bin/pip install -r custom_nodes/smart-comfyui-gallery/requirements.txt
+```
+
+### 3) Restart ComfyUI
+
+Restart ComfyUI so it can load the plugin.
+
+### 4) Open SmartGallery
+
+- From the ComfyUI sidebar: **Gallery**
+- Or directly: `http://127.0.0.1:8188/galleryout/view/_root_`
+
+### Notes
+
+- The plugin automatically uses ComfyUI paths for `output` and `input` (no need to set `BASE_OUTPUT_PATH` / `BASE_INPUT_PATH`).
+- On first launch, SmartGallery will initialize its database and may scan your output folder.
+
+</details>
 
 ---
 
