@@ -9,3 +9,4 @@ pyOpenSSL
 click
 itsdangerous
 blinker
+aiohttp-wsgi

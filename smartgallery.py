@@ -4890,8 +4890,7 @@ def show_ffmpeg_warning():
         print(f"{Colors.YELLOW}{msg}{Colors.RESET}")
         print(f"{Colors.YELLOW}{Colors.BOLD}" + "="*70 + f"{Colors.RESET}\n")
 
-if __name__ == '__main__':
-
+def setup_gallery():
     print_startup_banner()
     check_for_updates()
     print_configuration()
@@ -4930,6 +4929,10 @@ if __name__ == '__main__':
             print(f"{Colors.BLUE}INFO: AI Background Watcher started.{Colors.RESET}")
         except Exception as e:
             print(f"{Colors.RED}ERROR: Failed to start AI Watcher: {e}{Colors.RESET}")
+
+if __name__ == '__main__':
+
+    setup_gallery()
 
     print(f"{Colors.GREEN}{Colors.BOLD}🚀 Gallery started successfully!{Colors.RESET}")
     print(f"👉 Access URL: {Colors.CYAN}{Colors.BOLD}http://127.0.0.1:{SERVER_PORT}/galleryout/{Colors.RESET}")
