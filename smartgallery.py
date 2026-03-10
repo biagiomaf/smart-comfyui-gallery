@@ -2134,7 +2134,7 @@ def initialize_gallery_fast_no_db_check():
         except sqlite3.DatabaseError as e:
             print(f"ERROR initializing database: {e}")
 
-def initialize_gallery():
+def initialize_gallery(scan_folders=True):
     print("INFO: Initializing gallery...")
     global FFPROBE_EXECUTABLE_PATH
     FFPROBE_EXECUTABLE_PATH = find_ffprobe_path()
@@ -2149,7 +2149,8 @@ def initialize_gallery():
                 cleanup_invalid_watched_folders(conn)
             # Force full sync on every startup to clean external deletions
             print(f"{Colors.BLUE}INFO: Performing startup consistency check...{Colors.RESET}")
-            full_sync_database(conn)
+            if scan_folders:
+                full_sync_database(conn)
 
         except sqlite3.DatabaseError as e:
             print(f"ERROR initializing database: {e}")
@@ -4890,7 +4891,7 @@ def show_ffmpeg_warning():
         print(f"{Colors.YELLOW}{msg}{Colors.RESET}")
         print(f"{Colors.YELLOW}{Colors.BOLD}" + "="*70 + f"{Colors.RESET}\n")
 
-def setup_gallery():
+def setup_gallery(scan_folders=True):
     print_startup_banner()
     check_for_updates()
     print_configuration()
@@ -4907,7 +4908,7 @@ def setup_gallery():
         print(f"{Colors.YELLOW}   > The gallery will still function normally for output files.{Colors.RESET}\n")
     
     # Initialize the gallery (Creates DB, Migrations, etc.)
-    initialize_gallery()
+    initialize_gallery(scan_folders)
     
     # --- CHECK: FFMPEG WARNING ---
     if not FFPROBE_EXECUTABLE_PATH:
@@ -4932,7 +4933,7 @@ def setup_gallery():
 
 if __name__ == '__main__':
 
-    setup_gallery()
+    setup_gallery(True)
 
     print(f"{Colors.GREEN}{Colors.BOLD}🚀 Gallery started successfully!{Colors.RESET}")
     print(f"👉 Access URL: {Colors.CYAN}{Colors.BOLD}http://127.0.0.1:{SERVER_PORT}/galleryout/{Colors.RESET}")

@@ -1,12 +1,12 @@
 import os
 import sys
-#import threading
 
 import folder_paths
-#from werkzeug.middleware.dispatcher import DispatcherMiddleware
-from aiohttp_wsgi import WSGIHandler
-from aiohttp import web
+from a2wsgi import WSGIMiddleware
+from aiohttp.client_exceptions import ClientConnectionResetError
+from aiohttp_asgi import ASGIResource
 from server import PromptServer
+import logging
 
 _plugin_root = os.path.dirname(os.path.realpath(__file__))
 if _plugin_root not in sys.path:
@@ -16,17 +16,26 @@ os.environ["BASE_OUTPUT_PATH"] = folder_paths.output_directory
 os.environ["BASE_INPUT_PATH"] = folder_paths.input_directory
 os.environ["BASE_SMARTGALLERY_PATH"] = folder_paths.output_directory
 
-import smartgallery as sg
-
 WEB_DIRECTORY = "./web"
 NODE_CLASS_MAPPINGS = {}
 NODE_DISPLAY_NAME_MAPPINGS = {}
 
-sg.setup_gallery()
-wsgi_app = WSGIHandler(sg.app)
+# sg for smartgallery
+import smartgallery as sg
+sg.setup_gallery(scan_folders=False)
 
 
-@PromptServer.instance.routes.route("*", "/galleryout{_:.*}")
-async def _handle_galleryout(request: web.Request) -> web.StreamResponse:
-    request.match_info["path_info"] = request.path
-    return await wsgi_app(request)
+async def galleryout_asgi(scope, receive, send):
+    if scope.get("type") == "http":
+        scope = dict(scope)
+        scope["root_path"] = ""
+    async def safe_send(message):
+        try:
+            await send(message)
+        except ClientConnectionResetError as e:
+            logging.debug(f"ClientConnectionResetError: {e}", exc_info=True)
+
+    return await WSGIMiddleware(sg.app)(scope, receive, safe_send)
+
+
+PromptServer.instance.app.router.register_resource(ASGIResource(galleryout_asgi, root_path="/galleryout"))  
