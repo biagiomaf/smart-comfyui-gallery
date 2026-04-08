@@ -1,5 +1,24 @@
 # Changelog
 
+### **[2.11] - 2026-04-08**
+
+v2 is not just a feature drop. The version number jumped because the architecture, ACL system, and multi-user logic required a ground-up rethink. Your existing setup, folders, and data are all forward-compatible.
+
+**New in v2.11:**
+
+-   **Virtual Collections (Exhibition Ready / Private):** group files from different physical folders into named albums without moving anything on disk. Mark a collection as Exhibition Ready to make it visible in the sharing portal. Private collections are invisible to guests and never appear in Exhibition.
+-   **1-5 Star Ratings:** rate any image from 1 to 5 stars. Works for solo users too: a great way to personally curate your own library and surface your best work. Ratings are per-user, a global average is shown instantly in the grid, and you can sort by highest rated.
+-   **Real-Time Comments:** leave notes on any image, whether you work alone or with a team. Solo users can annotate their own files as personal memos. With a team, each message has its own visibility: Public (everyone), Internal (staff only), or Direct Message to a specific user. Comment keywords are fully searchable from the Filters panel. Press `G` on any image to open the details panel.
+-   **Color-Coded Status Tags:** tag any image with a pipeline state using keys `1` to `5`: Approved (green), Review (yellow), To Edit (blue), Rejected (red), Select (purple). Browse all files carrying a given status across every folder at once from the Status tab in the sidebar.
+-   **Full User Management with ACL Roles:** create accounts and assign roles: Admin, MANAGER, STAFF, FRIEND, USER, CUSTOMER, GUEST. Each role controls which interface they can access, what they can see, and what they can download.
+-   **Exhibition Mode (fully optional):** a separate, read-only portal you can launch when you want to share work with clients, collaborators, or friends. Completely optional: if you have no need to share, simply never launch it. Only the collections you mark as Exhibition Ready are visible. Workflows and prompts are always hidden from guests.
+-   **Clean Export (`Shift+W`):** download any file stripped of all embedded workflows, prompts and EXIF metadata. Safe to send to anyone without exposing your process.  
+-   **Wiki Website:** Full documentation with screenshots at [smartgallerydam.com](https://smartgallerydam.com) (accessible from the top menu: **"Docs"**).  
+
+** Improved **  
+-   **Mount Any External Drive or Folder:** mount external drives, NAS volumes or network paths directly from the UI. Mix ComfyUI output folders with photo archives, video collections or any other media library. All DAM features work on everything, workflow extraction only applies where there is a workflow to extract.  
+-   **Powerful search operators:** filter by multiple keywords at once using AND, OR and exclusion operators across prompts, models, LoRAs, comment text and more.
+
 #### **[1.55] - 2026-02-05**
 
 **Added**  

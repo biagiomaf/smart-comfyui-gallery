@@ -1,0 +1,64 @@
+services:
+  comfy-smartgallery-main:
+    image: mmartial/smart-comfyui-gallery:latest
+    container_name: comfy-smartgallery-main
+    ports:
+      - 8189:8189 # external:internal
+    volumes:
+      - /comfyui-nvidia/basedir/output:/mnt/output
+      - /comfyui-nvidia/basedir/input:/mnt/input
+      - /comfyui-nvidia/SmartGallery:/mnt/SmartGallery
+#      - /tmp:/deleteto
+#      - /etc/localtime:/etc/localtime:ro
+      # To use the "Link External Folders" feature, add external locations to be mounted within the container
+#      - /path/to/your/ExternalFolder:/mnt/ExternalFolder
+    restart: unless-stopped
+    environment:
+      BASE_OUTPUT_PATH: /mnt/output
+      BASE_INPUT_PATH: /mnt/input
+      BASE_SMARTGALLERY_PATH: /mnt/SmartGallery
+      # Adapt to wanted values (use id -u and id -g to obtain values)
+      WANTED_UID: 1000
+      WANTED_GID: 1000
+      # Set to true to force chown of the BASE_SMARTGALLERY_PATH folder only
+      #FORCE_CHOWN: true
+      #DELETE_TO: /deleteto
+      # do not change the internal port below (it is allowed in the Dockerfile), only in the `ports` section above, 
+      CLI_ARGS: --port 8189 --admin-pass ${MAIN_PASS} --force-login
+      # see README.md for a list of the available CLI arguments
+
+  comfy-smartgallery-exhibit:
+    image: mmartial/smart-comfyui-gallery:latest
+    container_name: comfy-smartgallery-exhibit
+    ports:
+      - 8190:8190 # external:internal
+    depends_on: 
+      - comfy-smartgallery-main
+    volumes:
+      # only need rw to the DB folder
+      - /comfyui-nvidia/basedir/output:/mnt/output:ro
+      - /comfyui-nvidia/basedir/input:/mnt/input:ro
+      - /comfyui-nvidia/SmartGallery:/mnt/SmartGallery
+#      - /etc/localtime:/etc/localtime:ro
+      # To use the "Link External Folders" feature, add external locations to be mounted within the container
+#      - /path/to/your/ExternalFolder:/mnt/ExternalFolder
+    restart: unless-stopped
+    environment:
+      BASE_OUTPUT_PATH: /mnt/output
+      BASE_INPUT_PATH: /mnt/input
+      BASE_SMARTGALLERY_PATH: /mnt/SmartGallery
+      # Adapt to wanted values (use id -u and id -g to obtain values)
+      WANTED_UID: 1000
+      WANTED_GID: 1000
+      # Set to true to force chown of the BASE_SMARTGALLERY_PATH folder only
+      #FORCE_CHOWN: true
+      #DELETE_TO: /deleteto
+      # do not change the internal port below (it is allowed in the Dockerfile), only in the `ports` section above
+      CLI_ARGS: --exhibition --port 8190 --admin-pass ${EXHIBIT_PASS}
+      # see README.md for a list of the available CLI arguments
+
+# Set a .env file in the same directory as this compose file and store the passwords (main and exhibition are not the same ) in it
+# Password requirement: 8+ characters
+# Example:
+# MAIN_PASS=yourpassword
+# EXHIBIT_PASS=yourpassword

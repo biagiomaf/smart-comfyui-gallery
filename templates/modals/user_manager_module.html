@@ -1,0 +1,572 @@
+<!-- USER MANAGER MODULE -->
+<!-- Version: 2.11 - April 08, 2026 -->
+<style>
+    /* --- RESTORED CSS FROM ORIGINAL EXHIBITION --- */
+    #um-manager-overlay, #um-invite-overlay, #um-dialog-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.9); z-index: 9999;
+        display: none; justify-content: center; align-items: center;
+        backdrop-filter: blur(8px);
+    }
+    #um-dialog-overlay { z-index: 10001; }
+
+    .um-panel {
+        background: #1a1a1a; width: 1000px; max-width: 98vw; height: 95vh;
+        border-radius: 16px; border: 1px solid var(--primary-color);
+        display: flex; flex-direction: column; overflow: hidden;
+        box-shadow: 0 20px 80px #000;
+        overscroll-behavior: contain !important;
+    }
+
+    .um-header {
+        padding: 15px 20px; border-bottom: 1px solid #333; background: #222;
+        display: flex; flex-wrap: wrap; align-items: center; gap: 15px; flex-shrink: 0;
+    }
+
+    .um-body-scroll {
+        flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Original Sorting & Tool Buttons */
+    .um-tool-btn {
+        background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+        color: white; border-radius: 6px; cursor: pointer; height: 40px; min-width: 40px;
+        padding: 0 12px; font-size: 0.85rem; display: flex; align-items: center; justify-content: center;
+        transition: all 0.2s; white-space: nowrap;
+    }
+    .um-tool-btn:hover { background: #252525; border-color: var(--primary-color); }
+    .um-tool-btn.active-blue { background: var(--primary-color); border-color: white; font-weight: bold; }
+
+    /* Inputs (Restored Original Style) */
+    .um-input-premium {
+        width: 100%; background: #000; border: 1px solid #333; color: #fff;
+        padding: 12px; border-radius: 10px; outline: none; margin-bottom: 0;
+        font-size: 1rem; transition: border-color 0.2s; height: 44px;
+    }
+    .um-input-premium:focus { border-color: var(--primary-color); }
+
+    .um-btn-premium { 
+        display: inline-flex !important; align-items: center !important; justify-content: center !important;
+        background: var(--primary-color); color: white; border: none; padding: 0 25px; 
+        height: 48px; border-radius: 12px; font-weight: 700; cursor: pointer; 
+        transition: all 0.2s; text-transform: uppercase; letter-spacing: 1px;
+    }
+    .um-btn-premium:hover { filter: brightness(1.1); transform: translateY(-2px); }
+    .um-btn-premium.secondary { background: #333; border: 1px solid #444; }
+
+    /* Invite Panel */
+    .um-invite-panel {
+        background: #151515; width: 650px; max-width: 95vw; height: 75vh;
+        max-height: 800px; border-radius: 24px; border: 1px solid var(--primary-color);
+        padding: 30px; display: flex; flex-direction: column;
+    }
+    #um-invite-area {
+        flex-grow: 1; width: 100%; background: #000; border: 1px solid #333;
+        color: #eee; font-family: monospace; font-size: 1rem; padding: 20px;
+        margin-bottom: 25px; border-radius: 12px; outline: none; resize: none;
+    }
+
+    @media (max-width: 768px) {
+        .um-btn-premium { width: 100% !important; height: 55px; }
+    }
+
+    /* --- NEW: Guide & ACL Table Styles --- */
+    .um-desktop-guide {
+        background: rgba(0, 123, 255, 0.05);
+        border-left: 3px solid var(--primary-color);
+        padding: 20px;
+        margin: 20px 20px 0 20px;
+        border-radius: 0 12px 12px 0;
+    }
+    .um-role-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+        margin-top: 15px;
+        background: rgba(0,0,0,0.3);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .um-role-table th {
+        text-align: left;
+        padding: 12px;
+        background: rgba(255,255,255,0.05);
+        color: var(--primary-color);
+        font-weight: bold;
+        border-bottom: 1px solid #444;
+    }
+    .um-role-table td {
+        padding: 12px;
+        border-bottom: 1px solid #222;
+        color: #ddd;
+        vertical-align: top;
+    }
+    .um-role-table tr:last-child td { border-bottom: none; }
+    
+    @media (max-width: 1024px) {
+        .um-desktop-guide { display: none; } /* Hide inline guide on mobile, they use the modal */
+    }
+</style>
+
+<!-- MAIN MODAL -->
+<div id="um-manager-overlay">
+    <div class="um-panel">
+        <!-- Redesigned Header to keep 'X' fixed on top right for mobile -->
+        <div class="um-header" style="position: relative; padding-right: 50px;">
+            <!-- H3  flex to keep all on the same row -->
+            <h3 style="margin:0; font-size:1.2rem; color:white; display:flex; align-items:center; gap:10px;">
+                👥 User Management
+                <button onclick="umShowHelp()" class="um-tool-btn" style="height: 28px; min-width: auto; padding: 0 12px; font-weight: bold; color: var(--primary-color); border-color: rgba(0, 123, 255, 0.4); background: rgba(0, 123, 255, 0.1);" title="Read Access Control Guide">ℹ️ Guide & Roles</button>
+            </h3>
+            
+            <button class="um-tool-btn secondary" onclick="umCloseManager()" style="position: absolute; top: 15px; right: 15px; font-weight:bold; font-size:1.2rem; height: 35px; width: 35px; padding: 0; z-index: 10;" title="Close">×</button>
+            
+            <div style="width: 100%; display: flex; flex-wrap: wrap; gap: 10px; margin-top: 15px;">
+                <div style="flex:1; min-width:200px; position:relative;">
+                    <input type="text" id="um-search-input" class="um-input-premium" placeholder="🔍 Search name or username..." oninput="umOnSearch()">
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button class="um-tool-btn" id="um-sort-name" onclick="umSetSort('name')">A-Z</button>
+                    <button class="um-tool-btn active-blue" id="um-sort-date" onclick="umSetSort('date')">Newest ↓</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="um-body-scroll">
+            <!-- INLINE DESKTOP GUIDE -->
+            <div class="um-desktop-guide">
+                <h4 style="margin: 0 0 10px 0; color: white; font-size: 1.1rem;">ℹ️ Why User Management?</h4>
+                <p style="margin: 0 0 15px 0; color: #bbb; line-height: 1.6;">
+                    <strong>Are you a solo user?</strong> If you use SmartGallery alone, you can <strong>safely ignore this panel</strong>. Everything will work as usual.<br>
+                    <strong>Working with clients or a team?</strong> Use this to grant staff access to the Main Interface, or invite clients to the read-only <strong>Exhibition Portal</strong>. 
+                    <br><em style="color:#888;">Note: The main <code style="color:#d97706; font-weight:bold;">admin</code> user is automatic and <strong style="color:#d97706;">must be typed entirely in lowercase</strong>; its password is set via the <code>--admin-pass</code> startup parameter. For all configuration parameters, please refer to the <a href="https://github.com/biagiomaf/smart-comfyui-gallery" style="color:#d97706; text-decoration:underline;">GitHub repository</a>.</em>
+                </p>
+                
+                <table class="um-role-table">
+                    <tr>
+                        <th>Role</th>
+                        <th>Main Interface</th>
+                        <th>Exhibition</th>
+                        <th>Workflows & Downloads</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Admin / MANAGER / STAFF</strong></td>
+                        <td style="color:var(--success-color);">Yes</td>
+                        <td style="color:var(--success-color);">Yes</td>
+                        <td><strong>Full Access.</strong> Can view and download original files with full JSON workflows.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>FRIEND</strong></td>
+                        <td style="color:var(--danger-color);">No</td>
+                        <td style="color:var(--success-color);">Yes</td>
+                        <td><strong>Partial.</strong> Workflows visible in metadata. Downloads original files.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>USER / CUSTOMER / GUEST</strong></td>
+                        <td style="color:var(--danger-color);">No</td>
+                        <td style="color:var(--success-color);">Yes</td>
+                        <td><strong>Restricted.</strong> Workflows strictly hidden. Downloads are clean/stripped.</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <!-- Form Section -->
+            <div style="padding:25px; background:#111; border-bottom:1px solid #333;">
+                <input type="hidden" id="um-edit-id-val" value="">
+                <h4 id="um-form-title" style="margin:0 0 20px 0; color:var(--primary-color); font-size:0.9rem; text-transform:uppercase;">➕ User Registration</h4>
+                <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:15px;">
+                    <div><label style="font-size:0.7rem; color:#888;">User ID</label><input type="text" id="um-f-user" class="um-input-premium" placeholder="login name"></div>
+                    <div><label style="font-size:0.7rem; color:#888;">Password</label>
+                        <!-- SECURITY: Added minlength and required, changed type to password for safety if preferred, or text to see it -->
+                        <input type="text" id="um-f-pass" class="um-input-premium" placeholder="min. 8 characters" minlength="8" required>
+                        <div style="font-size:0.65rem; color:var(--danger-color); margin-top:4px; display:none;" id="um-f-pass-warn">Must be at least 8 characters.</div>
+                    </div>
+                    <div><label style="font-size:0.7rem; color:#888;">Full Name</label><input type="text" id="um-f-name" class="um-input-premium" placeholder="display name"></div>
+                    <div><label style="font-size:0.7rem; color:#888;">Email</label><input type="email" id="um-f-mail" class="um-input-premium"></div>
+                    <div>
+                        <select id="um-f-role" class="um-input-premium" style="padding:0 10px;">
+                            <option value="CUSTOMER">CUSTOMER</option>
+                            <option value="STAFF">STAFF</option>
+                            <option value="MANAGER">MANAGER</option>
+                            <option value="FRIEND">FRIEND</option> 
+                            <option value="USER">USER</option>
+                            <option value="GUEST">GUEST</option>
+                        </select>
+                    </div>
+                    <div><label style="font-size:0.7rem; color:#888;">Expiration</label><input type="datetime-local" id="um-f-exp" class="um-input-premium" style="color-scheme:dark;"></div>
+                </div>
+                <div style="margin-top:20px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:20px;">
+                    <label style="display:flex; align-items:center; gap:10px; color:#ccc; cursor:pointer;"><input type="checkbox" id="um-f-active" checked style="width:22px; height:22px;"> Active</label>
+                    <div style="display:flex; gap:12px;">
+                        <button id="um-btn-cancel-edit" class="um-btn-premium secondary" style="display:none;" onclick="umResetForm()">Cancel</button>
+                        <button id="um-btn-save-act" class="um-btn-premium" onclick="umActionSave()">🚀 Create User</button>
+                    </div>
+                </div>
+            </div>
+            <!-- List Area -->
+            <div id="um-list-target" style="padding:20px;"></div>
+            
+            <!-- Extra close button for mobile convenience at the bottom -->
+            <div style="padding: 0 20px 30px 20px; display: flex; justify-content: center;">
+                <button class="um-btn-premium secondary" onclick="umCloseManager()" style="width: 100%; max-width: 300px;">Close Panel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SMART DIALOG -->
+<div id="um-dialog-overlay">
+    <div style="background:#1a1a1a; width:420px; max-width:90vw; border-radius:16px; border:1px solid var(--primary-color); border-top:4px solid var(--primary-color); padding:35px; text-align:center; box-shadow:0 30px 80px #000;">
+        <div id="um-diag-icon" style="font-size:3rem; margin-bottom:15px;">⚠️</div>
+        <h3 id="um-diag-title" style="margin:0 0 12px 0; color:white;">Attention</h3>
+        <p id="um-diag-msg" style="color:#bbb; line-height:1.6; margin-bottom:30px; font-size:1.05rem;"></p>
+        <div style="display:flex; gap:12px;">
+            <button id="um-diag-cancel" class="um-btn-premium secondary" style="flex:1; display:none;">No</button>
+            <button id="um-diag-ok" class="um-btn-premium" style="flex:1;">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- INVITE MODAL -->
+<div id="um-invite-overlay">
+    <div class="um-invite-panel">
+        <h3 style="margin:0 0 10px 0; color:white;">✉️ Invitation</h3>
+        <textarea id="um-invite-area" readonly></textarea>
+        <div style="display:flex; gap:12px;">
+            <button class="um-btn-premium" style="flex:2;" onclick="umCopyInvite()">📋 Copy to Clipboard</button>
+            <button class="um-btn-premium secondary" style="flex:1;" onclick="umCloseInvite()">Close</button>
+        </div>
+    </div>
+</div>
+<!-- HELP PANEL -->
+<div id="um-help-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index: 10005; display:none; justify-content:center; align-items:center; padding: 20px; backdrop-filter:blur(5px);">
+    <div style="background:#1a1a1a; border:1px solid var(--primary-color); border-radius:16px; padding:30px; max-width:700px; width:100%; box-shadow:0 20px 60px #000; color:#ddd; line-height:1.6; max-height: 90vh; display:flex; flex-direction:column; overscroll-behavior:contain;">
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333; padding-bottom:15px; margin-bottom:20px; flex-shrink:0;">
+            <h3 style="color:white; margin:0; font-size:1.3rem;">ℹ️ Access Control Guide</h3>
+            <button onclick="umHideHelp()" style="background:none; border:none; color:#888; font-size:1.8rem; cursor:pointer; line-height:1;">&times;</button>
+        </div>
+
+        <div style="overflow-y:auto; padding-right:10px; flex-grow:1;">
+            <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:8px; margin-bottom:20px;">
+                <strong style="color:var(--primary-color); display:block; margin-bottom:5px;">Solo Users: You don't need this!</strong>
+                If you use SmartGallery alone on your local machine, you can safely ignore this panel. User management is only required if you want to share your work with clients or collaborate with a team.
+            </div>
+
+            <p><strong>The <code>admin</code> Account</strong><br>
+            The root administrator is automatically generated. You set the password when launching the app using the <code>--admin-pass</code> parameter.</p>
+
+            <h4 style="color:white; margin-top:25px; margin-bottom:10px;">Roles & Permissions (ACL)</h4>
+            <table class="um-role-table" style="margin-top:0;">
+                <tr>
+                    <th>Role</th>
+                    <th>Main Interface</th>
+                    <th>Exhibition</th>
+                    <th>Workflows & Downloads</th>
+                </tr>
+                <tr>
+                    <td><strong>Admin / MANAGER / STAFF</strong></td>
+                    <td style="color:var(--success-color);">Yes</td>
+                    <td style="color:var(--success-color);">Yes</td>
+                    <td><strong>Full Access.</strong> Original files + JSON workflows.</td>
+                </tr>
+                <tr>
+                    <td><strong>FRIEND</strong></td>
+                    <td style="color:var(--danger-color);">No</td>
+                    <td style="color:var(--success-color);">Yes</td>
+                    <td><strong>Partial.</strong> Workflows visible. Original files.</td>
+                </tr>
+                <tr>
+                    <td><strong>USER / CUSTOMER / GUEST</strong></td>
+                    <td style="color:var(--danger-color);">No</td>
+                    <td style="color:var(--success-color);">Yes</td>
+                    <td><strong>Restricted.</strong> Workflows hidden. Clean/stripped files only.</td>
+                </tr>
+            </table>
+            
+            <p style="margin-top:25px; font-size:0.9rem; color:#aaa;">
+                <strong>Note on Customers:</strong> When a CUSTOMER downloads an image, all generation metadata (Prompts, ComfyUI nodes, EXIF) is completely stripped by the server before the transfer begins. Your creative process remains 100% private.
+            </p>
+        </div>
+
+        <div style="padding-top:20px; border-top:1px solid #333; margin-top:10px; flex-shrink:0;">
+            <button class="um-btn-premium" style="width:100%;" onclick="umHideHelp()">Got it</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    
+    let cachedUsers = []; // RESTORED ORIGINAL VARIABLE NAME
+    let userSort = { key: 'date', dir: 'desc' };
+
+    /* --- LOGIC: SMART DIALOGS --- */
+    function umSmartAlert(title, msg, isConfirm = false) {
+        return new Promise((resolve) => {
+            const overlay = document.getElementById('um-dialog-overlay');
+            const btnOk = document.getElementById('um-diag-ok');
+            const btnCancel = document.getElementById('um-diag-cancel');
+            document.getElementById('um-diag-title').textContent = title;
+            document.getElementById('um-diag-msg').textContent = msg;
+            btnCancel.style.display = isConfirm ? 'flex' : 'none';
+            btnOk.textContent = isConfirm ? 'Yes, Proceed' : 'Got it';
+            overlay.style.display = 'flex';
+            btnOk.onclick = () => { overlay.style.display='none'; resolve(true); };
+            btnCancel.onclick = () => { overlay.style.display='none'; resolve(false); };
+        });
+    }
+
+    function openUserManager() {
+        document.getElementById('um-manager-overlay').style.display = 'flex';
+        umFetchUsers();
+    }
+    function umCloseManager() { document.getElementById('um-manager-overlay').style.display='none'; }
+
+    async function umFetchUsers() {
+        const res = await fetch('/galleryout/api/admin/users');
+        const data = await res.json();
+        cachedUsers = data.users || [];
+        umFilterAndRender();
+    }
+
+    function umOnSearch() { umFilterAndRender(); }
+
+    function umSetSort(key) {
+        if (userSort.key === key) userSort.dir = userSort.dir === 'asc' ? 'desc' : 'asc';
+        else { userSort.key = key; userSort.dir = key === 'name' ? 'asc' : 'desc'; }
+        
+        document.querySelectorAll('.um-tool-btn').forEach(b => b.classList.remove('active-blue'));
+        const btn = document.getElementById(`um-sort-${key}`);
+        btn.classList.add('active-blue');
+        btn.textContent = key === 'name' ? (userSort.dir === 'asc' ? 'A-Z ↑' : 'Z-A ↓') : (userSort.dir === 'desc' ? 'Newest ↓' : 'Oldest ↑');
+        umFilterAndRender();
+    }
+
+    function umFilterAndRender() {
+        const term = document.getElementById('um-search-input').value.toLowerCase();
+        let filtered = cachedUsers.filter(u => u.username.toLowerCase().includes(term) || (u.full_name && u.full_name.toLowerCase().includes(term)));
+        
+        filtered.sort((a, b) => {
+            let valA, valB;
+            if (userSort.key === 'date') { valA = a.user_id; valB = b.user_id; }
+            else { valA = (a.full_name || '').toLowerCase(); valB = (b.full_name || '').toLowerCase(); }
+            if (valA < valB) return userSort.dir === 'asc' ? -1 : 1;
+            if (valA > valB) return userSort.dir === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        const list = document.getElementById('um-list-target');
+        if (filtered.length === 0) { list.innerHTML = '<div style="text-align:center; padding:40px; color:#555;">No users found.</div>'; return; }
+
+        list.innerHTML = filtered.map((u, index) => {
+            const statusColor = u.is_active ? 'var(--success-color)' : 'var(--danger-color)';
+            const isExpired = u.expiry_date && new Date(u.expiry_date) < new Date();
+            return `
+            <div style="background:#222; padding:15px; border-radius:12px; margin-bottom:10px; border:1px solid #333; display:flex; justify-content:space-between; align-items:center; gap:15px;">
+                <div style="flex:1; min-width:0;">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
+                        <div style="width:10px; height:10px; border-radius:50%; background:${statusColor};"></div>
+                        <strong style="color:#fff; font-size:1rem;">${u.full_name}</strong>
+                        <span style="font-size:0.65rem; background:rgba(0,123,255,0.15); color:#89CFF0; padding:2px 6px; border-radius:4px; font-weight:bold;">${u.role}</span>
+                    </div>
+                    <div style="font-size:0.85rem; color:#888;">
+                        👤 @${u.username} • 🔑 <span style="font-family:monospace; color:#ccc;">${u.plain_password}</span>
+                    </div>
+                    ${u.expiry_date ? `<div style="font-size:0.75rem; margin-top:5px; color:${isExpired ? 'var(--danger-color)' : 'var(--favorite-color)'}">⌛ Exp: ${new Date(u.expiry_date).toLocaleString()}</div>` : ''}
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button class="um-tool-btn" style="height:38px; width:38px;" onclick="umPrepareInvite(${index})">✉️</button>
+                    <button class="um-tool-btn" style="height:38px; width:38px; color:var(--primary-color);" onclick="umLoadEdit(${index})">✏️</button>
+                    <button class="um-tool-btn" style="height:38px; width:38px; color:var(--danger-color);" onclick="umActionDelete(${u.user_id})">🗑️</button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    /* --- FORM ACTIONS --- */
+    function umLoadEdit(idx) {
+        // FIX: Re-calculate filtered list to get correct user from the current view
+        const term = document.getElementById('um-search-input').value.toLowerCase();
+        let currentList = cachedUsers.filter(u => u.username.toLowerCase().includes(term) || (u.full_name && u.full_name.toLowerCase().includes(term)));
+        currentList.sort((a, b) => {
+            let valA, valB;
+            if (userSort.key === 'date') { valA = a.user_id; valB = b.user_id; }
+            else { valA = (a.full_name || '').toLowerCase(); valB = (b.full_name || '').toLowerCase(); }
+            if (valA < valB) return userSort.dir === 'asc' ? -1 : 1;
+            if (valA > valB) return userSort.dir === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        const u = currentList[idx];
+        if(!u) return;
+
+        document.getElementById('um-edit-id-val').value = u.user_id;
+        document.getElementById('um-f-user').value = u.username;
+        document.getElementById('um-f-pass').value = u.plain_password;
+        document.getElementById('um-f-name').value = u.full_name;
+        document.getElementById('um-f-mail').value = u.email || '';
+        document.getElementById('um-f-role').value = u.role;
+        document.getElementById('um-f-exp').value = u.expiry_date ? u.expiry_date.slice(0, 16) : '';
+        document.getElementById('um-f-active').checked = (u.is_active == 1);
+        
+        document.getElementById('um-btn-cancel-edit').style.display = "inline-flex";
+        document.getElementById('um-form-title').textContent = "✏️ Editing: " + u.username;
+        document.getElementById('um-btn-save-act').textContent = "Save Changes";
+        document.querySelector('.um-body-scroll').scrollTop = 0;
+    }
+
+    function umResetForm() {
+        // Reset ID and Text Inputs
+        document.getElementById('um-edit-id-val').value = "";
+        document.getElementById('um-f-user').value = "";
+        document.getElementById('um-f-pass').value = "";
+        document.getElementById('um-f-name').value = "";
+        document.getElementById('um-f-mail').value = "";
+        document.getElementById('um-f-exp').value = "";
+        document.getElementById('um-f-active').checked = true;
+
+        // Reset UI Labels and Buttons
+        const btn = document.getElementById('um-btn-save-act');
+        btn.innerHTML = "🚀 Create User"; // Restore original text/icon
+        btn.disabled = false;             // Re-enable click
+        
+        document.getElementById('um-btn-cancel-edit').style.display = "none";
+        document.getElementById('um-form-title').textContent = "➕ User Registration";
+        
+        // Ensure the scroll returns to top to show the new registration title
+        const bodyScroll = document.querySelector('.um-body-scroll');
+        if(bodyScroll) bodyScroll.scrollTop = 0;
+    }
+
+    async function umActionSave() {
+        const mail = document.getElementById('um-f-mail').value.trim();
+        const user = document.getElementById('um-f-user').value.trim();
+        const pass = document.getElementById('um-f-pass').value.trim();
+        const name = document.getElementById('um-f-name').value.trim();
+        const btn = document.getElementById('um-btn-save-act');
+        const id = document.getElementById('um-edit-id-val').value;
+
+        // 1. Mandatory Fields Check
+        if(!user || !pass || !name) {
+            await umSmartAlert("Missing Data", "Username, Password and Full Name are mandatory.");
+            return;
+        }
+
+        // 2. Reserved Username Check
+        if (user.toLowerCase() === 'admin') {
+            await umSmartAlert("Reserved Name", "The username 'admin' is reserved for the system administrator.");
+            return;
+        }
+
+        // 3. Security Check: Password Length
+        if (pass.length < 8) {
+            await umSmartAlert("Weak Password", "Security requirement: Password must be at least 8 characters long.");
+            return;
+        }
+
+        // 4. Email Format Check (Regex)
+        if(mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) {
+            await umSmartAlert("Invalid Email", "Please enter a valid email address format.");
+            return;
+        }
+
+        // --- ALL CHECKS PASSED: START UI SAVING STATE ---
+        const originalBtnHtml = btn.innerHTML;
+        btn.innerHTML = "⏳ Saving...";
+        btn.disabled = true;
+
+        try {
+            const payload = {
+                user_id: id,
+                username: user,
+                password: pass,
+                full_name: name,
+                email: mail,
+                role: document.getElementById('um-f-role').value,
+                expiry_date: document.getElementById('um-f-exp').value,
+                is_active: document.getElementById('um-f-active').checked ? 1 : 0
+            };
+
+            const res = await fetch('/galleryout/api/admin/users', {
+                method: id ? 'PUT' : 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+
+            if(res.ok) {
+                // Success path
+                umResetForm(); // This handles button restoration
+                await umFetchUsers();
+                
+                // Clear the dropdown cache in the main window
+                if (typeof window.invalidateUsersCache === 'function') {
+                    window.invalidateUsersCache();
+                }
+
+                if(typeof showNotification === 'function') showNotification("User data synchronized", "success");
+            } else {
+                // Server-side error handling
+                const d = await res.json();
+                let msg = d.message || "Error saving user.";
+                if(msg.includes("UNIQUE")) msg = "Username already taken. Please choose another.";
+                await umSmartAlert("Failed", msg);
+                
+                // Restore button on error
+                btn.innerHTML = originalBtnHtml;
+                btn.disabled = false;
+            }
+        } catch (e) {
+            console.error("Save Error:", e);
+            btn.innerHTML = originalBtnHtml;
+            btn.disabled = false;
+        }
+    }
+
+    async function umActionDelete(id) {
+        const warnMsg = "Permanently remove this user?\n\nWARNING: If this user has posted comments, it is highly recommended to edit them and uncheck 'Active' instead. Deleting them physically will break their name in the reply history.\n\nProceed with deletion anyway?";
+        
+        if(await umSmartAlert("Confirm Delete", warnMsg, true)) {
+            const res = await fetch('/galleryout/api/admin/users', { 
+                method: 'DELETE',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ user_id: id })
+            });
+            
+            if(res.ok) {
+                await umFetchUsers();
+                
+                // Clear the dropdown cache in the main window
+                if (typeof window.invalidateUsersCache === 'function') {
+                    window.invalidateUsersCache();
+                }
+
+                if(typeof showNotification === 'function') showNotification("User deleted permanently", "success");
+            } else {
+                if(typeof showNotification === 'function') showNotification("Failed to delete user", "error");
+            }
+        }
+    }
+
+    /* --- INVITE --- */
+    function umPrepareInvite(idx) {
+        const term = document.getElementById('um-search-input').value.toLowerCase();
+        let currentList = cachedUsers.filter(u => u.username.toLowerCase().includes(term) || (u.full_name && u.full_name.toLowerCase().includes(term)));
+        const u = currentList[idx];
+        const url = window.location.origin + "/galleryout/";
+        
+        const warningMsg = "\n\n⚠️ NOTE FOR ADMIN: If you are exposing the server over the internet (e.g., via Ngrok, Cloudflare, or a custom domain), please make sure to manually replace the URL above with your actual public address before sending this invitation.";
+        
+        document.getElementById('um-invite-area').value = `Hello ${u.full_name}!\n\nAccess credentials for SmartGallery:\n🌐 URL: ${url}\n👤 User: ${u.username}\n🔑 Pass: ${u.plain_password}${warningMsg}`;
+        document.getElementById('um-invite-overlay').style.display = 'flex';
+    }
+    function umCloseInvite() { document.getElementById('um-invite-overlay').style.display='none'; }
+    function umCopyInvite() {
+        const a = document.getElementById('um-invite-area');
+        a.select(); document.execCommand('copy');
+        if(typeof showNotification === 'function') showNotification("Copied!", "success");
+        umCloseInvite();
+    }
+    function umShowHelp() { document.getElementById('um-help-overlay').style.display = 'flex'; }
+    function umHideHelp() { document.getElementById('um-help-overlay').style.display = 'none'; }
+</script>

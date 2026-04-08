@@ -1,42 +1,36 @@
 # 🧪 Experimental Features
 
-## ✅ Version 1.54.8 Beta - Now Released as Official v1.55!
-
-**Good news!** The v1.54.8-beta has successfully passed all tests and has been **officially released as version 1.55** in the main repository.
-
-### 🎉 What does this mean?
-
-- All experimental features from v1.54.8-beta are now **stable and production-ready**
-- You should **install the official v1.55** from the main folder instead of using experimental files
-- This experimental folder is currently **empty** and waiting for new features to test
+⚠️ **WARNING: EXPERIMENTAL AND POTENTIALLY UNSTABLE CODE**
+Files in this folder are under active development and **may contain bugs or break functionality**. Use at your own risk!
 
 ---
 
-## 🔮 What's next?
+## 🟢 Status Update: Post-v2.11 Release
+The `experiments/` folder is **currently empty** as we have just officially released **Version 2.11**, integrating all previous stable improvements.
 
-This folder will be updated again when we have **new experimental features** ready for community testing.
+### 👀 Check back soon!
+We are already working on the next set of features. Check this folder frequently over the coming days for:
+* **Beta Versions** of the upcoming release.
+* **Experimental Bug Fixes** for edge cases.
+* **Cutting-edge Functionality** before it hits the main branch.
 
-### 👀 Check back regularly!
-
-New experiments will appear here as we develop cutting-edge functionality. Features that prove stable after testing will be integrated into official releases.
-
----
-
-## 🎯 Current Status
-
-- **Experimental folder:** Empty (all previous experiments graduated to stable)
-- **Latest stable version:** v1.55
-- **Recommended action:** Use the official release from the main repository
+**Successful experiments will be integrated into official releases** after thorough testing and community feedback.
 
 ---
 
-## 📢 Want to help test future features?
+## How to install and test
+Since the project structure has evolved and now includes multiple files and templates, **specific installation instructions will be provided within this folder for each experimental release.**
 
-When new experimental features are available, we'll update this folder and announce it in the repository discussions.
+### 🐳 For Docker Users
+To test the current experimental state (when available), you can usually use:
+* `make build_exp` 
 
-**Your feedback is valuable!** 
-- Found something interesting to improve? Open a discussion
-- Have ideas for new features? We'd love to hear them
-- Want to contribute? Check out our contribution guidelines
+This command builds a dedicated `smartgallery:exp` image, allowing you to test new features without affecting your stable environment.
 
-Thank you for being part of the SmartGallery community! 🙏
+---
+
+## 💬 We need your Feedback
+**Everything works?** → Let us know! Your "all clear" helps us move features to the official release faster.  
+**Found a bug?** → Please open an issue with as much detail as possible.
+
+Leave a message in the **Discussions** area of this repo. Thank you for helping us improve! 🙏

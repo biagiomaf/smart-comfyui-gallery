@@ -197,8 +197,10 @@ for i in .sqlite_cache .thumbnails_cache .zip_downloads; do
   it="${it_dir}/.testfile"; touch "$it" && rm -f "$it" || error_exit "Failed to write to the required $it_dir directory as the smartgallery user"
 done
 
+CLI_ARGS=${CLI_ARGS:-""}
+
 echo ""; echo "==================="
 echo "== Running SmartGallery"
-cd /app; source /app/venv/bin/activate; python smartgallery.py || error_exit "SmartGallery failed or exited with an error"
+cd /app; source /app/venv/bin/activate; python smartgallery.py ${CLI_ARGS} || error_exit "SmartGallery failed or exited with an error"
 
 ok_exit "Clean exit"

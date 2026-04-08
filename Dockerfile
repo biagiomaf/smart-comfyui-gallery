@@ -88,16 +88,14 @@ RUN --mount=type=cache,target=/uv_cache,uid=1025,gid=1025,mode=0755 \
     && test -x /app/venv/bin/uv \
     && unset UV_CACHE_DIR
 
-ARG CHOOSEN_TEMPLATE_FILE
-ARG CHOOSEN_SMARTGALLERY_FILE
-COPY ${CHOOSEN_SMARTGALLERY_FILE} /app/smartgallery.py
-COPY ${CHOOSEN_TEMPLATE_FILE} /app/templates/
+COPY smartgallery.py /app/smartgallery.py
+COPY templates/ /app/templates/
 
 USER root
 
 COPY --chmod=555 docker_init.bash /smartgallery_init.bash
 
-EXPOSE 8189
+EXPOSE 8189 8190
 
 # Remove APT proxy configuration and clean up APT downloaded files
 RUN rm -rf /var/lib/apt/lists/* /etc/apt/apt.conf.d/01proxy \
@@ -107,4 +105,4 @@ USER smartgallerytoo
 
 CMD ["/smartgallery_init.bash"]
 
-LABEL org.opencontainers.image.source=https://github.com/biagiomaf/smart-comfyui-gallery
+LABEL org.opencontainers.image.source=https://github.com/biagiomaf/smartgallery-dam

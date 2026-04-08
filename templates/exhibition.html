@@ -1,0 +1,3719 @@
+{% set app_logo_b64 = "data:image/png;base64,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" %}
+<!DOCTYPE html>
+<!-- Version: 2.11 - April 08, 2026 -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SmartGallery Exhibition Mode</title>
+    <link rel="icon" type="image/png" href="{{ app_logo_b64 }}">
+ 
+    <style>
+    :root {
+        --bg-color: #0a0a0a;
+        --surface-color: #1a1a1a;
+        --surface-hover: #252525;
+        --primary-color: #007bff;
+        --text-color: #f8f9fa;
+        --text-muted: #adb5bd;
+        --border-color: #343a40;
+        --favorite-color: #ffc107;
+        --success-color: #20c997;
+        --danger-color: #dc3545;
+        --glass-bg: rgba(255, 255, 255, 0.05);
+        --glass-border: rgba(255, 255, 255, 0.1);
+        --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.7);
+        --sidebar-width: 340px;
+    }
+
+    * { box-sizing: border-box; }
+    
+    /* Scrollbar Styling */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        margin: 0; background: var(--bg-color); color: var(--text-color);
+        display: flex; height: 100vh; height: 100dvh; overflow: hidden;
+    }
+
+    /* --- SIDEBAR (Updated for Flex Layout & Scrolling) --- */
+    .exh-sidebar {
+        width: var(--sidebar-width); min-width: var(--sidebar-width);
+        background: var(--surface-color); border-right: 1px solid var(--border-color);
+        padding: 1.5rem 1rem; 
+        /* Flex column allows footer to stick to bottom while list scrolls */
+        display: flex; flex-direction: column; 
+        height: 100vh; height: 100dvh;
+        z-index: 1000;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        overflow: hidden; 
+    }
+
+    .brand-link { text-decoration: none; margin-bottom: 2rem; display: block; flex-shrink: 0; }
+    .brand-block { display: flex; align-items: center; gap: 12px; }
+    .brand-logo { 
+        width: 38px; 
+        height: 38px; 
+        border-radius: 8px; 
+        box-shadow: 0 0 15px rgba(255, 0, 255, 0.3); 
+        background-color: #ffcccc;
+        object-fit: contain;
+    }
+    .brand-title h1 {
+        margin: 0; font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em;
+        background: linear-gradient(135deg, #f0a0ff 0%, #9b30ff 100%);
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+        filter: drop-shadow(0 0 8px rgba(155, 48, 255, 0.4)); line-height: 1.1;
+    }
+    .brand-title span { font-size: 0.75rem; color: #ffffff; letter-spacing: 3px; font-weight: 700; opacity: 0.9; display: block; margin-top: 2px; }
+    
+    /* Mobile Sidebar Close Button */
+    .sidebar-close-btn {
+        display: none;
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: white;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 1.2rem;
+        z-index: 1001;
+        transition: all 0.2s;
+    }
+    
+    .sidebar-close-btn:hover {
+        background: var(--danger-color);
+        border-color: white;
+    }
+    
+    @media (max-width: 1024px) {
+        .sidebar-close-btn {
+            display: flex;
+        }
+    }
+    
+    /* Version Number Style */
+    .ver-num {
+        font-size: 0.7rem; 
+        color: rgba(255,255,255,0.6); 
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        margin-left: 6px; 
+        font-weight: 500;
+        vertical-align: middle;
+    }
+
+
+    .sidebar-toolbar { 
+        display: flex; gap: 6px; margin-bottom: 15px; padding-bottom: 10px; 
+        border-bottom: 1px solid var(--border-color); position: relative; 
+        flex-shrink: 0; 
+    }
+    .search-input {
+        flex-grow: 1; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border);
+        border-radius: 6px; color: white; padding: 0 32px 0 10px; height: 34px; font-size: 0.85rem; outline: none;
+    }
+    .search-clear-btn {
+        position: absolute; right: 90px; /* Adjusted closer to sort buttons */ top: 50%;
+        transform: translateY(-50%); background: none; border: none; color: var(--text-muted);
+        cursor: pointer; padding: 4px 6px; font-size: 1.2rem; line-height: 1; display: none;
+        transition: color 0.2s; z-index: 10;
+    }
+    .search-clear-btn:hover { color: var(--danger-color); }
+    .search-clear-btn.visible { display: block; }
+    
+    .tool-btn {
+        background: var(--glass-bg); border: 1px solid var(--glass-border); color: white;
+        border-radius: 6px; cursor: pointer; height: 34px; min-width: 34px; padding: 0 8px; font-size: 0.8rem;
+        display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+        white-space: nowrap;
+    }
+    .tool-btn:hover { background: var(--surface-hover); border-color: var(--primary-color); }
+
+    /* Nav List (Scrollable Area) */
+    .nav-list { 
+        list-style: none; padding: 0; margin: 0; 
+        overflow-y: auto; 
+        flex-grow: 1; /* Takes all available space */
+        min-height: 0; /* Firefox Flexbox Scroll Fix */
+        margin-bottom: 15px;
+    }
+    /* --- NAVIGATION ITEMS --- */
+    .nav-item {
+        display: flex !important; 
+        flex-direction: row !important; /* Force horizontal layout */
+        align-items: center !important; 
+        flex-wrap: nowrap !important; /* Prevent wrapping to new line */
+        gap: 8px; 
+        padding: 10px 12px; 
+        margin-bottom: 6px; 
+        border-radius: 10px; 
+        cursor: pointer;
+        transition: all 0.2s; 
+        color: var(--text-muted); 
+        overflow: hidden;
+    }
+
+    .nav-item:hover { 
+        background: var(--surface-hover); 
+        color: white; 
+    }
+
+    .nav-item.active { 
+        background: linear-gradient(135deg, rgba(0, 123, 255, 0.12) 0%, rgba(137, 207, 240, 0.08) 100%);
+        color: #89CFF0; 
+        border: 1px solid rgba(0, 123, 255, 0.4); 
+        font-weight: 600;
+        box-shadow: 0 2px 8px rgba(0, 123, 255, 0.15);
+        position: relative;
+    }
+    
+    .nav-item.active::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: linear-gradient(180deg, #007bff 0%, #89CFF0 100%);
+        border-radius: 10px 0 0 10px;
+    }
+
+    /* Target the text wrapper */
+    .nav-text-wrapper {
+        flex-grow: 1; 
+        min-width: 0; /* MAGIC PIXEL: Allows flex child to shrink and truncate */
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: block;
+    }
+
+    /* Dots button (Hidden by default) */
+    .nav-expand-btn {
+        display: none; /* HIDDEN by default */
+        flex-shrink: 0; /* Prevent the button from being squashed */
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 4px 8px;
+        height: 24px;
+        font-size: 0.9rem;
+        font-weight: bold;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        margin-left: 6px;
+        transition: all 0.2s;
+    }
+
+    .nav-expand-btn.visible {
+        display: flex; /* Shown only via JS if text overflows */
+    }
+
+    .nav-expand-btn:hover {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+    
+    /* Vote Count Badge (for thumbnail meta row) */
+    .vote-count {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .vote-count::before {
+        content: '👤';
+        filter: brightness(2);
+    }
+
+    /* GitHub Footer Badge */
+    .exh-sidebar-footer {
+        margin-top: auto;
+        padding-top: 15px;
+        border-top: 1px solid var(--border-color);
+        flex-shrink: 0;
+    }
+    .gh-promo-link {
+        display: flex; align-items: center; gap: 10px;
+        text-decoration: none; background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--glass-border); padding: 10px;
+        border-radius: 10px; transition: all 0.2s;
+    }
+    .gh-promo-link:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: var(--favorite-color);
+        transform: translateY(-2px);
+    }
+    .gh-icon { width: 24px; height: 24px; fill: var(--text-muted); transition: fill 0.3s; }
+    .gh-promo-link:hover .gh-icon { fill: var(--favorite-color); }
+    .gh-text { font-size: 0.8rem; color: var(--text-muted); line-height: 1.3; }
+    .gh-highlight { color: var(--favorite-color); font-weight: 600; }
+
+    /* --- MAIN CONTENT & GRID --- */
+    .exh-main { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+    .exh-header {
+        padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center;
+        background: rgba(10, 10, 10, 0.8); backdrop-filter: blur(15px); border-bottom: 1px solid var(--border-color);
+        z-index: 500; flex-shrink: 0; gap: 15px;
+    }
+    
+    #mobile-menu-btn { display: none; background: var(--glass-bg); border: 1px solid var(--glass-border); color: white; padding: 8px 12px; border-radius: 8px; cursor: pointer; }
+
+    .collection-badge {
+        font-size: 0.9rem; font-weight: 700; color: #fff; padding: 10px 25px; border-radius: 50px;
+        background: rgba(255, 255, 255, 0.05); border: 1px solid var(--primary-color);
+        box-shadow: 0 0 15px rgba(0, 123, 255, 0.1); text-transform: uppercase;
+    }
+
+    .glass-select { 
+        background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); 
+        color: #fff; padding: 10px 18px; border-radius: 12px; outline: none; cursor: pointer;
+        backdrop-filter: blur(10px); font-weight: 600;
+    }
+    .glass-select option { background: var(--surface-color); color: var(--text-color); }
+
+    .exh-grid {
+        flex-grow: 1; 
+        overflow-y: auto; 
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
+        gap: 25px; 
+        padding: 25px; 
+        align-items: start; 
+        grid-auto-rows: min-content;
+        /* Mobile Optimization: Enable momentum scrolling on iOS */
+        -webkit-overflow-scrolling: touch;
+        /* Prevent scroll chaining behavior */
+        overscroll-behavior: contain;
+    }
+    
+    /* Empty State */
+    .empty-gallery { grid-column: 1 / -1; text-align: center; padding: 80px 20px; color: var(--text-muted); }
+    .empty-gallery-icon { font-size: 4rem; margin-bottom: 20px; opacity: 0.3; }
+    .empty-gallery-text { font-size: 1.2rem; font-weight: 600; margin-bottom: 10px; }
+    .empty-gallery-subtext { font-size: 0.9rem; opacity: 0.7; }
+
+    /* Card Styling */
+    .exh-card {
+        background: var(--surface-color); 
+        border-radius: 16px; 
+        overflow: hidden;
+        transition: transform 0.3s ease, border-color 0.3s ease; 
+        border: 1px solid var(--border-color); 
+        cursor: pointer; 
+        display: flex; 
+        flex-direction: column; 
+        /* FIXED: Ensures card doesn't collapse to zero height during loading */
+        min-height: 350px; 
+        height: 100%;
+    }
+    .exh-card:hover { transform: translateY(-8px); border-color: var(--primary-color); box-shadow: var(--shadow-lg); }
+
+    /* Focus & Highlight */
+    .exh-card.keyboard-focused, .highlight-focus {
+        outline: 4px solid var(--primary-color) !important; outline-offset: 4px;
+        transform: translateY(-8px) scale(1.02); z-index: 10;
+        box-shadow: 0 0 30px rgba(0, 123, 255, 0.5);
+    }
+
+    .exh-thumb-wrap { width: 100%; background: #000; flex-shrink: 0; position: relative; }
+    .exh-thumb-wrap img, .exh-thumb-wrap video { width: 100%; height: auto; display: block; object-fit: cover; }
+
+    .exh-info { padding: 20px; flex-grow: 1; }
+    .exh-name { font-weight: 700; font-size: 1.1rem; margin-bottom: 10px; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .exh-meta-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: nowrap; }
+    .exh-meta-left { display: flex; align-items: center; gap: 8px; flex-shrink: 1; min-width: 0; }
+    .exh-meta-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; white-space: nowrap; }
+    .exh-date { font-size: 0.7rem; color: #999; }
+    
+    /* Stars */
+    .stars-outer { position: relative; display: inline-block; font-size: 1.1rem; color: rgba(255, 255, 255, 0.2); letter-spacing: 1px; }
+    .stars-inner { position: absolute; top: 0; left: 0; white-space: nowrap; overflow: hidden; color: var(--favorite-color); width: 0%; transition: width 0.3s ease; }
+    .star-row { display: flex; align-items: center; gap: 10px; }
+    .star-row .comment-count { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
+
+    /* --- THEATER (LIGHTBOX) --- */
+    #theater-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.98); z-index: 2000; display: none; flex-direction: row;
+    }
+    #theater-overlay.visible { display: flex; }
+
+    .theater-stage { 
+        flex: 7; display: flex; align-items: center; justify-content: center; 
+        position: relative; overflow: hidden; background: #000; 
+        /* Prevent accidental blue selection highlight */
+        user-select: none;
+        -webkit-user-select: none;
+    }
+    .theater-media { 
+        max-width: 95%; max-height: 95%; object-fit: contain; 
+        box-shadow: 0 0 60px rgba(0,0,0,0.8); cursor: grab;
+        transform-origin: center center;
+        /* Prevent accidental blue selection highlight and ghost drag */
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-user-drag: none;
+    }
+    .theater-media.grabbing { cursor: grabbing; }
+
+    .theater-panel { 
+        flex: 3; background: #0a0a0a; border-left: 1px solid #222; display: flex; flex-direction: column; min-width: 400px; overflow: hidden; 
+        transition: min-width 0.3s ease, flex 0.3s ease, opacity 0.2s ease;
+    }
+    .theater-panel.hidden-desktop {
+        min-width: 0 !important;
+        flex: 0 !important;
+        border-left: none !important;
+        opacity: 0;
+    }
+    .panel-header { padding: 25px; border-bottom: 1px solid #222; flex-shrink: 0; }
+    .panel-body { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; min-height: 0; }
+    .panel-footer { padding: 20px; border-top: 1px solid #222; background: #080808; flex-shrink: 0; }
+
+    /* Actions Toolbar */
+    .theater-actions-desktop { 
+        position: absolute; top: 20px; left: 20px; display: flex; gap: 15px; z-index: 2500; 
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+    }
+    
+    /* When the toolbar is hidden, it slides to the top left and fades out */
+    .theater-actions-desktop.hidden {
+        transform: translate(-10px, -20px) scale(0.9);
+        opacity: 0;
+        pointer-events: none; /* Prevents clicks when invisible */
+    }
+
+    /* Arrow to show/hide the toolbar */
+    .toggle-toolbar-arrow {
+        width: 32px; height: 55px; border-radius: 16px; background: rgba(0,0,0,0.6); 
+        border: 1px solid #444; color: #aaa; display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem; cursor: pointer; transition: all 0.2s ease;
+    }
+    .toggle-toolbar-arrow:hover {
+        background: rgba(255, 255, 255, 0.15); color: white; border-color: var(--primary-color);
+    }
+    .action-btn-circle { 
+        width: 55px; height: 55px; border-radius: 50%; background: rgba(0,0,0,0.6); 
+        border: 1px solid #444; color: white; display: flex; align-items: center; justify-content: center;
+        font-size: 1.5rem; cursor: pointer; text-decoration: none; transition: 0.2s;
+    }
+    /* NEW: Pill shape for the toggle button to fit two emojis side-by-side horizontally */
+    .action-btn-pill {
+        width: auto; padding: 0 15px; height: 55px; border-radius: 30px; 
+        background: rgba(0,0,0,0.6); border: 1px solid #444; color: white; 
+        display: flex; align-items: center; justify-content: center; gap: 4px;
+        font-size: 1.5rem; cursor: pointer; transition: 0.2s;
+        /* Force horizontal layout */
+        flex-direction: row; white-space: nowrap; line-height: 1;
+    }
+    .action-btn-circle:hover, .action-btn-pill:hover { background: var(--primary-color); border-color: white; transform: scale(1.1); }
+    
+    /* Hide Panel Arrow (Inside the Panel, Top Left) */
+    .hide-panel-arrow {
+        position: absolute; 
+        top: 20px; 
+        left: 15px; /* Moved to the left! */
+        z-index: 2500; 
+        background: rgba(255, 255, 255, 0.05); 
+        border: 1px solid rgba(255, 255, 255, 0.1); 
+        color: #aaa; 
+        width: 32px; 
+        height: 32px; 
+        border-radius: 50%; /* Clean circle shape */
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        font-size: 1.1rem; 
+        cursor: pointer; 
+        transition: all 0.2s ease; 
+        line-height: 1;
+    }
+    .hide-panel-arrow:hover {
+        background: rgba(255, 255, 255, 0.15);
+        color: white;
+        border-color: var(--primary-color);
+        /* Animation: moves slightly to the right on hover to suggest closing */
+        transform: translateX(4px); 
+    }
+
+    /* Global Theater Close X (Outside the Panel, Top Right screen corner) */
+    .close-theater-global { 
+        position: absolute; top: 20px; right: 20px; z-index: 2500;
+        width: 55px; height: 55px; border-radius: 50%; background: rgba(0,0,0,0.6);
+        border: 1px solid #444; color: white; display: flex; align-items: center; justify-content: center;
+        font-size: 2rem; cursor: pointer; transition: 0.2s; line-height: 1; padding-bottom: 4px;
+    }
+    .close-theater-global:hover { background: var(--danger-color); border-color: white; transform: scale(1.1); }
+
+    .theater-mobile-toolbar { display: none; padding: 10px; background: #111; border-bottom: 1px solid #222; justify-content: space-around; flex-shrink: 0; }
+    .theater-mobile-toolbar a, .theater-mobile-toolbar button {
+        text-decoration: none !important; display: flex; align-items: center; justify-content: center; gap: 5px;
+    }
+
+    .nav-arrow { 
+        position: absolute; top: 50%; transform: translateY(-50%); 
+        background: rgba(0, 0, 0, 0.4); color: #fff; border: 1px solid #333; 
+        width: 70px; height: 100px; cursor: pointer; z-index: 2400;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 4rem !important; border-radius: 12px; transition: 0.2s;
+    }
+    .nav-prev { left: 20px; }
+    .nav-next { right: 20px; }
+
+    /* Interactive Stars */
+    .interactive-stars { font-size: 2.5rem; display: flex; gap: 10px; margin: 8px 0 0 0; justify-content: center; }
+    .interactive-stars span { cursor: pointer; color: rgba(255,255,255,0.2); transition: color 0.2s; }
+    .interactive-stars span:hover { color: rgba(255,255,255,0.4); }
+    .interactive-stars span.active { color: var(--favorite-color); text-shadow: 0 0 15px rgba(255,191,0,0.5); }
+
+    /* Comments & Bubbles */
+    .comment-bubble { 
+        background: rgba(255,255,255,0.03); border: 1px solid #222; 
+        padding: 15px; border-radius: 12px; display: flex; flex-direction: column;
+    }
+    .comment-bubble.is-admin { border-left: 4px solid var(--success-color); background: rgba(32, 201, 151, 0.05); }
+    .comment-author { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+    .comment-author span { font-weight: 800; color: var(--primary-color); font-size: 0.9rem; }
+    .comment-author small { color: #555; font-size: 0.75rem; display: flex; align-items: center; }
+    .comment-text { line-height: 1.5; color: #ddd; font-size: 0.95rem; word-wrap: break-word; white-space: pre-wrap; }
+    
+    /* Message Badges */
+    .msg-badge {
+        font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-top: 4px; display: inline-block; white-space: nowrap; width: fit-content;
+    }
+    .msg-badge.public { background: rgba(0,255,0,0.1); color: var(--success-color); border: 1px solid rgba(32, 201, 151, 0.4); }
+    .msg-badge.internal { background: rgba(255,193,7,0.1); color: var(--favorite-color); border: 1px solid rgba(255, 193, 7, 0.4); }
+    .msg-badge.user { background: rgba(0,123,255,0.1); color: #89CFF0; border: 1px solid rgba(0, 123, 255, 0.4); }
+
+    /* Premium Input */
+    .chat-input { 
+        width: 100%; background: #000; border: 1px solid #333; color: #fff; 
+        padding: 15px; border-radius: 12px; resize: vertical; outline: none; 
+        margin-bottom: 15px; font-size: 1rem; transition: border-color 0.2s; min-height: 60px;
+    }
+    .chat-input:focus { border-color: var(--primary-color); }
+
+    /* Custom Searchable Dropdown for Audience */
+    .target-select-wrapper { position: relative; width: 100%; flex: 1; }
+    .target-select-trigger { background: rgba(255,255,255,0.05); color: #fff; border: 1px solid #444; border-radius: 12px; padding: 12px 15px; font-size: 0.9rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: border-color 0.2s; font-weight: 600;}
+    .target-select-trigger:hover { border-color: var(--primary-color); background: rgba(0, 123, 255, 0.1); }
+    .target-dropdown { display: none; position: absolute; bottom: calc(100% + 5px); left: 0; width: 100%; background: #111; border: 1px solid var(--primary-color); border-radius: 12px; box-shadow: 0 -10px 40px rgba(0,0,0,0.9); z-index: 2600; overflow: hidden; flex-direction: column; }
+    .target-dropdown.show { display: flex; }
+    .target-search-box { padding: 10px; border-bottom: 1px solid #333; background: #080808; }
+    .target-search-box input { width: 100%; background: #000; border: 1px solid #444; color: white; padding: 10px; border-radius: 6px; outline: none; font-size: 0.9rem; }
+    .target-search-box input:focus { border-color: var(--primary-color); }
+    .target-options-list { max-height: 200px; overflow-y: auto; }
+    .target-opt { padding: 12px 15px; cursor: pointer; font-size: 0.9rem; border-bottom: 1px solid #222; color: #ddd; display: flex; align-items: center; gap: 8px; }
+    .target-opt:hover { background: var(--primary-color); color: white; }
+    
+    /* Clickable Author Name for Quick Reply */
+    .reply-author-name { cursor: pointer; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(255,255,255,0.2); transition: all 0.2s; }
+    .reply-author-name:hover { text-decoration-color: var(--primary-color); filter: brightness(1.2); }
+    
+    /* Fix: The button in the Theater comments panel must remain full width */
+    .panel-footer .send-btn-premium {
+        width: 100% !important;
+    }
+
+    /* Container for the form and the list - Handles the unified scroll */
+    .manager-body-scroll {
+        flex-grow: 1;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        -webkit-overflow-scrolling: touch; /* Essential for smooth mobile scroll */
+    }
+
+    /* Fix for the calendar icon overlapping the time text */
+    input[type="datetime-local"] {
+        padding-right: 30px !important;
+    }
+    
+    .nickname-link {
+        font-size: 0.85rem; color: var(--text-color) !important; text-decoration: none; opacity: 0.7;
+        transition: all 0.2s; font-weight: 500; letter-spacing: 0.3px;
+    }
+    .nickname-link:hover { opacity: 1; color: var(--primary-color) !important; transform: translateY(-1px); }
+
+    /* --- SHORTCUTS PANEL STYLES --- */
+    #shortcuts-overlay {
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px);
+        z-index: 3000; display: flex; justify-content: center; align-items: center;
+        opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    }
+    #shortcuts-overlay.visible { opacity: 1; pointer-events: auto; }
+
+    .sc-panel {
+        background: var(--surface-color); border: 1px solid var(--border-color);
+        border-radius: 16px; width: 700px; max-width: 90vw; max-height: 90vh;
+        display: flex; flex-direction: column; overflow: hidden;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+    }
+    .sc-header {
+        padding: 15px 20px; background: var(--surface-hover);
+        border-bottom: 1px solid var(--border-color);
+        display: flex; justify-content: space-between; align-items: center;
+    }
+    .sc-body {
+        padding: 20px; overflow-y: auto;
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;
+    }
+    .sc-group-title {
+        color: var(--primary-color); font-weight: bold; margin-bottom: 10px;
+        font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px;
+    }
+    .sc-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; color: #ddd; }
+    .sc-key {
+        background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+        padding: 2px 8px; border-radius: 6px; font-family: monospace; font-weight: bold;
+        color: white; min-width: 24px; text-align: center;
+    }
+
+    /* --- VIDEO PLAY OVERLAY --- */
+    .video-play-overlay {
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        width: 50px; height: 50px; background: rgba(0, 0, 0, 0.5);
+        border: 2px solid rgba(255, 255, 255, 0.8); border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-size: 1.4rem; padding-left: 4px; z-index: 12; 
+        backdrop-filter: blur(2px); pointer-events: none; transition: all 0.2s;
+    }
+
+    /* Desktop Video Overlay Override */
+    @media (min-width: 1025px) {
+        .video-play-overlay {
+            top: auto; left: 10px; bottom: 10px; transform: none;
+            width: 32px; height: 32px; font-size: 0.9rem; padding-left: 2px;
+            background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(255, 255, 255, 0.4);
+            pointer-events: auto; cursor: pointer;
+        }
+        .video-play-overlay:hover {
+            background: var(--primary-color); border-color: white; transform: scale(1.1);
+        }
+    }
+
+    /* --- MOBILE OPTIMIZATIONS --- */
+    @media (max-width: 1024px) {
+    #mobile-menu-btn { display: block; margin-right: 10px; }
+    /* Full-width sidebar on mobile */
+    .exh-sidebar { 
+        position: fixed; 
+        left: 0; 
+        top: 0; 
+        bottom: 0; 
+        width: 100% !important; 
+        min-width: 100% !important;
+        max-width: 100vw;
+        transform: translateX(-100%); 
+        box-shadow: none !important; 
+        border-right: none;
+        z-index: 2000;
+    }
+    body.menu-open .exh-sidebar { transform: translateX(0); }
+        
+        /* Mobile Header: Two-row layout */
+        .exh-header {
+            padding: 0.75rem 1rem !important;
+            flex-direction: column !important; /* Stack rows vertically */
+            align-items: stretch !important;
+            gap: 12px !important;
+        }
+        
+        /* Row 1: Menu + Title */
+        .exh-header > div:first-child {
+            width: 100%;
+            justify-content: flex-start;
+        }
+
+        .collection-badge {
+            font-size: 0.85rem !important;
+            padding: 8px 15px !important;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: none !important; /* Expand on mobile */
+            flex-grow: 1; /* Occupy all space */
+            text-align: left;
+        }
+        
+        /* Row 2: Badge Count + Sort Dropdown */
+        .exh-header > div:last-child {
+            width: 100%;
+            justify-content: space-between !important; /* Spread count and sort */
+            gap: 8px !important;
+        }
+        
+        .file-count-badge {
+            flex-grow: 0;
+            padding: 6px 12px !important;
+            font-size: 0.7rem !important;
+        }
+        
+        .glass-select {
+            padding: 8px 12px !important;
+            font-size: 0.75rem !important;
+            margin-right: 0 !important;
+            flex-grow: 1; /* Sort dropdown takes remaining space */
+            max-width: 200px;
+        }
+        
+        /* Fix sort select positioning */
+        .exh-header > div:last-child {
+            gap: 8px !important;
+        }
+        
+        .glass-select {
+            padding: 8px 12px !important;
+            font-size: 0.75rem !important;
+            margin-right: 0 !important;
+        }
+        
+        /* Hide ONLY header shortcuts button on mobile, keeping sidebar buttons visible */
+        .exh-header .tool-btn {
+            display: none !important;
+        }
+
+        /* Optimize sidebar sort buttons for touch */
+        .sidebar-toolbar .tool-btn {
+            display: flex !important;
+            min-width: 38px;
+        }
+
+        /* Adjust search clear button position for narrower mobile sidebar */
+        .search-clear-btn {
+            right: 96px !important; 
+        }
+        
+        #theater-overlay { flex-direction: column; height: 100dvh; }
+        
+        /* MOBILE LIGHTBOX: Full-width image with overlaid arrows */
+        .theater-stage { 
+            flex: 1; /* By default, let image take available space */
+            border-bottom: 1px solid #222; 
+            position: relative;
+            transition: flex 0.3s ease, min-height 0.3s ease;
+        }
+        
+        /* When Comments are opened, shrink image to 0 */
+        #theater-overlay.comments-maximized .theater-stage {
+            flex: 0 0 0px !important;
+            min-height: 0 !important;
+            height: 0 !important;
+            border: none;
+            overflow: hidden;
+        }
+
+        /* Hide comments body and footer by default on mobile */
+        #theater-overlay:not(.comments-maximized) .panel-body,
+        #theater-overlay:not(.comments-maximized) .panel-footer {
+            display: none !important;
+        }
+
+        /* The toggle button wrapper */
+        #mob-comments-toggle-wrapper {
+            padding: 10px 15px;
+            background: #111;
+            border-top: 1px solid #222;
+        }
+        
+        .theater-media {
+            max-width: 100% !important;
+            max-height: 100% !important;
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain;
+        }
+        
+        .nav-arrow {
+            width: 50px !important;
+            height: 80px !important;
+            font-size: 2rem !important;
+            background: rgba(0, 0, 0, 0.6) !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            backdrop-filter: blur(5px);
+        }
+        
+        .nav-prev { left: 0 !important; border-radius: 0 8px 8px 0 !important; }
+        .nav-next { right: 0 !important; border-radius: 8px 0 0 8px !important; }
+        
+        /* MOBILE PANEL FIX: Ensure full height and proper flex flow */
+        .theater-panel { 
+            flex: 1; 
+            min-width: 100%; 
+            border-left: none; 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden; 
+            height: auto; /* Allow flex to control height */
+        }
+        
+        .theater-actions-desktop, .close-theater-global, .close-panel-x { display: none !important; }
+        .theater-mobile-toolbar { display: flex; }
+        
+        .panel-header { padding: 10px 15px !important; flex-shrink: 0; }
+        .panel-header #theater-title { font-size: 0.95rem !important; margin-bottom: 3px !important; }
+        .panel-header #theater-date { font-size: 0.7rem !important; margin-top: 0 !important; }
+        
+        /* --- MOBILE RATING STRIP --- */
+        .mobile-rating-strip {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #222;
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin-top: 8px;
+            border: 1px solid #333;
+        }
+        
+        .mobile-rating-left {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 0.8rem; color: #aaa;
+        }
+        
+        .mobile-rating-val {
+            color: var(--favorite-color);
+            font-weight: 800;
+            font-size: 1.1rem;
+        }
+        
+        .mobile-rating-right {
+            display: flex; align-items: center; gap: 8px;
+        }
+        
+        /* Reset button for mobile strip */
+        .mobile-trash-btn {
+            background: none; border: 1px solid #444; color: #666;
+            width: 30px; height: 30px; border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem; cursor: pointer;
+        }
+        .mobile-trash-btn:active { background: var(--danger-color); color: white; border-color: white; }
+
+        /* SCROLLING FIX: Panel body must have min-height: 0 to scroll within flex */
+        .panel-body { 
+            flex: 1; 
+            overflow-y: auto; 
+            min-height: 0; 
+            padding: 10px 15px !important; 
+        }
+        
+        .comment-bubble { padding: 10px !important; margin-bottom: 8px; }
+        .comment-author span { font-size: 0.8rem !important; }
+        .comment-author small { font-size: 0.65rem !important; }
+        .comment-text { font-size: 0.85rem !important; line-height: 1.4 !important; }
+        
+        /* FOOTER FIXES */
+        .panel-footer { padding: 10px 15px !important; flex-shrink: 0; background: #111; border-top: 1px solid #222; }
+        .panel-footer > div:first-of-type { gap: 8px !important; }
+        
+        .chat-input { 
+            min-height: 45px !important; 
+            padding: 10px !important; 
+            font-size: 0.9rem !important; 
+            margin-bottom: 8px !important; 
+        }
+        
+        .nickname-link { 
+            font-size: 0.8rem !important; 
+            margin-top: 8px; 
+            display: block; 
+            text-align: center; 
+            padding: 5px;
+        }
+        
+        .exh-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important; padding: 15px; gap: 15px; }
+        
+        /* Remove card hover/focus shadows on mobile to preserve original colors */
+        .exh-card, .exh-card:hover, .exh-card.keyboard-focused, .highlight-focus {
+            box-shadow: none !important;
+            transform: none !important; /* Prevents lifting which also adds visual noise */
+        }
+        
+        /* Optional: if you added the status-color-strip logic to exhibition.html, remove its internal shadow too */
+        .status-color-strip {
+            box-shadow: none !important;
+        }
+        .exh-grid {
+            box-shadow: none !important;
+        }
+        
+        /* Hide Desktop rating panel */
+        .desktop-rating-panel { display: none !important; }
+    }
+
+    /* Desktop Rating Panel Default */
+    .desktop-rating-panel { display: block; }
+    /* Desktop Rating Panel Default */
+    .desktop-rating-panel { display: block; }
+    @media (min-width: 1025px) {
+        #mob-comments-toggle-wrapper { display: none !important; }
+    }
+    
+    @media (max-width: 500px) {
+        .exh-header {
+            padding: 0.5rem 0.75rem !important;
+        }
+        
+        .collection-badge {
+            font-size: 0.7rem !important;
+            padding: 6px 12px !important;
+            max-width: 120px;
+        }
+        
+        .glass-select {
+            padding: 6px 10px !important;
+            font-size: 0.7rem !important;
+        }
+        
+        .nav-arrow {
+            width: 40px !important;
+            height: 70px !important;
+            font-size: 1.8rem !important;
+        }
+        
+        .exh-grid { grid-template-columns: 1fr !important; padding: 10px; gap: 20px; }
+        .theater-stage { flex: 0 0 35vh; height: 35vh; min-height: 200px; max-height: 40vh; }
+        .panel-header { padding: 8px 12px !important; }
+        .interactive-stars { font-size: 1.5rem !important; gap: 4px !important; }
+    }
+
+    #backToTopBtn {
+        display: none; position: fixed; bottom: 30px; right: 30px; z-index: 1900;
+        width: 50px; height: 50px; border-radius: 50%; background: rgba(10,10,10,0.9);
+        border: 1px solid rgba(255,255,255,0.1); color: var(--primary-color);
+        align-items: center; justify-content: center; cursor: pointer; transition: 0.3s;
+    }
+
+    /* --- FULL NAME POPUP BOX --- */
+    #fullname-popup {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: var(--surface-color);
+        border: 1px solid var(--primary-color);
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+        z-index: 10000;
+        max-width: 90vw;
+        width: 400px;
+        display: none; /* Hidden by default */
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+        animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    #fullname-popup.visible {
+        display: flex;
+    }
+
+    #fullname-text {
+        font-size: 1.1rem;
+        color: white;
+        word-wrap: break-word;
+        line-height: 1.5;
+    }
+    
+    .glass-btn {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+    
+    .glass-btn:hover {
+        background: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+    
+    /* --- FILE COUNT BADGE (Same as index.html) --- */
+    .file-count-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 123, 255, 0.15) !important;
+        border: 1px solid var(--primary-color) !important;
+        color: white !important;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        padding: 4px 14px;
+        border-radius: 50px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        cursor: default;
+        user-select: none;
+        white-space: nowrap;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+    
+    @media (max-width: 1024px) {
+        .file-count-badge {
+            padding: 2px 10px;
+            font-size: 0.7rem;
+        }
+    }
+    
+    /* Custom scrollbar for User Manager List to keep it professional */
+    #user-list::-webkit-scrollbar {
+        width: 6px;
+    }
+    #user-list::-webkit-scrollbar-thumb {
+        background: var(--primary-color);
+        border-radius: 10px;
+    }
+    #user-list::-webkit-scrollbar-track {
+        background: rgba(0,0,0,0.2);
+    }
+
+    /* Styling for the clear button in user search */
+    .search-container { position: relative; flex-grow: 1; min-width: 200px; }
+    .search-container .clear-btn {
+        position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+        background: rgba(255,255,255,0.1); border: none; color: #888;
+        width: 22px; height: 22px; border-radius: 50%; cursor: pointer;
+        display: none; align-items: center; justify-content: center; font-size: 14px;
+    }
+    .search-container .clear-btn:hover { background: var(--danger-color); color: white; }
+
+    /* Fix for datetime overlap and buttons */
+    input[type="datetime-local"] { padding-right: 35px !important; }
+    .nowrap-btn { white-space: nowrap !important; }
+    
+    /* Helper classes for conditional text display */
+    @media (max-width: 768px) {
+        .desktop-only { display: none !important; }
+        .mobile-only { display: inline !important; }
+    }
+    @media (min-width: 769px) {
+        .desktop-only { display: inline !important; }
+        .mobile-only { display: none !important; }
+    }
+    
+    /* --- NEW SPACIOUS INVITE PANEL --- */
+    .invite-panel {
+        background: #151515;
+        width: 650px;
+        max-width: 95vw;
+        height: 75vh; /* Very tall on desktop */
+        max-height: 800px;
+        border-radius: 24px;
+        border: 1px solid var(--primary-color);
+        padding: 30px;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 40px 100px rgba(0,0,0,0.9);
+        box-sizing: border-box;
+    }
+
+    /* This makes the textarea fill all the middle space of the modal */
+    #invite-text-area {
+        flex-grow: 1; 
+        width: 100%;
+        background: #000;
+        border: 1px solid #333;
+        color: #eee;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 1rem;
+        padding: 20px;
+        margin-bottom: 25px;
+        border-radius: 12px;
+        outline: none;
+        resize: none; /* Auto-expands via flex-grow */
+        box-sizing: border-box;
+        line-height: 1.5;
+    }
+
+    #invite-text-area:focus {
+        border-color: var(--primary-color);
+    }
+
+    .invite-actions {
+        display: flex;
+        gap: 15px;
+        flex-shrink: 0;
+    }
+
+    /* Unified Premium Button Style - Perfectly Centered */
+    .send-btn-premium { 
+        display: inline-flex !important; 
+        align-items: center !important; 
+        justify-content: center !important;
+        background: var(--primary-color); 
+        color: white; 
+        border: none; 
+        padding: 0 25px; 
+        height: 48px; /* High visibility */
+        border-radius: 12px; 
+        font-weight: 700; 
+        cursor: pointer; 
+        transition: all 0.2s; 
+        text-transform: uppercase; 
+        letter-spacing: 1px;
+        white-space: nowrap;
+        box-sizing: border-box;
+        line-height: 1 !important; 
+    }
+
+    .send-btn-premium:hover { filter: brightness(1.1); transform: translateY(-2px); }
+    .send-btn-premium:active { transform: scale(0.98); }
+
+    /* MOBILE OVERRIDES */
+    @media (max-width: 768px) {
+        /* Modal container adjustments */
+        #invite-text-area {
+            font-size: 1rem;
+            padding: 15px;
+            margin-bottom: 25px; /* More space before buttons */
+        }
+        .invite-panel {
+            height: 90vh !important;
+            padding: 25px 20px !important;
+            display: flex !important;
+            flex-direction: column !important;
+        }
+
+        /* THE BUTTONS: No more thin strips */
+        .invite-actions {
+            flex-direction: column !important;
+            gap: 12px !important; /* Space between buttons */
+            margin-top: auto; /* Pushes buttons to the bottom */
+        }
+
+        .invite-actions .send-btn-premium {
+            width: 100% !important;
+            height: auto !important; /* Let padding decide the thickness */
+            
+            /* REAL VERTICAL PADDING: 18px top/bottom gives it "body" */
+            padding: 18px 20px !important; 
+            
+            font-size: 1rem !important;
+            font-weight: 800 !important;
+            border-radius: 14px !important;
+            
+            /* Centering logic */
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            line-height: 1.2 !important;
+            text-align: center !important;
+            
+            /* Shadow for depth */
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+        }
+
+        /* Separate style for the "Close" button to make it look secondary but chunky */
+        .invite-actions button:last-child {
+            background: #2a2a2a !important;
+            border: 1px solid #444 !important;
+            color: #bbb !important;
+        }
+    }
+    
+    /* --- INFINITE SCROLL ANCHOR (Mobile Optimized) --- */
+    #load-more-anchor {
+        grid-column: 1 / -1; /* Spans full width on mobile 1-column layout */
+        height: 80px;        /* Taller touch target area */
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        opacity: 0;
+        transition: opacity 0.3s;
+        pointer-events: none; /* Let touches pass through */
+    }
+    
+    #load-more-anchor.loading {
+        opacity: 1;
+    }
+    
+    /* Simple CSS Spinner */
+    #load-more-anchor.loading::before {
+        content: "";
+        width: 24px;
+        height: 24px;
+        border: 3px solid rgba(255,255,255,0.1);
+        border-top-color: var(--primary-color);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin-bottom: 8px;
+    }
+    
+    #load-more-anchor.loading::after {
+        content: "Loading more content...";
+    }
+    
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    /* --- RATING UI --- */
+    .global-avg-row {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+    }
+    .global-label {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        font-weight: 600;
+    }
+    .global-val {
+        font-size: 1.6rem; /* Big text for Desktop */
+        font-weight: 800;
+        color: var(--favorite-color);
+        line-height: 1;
+    }
+    .global-count {
+        font-size: 0.85rem;
+        color: #666;
+        margin-left: auto; /* Pushes to right */
+    }
+
+    .btn-reset-tiny {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid #444;
+        color: #888;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .btn-reset-tiny:hover {
+        background: rgba(220, 53, 69, 0.15);
+        color: var(--danger-color);
+        border-color: var(--danger-color);
+    }
+
+    @media (max-width: 768px) {
+        .global-val { font-size: 1.4rem; }
+    }
+    
+    /* --- THEATER LOADER STYLES --- */
+    .theater-loader {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+        z-index: 2100;
+        text-align: center;
+    }
+
+    .theater-spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid rgba(255, 255, 255, 0.1);
+        border-top: 4px solid var(--primary-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    .theater-loader-text {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+    }
+    /* Prevent background scrolling for all modal-like panels in Exhibition */
+    .sc-panel, .smart-dialog-panel, #user-manager-panel, .theater-panel {
+        overscroll-behavior: contain !important;
+    }
+    /* Style for async notifications in Exhibition Mode */
+    .notification {
+        position: fixed; top: 20px; right: 20px; z-index: 10000;
+        background: #222; color: white; padding: 12px 20px; border-radius: 8px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5); border-left: 5px solid var(--primary-color);
+        transition: all 0.5s ease;
+    }
+    .notification.warning { border-color: var(--favorite-color); }
+    
+    /* --- DESKTOP SORT BUTTONS --- */
+    .sort-group-desktop {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .sort-btn-item {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        color: var(--text-muted);
+        padding: 8px 14px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+
+    .sort-btn-item:hover {
+        background: var(--surface-hover);
+        border-color: var(--primary-color);
+        color: white;
+    }
+
+    .sort-btn-item.active {
+        background: rgba(0, 123, 255, 0.15);
+        border-color: var(--primary-color);
+        color: #89CFF0;
+        box-shadow: 0 0 10px rgba(0, 123, 255, 0.2);
+    }
+
+    .sort-direction-arrow {
+        font-size: 0.9rem;
+        font-family: monospace;
+        opacity: 0.7;
+    }
+
+    .sort-btn-item.active .sort-direction-arrow {
+        opacity: 1;
+        color: var(--primary-color);
+    }
+
+    /* Visibility handling */
+    @media (max-width: 1024px) {
+        .sort-group-desktop { display: none !important; }
+        .glass-select.mobile-only { display: block !important; }
+    }
+    
+    @media (min-width: 1025px) {
+        .sort-group-desktop { display: flex !important; }
+        .glass-select.mobile-only { display: none !important; }
+        .panel-header { padding-left: 60px !important; } /* Makes room for the little arrow on the left */
+    }
+    
+    /* --- Exhibition Collections Tags (Desktop & Mobile Hybrid) --- */
+    .exh-tags-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 10px;
+    }
+    
+    .exh-tag {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: #ddd;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    /* Mobile Expand Button */
+    .exh-tag-more {
+        background: transparent;
+        border: 1px dashed rgba(255, 255, 255, 0.3);
+        color: var(--primary-color);
+        cursor: pointer;
+        font-weight: bold;
+    }
+
+    /* Target specific header container for layout switch */
+    .theater-meta-header {
+        display: block; /* Desktop default */
+    }
+
+    /* Mobile Overrides for Tags */
+    @media (max-width: 1024px) {
+        .theater-meta-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 5px;
+        }
+
+        #theater-date {
+            margin-top: 0 !important;
+            flex-shrink: 0;
+        }
+
+        .exh-tags-container {
+            margin-top: 0;
+            flex-wrap: nowrap; /* Prevent wrapping, force inline */
+            overflow: hidden; /* Hide overflow */
+            justify-content: flex-end; /* Align right */
+            flex-grow: 1;
+            margin-left: 10px;
+        }
+
+        /* Hide all tags except the first one on mobile */
+        .exh-tags-container .exh-tag:not(:first-child):not(.exh-tag-more) {
+            display: none;
+        }
+        
+        /* Make tags smaller on mobile */
+        .exh-tag {
+            padding: 2px 6px;
+            font-size: 0.7rem;
+            white-space: nowrap;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    }
+    
+
+    /* --- EXHIBITION QUICK MENU STYLES --- */
+    .exh-action-row {
+        display: flex; align-items: center; padding: 12px 15px;
+        background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 12px; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        margin-bottom: 8px;
+    }
+    .exh-action-row:hover, .exh-action-row:focus {
+        background: rgba(255,255,255,0.1); border-color: var(--primary-color);
+        transform: translateX(6px); box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        outline: none;
+    }
+    .ear-icon { font-size: 1.4rem; width: 85px; text-align: center; margin-right: 15px; flex-shrink: 0; }
+    .ear-desc { flex-grow: 1; font-size: 0.95rem; color: #ddd; font-weight: 500; line-height: 1.3; }
+    .ear-key { display: flex; gap: 5px; align-items: center; flex-shrink: 0; margin-left: 10px; }
+    .ear-key .key { background: #111; border: 1px solid #444; color: #aaa; box-shadow: 0 2px 0 #000; font-size: 0.8rem; padding: 2px 6px; border-radius:4px; font-family:monospace; font-weight:bold;}
+</style>
+</head>
+<body>
+
+    <div id="notification-container"></div>
+
+    <aside class="exh-sidebar" id="sidebar">
+        <button class="sidebar-close-btn" onclick="toggleMenu()" title="Close sidebar">×</button>
+        <a href="#" onclick="loadGallery('all', 'All Collections'); return false;" class="brand-link">
+            <div class="brand-block">
+                <img src="{{ app_logo_b64 }}" class="brand-logo">
+                <div class="brand-title">
+                    <h1>SmartGallery <span class="ver-num">v{{ app_version }}</span></h1>
+                    <span>EXHIBITION</span>
+                </div>
+            </div>
+        </a>
+        <div class="sidebar-toolbar">
+            <input type="text" id="category-search" class="search-input" placeholder="🔍 Search Collections...">
+            <button class="search-clear-btn" id="search-clear-btn" onclick="clearSearch()" title="Clear search">×</button>
+            <button class="tool-btn" id="cat-sort-type" onclick="cycleCatSortType()" title="Toggle sort by name/date">A-Z</button>
+            <button class="tool-btn" id="cat-sort-dir" onclick="toggleCatSortDir()" title="Toggle sort direction">↓</button>
+        </div>
+        
+        <ul class="nav-list" id="collection-list"></ul>
+        <!-- COMPACT USER SESSION ROW -->
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 10px; border: 1px solid var(--border-color); margin-bottom: 20px;">
+            <div style="display: flex; align-items: center; gap: 10px; overflow: hidden;">
+                <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--primary-color); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.8rem; flex-shrink: 0;">
+                    {{ session.username[0] | upper }}
+                </div>
+                <div style="display: flex; flex-direction: column; overflow: hidden;">
+                    <span style="font-size: 0.85rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff;">
+                        {{ session.username }}
+                    </span>
+                    <span style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">{{ session.role }}</span>
+                </div>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 5px; flex-shrink: 0;">
+                {% if session.role in ['ADMIN', 'MANAGER'] %}
+                <button onclick="openUserManager()" title="User Management" style="background: none; border: 1px solid #9b30ff; color: #f0a0ff; cursor: pointer; padding: 4px 6px; border-radius: 6px; font-size: 0.9rem; transition: all 0.2s;">
+                    👥
+                </button>
+                {% endif %}
+                
+                <a href="#" onclick="confirmLogout(event)" title="Sign Out" style="color: var(--danger-color); text-decoration: none; font-size: 1.2rem; padding: 0 5px; line-height: 1; font-weight: bold; transition: opacity 0.2s;">
+                    ×
+                </a>
+            </div>
+        </div>
+        <!-- GITHUB FOOTER -->
+        <div class="exh-sidebar-footer">
+            <a href="{{ github_url }}" target="_blank" class="gh-promo-link">
+                <svg class="gh-icon" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                <div class="gh-text">
+                    Love this tool? Check it out on GitHub.<br>
+                </div>
+            </a>
+        </div>
+    </aside>
+
+    <main class="exh-main">
+        <header class="exh-header">
+            <div style="display:flex; align-items:center;">
+                <button id="mobile-menu-btn" onclick="toggleMenu()">☰</button>
+                <div class="collection-badge" id="page-title">Gallery</div>
+            </div>
+            
+            <!-- Count + Shortcuts + Sort -->
+            <div style="display:flex; align-items:center; gap:10px;">
+                <span class="file-count-badge" id="file-count-total">📂 0 Items</span>
+                
+                <button class="tool-btn" onclick="toggleShortcutsHelp()" title="Keyboard Shortcuts" style="height:42px; width:auto; padding:0 15px; font-weight:bold; font-size:0.95rem; border-radius:10px;">? Shortcuts</button>
+                
+                <!-- NEW: Desktop Sort Buttons (Visible only on Desktop) -->
+                <div class="sort-group-desktop" id="desktop-sort-bar">
+                    <button class="sort-btn-item active" data-sort="date" onclick="setSort('date')" title="Sort by Upload Date">
+                        <span>📅 Date</span> <span class="sort-direction-arrow">↓</span>
+                    </button>
+                    <button class="sort-btn-item" data-sort="rating" onclick="setSort('rating')" title="Sort by Star Rating">
+                        <span>⭐ Rating</span> <span class="sort-direction-arrow">↓</span>
+                    </button>
+                    <button class="sort-btn-item" data-sort="comments" onclick="setSort('comments')" title="Sort by Total Comments">
+                        <span>💬 Comment</span> <span class="sort-direction-arrow">↓</span>
+                    </button>
+                    <button class="sort-btn-item" data-sort="latestcomment" onclick="setSort('latestcomment')" title="Sort by Most Recent Comments">
+                        <span>🕒 Activity</span> <span class="sort-direction-arrow">↓</span>
+                    </button>
+                    <button class="sort-btn-item" data-sort="name" onclick="setSort('name')" title="Sort Alphabetically">
+                        <span>🔤 Name</span> <span class="sort-direction-arrow">↑</span>
+                    </button>
+                </div>
+
+                <!-- Keep Mobile Dropdown (Hidden on Desktop via CSS) -->
+                <select class="glass-select mobile-only" id="sort-select" onchange="applySort()">
+                    <option value="date_desc">📅 Newest First</option>
+                    <option value="date_asc">📅 Oldest First</option>
+                    <option value="rating_desc">⭐ Top Rated</option>
+                    <option value="rating_asc">⭐ Lowest Rated</option>
+                    <option value="comments_desc">💬 Most Discussed</option>
+                    <option value="comments_asc">💬 Least Discussed</option>
+                    <option value="latestcomment_desc">💬🕒 Newest Comment</option> 
+                    <option value="name_asc">🔤 Name A-Z</option>
+                    <option value="name_desc">🔤 Name Z-A</option>
+                </select>
+            </div>
+        </header>
+
+    <div class="exh-grid" id="gallery-grid">
+                <!-- Items will be injected here via JS -->
+                <!-- The anchor will be managed by JS to always stay at the bottom -->
+            </div>
+        </main>
+
+    <div id="theater-overlay">
+        <!-- Unified Sleek Desktop Toolbar (Top Left) -->
+        <div class="theater-actions-desktop" id="theater-toolbar-desktop" style="background: rgba(10,10,10,0.85); backdrop-filter: blur(15px); padding: 8px; border-radius: 40px; border: 1px solid rgba(255,255,255,0.15); display: flex; align-items: center; gap: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.8);">
+            
+            <!-- Left: Collapse Arrow -->
+            <button class="action-btn-circle" style="width:40px; height:40px; font-size:1rem;" title="Hide Toolbar (H)" onclick="toggleTheaterToolbar()">◀</button>
+            
+            <div style="width:1px; height:24px; background:rgba(255,255,255,0.2); margin: 0 4px;"></div>
+            
+            <!-- Menu Button -->
+            <button id="exh-menu-btn" class="action-btn-pill" style="height:40px; padding:0 15px; font-size: 0.85rem; font-weight:bold; letter-spacing:0.5px;" onclick="openExhMenu()">/ MENU</button>
+            
+            <div style="width:1px; height:24px; background:rgba(255,255,255,0.2); margin: 0 4px;"></div>
+
+            <!-- Media Tools -->
+            <button class="action-btn-circle" style="width:40px; height:40px; font-size:1.2rem;" title="Zoom Out (-)" onclick="zoomTheater(-0.2)">-</button>
+            <button class="action-btn-circle" style="width:40px; height:40px; font-size:1.2rem;" title="Zoom In (+)" onclick="zoomTheater(0.2)">+</button>
+            <button class="action-btn-circle" style="width:40px; height:40px; font-size:1.1rem;" title="Rotate (T)" onclick="rotateTheater()">🔄</button>
+            <a id="theater-dl-link-desk" class="action-btn-circle" style="width:40px; height:40px; font-size:1.1rem;" title="Download (S)" download>💾</a>
+            <a id="theater-open-tab-desk" class="action-btn-circle" style="width:40px; height:40px; font-size:1.1rem;" target="_blank" title="Open Original (O)">↗️</a>
+            
+            <div style="width:1px; height:24px; background:rgba(255,255,255,0.2); margin: 0 4px;"></div>
+
+            <!-- Panel Toggle -->
+            <button id="desk-toggle-panel-btn" class="action-btn-pill" title="Toggle Rating & Comments panel (G)" onclick="toggleTheaterPanel()" style="height:40px; font-size:1rem; border-color: var(--favorite-color); color: var(--favorite-color);">
+                <span>⭐</span><span>💬</span>
+            </button>
+            
+            <div style="width:1px; height:24px; background:rgba(255,255,255,0.2); margin: 0 4px;"></div>
+
+            <!-- Global Close (Moved here to avoid UX confusion with side panel) -->
+            <button class="action-btn-circle" style="width:40px; height:40px; font-size:1.5rem; background:rgba(220, 53, 69, 0.15); color:#ff6b6b; border-color:#ff6b6b; padding-bottom:3px;" onclick="closeTheater()" title="Close Lightbox (Esc)" onmouseover="this.style.background='var(--danger-color)'; this.style.color='white';" onmouseout="this.style.background='rgba(220, 53, 69, 0.15)'; this.style.color='#ff6b6b';">×</button>
+        </div>
+        
+        <!-- Ghost Button to SHOW Toolbar when it's hidden -->
+        <button id="ghost-show-toolbar-btn" class="action-btn-circle desktop-only" style="position: absolute; top: 20px; left: 20px; z-index: 2490; opacity: 0; pointer-events: none; transform: translateX(-20px); width:44px; height:44px; font-size:1.1rem; background:rgba(10,10,10,0.85); backdrop-filter:blur(10px);" onclick="toggleTheaterToolbar()" title="Show Toolbar (H)">▶</button>
+
+        <!-- STAGE AREA (Image and Arrows) -->
+        <div class="theater-stage" id="theater-stage-area">
+            <button class="nav-arrow nav-prev" onclick="navTheater(-1)">‹</button>
+            <div id="theater-media-container" style="width:100%; height:100%; display:flex; justify-content:center; align-items:center;"></div>
+            <button class="nav-arrow nav-next" onclick="navTheater(1)">›</button>
+        </div>
+
+        <!-- SIDE PANEL AREA -->
+        <div class="theater-panel" style="position: relative;">
+            <!-- New Intuitive Close X for the Panel (Top Right) -->
+            <button class="desktop-only" onclick="toggleTheaterPanel()" title="Close Panel (G)" style="position: absolute; top: 15px; right: 15px; z-index: 100; background: rgba(0,0,0,0.6); border: 1px solid #444; color: #ccc; width: 32px; height: 32px; border-radius: 50%; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; line-height: 1; padding-bottom: 2px;" onmouseover="this.style.background='var(--danger-color)'; this.style.color='white'; this.style.borderColor='white';" onmouseout="this.style.background='rgba(0,0,0,0.6)'; this.style.color='#ccc'; this.style.borderColor='#444';">×</button>
+
+            <!-- Mobile Toolbar -->
+            <div class="theater-mobile-toolbar" style="gap: 5px; flex-wrap: wrap;">
+                <button class="tool-btn" style="flex:1; min-width: 40px; border-radius:8px; font-weight: bold; font-size: 1.2rem;" onclick="zoomTheater(-0.2)">-</button>
+                <button class="tool-btn" style="flex:1; min-width: 40px; border-radius:8px; font-weight: bold; font-size: 1.2rem;" onclick="zoomTheater(0.2)">+</button>
+                <button class="tool-btn" style="flex:1; min-width: 40px; border-radius:8px; font-size: 1.2rem;" onclick="rotateTheater()">🔄</button>
+                <a id="theater-dl-link-mob" class="tool-btn" style="flex:1; min-width: 40px; border-radius:8px; text-decoration:none; font-size: 1.2rem;" download>💾</a>
+                <a id="theater-open-tab-mob" class="tool-btn" style="flex:1; min-width: 40px; border-radius:8px; text-decoration:none; font-size: 1.2rem;" target="_blank">↗️</a>
+                <button class="tool-btn" style="flex:1; min-width: 40px; border-radius:8px; color:var(--danger-color); border-color:var(--danger-color); font-weight:bold; font-size: 1.2rem;" onclick="closeTheater()">✕</button>
+            </div>
+            <div class="panel-header">
+                <div id="theater-title" style="font-weight:700; color:white; font-size:1.1rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>
+                <!-- Flexible Wrapper for Date and Tags -->
+                <div class="theater-meta-header">
+                    <div id="theater-date" style="font-size:0.8rem; color:#666;"></div>
+                    <div id="theater-collections" class="exh-tags-container"></div>
+                </div>
+                <!-- RATING BOX CONTAINER -->
+                <div id="theater-rating-area">
+                    <!-- Content injected by JS -->
+                </div>
+            </div>
+
+            <!-- NEW: Mobile Comments Accordion Toggle -->
+            <div id="mob-comments-toggle-wrapper">
+                <button id="mob-toggle-comments-btn" class="send-btn-premium" style="width: 100%; height: 44px; background: #222; border: 1px solid #444;" onclick="toggleMobileComments()">💬 Show Comments</button>
+            </div>
+
+            <div class="panel-body" id="comments-list"></div>
+
+            <div class="panel-footer">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom: 10px; width: 100%;">
+                    <span style="font-size:0.85rem; color:var(--text-muted); white-space:nowrap; font-weight: bold;">Target:</span>
+                    
+                    <!-- Custom Searchable Dropdown for Exhibition -->
+                    <div class="target-select-wrapper" id="exh-custom-target-wrapper">
+                        <div class="target-select-trigger" onclick="toggleTargetDropdown(event)">
+                            <span id="target-selected-text">🌐 Public (Everyone)</span>
+                            <span style="font-size: 0.7rem; opacity: 0.6;">▲</span>
+                        </div>
+                        <input type="hidden" id="target-audience" value="public">
+                        
+                        <div class="target-dropdown" id="target-dropdown-menu">
+                            <!-- Search box ONLY visible if staff (customers don't have a long list) -->
+                            {% if session.role in ['ADMIN', 'MANAGER', 'STAFF'] %}
+                            <div class="target-search-box">
+                                <input type="text" id="target-search-input" placeholder="Search user..." onkeyup="filterTargetOptions(this.value)" onclick="event.stopPropagation()">
+                            </div>
+                            {% endif %}
+                            
+                            <div class="target-options-list" id="target-options-container">
+                                <div class="target-opt" data-value="public" onclick="selectTarget('public', '🌐 Public (Everyone)')">🌐 Public (Everyone)</div>
+                                <div class="target-opt" data-value="internal" onclick="selectTarget('internal', '🔒 Private (Staff Only)')">🔒 Private (Staff Only)</div>
+                                
+                                {% if session.role in ['ADMIN', 'MANAGER', 'STAFF'] %}
+                                <div style="padding: 8px 15px; font-size: 0.75rem; color: var(--primary-color); text-transform: uppercase; font-weight: bold; background: #000;">Direct Comments</div>
+                                <div id="target-dynamic-users">
+                                    <!-- Populated via JS -->
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <textarea class="chat-input" id="comment-input" rows="3" placeholder="Write a comment..."></textarea>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <button class="send-btn-premium" onclick="postComment()" style="flex: 1;">Post comment</button>
+                    <!-- Close button hidden on mobile footer as it's in top toolbar now -->
+                    <button class="send-btn-premium desktop-only" onclick="toggleTheaterPanel()" style="flex: 1; background: var(--surface-hover); border: 1px solid var(--border-color);">Hide Panel</button>
+                </div>
+                <div style="text-align: center; margin-top: 5px;">
+                    <a href="#" onclick="changeNickname(); return false;" class="nickname-link"><span style="filter: brightness(1.5);">👤</span> Change Nickname</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button onclick="scrollToTop()" id="backToTopBtn">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 15l-6-6-6 6"/></svg>
+    </button>
+    
+    <!-- SHORTCUTS HELP MODAL -->
+    <div id="shortcuts-overlay" onclick="if(event.target===this) toggleShortcutsHelp()">
+        <div class="sc-panel">
+            <div class="sc-header">
+                <h3 style="margin:0; color:white;">⌨️ Keyboard Shortcuts</h3>
+                <button onclick="toggleShortcutsHelp()" style="background:none; border:none; color:white; font-size:1.5rem; cursor:pointer;">×</button>
+            </div>
+            <div class="sc-body">
+                <div>
+                    <div class="sc-group-title">Grid Navigation</div>
+                    <div class="sc-row"><span>Move Selection</span> <span><span class="sc-key">←</span> <span class="sc-key">↑</span> <span class="sc-key">→</span> <span class="sc-key">↓</span></span></div>
+                    <div class="sc-row"><span>Open Lightbox</span> <span><span class="sc-key">Enter</span> / <span class="sc-key">V</span></span></div>
+                    <div class="sc-row"><span>First / Last Item</span> <span><span class="sc-key">Home</span> / <span class="sc-key">End</span></span></div>
+                    <div class="sc-row"><span>Scroll Page</span> <span><span class="sc-key">PgUp</span> / <span class="sc-key">PgDn</span></span></div>
+                </div>
+                <div>
+                    <div class="sc-group-title">Quick Rating</div>
+                    <div class="sc-row"><span>Rate 1 Star</span> <span class="sc-key">1</span></div>
+                    <div class="sc-row"><span>Rate 2 Stars</span> <span class="sc-key">2</span></div>
+                    <div class="sc-row"><span>Rate 3 Stars</span> <span class="sc-key">3</span></div>
+                    <div class="sc-row"><span>Rate 4 Stars</span> <span class="sc-key">4</span></div>
+                    <div class="sc-row"><span>Rate 5 Stars</span> <span class="sc-key">5</span></div>
+                    <div class="sc-row"><span>Clear Rating</span> <span class="sc-key">0</span></div>
+                </div>
+                <div>
+                    <div class="sc-group-title">Lightbox Viewer</div>
+                    <div class="sc-row"><span>Previous / Next</span> <span><span class="sc-key">←</span> <span class="sc-key">→</span></span></div>
+                    <div class="sc-row"><span>Quick Menu</span> <span class="sc-key">/</span></div>
+                    <div class="sc-row"><span>Toggle Toolbar (Clean View)</span> <span class="sc-key">H</span></div>
+                    <div class="sc-row"><span>Toggle Ratings & Comments (Panel)</span> <span class="sc-key">G</span></div>
+                    <div class="sc-row"><span>Rotate 90°</span> <span class="sc-key">T</span></div>
+                    <div class="sc-row"><span>Zoom In / Out</span> <span><span class="sc-key">+</span> <span class="sc-key">-</span></span></div>
+                    <div class="sc-row"><span>Reset Zoom / Rot</span> <span class="sc-key">0</span></div>
+                    <div class="sc-row"><span>Pan Image</span> <span><span class="sc-key">Mouse Drag</span></span></div>
+                    <div class="sc-row"><span>Download</span> <span class="sc-key">S</span></div>
+                    <div class="sc-row"><span>Open New Tab</span> <span class="sc-key">O</span></div>
+                    <div class="sc-row"><span>Close</span> <span class="sc-key">Esc</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- CUSTOM STYLE ALERT -->
+    <div id="smart-alert-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:20000; display:none; justify-content:center; align-items:center; backdrop-filter:blur(8px);">
+        <div style="background:#1a1a1a; width:400px; max-width:85vw; border-radius:16px; border:1px solid var(--primary-color); border-top:4px solid var(--primary-color); padding:30px; box-shadow:0 20px 60px rgba(0,0,0,1); text-align:center;">
+            <div style="font-size:2.5rem; margin-bottom:15px;">⚠️</div>
+            <h3 style="margin:0 0 15px 0; color:white; font-size:1.2rem;">Attention</h3>
+            <p id="smart-alert-msg" style="color:#bbb; line-height:1.5; margin-bottom:25px; font-size:1rem;"></p>
+            <button onclick="closeSmartAlert()" class="send-btn-premium" style="width:100%; height:45px;">OK</button>
+        </div>
+    </div>
+    <!-- SMART DIALOG OVERLAY (Confirm/Prompt) -->
+    <div id="exh-dialog-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:20000; display:none; justify-content:center; align-items:center; backdrop-filter:blur(8px);">
+        <div style="background:#1a1a1a; width:400px; max-width:90vw; border-radius:16px; border:1px solid var(--primary-color); padding:30px; box-shadow:0 20px 60px #000; transform: scale(0.9); transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1); display: flex; flex-direction: column; gap: 20px;" id="exh-dialog-panel">
+            <h3 id="exh-dialog-title" style="margin:0; color:white; font-size:1.3rem;">Confirm</h3>
+            <p id="exh-dialog-msg" style="color:#bbb; line-height:1.5; margin:0; font-size:1rem;"></p>
+            
+            <!-- Hidden input for Prompt mode -->
+            <input type="text" id="exh-dialog-input" class="chat-input" style="display:none; margin-bottom:0;" autocomplete="off">
+            
+            <div style="display:flex; gap:12px; justify-content:flex-end;">
+                <button id="exh-dialog-cancel" class="send-btn-premium" style="background:#333; border:1px solid #444; flex:1;">Cancel</button>
+                <button id="exh-dialog-confirm" class="send-btn-premium" style="flex:1;">Confirm</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- EXHIBITION QUICK MENU (Interactive) -->
+    <div id="exh-menu-overlay" style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); backdrop-filter:blur(8px); z-index:5000; display:none; justify-content:center; align-items:center; opacity:0; transition:opacity 0.3s ease;">
+        <div class="sc-panel" style="max-width: 600px; max-height: 85vh; display: flex; flex-direction: column;">
+            <div class="sc-header">
+                <h2 style="margin:0; font-size:1.2rem; color:white;">⚡ Quick Menu & Shortcuts</h2>
+                <button class="close-btn" onclick="closeExhMenu()" style="background:none; border:none; color:#888; font-size:1.5rem; cursor:pointer;">×</button>
+            </div>
+            
+            <div style="display: block; padding: 15px; overflow-y: auto; flex: 1;">
+                
+                <div class="exh-action-row" onclick="closeExhMenu(); rotateTheater();">
+                    <div class="ear-icon">🔄</div>
+                    <div class="ear-desc">Rotate Media 90°</div>
+                    <div class="ear-key"><span class="key">T</span></div>
+                </div>
+
+                <div class="exh-action-row" onclick="closeExhMenu(); document.getElementById('theater-dl-link-desk').click();">
+                    <div class="ear-icon">💾</div>
+                    <div class="ear-desc">Download Media File</div>
+                    <div class="ear-key"><span class="key">S</span></div>
+                </div>
+
+                <div class="exh-action-row" onclick="closeExhMenu(); document.getElementById('theater-open-tab-desk').click();">
+                    <div class="ear-icon">↗️</div>
+                    <div class="ear-desc">Open Full-res in New Tab</div>
+                    <div class="ear-key"><span class="key">O</span></div>
+                </div>
+
+                <div class="exh-action-row" onclick="closeExhMenu(); toggleTheaterPanel();">
+                    <div class="ear-icon" style="color:var(--favorite-color);">⭐</div>
+                    <div class="ear-desc">Toggle Rating & Comments Panel</div>
+                    <div class="ear-key"><span class="key">G</span></div>
+                </div>
+                
+                <div class="exh-action-row" onclick="closeExhMenu(); toggleTheaterToolbar();">
+                    <div class="ear-icon">👁️</div>
+                    <div class="ear-desc">Hide/Show UI (Clean View)</div>
+                    <div class="ear-key"><span class="key">H</span></div>
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 15px 0;">
+
+                <div class="exh-action-row" onclick="closeExhMenu(); toggleTheaterPanel();" title="Click to toggle Rating Panel, or press 1-5 on keyboard">
+                    <div class="ear-icon" style="color:var(--favorite-color);">★</div>
+                    <div class="ear-desc">Rate 1 to 5 Stars</div>
+                    <div class="ear-key">
+                        <span class="key">1</span>
+                        <span style="color:#888; font-size:0.75rem; margin:0 4px; text-transform:uppercase;">to</span>
+                        <span class="key">5</span>
+                    </div>
+                </div>
+                <div class="exh-action-row" onclick="closeExhMenu(); submitRatingShortcut(0);">
+                    <div class="ear-icon" style="color:#888;">🗑️</div>
+                    <div class="ear-desc">Clear Rating</div>
+                    <div class="ear-key"><span class="key">0</span></div>
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 15px 0;">
+
+                <div class="exh-action-row" onclick="closeExhMenu(); closeTheater();">
+                    <div class="ear-icon" style="color:var(--danger-color)">✕</div>
+                    <div class="ear-desc" style="color:var(--danger-color)">Close Lightbox</div>
+                    <div class="ear-key"><span class="key">Esc</span></div>
+                </div>
+                
+                <div class="exh-action-row" onclick="closeExhMenu();">
+                    <div class="ear-icon">/</div>
+                    <div class="ear-desc">Close Quick Menu</div>
+                    <div class="ear-key"><span class="key">/</span></div>
+                </div>
+
+            </div>
+            <div style="padding: 15px; text-align: center; border-top: 1px solid var(--border-color); background: var(--surface-hover);">
+                <button class="send-btn-premium" style="width: 100%;" onclick="closeExhMenu()">Close Menu</button>
+            </div>
+        </div>
+    </div>
+    <!-- USER MANAGER MODULE INTEGRATION -->
+    {% if session.role in ['ADMIN', 'MANAGER'] %}
+        {% include 'modals/user_manager_module.html' %}
+    {% endif %}
+</body>
+<script>
+    // --- LOGOUT CONFIRMATION ---
+    async function confirmLogout(event) {
+        event.preventDefault();
+        const confirmed = await smartConfirm("🚪 Sign Out", "Are you sure you want to log out?");
+        if (confirmed) {
+            window.location.href = "/galleryout/logout";
+        }
+    }
+    // --- UTILITIES ---
+    /**
+     * Shows a toast-style notification.
+     * Compatible with the layout already present in index.html
+     */
+    function showNotification(message, type = 'info', duration = 5000) { 
+        const container = document.getElementById('notification-container'); 
+        if (!container) return; 
+        const notification = document.createElement('div'); 
+        notification.className = `notification ${type}`; 
+        notification.textContent = message; 
+        
+        // Add specific styles for exhibition notifications if not in CSS
+        notification.style.cssText = "background:#222; color:white; padding:12px 20px; border-radius:8px; margin-bottom:10px; box-shadow:0 10px 30px rgba(0,0,0,0.5); border-left:5px solid var(--primary-color); animation: slideIn 0.3s ease-out;";
+        if(type === 'success') notification.style.borderColor = 'var(--success-color)';
+        if(type === 'error') notification.style.borderColor = 'var(--danger-color)';
+
+        container.appendChild(notification); 
+        
+        // Auto-remove
+        setTimeout(() => { 
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateX(20px)';
+            notification.style.transition = 'all 0.5s ease';
+            setTimeout(() => notification.remove(), 500); 
+        }, duration); 
+    }
+    function smartAlert(msg) {
+        document.getElementById('smart-alert-msg').innerText = msg;
+        document.getElementById('smart-alert-overlay').style.display = 'flex';
+        // Block scrolling of the page behind
+        document.body.style.overflow = 'hidden';
+    }
+    function closeSmartAlert() {
+        document.getElementById('smart-alert-overlay').style.display = 'none';
+        // Restore scrolling
+        document.body.style.overflow = '';
+    }
+   
+   // --- USER SESSION CONTEXT (Passed from Python Backend) ---
+    const CURRENT_USER = {
+        username: "{{ session.username | default('Guest', true) }}",
+        id: "{{ session.user_id | default('', true) }}",
+        full_name: "{{ session.full_name | default('Guest', true) }}",
+        role: "{{ session.role | default('GUEST', true) }}"
+    };
+    console.log("Current User Context Loaded:", CURRENT_USER);
+
+    // Global tracking variables for Focus Follows Mouse logic
+    window.lastActiveX = 0;
+    window.lastActiveY = 0;
+
+    // Track mouse globally to distinguish scroll vs move
+    document.addEventListener('mousemove', (e) => {
+        window.lastMouseX = e.clientX;
+        window.lastMouseY = e.clientY;
+    }, { passive: true, capture: true });
+
+    // Global gallery and collection state
+    let currentCollectionId = null, currentFiles = [], currentIndex = 0;
+    let theaterPollingInterval = null;
+    let displayedCount = 0, focusedGridIndex = -1;
+    const CHUNK_SIZE = {{ page_size_from_backend | default(100) }};
+    let allCollections = [], categorySearchTerm = '';
+
+    // Technical configuration from backend
+    const ffmpegAvailable = {{ ffmpeg_available | tojson }};
+    const streamThresholdBytes = {{ stream_threshold }}; 
+
+    // User preferences and sorting
+    let catSortType = localStorage.getItem('sg_exh_cat_sort_type') || 'name';
+    let catSortDir = localStorage.getItem('sg_exh_cat_sort_dir') || 'asc';
+    let userName = localStorage.getItem('sg_user_nickname') || '';
+    
+    // --- IDENTITY LOGIC (Consolidated) ---
+    // clientUUID is declared only ONCE here to avoid SyntaxErrors.
+    let clientUUID;
+    
+    if (CURRENT_USER.role !== 'GUEST' && CURRENT_USER.id) {
+        // Registered User: Identity is strictly bound to the Database ID from Session
+        clientUUID = CURRENT_USER.id;
+    } else {
+        // Guest User: Priority to ID already present in session (provided during login), 
+        // fallback to Local Storage for persistence across browser restarts.
+        clientUUID = CURRENT_USER.id || localStorage.getItem('sg_exh_uuid') || (() => {
+            const u = (typeof crypto !== 'undefined' && crypto.randomUUID) 
+                ? crypto.randomUUID() 
+                : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                });
+            localStorage.setItem('sg_exh_uuid', u); 
+            return u;
+        })();
+
+        // Sync back to local storage if it was a new guest session ID
+        if (clientUUID && !localStorage.getItem('sg_exh_uuid')) {
+            localStorage.setItem('sg_exh_uuid', clientUUID);
+        }
+    }
+
+    // Theater Mode Zoom & Pan state
+    let thZoom = 1, thPanX = 0, thPanY = 0, thRot = 0;
+    let isThDragging = false, thStartX = 0, thStartY = 0;
+    
+    let cachedUsersList = null;
+
+    // Global function to allow User Manager to reset the cache
+    window.invalidateUsersCache = function() {
+        cachedUsersList = null;
+        const dynamicContainer = document.getElementById('target-dynamic-users');
+        if (dynamicContainer) dynamicContainer.innerHTML = '';
+        
+        // If the user was selected in the dropdown, reset it to Public to prevent ghost replies
+        const targetInput = document.getElementById('target-audience');
+        const targetText = document.getElementById('target-selected-text');
+        if (targetInput && targetInput.value.startsWith('user:')) {
+            targetInput.value = 'public';
+            if (targetText) targetText.innerHTML = '🌐 Public (Everyone)';
+        }
+    };
+
+    // --- CUSTOM DROPDOWN & QUICK REPLY LOGIC (Exhibition) ---
+    function toggleTargetDropdown(e) {
+        e.stopPropagation();
+        const menu = document.getElementById('target-dropdown-menu');
+        if (menu) {
+            menu.classList.toggle('show');
+            if (menu.classList.contains('show')) {
+                const input = document.getElementById('target-search-input');
+                if (input) {
+                    input.value = '';
+                    filterTargetOptions('');
+                    setTimeout(() => input.focus(), 50);
+                }
+            }
+        }
+    }
+    
+    // --- DESKTOP TOOLBAR TOGGLE ---
+    function toggleTheaterToolbar() {
+        const toolbar = document.getElementById('theater-toolbar-desktop');
+        const ghostBtn = document.getElementById('ghost-show-toolbar-btn');
+        
+        const isHidden = toolbar.classList.toggle('hidden');
+        
+        if (isHidden) {
+            // Show the ghost button "▶" to make it reappear
+            ghostBtn.style.opacity = '1';
+            ghostBtn.style.pointerEvents = 'auto';
+            ghostBtn.style.transform = 'translateX(0)';
+            showNotification("Clean View enabled. Press 'H' or click the arrow to restore tools.", "info", 2000);
+        } else {
+            // Hide the ghost button
+            ghostBtn.style.opacity = '0';
+            ghostBtn.style.pointerEvents = 'none';
+            ghostBtn.style.transform = 'translateX(-20px)';
+        }
+    }
+    
+    function selectTarget(val, text) {
+        const hiddenInput = document.getElementById('target-audience');
+        const displayText = document.getElementById('target-selected-text');
+        const menu = document.getElementById('target-dropdown-menu');
+        
+        if (hiddenInput && displayText) {
+            hiddenInput.value = val;
+            displayText.innerHTML = text;
+        }
+        if (menu) menu.classList.remove('show');
+    }
+
+    function filterTargetOptions(term) {
+        const lowerTerm = term.toLowerCase();
+        const opts = document.querySelectorAll('.target-opt');
+        opts.forEach(opt => {
+            const txt = opt.textContent.toLowerCase();
+            opt.style.display = txt.includes(lowerTerm) ? 'flex' : 'none';
+        });
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        const menu = document.getElementById('target-dropdown-menu');
+        const wrapper = document.getElementById('exh-custom-target-wrapper');
+        if (menu && menu.classList.contains('show')) {
+            if (!wrapper.contains(e.target)) {
+                menu.classList.remove('show');
+            }
+        }
+    });
+
+    async function populateUsersDropdown() {
+        const container = document.getElementById('target-dynamic-users');
+        if (!container || cachedUsersList !== null) return; 
+
+        try {
+            const res = await fetch('/galleryout/api/users/simple_list');
+            const data = await res.json();
+            if (data.status === 'success') {
+                cachedUsersList = data.users;
+                container.innerHTML = cachedUsersList.map(u => {
+                    const val = `user:${u.user_id}`;
+                    const txt = `👤 To: ${escapeHtml(u.full_name)} (@${escapeHtml(u.username)})`;
+                    return `<div class="target-opt" data-value="${val}" onclick="selectTarget('${val}', '${txt}')">${txt}</div>`;
+                }).join('');
+            }
+        } catch (e) {
+            console.error("Failed to load users list", e);
+        }
+    }
+
+    // QUICK REPLY FUNC
+    function setReplyTarget(uuid, authorName) {
+        // Everyone can reply to Admin securely using 'internal'
+        if (uuid === 'admin') {
+            selectTarget('internal', '🔒 Private (Staff Only)');
+        } 
+        // Only Privileged users can reply directly to specific UUIDs
+        else if (['ADMIN', 'MANAGER', 'STAFF'].includes(CURRENT_USER.role)) {
+            const val = `user:${uuid}`;
+            const txt = `👤 To: ${authorName}`;
+            
+            // Dynamic injection if replying to a guest
+            const dynamicContainer = document.getElementById('target-dynamic-users');
+            if (dynamicContainer) {
+                const exists = Array.from(dynamicContainer.querySelectorAll('.target-opt')).some(el => el.dataset.value === val);
+                if (!exists) {
+                    const newOpt = document.createElement('div');
+                    newOpt.className = 'target-opt';
+                    newOpt.dataset.value = val;
+                    newOpt.innerHTML = txt;
+                    newOpt.onclick = () => selectTarget(val, txt);
+                    dynamicContainer.prepend(newOpt);
+                }
+            }
+            selectTarget(val, txt);
+        } else {
+            // A regular customer clicking a name won't do anything because they can't DM other customers.
+            return; 
+        }
+        
+        // Focus the input area smoothly
+        const replyBox = document.getElementById('comment-input');
+        if (replyBox) replyBox.focus();
+    }
+    
+    // --- SMART DIALOG HANDLER (PROMISE BASED) ---
+    function showExhDialog(type, title, message, defaultValue = '') {
+        return new Promise((resolve) => {
+            const overlay = document.getElementById('exh-dialog-overlay');
+            const panel = document.getElementById('exh-dialog-panel');
+            const titleEl = document.getElementById('exh-dialog-title');
+            const msgEl = document.getElementById('exh-dialog-msg');
+            const inputEl = document.getElementById('exh-dialog-input');
+            const btnConfirm = document.getElementById('exh-dialog-confirm');
+            const btnCancel = document.getElementById('exh-dialog-cancel');
+
+            titleEl.textContent = title;
+            msgEl.textContent = message;
+            
+            if (type === 'prompt') {
+                inputEl.style.display = 'block';
+                inputEl.value = defaultValue;
+                setTimeout(() => inputEl.focus(), 100);
+            } else {
+                inputEl.style.display = 'none';
+            }
+
+            overlay.style.display = 'flex';
+            setTimeout(() => panel.style.transform = 'scale(1)', 10);
+
+            const close = (result) => {
+                panel.style.transform = 'scale(0.9)';
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                    resolve(result);
+                }, 150);
+            };
+
+            btnConfirm.onclick = () => close(type === 'prompt' ? inputEl.value : true);
+            btnCancel.onclick = () => close(null);
+            
+            // Allow "Enter" to confirm
+            inputEl.onkeydown = (e) => { if(e.key === 'Enter') btnConfirm.click(); };
+        });
+    }
+
+    // Facades for easy usage
+    const smartConfirm = (t, m) => showExhDialog('confirm', t, m);
+    const smartPrompt = (t, m, v) => showExhDialog('prompt', t, m, v);
+    
+    function toggleMenu() { document.body.classList.toggle('menu-open'); }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const searchInput = document.getElementById('category-search');
+        // --- NICKNAME UI LOGIC ---
+        // If user is REGISTERED (not Guest), hide the nickname change option.
+        if (CURRENT_USER.role !== 'GUEST') {
+            const nickLinks = document.querySelectorAll('.nickname-link');
+            nickLinks.forEach(el => el.style.display = 'none');
+            
+            // Update input placeholder to reflect identity
+            const chatInput = document.getElementById('comment-input');
+            if (chatInput) {
+                chatInput.placeholder = `Posting as ${CURRENT_USER.full_name}...`;
+            }
+        }
+        const clearBtn = document.getElementById('search-clear-btn');
+        
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                categorySearchTerm = e.target.value.toLowerCase();
+                if (clearBtn) {
+                    clearBtn.classList.toggle('visible', categorySearchTerm.length > 0);
+                }
+                renderCategoryList();
+            });
+        }
+        
+        // --- INFINITE SCROLL OBSERVER SETUP ---
+        const grid = document.getElementById('gallery-grid');
+        
+        // --- INFINITE SCROLL OBSERVER ---
+        // rootMargin: 400px ensures content loads well before the user hits the bottom on mobile
+        window.galleryObserver = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && displayedCount < currentFiles.length) {
+                renderNextChunk();
+            }
+        }, { 
+            root: document.getElementById('gallery-grid'), 
+            rootMargin: '400px', 
+            threshold: 0.01 
+        });
+
+        // Theater controls... (rest of your existing code)
+        const stage = document.getElementById('theater-stage-area');
+
+        loadCollections(); 
+        startCollectionSync(); // Start background sync for public collections
+        updateCatSortUI();
+        
+        // Theater zoom & pan controls
+        if (stage) {
+            stage.addEventListener('wheel', (e) => {
+                if (!document.getElementById('theater-overlay').classList.contains('visible')) return;
+                e.preventDefault();
+                zoomTheater(e.deltaY < 0 ? 0.2 : -0.2);
+            }, { passive: false });
+
+            stage.addEventListener('mousedown', (e) => {
+                if (e.target.closest('button, a')) return;
+                e.preventDefault();
+                isThDragging = true;
+                thStartX = e.clientX - thPanX;
+                thStartY = e.clientY - thPanY;
+                const el = document.getElementById('active-theater-media');
+                if(el) el.style.cursor = 'grabbing';
+            });
+        }
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isThDragging) return;
+            e.preventDefault();
+            thPanX = e.clientX - thStartX;
+            thPanY = e.clientY - thStartY;
+            updateTheaterTransform();
+        });
+
+        window.addEventListener('mouseup', () => {
+            isThDragging = false;
+            const el = document.getElementById('active-theater-media');
+            if(el) el.style.cursor = 'grab';
+        });
+
+        grid.addEventListener('scroll', () => {
+            document.getElementById('backToTopBtn').style.display = (grid.scrollTop > 400) ? 'flex' : 'none';
+        });
+        
+        
+        
+    });
+    // -- END addEventListener
+
+    // Polls the server for changes in public collections without refreshing the page
+    // --- ROBUST COLLECTION SYNC FOR EXHIBITION ---
+    async function loadCollections(isPolling = false) {
+        try {
+            const res = await fetch('/galleryout/api/collections');
+            const data = await res.json();
+            const newPublicAlbums = data.albums.filter(a => a.is_public);
+            
+            // Generate a unique fingerprint of the public albums list
+            const newHash = newPublicAlbums.map(c => `${c.id}:${c.name}`).join('|');
+            const currentHash = allCollections.map(c => `${c.id}:${c.name}`).join('|');
+
+            if (currentHash !== newHash) {
+                console.log("Sync: Public collections updated.");
+                allCollections = newPublicAlbums;
+                renderCategoryList();
+
+                // Safety: if the current collection was deleted or set to private by Admin
+                if (currentCollectionId !== 'all' && currentCollectionId !== null) {
+                    const stillExists = allCollections.some(c => c.id == currentCollectionId);
+                    if (!stillExists) {
+                        showNotification("This collection is no longer public.", "warning");
+                        loadGallery('all', 'All Collections');
+                    }
+                }
+            }
+            
+            if (!isPolling && allCollections.length > 0 && !currentCollectionId) {
+                currentCollectionId = 'all';
+                loadGallery('all', 'All Collections');
+            } else if (!isPolling) {
+                renderCategoryList();
+            }
+        } catch (e) { console.error('Exhibition Sync Error:', e); }
+    }
+
+    // Starts the background polling task
+    function startCollectionSync() {
+        // Check every 30 seconds
+        setInterval(() => {
+            loadCollections(true);
+        }, 30000);
+    }
+    
+    function showEmptyGallery() {
+        const grid = document.getElementById('gallery-grid');
+        grid.innerHTML = `
+            <div class="empty-gallery">
+                <div class="empty-gallery-icon">📚</div>
+                <div class="empty-gallery-text">This gallery is empty</div>
+                <div class="empty-gallery-subtext">No items to display in this collection</div>
+            </div>
+        `;
+        // Ensure anchor is gone/reset
+        const anchor = document.getElementById('load-more-anchor');
+        if(anchor) anchor.remove();
+    }
+    
+    function toggleShortcutsHelp() {
+        const el = document.getElementById('shortcuts-overlay');
+        el.classList.toggle('visible');
+    }
+    async function submitRatingShortcut(val) {
+        // Determine target file: Lightbox file (priority) OR Focused Grid Item
+        let file = null;
+        let card = null;
+
+        if (document.getElementById('theater-overlay').classList.contains('visible')) {
+            file = currentFiles[currentIndex];
+            // Also find the card to update it in background
+            if (file) card = document.getElementById(`card-${file.id}`);
+            
+            // AUTOMATIC PANEL ACTIVATION: If rating panel is hidden, toggle it open
+            const panel = document.querySelector('.theater-panel');
+            if (panel && panel.classList.contains('hidden-desktop')) {
+                toggleTheaterPanel();
+            }
+        } else if (focusedGridIndex !== -1 && currentFiles[focusedGridIndex]) {
+            file = currentFiles[focusedGridIndex];
+            card = document.getElementById(`card-${file.id}`);
+        }
+
+        if (!file) return;
+
+        // Visual feedback immediately
+        if (card) {
+            const starsInner = card.querySelector('.stars-inner');
+            if (starsInner) {
+                starsInner.style.transition = "width 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28)";
+                starsInner.style.width = (val / 5 * 100) + '%';
+            }
+        }
+        
+        // Update Lightbox UI if open - Clear stars if 0
+        if (document.getElementById('theater-overlay').classList.contains('visible')) {
+            // Re-render UI in loadComments to reflect rating update immediately
+            submitRating(val);
+            return;
+        }
+
+        try {
+            const res = await fetch('/galleryout/api/exhibition/rate', { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify({ 
+                    file_id: file.id, 
+                    client_uuid: clientUUID, 
+                    rating: val  // 0 means delete the rating
+                }) 
+            });
+            const data = await res.json();
+            
+            if (data.status === 'success') {
+                file.avg_rating = data.new_average;
+                file.vote_count = data.vote_count;
+                
+                if (card) {
+                    const starsInner = card.querySelector('.stars-inner');
+                    if (starsInner) starsInner.style.width = (data.new_average / 5 * 100) + '%';
+                    
+                    const voteCountBadge = card.querySelector(`.vote-count[data-file-id="${file.id}"]`);
+                    if (voteCountBadge) voteCountBadge.textContent = `${file.vote_count}`;
+                }
+            }
+        } catch(e) {
+            console.error('Rating failed:', e);
+        }
+    }
+        
+    // Function to play video IN GRID (Desktop Only) - Copied from index.html
+    function playVideoInGrid(event, btnElement) {
+        // Prevent opening Lightbox or Selecting
+        event.stopPropagation();
+        event.preventDefault();
+
+        const wrapper = btnElement.closest('.exh-thumb-wrap');
+        const video = wrapper.querySelector('video');
+        
+        if (!video) return;
+
+        // 1. Hide the overlay button
+        btnElement.style.display = 'none';
+
+        // 2. Enable interaction on the video tag (so users can pause/seek)
+        video.style.pointerEvents = 'auto';
+        
+        // 3. Add controls
+        video.setAttribute('controls', 'true');
+        
+        // 4. Force load and play
+        video.setAttribute('preload', 'auto');
+        video.load(); 
+        
+        const playPromise = video.play();
+        if (playPromise !== undefined) {
+            playPromise.catch(error => console.log("Play failed:", error));
+        }
+    }
+    
+    function renderNextChunk() {
+        const grid = document.getElementById('gallery-grid');
+        let anchor = document.getElementById('load-more-anchor');
+
+        // 1. Create/Ensure Anchor exists at the bottom
+        if (!anchor) {
+            anchor = document.createElement('div');
+            anchor.id = 'load-more-anchor';
+            // Important: append first so it exists
+            grid.appendChild(anchor);
+            
+            // Re-connect observer explicitly if missing
+            if (window.galleryObserver) {
+                window.galleryObserver.disconnect();
+                window.galleryObserver.observe(anchor);
+            }
+        }
+
+        // 2. Prepare next batch
+        const nextBatch = currentFiles.slice(displayedCount, displayedCount + CHUNK_SIZE);
+
+        if (nextBatch.length === 0) {
+            anchor.style.display = 'none'; // No more files
+            return;
+        }
+
+        // Show loading state
+        anchor.classList.add('loading');
+        anchor.style.display = 'flex';
+
+        const fragment = document.createDocumentFragment();
+
+        nextBatch.forEach((file, index) => {
+            const absIdx = displayedCount + index;
+            const card = document.createElement('div');
+            card.className = 'exh-card';
+            card.id = `card-${file.id}`;
+            card.dataset.index = absIdx;
+
+            // --- OPTIMIZATION: Skip heavy mouse listeners on touch devices ---
+            // Only add mousemove listener if likely a desktop (coarse pointer check could be added, 
+            // but keeping it simple: just don't crash on touch)
+            card.addEventListener('mousemove', (e) => {
+                // Throttle: don't run if position barely changed (fixes sensitive mice)
+                if (Math.abs(e.clientX - window.lastActiveX) < 5 && Math.abs(e.clientY - window.lastActiveY) < 5) return;
+                
+                window.lastActiveX = e.clientX;
+                window.lastActiveY = e.clientY;
+
+                if (focusedGridIndex !== absIdx) {
+                    if (focusedGridIndex !== -1) {
+                        const oldCard = document.querySelector(`.exh-card[data-index="${focusedGridIndex}"]`);
+                        if (oldCard) oldCard.classList.remove('keyboard-focused');
+                    }
+                    focusedGridIndex = absIdx;
+                    card.classList.add('keyboard-focused');
+                }
+            });
+
+            card.onclick = () => { focusedGridIndex = absIdx; openTheater(absIdx); };
+
+            const starPct = ((file.avg_rating || 0) / 5) * 100;
+            
+            let media = '';
+            if (file.type === 'video') {
+                const isMov = file.name.toLowerCase().endsWith('.mov');
+                const isLarge = (file.size > streamThresholdBytes);
+                const useStream = ffmpegAvailable && (isMov || isLarge);
+                const videoSource = useStream ? `/galleryout/stream/${file.id}` : `/galleryout/thumbnail/${file.id}`;
+                
+                // Note: poster image is crucial for mobile performance
+                media = `
+                    <div class="exh-thumb-wrap" style="position:relative;">
+                        <video src="${videoSource}" 
+                               preload="none" 
+                               muted loop playsinline 
+                               style="pointer-events:none; width:100%; height:auto; display:block;"
+                               poster="/galleryout/thumbnail/${file.id}"></video>
+                        <div class="video-play-overlay" title="Play Preview" onclick="playVideoInGrid(event, this)">▶</div>
+                    </div>`;
+            } else {
+                media = `
+                    <div class="exh-thumb-wrap">
+                        <img src="/galleryout/thumbnail/${file.id}" loading="lazy" alt="${escapeHtml(file.name)}">
+                    </div>`;
+            }
+            
+            const dateObj = new Date(file.mtime * 1000);
+            const dateStr = dateObj.toLocaleDateString();
+            const timeStr = dateObj.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+            
+            card.innerHTML = `
+                ${media}
+                <div class="exh-info">
+                    <div class="exh-name" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</div>
+                    <div class="exh-meta-row">
+                        <div class="exh-meta-left">
+                            <div class="stars-outer">☆☆☆☆☆<div class="stars-inner" style="width:${starPct}%">★★★★★</div></div>
+                            <span class="vote-count" data-file-id="${file.id}">${file.vote_count || 0}</span>
+                            <span class="comment-count">💬 ${file.comment_count || 0}</span>
+                        </div>
+                        <div class="exh-meta-right">
+                            <span class="exh-date">${dateStr} ${timeStr}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            fragment.appendChild(card);
+        });
+
+        // 3. Inject content BEFORE the anchor using requestAnimationFrame for smooth UI
+        requestAnimationFrame(() => {
+            grid.insertBefore(fragment, anchor);
+            displayedCount += nextBatch.length;
+            anchor.classList.remove('loading');
+
+            // Hide anchor if fully loaded
+            if (displayedCount >= currentFiles.length) {
+                anchor.style.display = 'none';
+            }
+        });
+    }
+    
+    function startTheaterPolling(fileId) {
+        if (theaterPollingInterval) clearInterval(theaterPollingInterval);
+        
+        // Poll every 4 seconds
+        theaterPollingInterval = setInterval(() => {
+            const overlay = document.getElementById('theater-overlay');
+            // Check if overlay is visible and we have a valid fileId
+            if (overlay.classList.contains('visible') && fileId) {
+                // Silent reload of comments (updates stars and messages)
+                loadComments(fileId);
+            } else {
+                stopTheaterPolling();
+            }
+        }, 4000);
+    }
+
+    function stopTheaterPolling() {
+        if (theaterPollingInterval) {
+            clearInterval(theaterPollingInterval);
+            theaterPollingInterval = null;
+        }
+    }
+    
+    function openTheater(index) {
+        currentIndex = index;
+        populateUsersDropdown(); // Load users for DM if Staff
+        
+        // Reset dropdown to default when opening a new image
+        const targetDrop = document.getElementById('target-audience');
+        if (targetDrop) targetDrop.value = 'public';
+        
+        // --- NEW: Reset Mobile Accordion State ---
+        document.getElementById('theater-overlay').classList.remove('comments-maximized');
+        
+        // --- NEW: Restore Desktop Panel State ---
+        const panel = document.querySelector('.theater-panel');
+        if (localStorage.getItem('sg_exh_panel_closed') === 'true') {
+            panel.classList.add('hidden-desktop');
+        } else {
+            panel.classList.remove('hidden-desktop');
+        }
+
+        document.getElementById('theater-overlay').classList.add('visible');
+        updateTheaterUI();
+        
+        // START POLLING
+        if (currentFiles[index]) {
+            startTheaterPolling(currentFiles[index].id);
+        }
+    }
+
+    async function closeTheater() { 
+        stopTheaterPolling(); // STOP POLLING
+        document.getElementById('theater-overlay').classList.remove('visible'); 
+        const v = document.querySelector('#theater-media-container video'); 
+        if(v) v.pause(); 
+        
+        // 1. Capture the ID of the file we were just viewing
+        const lastFileId = currentFiles[currentIndex] ? currentFiles[currentIndex].id : null;
+
+        // 2. REFRESH DATA (Re-fetch collection to apply potential sort changes like Rating/Comments)
+        if (currentCollectionId) {
+            const currentName = document.getElementById('page-title').textContent;
+            // We use the existing async load function to refresh the grid
+            await loadGallery(currentCollectionId, currentName);
+        }
+
+        // 3. RESTORE FOCUS (Find where the file ended up after the sort update)
+        if (lastFileId) {
+            // Find the new index of the file in the refreshed list
+            const newIndex = currentFiles.findIndex(f => f.id === lastFileId);
+
+            if (newIndex !== -1) {
+                // Sync global indices
+                focusedGridIndex = newIndex;
+                currentIndex = newIndex; 
+
+                // Allow DOM to paint the new grid items before focusing
+                setTimeout(() => {
+                    const card = document.getElementById(`card-${lastFileId}`);
+                    
+                    // Clear old focus
+                    document.querySelectorAll('.exh-card').forEach(c => c.classList.remove('highlight-focus', 'keyboard-focused'));
+
+                    if (card) {
+                        // If the card is rendered (in the first chunk), focus and scroll to it
+                        card.classList.add('keyboard-focused');
+                        card.scrollIntoView({block: 'center', behavior: 'auto'});
+                    } else {
+                        // Edge Case: If the sort moved the item way down (outside the first loaded chunk),
+                        // we scroll to top to show the new "Top Rated" or "Most Commented" items.
+                        scrollToTop();
+                    }
+                }, 50);
+            } else {
+                // File might have been filtered out or deleted
+                focusedGridIndex = -1;
+            }
+        }
+    }
+
+    function navTheater(delta) { 
+        // Stop previous polling
+        stopTheaterPolling();
+        
+        currentIndex = (currentIndex + delta + currentFiles.length) % currentFiles.length; 
+        updateTheaterUI(); 
+        
+        // Start polling for new file
+        if (currentFiles[currentIndex]) {
+            startTheaterPolling(currentFiles[currentIndex].id);
+        }
+    }
+
+    function updateTheaterUI() {
+        const file = currentFiles[currentIndex];
+        const container = document.getElementById('theater-media-container'); 
+        container.innerHTML = ''; 
+        resetTheaterZoom();
+
+        // 1. Create and show Loader
+        const loaderDiv = document.createElement('div');
+        loaderDiv.className = 'theater-loader';
+        
+        const isGuest = !(['ADMIN', 'MANAGER', 'STAFF'].includes(CURRENT_USER.role));
+        const loadingMsg = isGuest ? "Preparing secure preview..." : "Loading media...";
+        
+        loaderDiv.innerHTML = `
+            <div class="theater-spinner"></div>
+            <div class="theater-loader-text">${loadingMsg}</div>
+        `;
+        container.appendChild(loaderDiv);
+
+        // 2. Setup Action Links
+        const dlUrl = `/galleryout/download/${file.id}`;
+        const tabUrl = `/galleryout/file/${file.id}`;
+        document.getElementById('theater-dl-link-desk').href = dlUrl;
+        document.getElementById('theater-dl-link-mob').href = dlUrl;
+        document.getElementById('theater-open-tab-desk').href = tabUrl;
+        document.getElementById('theater-open-tab-mob').href = tabUrl;
+
+        // 3. Create Media Element
+        let mediaEl;
+        const isVideo = (file.type === 'video');
+        
+        if (isVideo) {
+            mediaEl = document.createElement('video');
+            const isMov = file.name.toLowerCase().endsWith('.mov');
+            const isLarge = (file.size > streamThresholdBytes);
+            const useStream = ffmpegAvailable && (isMov || isLarge);
+            mediaEl.src = useStream ? `/galleryout/stream/${file.id}` : `/galleryout/file/${file.id}`;
+            mediaEl.controls = true; 
+            mediaEl.autoplay = true; 
+            mediaEl.loop = true;
+            mediaEl.muted = true; 
+            mediaEl.playsInline = true;
+        } else {
+            mediaEl = document.createElement('img');
+            mediaEl.src = `/galleryout/file/${file.id}`;
+        }
+
+        mediaEl.className = 'theater-media';
+        mediaEl.id = 'active-theater-media';
+        mediaEl.draggable = false;
+        mediaEl.style.opacity = '0';
+        mediaEl.style.transition = 'opacity 0.4s ease';
+
+        // --- RETRY & ERROR LOGIC ---
+        let hasRetried = false;
+
+        const onMediaReady = () => {
+            if (loaderDiv.parentNode) loaderDiv.remove();
+            mediaEl.style.opacity = '1';
+            updateTheaterTransform();
+        };
+
+        const onMediaError = () => {
+            if (!hasRetried) {
+                // First attempt failed: requested regeneration from server
+                console.warn("Media load error. Attempting to repair cache...");
+                hasRetried = true;
+                
+                // Update loader text to inform the user
+                const statusText = loaderDiv.querySelector('.theater-loader-text');
+                if (statusText) statusText.textContent = "Repairing corrupted preview...";
+                
+                // Append retry flag and cache-buster timestamp
+                const separator = mediaEl.src.includes('?') ? '&' : '?';
+                const retryUrl = mediaEl.src + separator + "retry=true&t=" + Date.now();
+                
+                // Small delay then trigger reload
+                setTimeout(() => {
+                    mediaEl.src = retryUrl;
+                    if (isVideo) mediaEl.load();
+                }, 1000);
+            } else {
+                // Second attempt failed: show definitive error message
+                loaderDiv.innerHTML = `
+                    <div style="color:var(--danger-color); font-weight:bold; padding: 20px;">
+                        ⚠️ Error Loading Media<br>
+                        <span style="font-size:0.8rem; font-weight:normal; color:#888;">
+                            The source file might be moved or corrupted.
+                        </span>
+                    </div>
+                `;
+            }
+        };
+
+        if (isVideo) {
+            mediaEl.onloadeddata = onMediaReady;
+            mediaEl.onerror = onMediaError;
+        } else {
+            mediaEl.onload = onMediaReady;
+            mediaEl.onerror = onMediaError;
+        }
+
+        container.appendChild(mediaEl);
+        document.getElementById('theater-title').textContent = file.name;
+        document.getElementById('theater-date').textContent = new Date(file.mtime * 1000).toLocaleString();
+        
+        // Load interactions and tags
+        loadComments(file.id);
+        loadExhibitionCollections(file.id);
+    }
+
+    function updateTheaterTransform() {
+        const el = document.getElementById('active-theater-media');
+        if (el) el.style.transform = `translate(${thPanX}px, ${thPanY}px) scale(${thZoom}) rotate(${thRot}deg)`;
+    }
+    
+    function resetTheaterZoom() { 
+        thZoom = 1; 
+        thPanX = 0; 
+        thPanY = 0; 
+        thRot = 0;
+        updateTheaterTransform(); 
+    }
+
+    function rotateTheater() { 
+        thRot = (thRot + 90) % 360; 
+        updateTheaterTransform(); 
+    }
+    
+    function zoomTheater(delta) { 
+        thZoom = Math.max(0.1, Math.min(10, thZoom + delta)); 
+        updateTheaterTransform(); 
+    }
+
+    async function loadComments(fileId) {
+        const list = document.getElementById('comments-list'); 
+        const ratingArea = document.getElementById('theater-rating-area');
+        
+        if (!list.hasChildNodes()) {
+            list.innerHTML = '<div style="color:#666; text-align:center; padding:20px;">Loading comments...</div>';
+        }
+        
+        try {
+            const res = await fetch(`/galleryout/api/exhibition/comments?file_id=${fileId}&client_uuid=${clientUUID}`);
+            const data = await res.json();
+            
+            const myRating = data.my_rating || 0;
+            const globalAvg = data.avg_rating || 0;
+            const globalVotes = data.vote_count || 0;
+
+            // --- UNIFIED RESPONSIVE RATING UI CONSTRUCTION ---
+            // 1. Generate Stars HTML string
+            let starsHtml = '';
+            for(let i=1; i<=5; i++) {
+                starsHtml += `<span onclick="submitRating(${i})" class="${i <= myRating ? 'active' : ''}">★</span>`;
+            }
+
+            // 2. Generate Reset/Trash Button HTML if user has voted
+            const resetBtnHtml = myRating > 0 ? 
+                `<button class="mobile-trash-btn" onclick="submitRating(0)" title="Delete Vote">🗑️</button>` : '';
+
+            // 3. Inject Responsive HTML Structure into #theater-rating-area
+            // We use CSS media queries to show/hide the correct layout
+            ratingArea.innerHTML = `
+                <!-- DESKTOP LAYOUT (Original Spacious Design) -->
+                <div class="desktop-rating-panel" style="background:rgba(255,255,255,0.03); padding:15px; border-radius:12px; border:1px solid #333; margin-top:15px;">
+                     <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div class="global-avg-row">
+                            <span class="global-label">Avg:</span>
+                            <span class="global-val">${globalVotes > 0 ? `★ ${globalAvg.toFixed(1)}` : 'N/A'}</span>
+                            <span class="global-count">(${globalVotes} ${globalVotes === 1 ? 'vote' : 'votes'})</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="font-size:0.8rem; text-transform:uppercase; color:#888;">My Rating:</span>
+                            <div class="interactive-stars" style="margin:0 !important; font-size:1.4rem !important;">${starsHtml}</div>
+                            ${myRating > 0 ? '<button onclick="submitRating(0)" class="btn-reset-tiny">🗑️</button>' : ''}
+                        </div>
+                     </div>
+                </div>
+
+                <!-- MOBILE LAYOUT (Consolidated Strip) -->
+                <div class="mobile-only" style="width:100%;">
+                    <div class="mobile-rating-strip" style="padding: 8px 10px;">
+                        <!-- Left Part: Global Average -->
+                        <div class="mobile-rating-left" style="display: flex; align-items: center; gap: 4px;">
+                            <span style="font-size: 0.65rem; color: #888; text-transform: uppercase; font-weight: 700;">Avg:</span>
+                            <span class="mobile-rating-val">${globalVotes > 0 ? `★ ${globalAvg.toFixed(1)}` : '-'}</span>
+                            <span style="font-size: 0.65rem; opacity: 0.6;">(${globalVotes})</span>
+                        </div>
+                        
+                        <!-- Right Part: Personal Rating -->
+                        <div class="mobile-rating-right" style="display: flex; align-items: center; gap: 6px;">
+                            <span style="font-size: 0.65rem; color: #888; text-transform: uppercase; font-weight: 700;">My:</span>
+                            <div class="interactive-stars" style="font-size: 1.4rem !important; margin:0 !important; gap:3px !important;">
+                                ${starsHtml}
+                            </div>
+                            ${resetBtnHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // 4. Update Local Cache 
+            if (currentFiles[currentIndex] && currentFiles[currentIndex].id === fileId) {
+                currentFiles[currentIndex].avg_rating = globalAvg;
+                currentFiles[currentIndex].vote_count = globalVotes;
+                currentFiles[currentIndex].comment_count = data.comments.length;
+            }
+            
+            // 5. Render Messages
+            if (data.comments.length === 0) {
+                list.innerHTML = '<div style="color:#555; text-align:center; padding:30px; font-size:0.9rem;">No comments yet. Be the first!</div>';
+            } else {
+                const prevScroll = list.scrollTop; // Maintains scroll position during polling
+                list.innerHTML = '';
+                
+                data.comments.forEach(c => {
+                    const isAdminComment = c.client_uuid === 'admin';
+                    const isMine = String(c.client_uuid) === String(clientUUID);
+                    
+                    // --- ADMIN PERMISSIONS LOGIC ---
+                    const amIAdmin = CURRENT_USER.role === 'ADMIN';
+                    const isPrivilegedSession = ['ADMIN', 'MANAGER', 'STAFF'].includes(CURRENT_USER.role);
+                    
+                    // Can Edit: only if it's my own message
+                    const canEdit = isMine;
+                    
+                    // Can Delete: if it's mine OR if I am the Admin of the gallery
+                    const canDelete = isMine || amIAdmin;
+
+                    const div = document.createElement('div');
+                    div.className = `comment-bubble ${isAdminComment ? 'is-admin' : ''}`;
+                    
+                    const safeText = escapeHtml(c.comment_text).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, "\\n");
+                    
+                    // Visibility Badges Generation
+                    let badgeHtml = '';
+                    const target = c.target_audience || 'public';
+                    
+                    if (target === 'internal') {
+                        const badgeText = isPrivilegedSession ? '🔒 Internal' : '🔒 Private (Staff Only)';
+                        badgeHtml = `<div class="msg-badge internal">${badgeText}</div>`;
+                    } else if (target.startsWith('user:')) {
+                        const tName = c.target_user_name ? escapeHtml(c.target_user_name) : 'User';
+                        badgeHtml = `<div class="msg-badge user">👤 To: ${tName}</div>`;
+                    } else if (target === 'public') {
+                        badgeHtml = '<div class="msg-badge public">🌐 Public</div>';
+                    }
+                    
+                    // Show edit button only if owner
+                    const editBtn = canEdit ? `<span onclick="editComment(${c.id}, \`${safeText}\`)" style="cursor:pointer; color:var(--primary-color); margin-left:5px;" title="Edit">✏️</span>` : '';
+                    
+                    // Show delete button if owner OR Admin
+                    const deleteBtn = canDelete ? `<span onclick="deleteComment(${c.id})" style="cursor:pointer; color:var(--danger-color); margin-left:5px;" title="Delete">🗑️</span>` : '';
+                    
+                    const dateObj = new Date(c.created_at * 1000);
+                    const dateStr = dateObj.toLocaleString([], {
+                        year: 'numeric', month: 'numeric', day: 'numeric', 
+                        hour: '2-digit', minute: '2-digit'
+                    });
+
+                    // Make author name clickable for Quick Reply
+                    const safeAuthorStr = escapeHtml(c.author_name).replace(/'/g, "\\'");
+                    
+                    // We only make it clickable if the viewer has the permission to reply directly, 
+                    // OR if the author is an Admin (anyone can reply to admin via 'internal')
+                    const canReplyDirectly = isPrivilegedSession || isAdminComment;
+                    
+                    let authorSpanHtml = `<span>${isAdminComment ? '🛡️ STAFF' : escapeHtml(c.author_name)} ${isMine ? '(You)' : ''}</span>`;
+                    
+                    if (canReplyDirectly && !isMine) {
+                        authorSpanHtml = `<span class="reply-author-name" onclick="setReplyTarget('${c.client_uuid}', '${safeAuthorStr}')" title="Click to reply">${isAdminComment ? '🛡️ STAFF' : escapeHtml(c.author_name)}</span>`;
+                    }
+
+                    div.innerHTML = `
+                        <div class="comment-author">
+                            <div style="display:flex; flex-direction:column;">
+                                ${authorSpanHtml}
+                                ${badgeHtml}
+                            </div>
+                            <small>${dateStr} ${editBtn}${deleteBtn}</small>
+                        </div>
+                        <div class="comment-text">${escapeHtml(c.comment_text)}</div>
+                    `;
+                    list.appendChild(div);
+                });
+                
+                if (prevScroll > 0) list.scrollTop = prevScroll;
+            }
+
+            // --- NEW: Update Mobile Accordion Button Text ---
+            const mobBtn = document.getElementById('mob-toggle-comments-btn');
+            const overlay = document.getElementById('theater-overlay');
+            if (mobBtn && !overlay.classList.contains('comments-maximized')) {
+                const cCount = data.comments.length;
+                mobBtn.innerHTML = cCount > 0 ? `💬 Show Comments (${cCount})` : `💬 Add a Comment`;
+            }
+            // ------------------------------------------------
+
+        } catch(e) { 
+            console.error(e); // Silent handling for polling
+        }
+    }
+    
+    // --- LOAD PUBLIC COLLECTIONS FOR EXHIBITION (Smart Mobile Layout) ---
+    let currentPublicCollections = []; // Store globally for the popup
+
+    async function loadExhibitionCollections(fileId) {
+        const container = document.getElementById('theater-collections');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        currentPublicCollections = [];
+
+        try {
+            const res = await fetch(`/galleryout/api/file_collections/${fileId}?public_only=true`);
+            const data = await res.json();
+
+            if (data.status === 'success' && data.collections.length > 0) {
+                currentPublicCollections = data.collections;
+                
+                // Build HTML
+                let html = '';
+                
+                // We render ALL tags. CSS Media Queries will hide the extra ones on mobile.
+                data.collections.forEach(c => {
+                    html += `<div class="exh-tag"><span>📚</span> ${escapeHtml(c.name)}</div>`;
+                });
+
+                // If more than 1, add the "+N" button (Visible ONLY on mobile via CSS)
+                if (data.collections.length > 1) {
+                    const extraCount = data.collections.length - 1;
+                    // Note: desktop-only and mobile-only classes handle visibility
+                    html += `<div class="exh-tag exh-tag-more mobile-only" onclick="showAllCollectionsPopup()">+${extraCount}</div>`;
+                }
+
+                container.innerHTML = html;
+            }
+        } catch (e) {
+            console.error("Error loading public collections:", e);
+        }
+    }
+
+    // Opens a small popup native-like to show all tags on mobile
+    function showAllCollectionsPopup() {
+        if (currentPublicCollections.length === 0) return;
+        
+        // We reuse your smartAlert overlay style but with custom content
+        let listHtml = currentPublicCollections.map(c => 
+            `<div style="background:rgba(255,255,255,0.1); padding:10px; border-radius:8px; margin-bottom:8px; text-align:left; font-size:0.9rem; color:white;">📚 ${escapeHtml(c.name)}</div>`
+        ).join('');
+
+        const popupHtml = `
+            <h3 style="margin:0 0 15px 0; color:white; font-size:1.1rem; border-bottom:1px solid #333; padding-bottom:10px;">Assigned Collections</h3>
+            <div style="max-height: 40vh; overflow-y: auto; margin-bottom: 15px;">
+                ${listHtml}
+            </div>
+            <button onclick="closeSmartAlert()" class="send-btn-premium" style="width:100%; height:45px;">Close</button>
+        `;
+        
+        const alertBox = document.querySelector('#smart-alert-overlay > div');
+        alertBox.innerHTML = popupHtml; // Overwrite content temporarily
+        
+        document.getElementById('smart-alert-overlay').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+    
+    async function postComment() {
+        const input = document.getElementById('comment-input');
+        const text = input.value.trim();
+        
+        // 1. Basic validation: message cannot be empty
+        if (!text) { 
+            smartAlert('Please enter a comment');
+            return; 
+        }
+        
+        let authorName = userName; // Default from state/localStorage
+
+        // 2. IDENTITY LOGIC
+        if (CURRENT_USER.role !== 'GUEST') {
+            // Registered Users: Backend enforces name, but we sync it here using DB Full Name
+            authorName = CURRENT_USER.full_name;
+        } else {
+            // Guest Logic: Require a nickname if not already set in this session or localStorage
+            if (!userName) {
+                // Use the new styled async Smart Dialog instead of the native browser prompt
+                const newNick = await smartPrompt("👤 Identification Required", "Please enter a name to post comments:", "");
+                
+                if (!newNick || newNick.trim().length < 2) {
+                    smartAlert('A valid nickname (at least 2 characters) is required to post.');
+                    return;
+                }
+                
+                // Save the new nickname for future posts
+                userName = newNick.trim();
+                localStorage.setItem('sg_user_nickname', userName);
+            }
+            authorName = userName;
+        }
+        
+        try {
+            // 3. GET TARGET AUDIENCE
+            const targetEl = document.getElementById('target-audience');
+            const targetAudience = targetEl ? targetEl.value : 'public';
+
+            // 4. SEND DATA TO SERVER
+            const res = await fetch('/galleryout/api/exhibition/post_comment', { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify({ 
+                    file_id: currentFiles[currentIndex].id, 
+                    client_uuid: clientUUID, 
+                    text: text, 
+                    author: authorName,
+                    target_audience: targetAudience
+                }) 
+            });
+            
+            if (res.ok) {
+                // 4. UI UPDATE ON SUCCESS
+                const f = currentFiles[currentIndex]; 
+                f.comment_count++;
+                
+                // Update the background grid card if visible
+                const card = document.getElementById(`card-${f.id}`); 
+                if (card) {
+                    // Update comment count in the meta row (using localized selector)
+                    const countSpan = card.querySelector('.comment-count');
+                    if (countSpan) countSpan.textContent = `💬 ${f.comment_count}`;
+                }
+                
+                // Clear the input field
+                input.value = ''; 
+                
+                // Refresh the messages list in the theater panel
+                loadComments(currentFiles[currentIndex].id);
+            } else {
+                // Smart Error Handling for multi-admin collisions
+                try {
+                    const errorData = await res.json();
+                    smartAlert(errorData.message || 'Failed to post comment. Server rejected the request.');
+                    
+                    // If target was deleted by another admin, clean UI cache automatically
+                    if (errorData.message && errorData.message.includes('deleted')) {
+                        if (typeof window.invalidateUsersCache === 'function') {
+                            window.invalidateUsersCache();
+                        }
+                    }
+                } catch (parseErr) {
+                    smartAlert('Failed to post comment. Server rejected the request.');
+                }
+            }
+        } catch(e) {
+            console.error('Error posting comment:', e);
+            smartAlert('Failed to post comment. Please try again.');
+        }
+    }
+
+    async function editComment(commentId, currentText) {
+        // Close any existing edit UI
+        const existingEdit = document.getElementById('edit-comment-ui');
+        if (existingEdit) existingEdit.remove();
+        
+        // Create modal overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'edit-comment-overlay';
+        overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:5000; background:rgba(0,0,0,0.85); backdrop-filter:blur(5px); display:flex; align-items:center; justify-content:center; padding:20px;';
+        
+        // --- CRITICAL FIX FOR NEWLINES ---
+        // Sanitize text to pass it safely inside the HTML onclick attribute.
+        // 1. Escape backslashes first
+        // 2. Escape single quotes (string delimiter)
+        // 3. Convert physical newlines to literal "\n" characters to prevent broken JS syntax
+        const safeOriginalText = escapeHtml(currentText)
+            .replace(/\\/g, '\\\\') 
+            .replace(/'/g, "\\'")
+            .replace(/\n/g, "\\n")
+            .replace(/\r/g, "");
+
+        // Create edit UI
+        const editUI = document.createElement('div');
+        editUI.id = 'edit-comment-ui';
+        editUI.style.cssText = 'background:var(--surface-color); border:1px solid var(--border-color); border-radius:16px; padding:25px; max-width:600px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,0.9);';
+        
+        editUI.innerHTML = `
+            <h3 style="margin:0 0 15px 0; color:white; font-size:1.1rem;">✏️ Edit Comment</h3>
+            <textarea id="edit-comment-textarea" class="chat-input" rows="5" style="width:100%; margin-bottom:15px; min-height:120px;">${escapeHtml(currentText)}</textarea>
+            <div style="display:flex; gap:10px;">
+                <button onclick="saveEditedComment(${commentId}, '${safeOriginalText}');" class="send-btn-premium" style="flex:1;">💾 Save Changes</button>
+                <button onclick="closeEditComment();" class="send-btn-premium" style="flex:1; background:var(--surface-hover); border:1px solid var(--border-color);">✕ Cancel</button>
+            </div>
+        `;
+        
+        overlay.appendChild(editUI);
+        document.body.appendChild(overlay);
+        
+        // Focus textarea and set cursor at end
+        setTimeout(() => {
+            const textarea = document.getElementById('edit-comment-textarea');
+            textarea.focus();
+            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+        }, 100);
+        
+        // Close on overlay click
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) closeEditComment();
+        });
+    }
+
+    async function saveEditedComment(commentId, originalText) {
+        const textarea = document.getElementById('edit-comment-textarea');
+        const newText = textarea.value.trim();
+        
+        if (!newText || newText === originalText) {
+            closeEditComment();
+            return;
+        }
+        
+        try {
+            const res = await fetch('/galleryout/api/exhibition/edit_comment', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    comment_id: commentId,
+                    client_uuid: clientUUID,
+                    new_text: newText.trim()
+                })
+            });
+            
+            if (res.ok) {
+                // Refresh the comments list
+                loadComments(currentFiles[currentIndex].id);
+                // Close the edit window immediately
+                closeEditComment(); 
+                // Optional: visual feedback
+                // smartAlert('Comment updated'); 
+            } else {
+                smartAlert('Failed to edit comment');
+            }
+        } catch(e) {
+            console.error('Error editing comment:', e);
+            smartAlert('Failed to edit comment. Please try again.');
+        }
+    }
+    
+    function closeEditComment() {
+        const overlay = document.getElementById('edit-comment-overlay');
+        if (overlay) overlay.remove();
+    }
+    
+    async function submitRating(val) {
+        const file = currentFiles[currentIndex];
+        
+        // Immediate visual feedback on stars (Optimistic UI) via loadComments logic re-run or manual update
+        // We call the API first
+        try {
+            const res = await fetch('/galleryout/api/exhibition/rate', { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify({ 
+                    file_id: file.id, 
+                    client_uuid: clientUUID, 
+                    rating: val  
+                }) 
+            });
+            const data = await res.json();
+            
+            if (data.status === 'success') {
+                file.avg_rating = data.new_average;
+                file.vote_count = data.vote_count; 
+                
+                // Update grid card stars
+                const card = document.getElementById(`card-${file.id}`); 
+                if(card) {
+                    const starsInner = card.querySelector('.stars-inner');
+                    if(starsInner) starsInner.style.width = (data.new_average/5*100) + '%';
+                    
+                    const voteCountBadge = card.querySelector(`.vote-count`);
+                    if (voteCountBadge) voteCountBadge.textContent = `${file.vote_count}`;
+                }
+                
+                // Refresh the theater UI panel to show new stats and button state
+                loadComments(file.id);
+            }
+        } catch(e) {
+            console.error('Error submitting rating:', e);
+            smartAlert("Error saving rating. Check connection.");
+        }
+    }
+    
+    // --- DESKTOP PANEL TOGGLE ---
+    function toggleTheaterPanel() {
+        const panel = document.querySelector('.theater-panel');
+        const isClosed = panel.classList.toggle('hidden-desktop');
+        localStorage.setItem('sg_exh_panel_closed', isClosed);
+        
+        const btn = document.getElementById('desk-toggle-panel-btn');
+        if (isClosed) {
+            btn.style.borderColor = "white";
+            btn.style.color = "white";
+            showNotification("Panel closed. Press 'G' to reopen.", "info", 2000);
+        } else {
+            btn.style.borderColor = "var(--favorite-color)";
+            btn.style.color = "var(--favorite-color)";
+        }
+    }
+
+    // --- MOBILE COMMENTS ACCORDION ---
+    function toggleMobileComments() {
+        const overlay = document.getElementById('theater-overlay');
+        const btn = document.getElementById('mob-toggle-comments-btn');
+        const isMaximized = overlay.classList.toggle('comments-maximized');
+        
+        if (isMaximized) {
+            btn.innerHTML = `🔽 Hide Comments & Chat`;
+            btn.style.background = "var(--primary-color)";
+            btn.style.borderColor = "var(--primary-color)";
+            // Scroll list to bottom
+            setTimeout(() => {
+                const list = document.getElementById('comments-list');
+                if (list) list.scrollTop = list.scrollHeight;
+            }, 100);
+        } else {
+            // Restore text based on count
+            const list = document.getElementById('comments-list');
+            const count = list.querySelectorAll('.comment-bubble').length;
+            btn.innerHTML = count > 0 ? `💬 Show Comments (${count})` : `💬 Add a Comment`;
+            btn.style.background = "#222";
+            btn.style.borderColor = "#444";
+        }
+    }
+    
+
+    // --- EXHIBITION QUICK MENU LOGIC ---
+    function openExhMenu() {
+        const overlay = document.getElementById('exh-menu-overlay');
+        overlay.style.display = 'flex';
+        // Force a small delay for the opacity animation
+        setTimeout(() => overlay.style.opacity = '1', 10);
+        
+        // Make rows navigable with keyboard
+        overlay.querySelectorAll('.exh-action-row').forEach(row => {
+            if (!row.hasAttribute('tabindex')) row.setAttribute('tabindex', '0');
+        });
+        
+        // Auto-focus on the first element
+        setTimeout(() => {
+            const firstItem = overlay.querySelector('.exh-action-row');
+            if (firstItem) firstItem.focus();
+        }, 100);
+    }
+
+    function closeExhMenu() {
+        const overlay = document.getElementById('exh-menu-overlay');
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.style.display = 'none', 300);
+    }
+
+    // Add listener to close menu when clicking outside
+    document.addEventListener('DOMContentLoaded', () => {
+        const menuOverlay = document.getElementById('exh-menu-overlay');
+        if (menuOverlay) {
+            menuOverlay.addEventListener('click', (e) => {
+                if (e.target.id === 'exh-menu-overlay') closeExhMenu();
+            });
+        }
+    });
+    // --- END MENU LOGIC ---
+
+    // Keyboard navigation & Shortcuts
+    document.addEventListener('keydown', (e) => {
+        // Ignore if typing in an input
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+        const isTh = document.getElementById('theater-overlay').classList.contains('visible');
+        const isHelp = document.getElementById('shortcuts-overlay').classList.contains('visible');
+
+        // Help Modal Toggle
+        if (e.key === '?') { e.preventDefault(); toggleShortcutsHelp(); return; }
+        if (isHelp && e.key === 'Escape') { e.preventDefault(); toggleShortcutsHelp(); return; }
+        
+        // --- Quick Menu Keyboard Trapping ---
+        const menuOverlay = document.getElementById('exh-menu-overlay');
+        if (menuOverlay && menuOverlay.style.display === 'flex') {
+            const rows = Array.from(menuOverlay.querySelectorAll('.exh-action-row'));
+            if (rows.length > 0) {
+                const currentIndex = rows.indexOf(document.activeElement);
+                
+                // Down or Tab
+                if (e.key === 'ArrowDown' || (e.key === 'Tab' && !e.shiftKey)) {
+                    e.preventDefault();
+                    const nextIndex = (currentIndex + 1) % rows.length;
+                    rows[nextIndex].focus();
+                    return;
+                } 
+                // Up or Shift+Tab
+                else if (e.key === 'ArrowUp' || (e.key === 'Tab' && e.shiftKey)) {
+                    e.preventDefault();
+                    const prevIndex = (currentIndex - 1 + rows.length) % rows.length;
+                    rows[prevIndex].focus();
+                    return;
+                } 
+                // Execute
+                else if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    if (currentIndex !== -1) rows[currentIndex].click();
+                    return;
+                }
+            }
+            if (e.key === 'Escape' || e.key === '/') { e.preventDefault(); closeExhMenu(); return; }
+            
+            // Execute shortcut directly from menu
+            const key = e.key.toLowerCase();
+            if (key === 't') { e.preventDefault(); rotateTheater(); closeExhMenu(); return; }
+            if (key === 's') { e.preventDefault(); document.getElementById('theater-dl-link-desk').click(); closeExhMenu(); return; }
+            if (key === 'o') { e.preventDefault(); document.getElementById('theater-open-tab-desk').click(); closeExhMenu(); return; }
+            if (key === 'g') { e.preventDefault(); toggleTheaterPanel(); closeExhMenu(); return; }
+            if (key === 'h') { e.preventDefault(); toggleTheaterToolbar(); closeExhMenu(); return; }
+            
+            // Handle all rating numbers (0 to 5)
+            if (['0', '1', '2', '3', '4', '5'].includes(key)) { 
+                e.preventDefault(); 
+                submitRatingShortcut(parseInt(key)); 
+                closeExhMenu(); 
+                return; 
+            }
+
+            e.stopPropagation(); // Block other keys while menu is open
+            return;
+        }
+        
+        if (isTh && e.key === '/') { e.preventDefault(); openExhMenu(); return; }
+
+        // --- GLOBAL ACTIONS (Rating) ---
+        if (['1', '2', '3', '4', '5', '0'].includes(e.key)) {
+            e.preventDefault();
+            submitRatingShortcut(parseInt(e.key));
+            return;
+        }
+
+        // --- LIGHTBOX CONTEXT ---
+        if (isTh) {
+            if (e.key === 'ArrowLeft') { e.preventDefault(); navTheater(-1); }
+            else if (e.key === 'ArrowRight') { e.preventDefault(); navTheater(1); }
+            else if (e.key === 'Escape') closeTheater();
+            else if (e.key === 't' || e.key === 'T') { e.preventDefault(); rotateTheater(); }
+            else if (e.key === 'g' || e.key === 'G') { e.preventDefault(); toggleTheaterPanel(); }
+            else if (e.key === 'h' || e.key === 'H') { e.preventDefault(); toggleTheaterToolbar(); }
+            else if (e.key === '+' || e.key === '=') { e.preventDefault(); zoomTheater(0.2); }
+            else if (e.key === '-' || e.key === '_') { e.preventDefault(); zoomTheater(-0.2); }
+            else if (e.key === '0') { e.preventDefault(); resetTheaterZoom(); }
+            
+            // New Lightbox Shortcuts
+            else if (e.key === 's' || e.key === 'S') { 
+                e.preventDefault(); 
+                document.getElementById('theater-dl-link-desk').click(); 
+            }
+            else if (e.key === 'o' || e.key === 'O') { 
+                e.preventDefault(); 
+                // Simulate click on open tab link
+                const link = document.getElementById('theater-open-tab-desk');
+                window.open(link.href, '_blank');
+            }
+            return;
+        }
+        
+        // --- GRID CONTEXT ---
+        const grid = document.getElementById('gallery-grid');
+        const cols = window.getComputedStyle(grid).getPropertyValue('grid-template-columns').split(' ').length;
+        
+        if (e.key === 'ArrowRight') { e.preventDefault(); updateGridFocus(1); }
+        else if (e.key === 'ArrowLeft') { e.preventDefault(); updateGridFocus(-1); }
+        else if (e.key === 'ArrowDown') { e.preventDefault(); updateGridFocus(cols); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); updateGridFocus(-cols); }
+        else if ((e.key === 'Enter' || e.key === 'v' || e.key === 'V') && focusedGridIndex !== -1) {
+            e.preventDefault();
+            openTheater(focusedGridIndex);
+        }
+        else if (e.key === 'Home') { e.preventDefault(); updateGridFocus(-999999); }
+        else if (e.key === 'End') { e.preventDefault(); updateGridFocus(999999); }
+        else if (e.key === 'PageDown') { e.preventDefault(); updateGridFocus(cols * 3); }
+        else if (e.key === 'PageUp') { e.preventDefault(); updateGridFocus(-cols * 3); }
+    });
+
+    function updateGridFocus(delta) {
+        if (displayedCount === 0) return;
+        
+        let n = focusedGridIndex + delta;
+        if (delta === 999999) n = displayedCount - 1; 
+        else if (delta === -999999) n = 0;
+        
+        n = Math.max(0, Math.min(n, displayedCount - 1)); 
+        
+        // Remove focus from previous
+        if (focusedGridIndex !== -1) {
+            const oldCard = document.querySelector(`.exh-card[data-index="${focusedGridIndex}"]`);
+            if (oldCard) oldCard.classList.remove('keyboard-focused');
+        }
+
+        focusedGridIndex = n;
+        
+        const card = document.querySelector(`.exh-card[data-index="${focusedGridIndex}"]`);
+        if (card) { 
+            card.classList.add('keyboard-focused'); 
+            // Smooth scroll to keep focused item in view
+            card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); 
+        }
+    }
+
+    function renderCategoryList() {
+        const list = document.getElementById('collection-list'); 
+        list.innerHTML = '';
+        
+        // --- NEW: Prepend static "All Collections" item ---
+        const isAllActive = (currentCollectionId === 'all');
+        const allLi = document.createElement('li');
+        allLi.className = `nav-item ${isAllActive ? 'active' : ''}`;
+        allLi.dataset.id = 'all';
+        allLi.innerHTML = `
+            <span style="flex-shrink:0;">🌈</span> 
+            <span class="nav-text-wrapper" style="font-weight: bold;">All Collections</span>
+        `;
+        allLi.onclick = () => { 
+            loadGallery('all', 'All Collections', allLi); 
+            if(window.innerWidth <= 1024) toggleMenu(); 
+        };
+        list.appendChild(allLi);
+
+        // Standard filtering and sorting for other collections
+        let filtered = allCollections.filter(c => c.name.toLowerCase().includes(categorySearchTerm));
+        filtered.sort((a, b) => {
+            let result = (catSortType === 'date') ? (a.created_at - b.created_at) : a.name.localeCompare(b.name);
+            return (catSortDir === 'asc') ? result : -result;
+        });
+        
+        filtered.forEach(col => {
+            const li = document.createElement('li'); 
+            li.className = `nav-item ${currentCollectionId == col.id ? 'active' : ''}`;
+            li.dataset.id = col.id;
+            const safeName = escapeHtml(col.name).replace(/'/g, "\\'");
+            li.innerHTML = `
+                <span style="flex-shrink:0;">📚</span> 
+                <span class="nav-text-wrapper">${escapeHtml(col.name)}</span>
+                <button class="nav-expand-btn" title="Show full name" onclick="showFullName(event, '${safeName}')">•••</button>
+            `;
+            li.onclick = (e) => { 
+                if(e.target.closest('.nav-expand-btn')) return;
+                loadGallery(col.id, col.name, li); 
+                if(window.innerWidth <= 1024) toggleMenu(); 
+            };
+            list.appendChild(li);
+        });
+
+        requestAnimationFrame(() => { requestAnimationFrame(() => { checkSidebarOverflows(); }); });
+    }
+
+    // --- IMPROVED OVERFLOW DETECTION ---
+    function checkSidebarOverflows() {
+        const items = document.querySelectorAll('.nav-item');
+        
+        items.forEach(item => {
+            const textSpan = item.querySelector('.nav-text-wrapper');
+            const btn = item.querySelector('.nav-expand-btn');
+            
+            if (textSpan && btn) {
+                // Force layout recalculation
+                const scrollWidth = textSpan.scrollWidth;
+                const clientWidth = textSpan.clientWidth;
+                
+                // Add a small threshold (2px) to account for sub-pixel rendering
+                if (scrollWidth > clientWidth + 2) {
+                    btn.classList.add('visible');
+                } else {
+                    btn.classList.remove('visible');
+                }
+            }
+        });
+    }
+
+    // Debounced resize handler
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            checkSidebarOverflows();
+        }, 150);
+    });
+    
+    // --- FULL NAME POPUP LOGIC ---
+    function showFullName(e, text) {
+        e.stopPropagation(); // Prevents loading the gallery
+        
+        // Remove existing popup if any
+        const existing = document.getElementById('fullname-popup');
+        if (existing) existing.remove();
+        
+        const existingOverlay = document.getElementById('fullname-overlay');
+        if (existingOverlay) existingOverlay.remove();
+        
+        // Create Popup HTML
+        const popup = document.createElement('div');
+        popup.id = 'fullname-popup';
+        popup.className = 'visible';
+        popup.innerHTML = `
+            <h4 style="margin:0; color:var(--primary-color); text-transform:uppercase; font-size:0.8rem;">Full Name</h4>
+            <div id="fullname-text">${text}</div>
+            <button class="glass-btn" onclick="closeFullNamePopup()">Close</button>
+        `;
+        
+        // Close on background click (overlay effect)
+        const overlay = document.createElement('div');
+        overlay.id = 'fullname-overlay';
+        overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; z-index:9999; background:rgba(0,0,0,0.5); backdrop-filter:blur(2px);';
+        overlay.onclick = closeFullNamePopup;
+        
+        document.body.appendChild(overlay);
+        document.body.appendChild(popup);
+    }
+
+    function closeFullNamePopup() {
+        const popup = document.getElementById('fullname-popup');
+        const overlay = document.getElementById('fullname-overlay');
+        if (popup) popup.remove();
+        if (overlay) overlay.remove();
+    }
+
+    async function deleteComment(id) {
+        // STYLE UPGRADE: Using SmartConfirm
+        const confirmed = await smartConfirm("🗑️ Delete Comment?", "This comment will be permanently removed. Proceed?");
+        if (!confirmed) return;
+        
+        try { 
+            const res = await fetch('/galleryout/api/exhibition/delete_comment', { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify({ 
+                    comment_id: id, 
+                    client_uuid: clientUUID 
+                }) 
+            }); 
+            
+            if(res.ok) {
+                const f = currentFiles[currentIndex];
+                f.comment_count = Math.max(0, f.comment_count - 1);
+                loadComments(currentFiles[currentIndex].id);
+            }
+        } catch(e) { console.error(e); }
+    }
+    
+    function cycleCatSortType() { 
+        catSortType = (catSortType === 'name') ? 'date' : 'name'; 
+        localStorage.setItem('sg_exh_cat_sort_type', catSortType); 
+        updateCatSortUI(); 
+        renderCategoryList(); 
+    }
+    
+    function toggleCatSortDir() { 
+        catSortDir = (catSortDir === 'asc') ? 'desc' : 'asc'; 
+        localStorage.setItem('sg_exh_cat_sort_dir', catSortDir); 
+        updateCatSortUI(); 
+        renderCategoryList(); 
+    }
+    
+    function updateCatSortUI() { 
+        document.getElementById('cat-sort-type').textContent = (catSortType === 'name') ? 'A-Z' : '📅'; 
+        document.getElementById('cat-sort-dir').textContent = (catSortDir === 'asc') ? '↑' : '↓'; 
+    }
+    
+    async function changeNickname() { 
+        // STYLE UPGRADE: Using SmartPrompt
+        const newName = await smartPrompt("👤 User Profile", "Enter your nickname for comments:", userName);
+        
+        if(newName && newName.trim().length >= 2) { 
+            userName = newName.trim(); 
+            localStorage.setItem('sg_user_nickname', userName); 
+            showNotification("Nickname updated!", "success");
+        } else if (newName !== null) {
+            smartAlert('Nickname must be at least 2 characters');
+        }
+    }
+    
+    function scrollToTop() { 
+        document.getElementById('gallery-grid').scrollTo({ top: 0, behavior: 'smooth' }); 
+    }
+    
+    function clearSearch() {
+        const searchInput = document.getElementById('category-search');
+        const clearBtn = document.getElementById('search-clear-btn');
+        if (searchInput) {
+            searchInput.value = '';
+            categorySearchTerm = '';
+            if (clearBtn) clearBtn.classList.remove('visible');
+            renderCategoryList();
+            searchInput.focus();
+        }
+    }
+    
+    function escapeHtml(text) { 
+        const div = document.createElement('div'); 
+        div.textContent = text; 
+        return div.innerHTML; 
+    }
+    
+    // Global state for sorting
+    let activeSortCriteria = 'date';
+    let activeSortOrder = 'desc';
+
+    /**
+     * Handles sorting from desktop buttons
+     * Toggles direction if clicking the same criteria
+     */
+    function setSort(criteria) {
+        if (activeSortCriteria === criteria) {
+            // Toggle direction
+            activeSortOrder = (activeSortOrder === 'desc') ? 'asc' : 'desc';
+        } else {
+            // New criteria selected
+            activeSortCriteria = criteria;
+            // Default orders for better UX:
+            // Names usually start A-Z (asc), others usually show "most/newest" first (desc)
+            activeSortOrder = (criteria === 'name') ? 'asc' : 'desc';
+        }
+
+        updateSortUI();
+        
+        // Sync the mobile select so if user switches to mobile view, it matches
+        const mobileSelect = document.getElementById('sort-select');
+        if (mobileSelect) {
+            mobileSelect.value = `${activeSortCriteria}_${activeSortOrder}`;
+        }
+
+        applySort();
+    }
+
+    /**
+     * Updates the visual state of buttons (active class and arrows)
+     */
+    function updateSortUI() {
+        const buttons = document.querySelectorAll('.sort-btn-item');
+        buttons.forEach(btn => {
+            const criteria = btn.dataset.sort;
+            const arrow = btn.querySelector('.sort-direction-arrow');
+            
+            if (criteria === activeSortCriteria) {
+                btn.classList.add('active');
+                arrow.textContent = (activeSortOrder === 'asc') ? '↑' : '↓';
+                
+                // Update tooltip to show direction
+                const label = btn.querySelector('span:first-child').textContent;
+                const dirText = (activeSortOrder === 'asc') ? 'Ascending' : 'Descending';
+                btn.title = `Currently sorted by ${label} (${dirText})`;
+            } else {
+                btn.classList.remove('active');
+                // Reset arrow to default visual for inactive buttons
+                arrow.textContent = (criteria === 'name') ? '↑' : '↓';
+            }
+        });
+    }
+
+    /**
+     * Override existing applySort to use our global variables
+     */
+    function applySort() {
+        if (!currentCollectionId) return;
+
+        const currentName = document.getElementById('page-title').textContent;
+        
+        // If we are on mobile, read from the select instead
+        if (window.innerWidth <= 1024) {
+            const selectVal = document.getElementById('sort-select').value;
+            const [mSort, mOrder] = selectVal.split('_');
+            activeSortCriteria = mSort;
+            activeSortOrder = mOrder;
+            updateSortUI(); // Sync desktop buttons in background
+        }
+
+        loadGalleryInternal(currentCollectionId, currentName);
+    }
+
+    /**
+     * Refactored load logic to accept parameters directly
+     */
+    async function loadGalleryInternal(collId, name, el = null) {
+        currentCollectionId = collId; 
+        document.getElementById('page-title').textContent = name;
+        
+        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+        if (!el) el = document.querySelector(`.nav-item[data-id="${collId}"]`);
+        if (el) el.classList.add('active');
+        
+        try {
+            const res = await fetch(`/galleryout/collection/${collId}?sort_by=${activeSortCriteria}&sort_order=${activeSortOrder}`, { 
+                headers: { 'Accept': 'application/json' } 
+            });
+            const data = await res.json(); 
+            currentFiles = data.files; 
+            
+            const countBadge = document.getElementById('file-count-total');
+            if (countBadge) {
+                const filteredCount = currentFiles.length;
+                countBadge.textContent = `📂 ${filteredCount} ${filteredCount === 1 ? 'Item' : 'Items'}`;
+            }
+
+            displayedCount = 0; 
+            focusedGridIndex = -1;
+            document.getElementById('gallery-grid').innerHTML = '';
+            
+            if (currentFiles.length === 0) {
+                showEmptyGallery();
+            } else {
+                renderNextChunk(); 
+            }
+        } catch (e) { 
+            console.error('Error loading gallery:', e); 
+        }
+    }
+
+    // Replace the global loadGallery reference to point to our internal handler
+    window.loadGallery = loadGalleryInternal;
+    
+</script>
+</body>
+</html>

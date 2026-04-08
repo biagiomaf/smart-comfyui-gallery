@@ -1,6 +1,6 @@
 # Contributing to SmartGallery
 
-Thank you for considering contributing to SmartGallery! 
+Thank you for considering contributing to SmartGallery DAM! 
 
 ## How to Contribute
 

@@ -1,7 +1,7 @@
-# Smart Gallery for ComfyUI
+# Smart Gallery DAM for ComfyUI
 # Author: Biagio Maffettone © 2025-2026 — MIT License (free to use and modify)
 #
-# Version: 1.55 - Febraury 5, 2026
+# Version: 2.11 - April 08, 2026
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -22,7 +22,7 @@ import subprocess
 import base64
 import zipfile
 import io
-from flask import Flask, render_template, send_from_directory, abort, send_file, url_for, redirect, request, jsonify, Response
+from flask import Flask, render_template, send_from_directory, abort, send_file, url_for, redirect, request, jsonify, Response, session
 from PIL import Image, ImageSequence
 import colorsys
 from werkzeug.utils import secure_filename
@@ -30,6 +30,7 @@ import concurrent.futures
 from tqdm import tqdm
 import threading
 import uuid
+import socket
 # Try to import tkinter for GUI dialogs, but make it optional for Docker/headless environments
 try:
     import tkinter as tk
@@ -37,10 +38,20 @@ try:
     TKINTER_AVAILABLE = True
 except ImportError:
     TKINTER_AVAILABLE = False
-    # tkinter not available (e.g., in Docker containers) - will fall back to console output
+    # tkinter not available (e.g., in Docker containers) - will fall back to console output  
+TKINTER_AVAILABLE = False # forcing to false for cross-platform compatibility 
+import secrets
+from typing import Dict, List, Any, Optional, Union
+from functools import wraps
+from cryptography.fernet import Fernet
 import urllib.request 
 import secrets
 from typing import Dict, List, Any, Optional, Union # Added for type hinting in new tools
+try:
+    from waitress import serve
+    WAITRESS_AVAILABLE = True
+except ImportError:
+    WAITRESS_AVAILABLE = False
 
 
 # ============================================================================
@@ -203,7 +214,14 @@ MAX_PARALLEL_WORKERS = os.environ.get('MAX_PARALLEL_WORKERS', None)
 if MAX_PARALLEL_WORKERS is not None and MAX_PARALLEL_WORKERS != "":
     MAX_PARALLEL_WORKERS = int(MAX_PARALLEL_WORKERS)
 else:
-    MAX_PARALLEL_WORKERS = None
+    # OS-Specific Safety Defaults
+    # macOS (darwin) often crashes with BrokenProcessPool or runs out of file descriptors 
+    # when maxing out Apple Silicon cores on massive galleries (>3000 files).
+    # Defaulting to 4 provides excellent speed while maintaining absolute stability.
+    if sys.platform == 'darwin':
+        MAX_PARALLEL_WORKERS = 4
+    else:
+        MAX_PARALLEL_WORKERS = None
 
 # Flask secret key
 # You can set it in the environment variable SECRET_KEY
@@ -265,6 +283,12 @@ WORKFLOW_PROMPT_BLACKLIST = {
 }
 
 # ============================================================================
+# RUNTIME FLAGS (Set via command line arguments)
+# ============================================================================
+# Will be populated in __main__
+IS_EXHIBITION_MODE = False
+
+# ============================================================================
 # AI SEARCH CONFIGURATION (FUTURE FEATURE)
 # ============================================================================
 # Enable or disable the AI Search UI features.
@@ -302,13 +326,39 @@ SQLITE_CACHE_FOLDER_NAME = '.sqlite_cache'
 DATABASE_FILENAME = 'gallery_cache.sqlite'
 ZIP_CACHE_FOLDER_NAME = '.zip_downloads'
 AI_MODELS_FOLDER_NAME = '.AImodels'
+ENABLE_DAM_MODE = True
 
 # --- APP INFO ---
-APP_VERSION = "1.55"
-APP_VERSION_DATE = "Febraury 5, 2026"
+APP_VERSION = "2.11"
+APP_VERSION_DATE = "April 08, 2026"
 GITHUB_REPO_URL = "https://github.com/biagiomaf/smart-comfyui-gallery"
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/biagiomaf/smart-comfyui-gallery/main/smartgallery.py"
 
+# ============================================================================
+# RUNTIME FLAGS (Set via command line arguments)
+# ============================================================================
+import argparse
+_parser = argparse.ArgumentParser(description="Smart Gallery DAM for ComfyUI")
+_parser.add_argument('--exhibition', action='store_true', help="Start in Exhibition Mode")
+_parser.add_argument('--enable-guest-login', action='store_true', help="Allow anyone to login as Guest without password")
+_parser.add_argument('--port', type=int, default=None, help="Override server port")
+_parser.add_argument('--admin-pass', type=str, help="Set or reset the Admin password")
+_parser.add_argument('--force-login', action='store_true', help="Force login for the standard index.html interface")
+
+_args, _unknown = _parser.parse_known_args()
+
+IS_EXHIBITION_MODE = _args.exhibition
+if _args.port:
+    SERVER_PORT = _args.port
+ENABLE_GUEST_LOGIN = _args.enable_guest_login
+FORCE_LOGIN = _args.force_login
+
+# Priority: CLI Param > Environment Variable
+ADMIN_PASS_INPUT = _args.admin_pass or os.environ.get('ADMIN_PASSWORD')
+# Security Lockdown: If either restricted mode is requested but no password is provided
+ADMIN_CONFIG_MISSING = (IS_EXHIBITION_MODE or FORCE_LOGIN) and not ADMIN_PASS_INPUT
+# Security Enhancement: Enforce minimum length of 8 characters for the admin password
+ADMIN_PASS_TOO_SHORT = ADMIN_PASS_INPUT and len(ADMIN_PASS_INPUT) < 8
 
 # --- HELPER FUNCTIONS (DEFINED FIRST) ---
 def path_to_key(relative_path):
@@ -325,7 +375,11 @@ def key_to_path(key):
 DB_SCHEMA_VERSION = 27 
 THUMBNAIL_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, THUMBNAIL_CACHE_FOLDER_NAME)
 SQLITE_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, SQLITE_CACHE_FOLDER_NAME)
+# Directory for metadata-stripped files (for client delivery)
+CLEAN_CACHE_FOLDER_NAME = '.clean_cache'
+CLEAN_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, CLEAN_CACHE_FOLDER_NAME)
 DATABASE_FILE = os.path.join(SQLITE_CACHE_DIR, DATABASE_FILENAME)
+ENCRYPTION_KEY_FILE = os.path.join(SQLITE_CACHE_DIR, 'system.key')
 ZIP_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, ZIP_CACHE_FOLDER_NAME)
 PROTECTED_FOLDER_KEYS = {path_to_key(f) for f in SPECIAL_FOLDERS}
 PROTECTED_FOLDER_KEYS.add('_root_')
@@ -343,6 +397,83 @@ class Colors:
     BOLD = '\033[1m'
     DIM = '\033[2m'
 
+def run_integrity_check():
+    """
+    System Health Check with user advice and cross-platform wait.
+    Verifies libraries, files, and version consistency.
+    """
+    print(f"INFO: Running system integrity check...")
+    
+    issues_found = False
+    critical_error = False
+    
+    # 1. Check Libraries
+    required_libs = [
+        ('flask', 'Flask'), ('PIL', 'Pillow'), ('cv2', 'opencv-python'),
+        ('waitress', 'waitress'), ('cryptography', 'cryptography')
+    ]
+    
+    for lib_imp, lib_name in required_libs:
+        try: 
+            __import__(lib_imp)
+        except ImportError:
+            print(f"\n{Colors.RED}❌ MISSING LIBRARY: {lib_name}{Colors.RESET}")
+            issues_found = True
+            critical_error = True
+
+    # 2. Check Files & Version Headers
+    critical_files = [
+        'templates/index.html',
+        'templates/exhibition.html',
+        'templates/exhibition_login.html',
+        'templates/modals/user_manager_module.html'
+    ]
+    
+    mismatches = []
+    for f_path in critical_files:
+        if not os.path.exists(f_path):
+            print(f"\n{Colors.RED}❌ CRITICAL FILE MISSING: {f_path}{Colors.RESET}")
+            issues_found = True
+            critical_error = True
+            continue
+        
+        try:
+            with open(f_path, 'r', encoding='utf-8') as f:
+                header = "".join([f.readline() for _ in range(15)])
+                if APP_VERSION not in header:
+                    mismatches.append(f_path)
+                    issues_found = True
+        except Exception: 
+            pass
+
+    if mismatches:
+        print(f"\n{Colors.YELLOW}⚠️  VERSION WARNING: Some files are outdated or modified:{Colors.RESET}")
+        for m in mismatches:
+            print(f"   - {m}")
+        print(f"{Colors.YELLOW}   Expected Version: {APP_VERSION}.{Colors.RESET}")
+
+    # 3. Advice and "Press Enter" logic
+    if issues_found:
+        print(f"\n{Colors.CYAN}{Colors.BOLD}💡 ADVICE:{Colors.RESET}")
+        print(f"   Please verify your installation or check for updates at:")
+        print(f"   {Colors.BLUE}{Colors.BOLD}{GITHUB_REPO_URL}{Colors.RESET}")
+        
+        if critical_error:
+            print(f"\n{Colors.RED}The application cannot start due to missing components.{Colors.RESET}")
+        
+        # Cross-platform wait that doesn't crash Docker if non-interactive
+        try:
+            print(f"\n{Colors.DIM}Press Enter to {'exit' if critical_error else 'continue'}...{Colors.RESET}")
+            input() 
+        except (EOFError, KeyboardInterrupt):
+            # Fallback for non-interactive environments (Docker/Headless)
+            pass
+
+        if critical_error:
+            sys.exit(1)
+
+    print(f"{Colors.GREEN}SUCCESS: System integrity verified (v{APP_VERSION}).{Colors.RESET}")
+    
 # --- HELPER FOR AI PATH CONSISTENCY ---
 def get_standardized_path(filepath):
     """
@@ -392,8 +523,25 @@ def print_configuration():
     print_row("Batch Size", BATCH_SIZE)
     print_row("Stream Threshold", f"{STREAM_THRESHOLD_MB} MB")
     print_row("Max Parallel Workers", MAX_PARALLEL_WORKERS if MAX_PARALLEL_WORKERS else "All Cores")
-    print_row("AI Search", "Enabled" if ENABLE_AI_SEARCH else "Disabled")
+    print_row("DAM Mode (Pro)", "Enabled" if ENABLE_DAM_MODE else "Disabled")
+    if ENABLE_AI_SEARCH:
+        print_row("AI Search", "Enabled" if ENABLE_AI_SEARCH else "Disabled")
     print(f"{Colors.HEADER}-----------------------------{Colors.RESET}\n")
+
+def management_api_only(f):
+    """
+    Security Decorator: Blocks access to destructive or management APIs 
+    when the server is running in Exhibition Mode.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if IS_EXHIBITION_MODE:
+            return jsonify({
+                'status': 'error', 
+                'message': 'Security Lockdown: This API is physically disabled in Exhibition Mode.'
+            }), 403
+        return f(*args, **kwargs)
+    return decorated_function
 
 # --- FLASK APP INITIALIZATION ---
 app = Flask(__name__)
@@ -531,9 +679,9 @@ def generate_node_summary(workflow_json_string):
                      display_value = str(value)
             
             if isinstance(value, str) and value.strip():
-                # 1. Pulizia aggressiva per rimuovere suffissi tipo " [output]" o " [input]"
+                # 1. Aggressive cleanup to remove suffixes like " [output]" or " [input]"
                 clean_value = value.replace('\\', '/').strip()
-                # Rimuovi suffissi comuni tra parentesi quadre alla fine della stringa
+                # Remove common suffixes in square brackets at the end of the string
                 clean_value = re.sub(r'\s*\[.*?\]$', '', clean_value)
                 
                 _, ext = os.path.splitext(clean_value)
@@ -557,7 +705,7 @@ def generate_node_summary(workflow_json_string):
                                     is_input_file = True
                                     rel_path = os.path.relpath(abs_candidate, abs_base).replace('\\', '/')
                                     input_url = f"/galleryout/input_file/{rel_path}"
-                                    # Aggiorniamo anche il valore mostrato a video per pulirlo
+                                    # Also update the displayed value to clean it up
                                     display_value = clean_value 
                                     break 
                         except Exception:
@@ -1431,12 +1579,14 @@ def get_db_connection():
     conn = sqlite3.connect(DATABASE_FILE, timeout=60)
     conn.row_factory = sqlite3.Row
     # CONCURRENCY OPTIMIZATION:
-    # WAL: Allows non-blocking reads.
-    # NORMAL: Makes transactions (commits) instant, reducing lock time drastically.
     conn.execute('PRAGMA journal_mode=WAL;') 
     conn.execute('PRAGMA synchronous=NORMAL;') 
+    # --- CRITICAL FOR DATA CONSISTENCY ---
+    # Enables cascading updates/deletes for Categories/Collections
+    conn.execute('PRAGMA foreign_keys = ON;') 
+    
     return conn
-
+    
 def init_db(conn=None):
     close_conn = False
     if conn is None:
@@ -1444,7 +1594,7 @@ def init_db(conn=None):
         close_conn = True
         
     try:
-        # 1. CORE TABLE CREATION (Safe: creates only if missing)
+        # 1. CORE TABLE CREATION
         conn.execute('''
             CREATE TABLE IF NOT EXISTS files (
                 id TEXT PRIMARY KEY, 
@@ -1467,7 +1617,7 @@ def init_db(conn=None):
             )
         ''')
 
-        # 2. AI TABLE CREATION
+        # 2. AI TABLES
         conn.execute('''
             CREATE TABLE IF NOT EXISTS ai_search_queue (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1519,7 +1669,7 @@ def init_db(conn=None):
         
         conn.execute("CREATE TABLE IF NOT EXISTS ai_metadata (key TEXT PRIMARY KEY, value TEXT, updated_at REAL)")
         
-        # MOUNT POINTS TABLE ---
+        # MOUNT POINTS TABLE
         conn.execute('''
             CREATE TABLE IF NOT EXISTS mounted_folders (
                 path TEXT PRIMARY KEY,
@@ -1528,7 +1678,91 @@ def init_db(conn=None):
             );
         ''')
         
-        # 3. COLUMN MIGRATION
+        # 3. COLLECTIONS SYSTEM
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS collections (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                type TEXT NOT NULL, 
+                color TEXT,         
+                is_public INTEGER DEFAULT 0,
+                created_at REAL
+            );
+        ''')
+
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS collection_files (
+                collection_id INTEGER,
+                file_id TEXT,
+                added_at REAL,
+                PRIMARY KEY (collection_id, file_id),
+                FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE ON UPDATE CASCADE,
+                FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE
+            );
+        ''')
+        
+        # 4. EXHIBITION MODE TABLES (Ratings & Comments)
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS file_ratings (
+                file_id TEXT,
+                client_uuid TEXT,
+                rating INTEGER CHECK(rating >= 1 AND rating <= 5),
+                created_at REAL,
+                PRIMARY KEY (file_id, client_uuid),
+                FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
+            );
+        ''')
+
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS file_comments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_id TEXT,
+                client_uuid TEXT,
+                author_name TEXT,
+                comment_text TEXT,
+                target_audience TEXT DEFAULT 'public',
+                created_at REAL,
+                FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
+            );
+        ''')
+        
+        # Pre-populate Standard Workflow Flags
+        system_flags = [
+            ('Approved', 'system_flag', '#28a745'),
+            ('Review',   'system_flag', '#ffc107'),
+            ('To Edit',  'system_flag', '#17a2b8'),
+            ('Rejected', 'system_flag', '#dc3545'),
+            ('Select',   'system_flag', '#6f42c1')
+        ]
+        
+        existing_cols = conn.execute("SELECT COUNT(*) FROM collections WHERE type='system_flag'").fetchone()[0]
+        if existing_cols == 0:
+            print(f"{Colors.BLUE}INFO: Initializing standard workflow tags...{Colors.RESET}")
+            conn.executemany(
+                "INSERT INTO collections (name, type, color, is_public, created_at) VALUES (?, ?, ?, 0, ?)",
+                [(n, t, c, time.time()) for n, t, c in system_flags]
+            )
+        
+
+        # 5. USER MANAGEMENT (Always required now for messaging target resolution)
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                password TEXT NOT NULL,         -- Reversibly encrypted password
+                full_name TEXT NOT NULL,
+                email TEXT,                     -- Communication email
+                phone_number TEXT,              -- Optional contact
+                role TEXT CHECK(role IN ('USER', 'STAFF', 'MANAGER', 'CUSTOMER', 'FRIEND', 'GUEST', 'ADMIN')) DEFAULT 'GUEST',
+                start_date DATE DEFAULT CURRENT_DATE,
+                expiry_date DATE,               -- Optional expiration date
+                is_active BOOLEAN DEFAULT 1     -- 1 = Active, 0 = Disabled
+            );
+        ''')
+        # Index for faster login lookups
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);')    
+        
+        # 6. COLUMN MIGRATION
         required_columns = {
             'size': 'INTEGER DEFAULT 0', 
             'last_scanned': 'REAL DEFAULT 0',
@@ -1539,6 +1773,26 @@ def init_db(conn=None):
             'ai_embedding': 'BLOB',
             'ai_error': 'TEXT'
         }
+
+        # Handle comments target migration
+        try:
+            cursor_fc = conn.execute("PRAGMA table_info(file_comments)")
+            fc_columns = {row['name'] for row in cursor_fc.fetchall()}
+            if 'target_audience' not in fc_columns:
+                print("INFO: Updating Database Schema... Adding 'target_audience' to file_comments")
+                conn.execute("ALTER TABLE file_comments ADD COLUMN target_audience TEXT DEFAULT 'public'")
+        except Exception as e:
+            print(f"WARNING: Could not migrate file_comments table: {e}")
+
+        # Handle collections public flag migration
+        try:
+            cursor_col = conn.execute("PRAGMA table_info(collections)")
+            col_columns = {row['name'] for row in cursor_col.fetchall()}
+            if 'is_public' not in col_columns:
+                print("INFO: Updating Database Schema... Adding 'is_public' to collections")
+                conn.execute("ALTER TABLE collections ADD COLUMN is_public INTEGER DEFAULT 0")
+        except Exception as e:
+            print(f"WARNING: Could not migrate collections table: {e}")
 
         cursor = conn.execute("PRAGMA table_info(files)")
         existing_columns = {row['name'] for row in cursor.fetchall()}
@@ -1551,8 +1805,7 @@ def init_db(conn=None):
                 except Exception as e:
                     print(f"WARNING: Could not add column {col_name}: {e}")
 
-        # 4. SCHEMA VERSION CONTROL (Versioning)
-        # We check and update the internal version ONLY if everything above succeeded.
+        # 6. SCHEMA VERSION
         try:
             cur = conn.execute("PRAGMA user_version")
             current_ver = cur.fetchone()[0]
@@ -1563,7 +1816,6 @@ def init_db(conn=None):
         except Exception as e:
             print(f"WARNING: Could not update DB schema version: {e}")
 
-        # Final Commit for all operations
         conn.commit()
         
     except Exception as e:
@@ -1577,7 +1829,7 @@ def get_dynamic_folder_config(force_refresh=False):
     if folder_config_cache is not None and not force_refresh:
         return folder_config_cache
 
-    print("INFO: Refreshing folder configuration by scanning directory tree...")
+    #print("INFO: Refreshing folder configuration by scanning directory tree...")
 
     base_path_normalized = os.path.normpath(BASE_OUTPUT_PATH).replace('\\', '/')
     
@@ -1852,9 +2104,19 @@ def full_sync_database(conn):
             with tqdm(total=len(files_to_process), desc="Processing files") as pbar:
                 # Iterate over the jobs as they are COMPLETED
                 for future in concurrent.futures.as_completed(futures):
-                    result = future.result()
-                    if result:
-                        results.append(result)
+                    # --- FAULT TOLERANCE FIX ---
+                    # If a single file causes a C-level segfault (e.g. OpenCV/Pillow on corrupted media), 
+                    # it throws a BrokenProcessPool exception. We catch it to save the rest of the gallery.
+                    try:
+                        result = future.result()
+                        if result:
+                            results.append(result)
+                    except concurrent.futures.process.BrokenProcessPool as e:
+                        print(f"\nWARNING: A worker process crashed (likely due to a corrupted file). Recovering... Error: {e}")
+                    except Exception as e:
+                        file_path_failed = futures[future]
+                        print(f"\nWARNING: Unhandled error processing {os.path.basename(file_path_failed)}: {e}")
+                    
                     # Update the bar by 1 step for each completed job
                     pbar.update(1)
 
@@ -1877,7 +2139,7 @@ def full_sync_database(conn):
                         workflow_files = excluded.workflow_files,
                         workflow_prompt = excluded.workflow_prompt,
                         
-                        -- LOGICA CONDIZIONALE:
+                        -- CONDITIONAL LOGIC:
                         is_favorite = CASE 
                             WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN 0  
                             ELSE files.is_favorite                     
@@ -1898,7 +2160,7 @@ def full_sync_database(conn):
                             ELSE files.ai_last_scanned 
                         END,
 
-                        -- Aggiorna mtime alla fine
+                        -- Update mtime at the end
                         mtime = excluded.mtime
                 """, batch) 
                 conn.commit()
@@ -1993,9 +2255,16 @@ def sync_folder_on_demand(folder_path):
                     futures = {executor.submit(process_single_file, path): path for path in files_to_process}
                     
                     for future in concurrent.futures.as_completed(futures):
-                        result = future.result()
-                        if result:
-                            data_to_upsert.append(result)
+                        # --- FAULT TOLERANCE FIX FOR SYNC ---
+                        try:
+                            result = future.result()
+                            if result:
+                                data_to_upsert.append(result)
+                        except concurrent.futures.process.BrokenProcessPool as e:
+                            print(f"\nWARNING: A worker process crashed (likely due to a corrupted file). Recovering... Error: {e}")
+                        except Exception as e:
+                            file_path_failed = futures[future]
+                            print(f"\nWARNING: Unhandled error processing {os.path.basename(file_path_failed)}: {e}")
                         
                         processed_count += 1
                         path = futures[future]
@@ -2006,7 +2275,7 @@ def sync_folder_on_demand(folder_path):
                         }
                         yield f"data: {json.dumps(progress_data)}\n\n"
 
-                if data_to_upsert: 
+                if data_to_upsert:
                     conn.executemany("""
                         INSERT INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned, workflow_files, workflow_prompt) 
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -2022,7 +2291,7 @@ def sync_folder_on_demand(folder_path):
                             workflow_files = excluded.workflow_files,
                             workflow_prompt = excluded.workflow_prompt,
                         
-                            -- LOGICA CONDIZIONALE:
+                            -- CONDITIONAL LOGIC:
                             is_favorite = CASE 
                                 WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN 0  
                                 ELSE files.is_favorite                     
@@ -2043,7 +2312,7 @@ def sync_folder_on_demand(folder_path):
                                 ELSE files.ai_last_scanned 
                             END,
 
-                            -- Aggiorna mtime alla fine
+                            -- Update mtime at the end
                             mtime = excluded.mtime
                     """, data_to_upsert) 
                     
@@ -2134,12 +2403,155 @@ def initialize_gallery_fast_no_db_check():
         except sqlite3.DatabaseError as e:
             print(f"ERROR initializing database: {e}")
 
+
+def pregenerate_exhibition_cache():
+    """
+    Pre-generates metadata-stripped files for all items in public collections.
+    Runs only in Exhibition mode to ensure fast, secure delivery to guests.
+    Utilizes parallel thread processing for speed, skipping already processed files.
+    Safe for Windows, macOS, Linux, and Docker environments. Handles mixed slashes.
+    """
+    if not IS_EXHIBITION_MODE:
+        return
+
+    print(f"{Colors.BLUE}INFO: Checking Exhibition Cache (Metadata-stripped files)...{Colors.RESET}")
+    
+    files_to_process = []
+    with get_db_connection() as conn:
+        # Fetch all distinct files that belong to public user albums
+        query = """
+            SELECT DISTINCT f.id, f.path, f.mtime, f.type, f.name 
+            FROM files f
+            JOIN collection_files cf ON f.id = cf.file_id
+            JOIN collections c ON cf.collection_id = c.id
+            WHERE c.is_public = 1 AND c.type = 'user_album'
+        """
+        rows = conn.execute(query).fetchall()
+        
+        for row in rows:
+            filepath = row['path']
+            mtime = row['mtime']
+            file_type = row['type']
+            
+            # CRITICAL: Calculate hash using the EXACT path string from the DB 
+            # to match the retrieval logic in serve_cleaned_file().
+            cache_hash = hashlib.md5((filepath + str(mtime)).encode()).hexdigest()
+            _, ext = os.path.splitext(filepath)
+            clean_path = os.path.join(CLEAN_CACHE_DIR, f"{cache_hash}{ext}")
+            
+            # NORMALIZE PATHS FOR OS (fixes Windows mixed slashes like c:/folder\subfolder/file.jpg)
+            # This ensures FFmpeg and Pillow receive perfectly valid native paths.
+            safe_input_path = os.path.normpath(filepath)
+            safe_output_path = os.path.normpath(clean_path)
+            
+            # Only process if missing or corrupted (0 bytes)
+            if not os.path.exists(safe_output_path) or os.path.getsize(safe_output_path) == 0:
+                files_to_process.append({
+                    'input_path': safe_input_path,
+                    'output_path': safe_output_path,
+                    'type': file_type,
+                    'name': row['name']
+                })
+
+    if not files_to_process:
+        print(f"{Colors.GREEN}INFO: Exhibition cache is up to date.{Colors.RESET}")
+        return
+
+    print(f"INFO: Pre-generating {len(files_to_process)} clean files using up to {MAX_PARALLEL_WORKERS or 'all'} CPU cores...")
+    
+    success_count = 0
+    
+    # We use ThreadPoolExecutor to prevent OS-specific multiprocessing issues (like Windows pickling)
+    # while allowing I/O and external FFmpeg calls to run concurrently safely across all platforms.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_PARALLEL_WORKERS) as executor:
+        # Submit jobs using the safely normalized OS paths
+        futures = {
+            executor.submit(strip_media_metadata, f['input_path'], f['output_path'], f['type']): f 
+            for f in files_to_process
+        }
+        
+        with tqdm(total=len(files_to_process), desc="Cleaning files") as pbar:
+            for future in concurrent.futures.as_completed(futures):
+                file_info = futures[future]
+                try:
+                    if future.result():
+                        success_count += 1
+                except Exception as e:
+                    print(f"\nWARNING: Failed to clean {file_info['name']}: {e}")
+                pbar.update(1)
+                
+    print(f"{Colors.GREEN}INFO: Successfully pre-generated {success_count}/{len(files_to_process)} clean files.{Colors.RESET}")
+
+def check_exhibition_requirements():
+    """
+    Strict Pre-Flight Check for Exhibition Mode.
+    Ensures that the Main gallery has been run before, the database exists, 
+    and at least one public collection is configured.
+    Exits the application if requirements are not met to prevent ghost databases.
+    """
+    if not IS_EXHIBITION_MODE:
+        return
+
+    print(f"{Colors.BLUE}INFO: Performing Pre-Flight Checks for Exhibition Mode...{Colors.RESET}")
+    
+    db_exists = os.path.exists(DATABASE_FILE)
+    
+    if not db_exists:
+        print(f"\n{Colors.RED}{Colors.BOLD}❌ CRITICAL ERROR: Database Not Found{Colors.RESET}")
+        print(f"{Colors.RED}Exhibition Mode cannot run because the main database does not exist at:{Colors.RESET}")
+        print(f"{Colors.YELLOW}{DATABASE_FILE}{Colors.RESET}\n")
+        print(f"{Colors.CYAN}{Colors.BOLD}💡 HOW TO FIX IT:{Colors.RESET}")
+        print(f"1. Ensure 'BASE_SMARTGALLERY_PATH' is configured correctly.")
+        print(f"2. You must run the standard gallery AT LEAST ONCE before using Exhibition Mode.")
+        print(f"   Launch without flags: {Colors.YELLOW}python smartgallery.py{Colors.RESET}")
+        print(f"   Create your collections there, then restart with --exhibition.\n")
+        sys.exit(1)
+
+    try:
+        with sqlite3.connect(DATABASE_FILE) as conn:
+            conn.row_factory = sqlite3.Row
+            
+            # Check if collections table exists
+            table_check = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='collections'").fetchone()
+            if not table_check:
+                print(f"\n{Colors.RED}{Colors.BOLD}❌ CRITICAL ERROR: Collections Table Missing{Colors.RESET}")
+                print(f"{Colors.RED}The database exists, but it's empty or outdated.{Colors.RESET}")
+                print(f"\n{Colors.CYAN}{Colors.BOLD}💡 HOW TO FIX IT:{Colors.RESET}")
+                print(f"Run the standard gallery first to initialize the database tables:")
+                print(f"   {Colors.YELLOW}python smartgallery.py{Colors.RESET}\n")
+                sys.exit(1)
+
+            # Check if there is at least one PUBLIC user album
+            public_colls = conn.execute("SELECT COUNT(*) FROM collections WHERE type='user_album' AND is_public=1").fetchone()[0]
+            
+            if public_colls == 0:
+                print(f"\n{Colors.RED}{Colors.BOLD}❌ CRITICAL ERROR: No Exhibition Ready Collections Found{Colors.RESET}")
+                print(f"{Colors.RED}Exhibition Mode is a showcase. It only displays collections marked as 'Exhibition Ready'.{Colors.RESET}")
+                print(f"{Colors.RED}Currently, your database has 0 Exhibition Ready collections, so the Exhibition would be completely empty.{Colors.RESET}")
+                print(f"\n{Colors.CYAN}{Colors.BOLD}💡 HOW TO FIX IT:{Colors.RESET}")
+                print(f"1. Start the standard gallery: {Colors.YELLOW}python smartgallery.py{Colors.RESET}")
+                print(f"2. Log in, select some files, and click the 📚️ Add/Remove from collection button.")
+                print(f"3. Create a new Collection and answer 'Yes' when asked if it should be set as Exhibition Ready.")
+                print(f"   (Or edit an existing one from the sidebar menu: ⋮ -> 👁️ Set as Exhibition Ready).")
+                print(f"4. Once you have at least one public collection, restart with --exhibition.\n")
+                sys.exit(1)
+                
+    except sqlite3.DatabaseError as e:
+        print(f"\n{Colors.RED}{Colors.BOLD}❌ CRITICAL ERROR: Database corrupted or inaccessible: {e}{Colors.RESET}")
+        sys.exit(1)
+
 def initialize_gallery():
     print("INFO: Initializing gallery...")
+    
+    # --- STRICT CHECK FOR EXHIBITION MODE ---
+    # Will exit(1) immediately if db/collections are missing, preventing ghost DB creation
+    check_exhibition_requirements()
+    
     global FFPROBE_EXECUTABLE_PATH
     FFPROBE_EXECUTABLE_PATH = find_ffprobe_path()
     os.makedirs(THUMBNAIL_CACHE_DIR, exist_ok=True)
     os.makedirs(SQLITE_CACHE_DIR, exist_ok=True)
+    os.makedirs(CLEAN_CACHE_DIR, exist_ok=True)
     
     with get_db_connection() as conn:
         try:
@@ -2150,10 +2562,13 @@ def initialize_gallery():
             # Force full sync on every startup to clean external deletions
             print(f"{Colors.BLUE}INFO: Performing startup consistency check...{Colors.RESET}")
             full_sync_database(conn)
+            ensure_admin_user(conn)
+            
+            # Pre-generate clean files for Exhibition Mode (safe cross-platform call)
+            pregenerate_exhibition_cache()
 
         except sqlite3.DatabaseError as e:
             print(f"ERROR initializing database: {e}")
-
             
 def get_filter_options_from_db(conn, scope, folder_path=None, recursive=False):
     """
@@ -2216,13 +2631,278 @@ def get_filter_options_from_db(conn, scope, folder_path=None, recursive=False):
         
     return sorted(list(extensions)), sorted(list(prefixes)), prefix_limit_reached
     
+# --- ENCRYPTION & USER SECURITY ---
+cipher_suite = None
 
+def load_or_create_encryption_key():
+    """
+    Loads the system encryption key if it exists. 
+    Generates a new one only if we are in a management-enabled mode.
+    """
+    # 1. If the key file exists, ALWAYS load it so we can decrypt existing passwords
+    if os.path.exists(ENCRYPTION_KEY_FILE):
+        try:
+            with open(ENCRYPTION_KEY_FILE, 'rb') as f:
+                return f.read()
+        except Exception as e:
+            print(f"ERROR loading encryption key: {e}")
+            return None
+
+    # 2. If it doesn't exist, create it ONLY if we are in a mode that allows user management
+    # (Exhibition Mode OR Force Login OR Standard Local Admin)
+    # Since we added User Manager to index.html, we basically always want a key if missing.
+    new_key = Fernet.generate_key()
+    try:
+        os.makedirs(os.path.dirname(ENCRYPTION_KEY_FILE), exist_ok=True)
+        with open(ENCRYPTION_KEY_FILE, 'wb') as f:
+            f.write(new_key)
+        print(f"{Colors.GREEN}SECURITY: Encryption key created for system users.{Colors.RESET}")
+        return new_key
+    except Exception as e:
+        print(f"{Colors.RED}ERROR generating new key: {e}{Colors.RESET}")
+        return None
+        
+_key = load_or_create_encryption_key()
+if _key:
+    cipher_suite = Fernet(_key)
+
+def encrypt_password(password: str) -> str:
+    if not cipher_suite or not password: return password
+    return cipher_suite.encrypt(password.encode()).decode()
+
+def decrypt_password(encrypted_password: str) -> str:
+    if not cipher_suite or not encrypted_password: return encrypted_password
+    try: return cipher_suite.decrypt(encrypted_password.encode()).decode()
+    except Exception: return "[Decryption Error]"
+
+def ensure_admin_user(conn):
+    """Checks for admin user and applies password from startup config."""
+    # --- Ensure Admin is updated for BOTH Exhibition and Force Login modes ---
+    if not (IS_EXHIBITION_MODE or FORCE_LOGIN) or ADMIN_CONFIG_MISSING:
+        return
+
+    enc_pass = encrypt_password(ADMIN_PASS_INPUT)
+    admin = conn.execute("SELECT 1 FROM users WHERE username = 'admin'").fetchone()
+    
+    if not admin:
+        conn.execute("""
+            INSERT INTO users (username, password, full_name, role, is_active)
+            VALUES ('admin', ?, 'System Administrator', 'ADMIN', 1)
+        """, (enc_pass,))
+        print(f"{Colors.GREEN}USER SETUP: Admin account initialized.{Colors.RESET}")
+    else:
+        conn.execute("UPDATE users SET password = ? WHERE username = 'admin'", (enc_pass,))
+        print(f"{Colors.CYAN}USER SETUP: Admin password verified/updated.{Colors.RESET}")
+    conn.commit()
+
+def should_strip_metadata():
+    """Helper to determine if metadata stripping is required based on session and flags."""
+    user_role = session.get('role', 'GUEST') # Default to GUEST if not set
+    privileged_roles = ['ADMIN', 'MANAGER', 'STAFF', 'FRIEND']
+    
+    is_guest = user_role not in privileged_roles
+    # The protection is ACTIVE if we are in Exhibition mode OR Force Login is on
+    # AND the user is NOT staff/admin.
+    active = (FORCE_LOGIN or IS_EXHIBITION_MODE) and is_guest
+    
+    # console log 
+    #print(f"--- SECURITY CHECK ---")
+    #print(f"User Role in Session: {user_role}")
+    #print(f"Force Login: {FORCE_LOGIN} | Exhibition Mode: {IS_EXHIBITION_MODE}")
+    #print(f"Result: {'!!! STRIPPING ACTIVE !!!' if active else 'Serving Original'}")
+    return active
+
+
+def strip_media_metadata(input_path, output_path, file_type):
+    """
+    Strips metadata. 
+    - Images & Animated Images (WebP/GIF): Rebuilt frame-by-frame via Pillow (safest for privacy).
+    - Videos: Stripped via FFmpeg stream copy (fastest).
+    """
+    try:
+        # --- CASE A: IMAGES & ANIMATIONS (PNG, JPG, WebP, GIF) ---
+        if file_type in ['image', 'animated_image']:
+            with Image.open(input_path) as img:
+                # Check if it's an animation (Animated WebP or GIF)
+                if getattr(img, "is_animated", False):
+                    frames = []
+                    durations = []
+                    # Logic: We extract pixels frame by frame to a NEW list.
+                    # This completely discards any metadata chunks (EXIF, XMP, Comfy workflow).
+                    for frame in ImageSequence.Iterator(img):
+                        # Create a fresh copy of the pixel data only
+                        new_frame = frame.copy().convert(frame.mode)
+                        frames.append(new_frame)
+                        # Keep the original timing
+                        durations.append(frame.info.get('duration', 100))
+                    
+                    # Save the new reconstructed animation
+                    frames[0].save(
+                        output_path,
+                        save_all=True,
+                        append_images=frames[1:],
+                        duration=durations,
+                        loop=img.info.get('loop', 0),
+                        optimize=True,
+                        exif=b"", # Extra safety
+                        xmp=b""   # Extra safety
+                    )
+                else:
+                    # Static image: Save pixel data only, explicitly stripping EXIF/XMP
+                    img.save(output_path, img.format, optimize=True, exif=b"", xmp=b"")
+            return True
+
+        # --- CASE B: REAL VIDEOS (MP4, MOV, MKV...) ---
+        elif file_type == 'video' and FFPROBE_EXECUTABLE_PATH:
+            ffmpeg_dir = os.path.dirname(FFPROBE_EXECUTABLE_PATH)
+            ffmpeg_name = "ffmpeg.exe" if os.name == 'nt' else "ffmpeg"
+            ffmpeg_path = os.path.join(ffmpeg_dir, ffmpeg_name)
+            if not os.path.exists(ffmpeg_path): ffmpeg_path = ffmpeg_name
+            
+            cmd = [
+                ffmpeg_path, '-y',
+                '-i', input_path,
+                '-map_metadata', '-1',      # Strips global metadata
+                '-map_metadata:s:v', '-1',   # Strips video stream metadata
+                '-map_metadata:s:a', '-1',   # Strips audio stream metadata
+                '-c', 'copy',                # Fast stream copy (safe for these formats)
+                output_path
+            ]
+            
+            cf = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+            result = subprocess.run(cmd, capture_output=True, text=True, creationflags=cf)
+            
+            if result.returncode == 0 and os.path.exists(output_path):
+                return True
+            else:
+                print(f"FFMPEG VIDEO STRIP ERROR: {result.stderr}")
+
+    except Exception as e:
+        print(f"RECONSTRUCTION STRIP ERROR: {e}")
+    return False    
+    
 # --- FLASK ROUTES ---
 @app.route('/galleryout/')
 @app.route('/')
 def gallery_redirect_base():
     return redirect(url_for('gallery_view', folder_key='_root_'))
 
+@app.route('/galleryout/login', methods=['POST'])
+def exhibition_login():
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+    provided_uuid = data.get('provided_uuid')
+
+    if ENABLE_GUEST_LOGIN and username and username.lower() == 'guest':
+        session.permanent = False
+        guest_uuid = str(provided_uuid) if provided_uuid else f"guest_{secrets.token_hex(8)}"
+        session['user_id'] = guest_uuid
+        session['username'] = 'guest'
+        session['role'] = 'GUEST'
+        session['full_name'] = 'Guest User'
+        return jsonify({'status': 'success', 'role': 'GUEST', 'client_uuid': guest_uuid})
+
+    with get_db_connection() as conn:
+        user = conn.execute("SELECT * FROM users WHERE username = ? AND is_active = 1", (username,)).fetchone()
+        if user:
+            # --- MULTI-INSTANCE IN-MEMORY OVERRIDE ---
+            # If this specific instance was launched with an admin password parameter,
+            # it takes priority over the shared SQLite database.
+            # This allows running two instances (Index/Exhibition) with different passwords.
+            if username == 'admin' and ADMIN_PASS_INPUT:
+                is_valid = (password == ADMIN_PASS_INPUT)
+            else:
+                stored_password = decrypt_password(user['password'])
+                is_valid = (password == stored_password)
+                
+            if is_valid:
+                session.permanent = False
+                session['user_id'] = str(user['user_id'])
+                session['username'] = user['username']
+                session['role'] = user['role']
+                session['full_name'] = user['full_name']
+                return jsonify({'status': 'success', 'role': user['role']})
+    
+    return jsonify({'status': 'error', 'message': 'Invalid credentials'}), 401
+    
+@app.route('/galleryout/logout')
+def exhibition_logout():
+    session.clear()
+    return redirect(url_for('gallery_view', folder_key='_root_'))
+
+@app.route('/galleryout/api/admin/users', methods=['GET', 'POST', 'PUT', 'DELETE'])
+def admin_manage_users():
+    # Role check: Root ADMIN and MANAGER are allowed. 
+    # If login is not forced, local user is implicit ADMIN.
+    is_implicit_admin = (not IS_EXHIBITION_MODE and not FORCE_LOGIN)
+    user_role = session.get('role')
+    is_authorized = user_role in ['ADMIN', 'MANAGER']
+
+    if not (is_implicit_admin or is_authorized):
+        abort(403)
+
+    with get_db_connection() as conn:
+        if request.method == 'GET':
+            rows = conn.execute("SELECT * FROM users WHERE username != 'admin' ORDER BY user_id DESC").fetchall()
+            users = []
+            for r in rows:
+                d = dict(r)
+                d['plain_password'] = decrypt_password(d['password'])
+                users.append(d)
+            return jsonify({'status': 'success', 'users': users})
+
+        data = request.json
+        
+        # --- SECURITY CHECK: Enforce 8-char minimum for all users ---
+        if request.method in ['POST', 'PUT']:
+            password_input = data.get('password', '').strip()
+            if len(password_input) < 8:
+                return jsonify({'status': 'error', 'message': 'Password must be at least 8 characters long.'}), 400
+        
+        if request.method == 'POST':
+            # CREATE
+            enc_pass = encrypt_password(data['password'])
+            try:
+                conn.execute("""
+                    INSERT INTO users (username, password, full_name, role, email, phone_number, expiry_date, is_active)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (data['username'], enc_pass, data['full_name'], data['role'], 
+                      data.get('email'), data.get('phone_number'), 
+                      data.get('expiry_date'), data.get('is_active', 1)))
+                conn.commit()
+                return jsonify({'status': 'success'})
+            except Exception as e:
+                return jsonify({'status': 'error', 'message': str(e)}), 400
+
+        if request.method == 'PUT':
+            # EDIT
+            user_id = data.get('user_id')
+            enc_pass = encrypt_password(data['password'])
+            
+            conn.execute("""
+                UPDATE users SET 
+                    username=?, password=?, full_name=?, role=?, email=?, 
+                    phone_number=?, expiry_date=?, is_active=?
+                WHERE user_id=? AND username != 'admin'
+            """, (data['username'], enc_pass, data['full_name'], data['role'], 
+                  data.get('email'), data.get('phone_number'), 
+                  data.get('expiry_date'), data.get('is_active'), user_id))
+            conn.commit()
+            return jsonify({'status': 'success'})
+        
+        if request.method == 'DELETE':
+            # DELETE
+            data = request.json
+            user_id = data.get('user_id')
+            if not user_id:
+                return jsonify({'status': 'error', 'message': 'Missing User ID'}), 400
+                
+            # Perform physical deletion
+            conn.execute("DELETE FROM users WHERE user_id = ? AND username != 'admin'", (user_id,))
+            conn.commit()
+            return jsonify({'status': 'success'})
+            
 # AI QUEUE SUBMISSION ROUTE
 @app.route('/galleryout/ai_queue', methods=['POST'])
 def ai_queue_search():
@@ -2273,6 +2953,13 @@ def ai_check_status(session_id):
 
 @app.route('/galleryout/sync_status/<string:folder_key>')
 def sync_status(folder_key):
+    # --- FIX: SILENT RESPONSE FOR VIRTUAL COLLECTIONS ---
+    if folder_key.startswith('collection_'):
+        # Return a dummy SSE stream that does nothing but prevents 404
+        def dummy_stream():
+            yield f"data: {json.dumps({'status': 'no_changes', 'message': 'Virtual collection'})}\n\n"
+        return Response(dummy_stream(), mimetype='text/event-stream')
+
     folders = get_dynamic_folder_config()
     if folder_key not in folders:
         abort(404)
@@ -2357,6 +3044,7 @@ def compare_files_api():
 
 # --- AI MANAGER API ROUTES ---
 @app.route('/galleryout/ai_indexing/reset', methods=['POST'])
+@management_api_only
 def ai_indexing_reset():
     """
     Resets AI metadata (caption, embedding, timestamp) for specific files or a whole folder.
@@ -2440,6 +3128,7 @@ def ai_indexing_reset():
         return jsonify({'status': 'error', 'message': str(e)}), 500
         
 @app.route('/galleryout/ai_indexing/add_files', methods=['POST'])
+@management_api_only
 def ai_indexing_add_files():
     if not ENABLE_AI_SEARCH: return jsonify({'status':'error'})
     data = request.json
@@ -2501,6 +3190,7 @@ def ai_indexing_add_files():
     return jsonify({'status': 'success', 'count': count, 'message': msg})
     
 @app.route('/galleryout/ai_indexing/add_folder', methods=['POST'])
+@management_api_only
 def ai_indexing_add_folder():
     if not ENABLE_AI_SEARCH: return jsonify({'status':'error'})
     data = request.json
@@ -2755,11 +3445,70 @@ def ai_indexing_control():
     
 @app.route('/galleryout/view/<string:folder_key>')
 def gallery_view(folder_key):
+    # 1. SECURITY LOCKDOWN CHECK
+    if ADMIN_CONFIG_MISSING:
+        return """
+        <body style="background:#0a0a0a; color:#eee; font-family:sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; text-align:center;">
+            <div style="border:1px solid #dc3545; padding:40px; border-radius:16px; background:#1a1a1a; max-width:500px;">
+                <h1 style="color:#dc3545;">🔒 Security Lockdown</h1>
+                <p>Restricted modes (--exhibition or --force-login) require an Administrator Password to start.</p>
+                <div style="background:#000; padding:15px; border-radius:8px; font-family:monospace; margin:20px 0;">
+                    python smartgallery.py { '--exhibition' if IS_EXHIBITION_MODE else '--force-login' } --admin-pass YOUR_PASSWORD
+                </div>
+                <p style="color:#888; font-size:0.9rem;">Please restart the server with the password parameter or set the ADMIN_PASSWORD environment variable.</p>
+            </div>
+        </body>
+        """, 403
+    
+    # 2. AUTHENTICATION & PERMISSIONS LOGIC
+    is_management_side = not IS_EXHIBITION_MODE
+    is_logged_in = 'user_id' in session
+    
+    must_authenticate = IS_EXHIBITION_MODE or FORCE_LOGIN
+
+    if must_authenticate:
+        if not is_logged_in:
+            return render_template('exhibition_login.html', 
+                                   app_version=APP_VERSION, 
+                                   enable_guest_login=ENABLE_GUEST_LOGIN if IS_EXHIBITION_MODE else False,
+                                   admin_side=is_management_side)
+        
+        # --- NEW GRACEFUL ROLE PROTECTION ---
+        if is_management_side:
+            user_role = session.get('role')
+            if user_role not in ['ADMIN', 'MANAGER', 'STAFF']:
+                # Block GUESTs or CUSTOMERs from management interface
+                session.clear() 
+                return render_template('exhibition_login.html', 
+                                       app_version=APP_VERSION, 
+                                       enable_guest_login=False,
+                                       admin_side=True,
+                                       error_msg="Unauthorized: Your role does not have management privileges.")
+
+    # 3. REDIRECT VIRTUAL COLLECTIONS
+    if folder_key.startswith('collection_'):
+        try:
+            # Extract ID part (can be 'all' or a numeric string)
+            coll_id_raw = folder_key.split('_', 1)[1]
+            if coll_id_raw == 'all' or coll_id_raw.isdigit():
+                return redirect(url_for('collection_view', coll_id=coll_id_raw, **request.args))
+        except IndexError:
+            pass
+
     global gallery_view_cache
+    
+    # 4. EXHIBITION MODE SECURITY CHECK
+    # Prevent browsing physical folders if in Exhibition mode
+    if IS_EXHIBITION_MODE and folder_key != '_root_':
+        return redirect(url_for('gallery_view', folder_key='_root_'))
+
+    # 5. FOLDER CONFIGURATION
     folders = get_dynamic_folder_config(force_refresh=True)
+    
+    # If root not found or invalid key
     if folder_key not in folders:
         return redirect(url_for('gallery_view', folder_key='_root_'))
-    
+        
     current_folder_info = folders[folder_key]
     folder_path = current_folder_info['path']
     
@@ -2773,6 +3522,7 @@ def gallery_view(folder_key):
     search_term = request.args.get('search', '').strip()
     wf_files = request.args.get('workflow_files', '').strip()
     wf_prompt = request.args.get('workflow_prompt', '').strip()
+    comment_search = request.args.get('comment_search', '').strip()
     start_date = request.args.get('start_date', '').strip()
     end_date = request.args.get('end_date', '').strip()
     selected_exts = request.args.getlist('extension')
@@ -2795,12 +3545,11 @@ def gallery_view(folder_key):
                         WHERE r.session_id = ? ORDER BY r.score DESC
                     ''', (ai_session_id,)).fetchall()
                     
-                    # FIX: Clean up BLOB data (ai_embedding) which is not JSON serializable
                     files_list = []
                     for row in rows:
                         d = dict(row)
                         if 'ai_embedding' in d: 
-                            del d['ai_embedding'] # Remove binary data
+                            del d['ai_embedding'] 
                         files_list.append(d)
                     
                     gallery_view_cache = files_list
@@ -2808,26 +3557,131 @@ def gallery_view(folder_key):
                 print(f"AI Search Error: {e}")
                 is_ai_search = False
 
-    # --- PATH B: STANDARD VIEW / SEARCH (Cross-Platform Robust) ---
+    # --- PATH B: STANDARD VIEW / SEARCH ---
     if not is_ai_search:
         with get_db_connection() as conn:
             conditions, params = [], []
 
-            # 2. Apply Metadata Filters first (Generic fields)
             if search_term:
                 conditions.append("name LIKE ?")
                 params.append(f"%{search_term}%")
             
             if wf_files:
                 for kw in [k.strip() for k in wf_files.split(',') if k.strip()]:
-                    conditions.append("workflow_files LIKE ?")
-                    params.append(f"%{normalize_smart_path(kw)}%")
-            
+                    sub_kws = [s.strip() for s in kw.split(';') if s.strip()]
+                    if not sub_kws: continue
+                    
+                    or_conds = []
+                    not_conds = []
+                    for s in sub_kws:
+                        is_not = False
+                        if s.startswith('!'):
+                            is_not = True
+                            s = s[1:].strip()
+                        if not s: continue
+                        
+                        # Check for exact word match wrapped in double quotes
+                        if s.startswith('"') and s.endswith('"') and len(s) > 2:
+                            clean_s = s[1:-1]
+                            col_expr = "(' ' || REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(workflow_files, ',', ' '), '|', ' '), '.', ' '), '_', ' '), ':', ' '), '(', ' '), ')', ' '), '[', ' '), ']', ' ') || ' ')"
+                            cond_str = f"{col_expr} {'NOT LIKE' if is_not else 'LIKE'} ?"
+                            param_val = f"% {normalize_smart_path(clean_s)} %"
+                        else:
+                            cond_str = f"workflow_files {'NOT LIKE' if is_not else 'LIKE'} ?"
+                            param_val = f"%{normalize_smart_path(s)}%"
+                            
+                        if is_not:
+                            not_conds.append((cond_str, param_val))
+                        else:
+                            or_conds.append((cond_str, param_val))
+                            
+                    if or_conds:
+                        if len(or_conds) > 1:
+                            conditions.append("(" + " OR ".join([c[0] for c in or_conds]) + ")")
+                        elif len(or_conds) == 1:
+                            conditions.append(or_conds[0][0])
+                        params.extend([c[1] for c in or_conds])
+                        
+                    for cond, param in not_conds:
+                        conditions.append(cond)
+                        params.append(param)
             if wf_prompt:
                 for kw in [k.strip() for k in wf_prompt.split(',') if k.strip()]:
-                    conditions.append("workflow_prompt LIKE ?")
-                    params.append(f"%{kw}%")
-
+                    sub_kws = [s.strip() for s in kw.split(';') if s.strip()]
+                    if not sub_kws: continue
+                    
+                    or_conds = []
+                    not_conds = []
+                    for s in sub_kws:
+                        is_not = False
+                        if s.startswith('!'):
+                            is_not = True
+                            s = s[1:].strip()
+                        if not s: continue
+                        
+                        if s.startswith('"') and s.endswith('"') and len(s) > 2:
+                            clean_s = s[1:-1]
+                            col_expr = "(' ' || REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(workflow_prompt, ',', ' '), '|', ' '), '.', ' '), '_', ' '), ':', ' '), '(', ' '), ')', ' '), '[', ' '), ']', ' '), char(10), ' ') || ' ')"
+                            cond_str = f"{col_expr} {'NOT LIKE' if is_not else 'LIKE'} ?"
+                            param_val = f"% {clean_s} %"
+                        else:
+                            cond_str = f"workflow_prompt {'NOT LIKE' if is_not else 'LIKE'} ?"
+                            param_val = f"%{s}%"
+                            
+                        if is_not:
+                            not_conds.append((cond_str, param_val))
+                        else:
+                            or_conds.append((cond_str, param_val))
+                            
+                    if or_conds:
+                        if len(or_conds) > 1:
+                            conditions.append("(" + " OR ".join([c[0] for c in or_conds]) + ")")
+                        elif len(or_conds) == 1:
+                            conditions.append(or_conds[0][0])
+                        params.extend([c[1] for c in or_conds])
+                        
+                    for cond, param in not_conds:
+                        conditions.append(cond)
+                        params.append(param)
+            if comment_search:
+                for kw in [k.strip() for k in comment_search.split(',') if k.strip()]:
+                    sub_kws = [s.strip() for s in kw.split(';') if s.strip()]
+                    if not sub_kws: continue
+                    
+                    or_conds = []
+                    not_conds = []
+                    for s in sub_kws:
+                        is_not = False
+                        if s.startswith('!'):
+                            is_not = True
+                            s = s[1:].strip()
+                        if not s: continue
+                        
+                        op_in = "NOT IN" if is_not else "IN"
+                        if s.startswith('"') and s.endswith('"') and len(s) > 2:
+                            clean_s = s[1:-1]
+                            col_expr = "(' ' || REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(comment_text, ',', ' '), '?', ' '), '.', ' '), '!', ' '), char(10), ' ') || ' ')"
+                            cond_str = f"f.id {op_in} (SELECT file_id FROM file_comments WHERE {col_expr} LIKE ?)"
+                            param_val = f"% {clean_s} %"
+                        else:
+                            cond_str = f"f.id {op_in} (SELECT file_id FROM file_comments WHERE comment_text LIKE ?)"
+                            param_val = f"%{s}%"
+                            
+                        if is_not:
+                            not_conds.append((cond_str, param_val))
+                        else:
+                            or_conds.append((cond_str, param_val))
+                            
+                    if or_conds:
+                        if len(or_conds) > 1:
+                            conditions.append("(" + " OR ".join([c[0] for c in or_conds]) + ")")
+                        elif len(or_conds) == 1:
+                            conditions.append(or_conds[0][0])
+                        params.extend([c[1] for c in or_conds])
+                        
+                    for cond, param in not_conds:
+                        conditions.append(cond)
+                        params.append(param)
             if request.args.get('favorites') == 'true': conditions.append("is_favorite = 1")
             if request.args.get('no_workflow') == 'true': conditions.append("has_workflow = 0")
             if request.args.get('no_ai_caption') == 'true': 
@@ -2850,24 +3704,72 @@ def gallery_view(folder_key):
                 params.extend([f"{p.strip()}_%" for p in selected_prefixes if p.strip()])
                 if p_cond: conditions.append(f"({' OR '.join(p_cond)})")
 
-            # 3. Execution: We fetch files matching metadata, then filter paths in Python
-            # This is the only way to guarantee 100% slash-agnostic behavior
-            sort_by = 'name' if request.args.get('sort_by') == 'name' else 'mtime'
+            req_sort_by = request.args.get('sort_by', 'date')
             sort_order = "ASC" if request.args.get('sort_order', 'desc').lower() == 'asc' else "DESC"
+            
+            # --- COMMENT VISIBILITY FILTER FOR SORTING ---
+            user_role = session.get('role', 'GUEST')
+            safe_uuid = str(session.get('user_id', '')).replace("'", "''")
+            
+            # Allow Local Admin (no force login) to see all comments during sort
+            is_local_admin = (not FORCE_LOGIN and not IS_EXHIBITION_MODE)
+            
+            if is_local_admin or user_role in ['ADMIN', 'MANAGER', 'STAFF']:
+                comment_sub_filter = ""
+                comment_exists_filter = "SELECT file_id FROM file_comments"
+            else:
+                # Regular users only consider public comments or comments involving them
+                comment_sub_filter = f" AND (target_audience = 'public' OR target_audience = 'user:{safe_uuid}' OR client_uuid = '{safe_uuid}')"
+                comment_exists_filter = f"SELECT file_id FROM file_comments WHERE (target_audience = 'public' OR target_audience = 'user:{safe_uuid}' OR client_uuid = '{safe_uuid}')"
+
+            if req_sort_by == 'name':
+                order_clause = f"f.name {sort_order}"
+            elif req_sort_by == 'rating':
+                conditions.append("f.id IN (SELECT file_id FROM file_ratings)")
+                order_clause = f"avg_rating {sort_order}, f.mtime DESC"
+            elif req_sort_by == 'comments':
+                conditions.append(f"f.id IN ({comment_exists_filter})")
+                order_clause = f"comment_count {sort_order}, f.mtime DESC"
+            elif req_sort_by == 'latest_comment':
+                conditions.append(f"f.id IN ({comment_exists_filter})")
+                order_clause = f"latest_comment_time {sort_order}, f.mtime DESC"
+            else:
+                order_clause = f"f.mtime {sort_order}"
+
             where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
             
-            query = f"SELECT * FROM files {where_clause} ORDER BY {sort_by} {sort_order}"
+            query = f"""
+                SELECT f.*,
+                (
+                    SELECT c.color 
+                    FROM collections c 
+                    JOIN collection_files cf ON c.id = cf.collection_id 
+                    WHERE cf.file_id = f.id AND c.type = 'system_flag' 
+                    LIMIT 1
+                ) as status_color,
+                (
+                    SELECT AVG(rating) FROM file_ratings WHERE file_id = f.id
+                ) as avg_rating,
+                (
+                    SELECT COUNT(*) FROM file_ratings WHERE file_id = f.id
+                ) as vote_count,
+                (
+                    SELECT COUNT(*) FROM file_comments WHERE file_id = f.id {comment_sub_filter}
+                ) as comment_count,
+                (
+                    SELECT MAX(created_at) FROM file_comments WHERE file_id = f.id {comment_sub_filter}
+                ) as latest_comment_time
+                FROM files f 
+                {where_clause} 
+                ORDER BY {order_clause}
+            """
+            
             rows = conn.execute(query, params).fetchall()
             
-            # --- ULTRA-ROBUST MIXED-PATH FILTERING ---
             final_files = []
             
-            # Helper to normalize ANY path (mixed slashes, case, trailing)
             def safe_path_norm(p):
                 if not p: return ""
-                # 1. Force all backslashes to forward slashes immediately
-                # 2. Lowercase for cross-platform case-insensitivity
-                # 3. Clean up and remove trailing slashes
                 return os.path.normpath(str(p).replace('\\', '/')).replace('\\', '/').lower().rstrip('/')
 
             target_norm = safe_path_norm(folder_path)
@@ -2876,30 +3778,25 @@ def gallery_view(folder_key):
                 f_data = dict(row)
                 if 'ai_embedding' in f_data: del f_data['ai_embedding']
                 
-                # Normalize the DB path which might be mixed (e.g., c:/folder\img.png)
                 f_path_norm = safe_path_norm(f_data['path'])
                 f_dir_norm = safe_path_norm(os.path.dirname(f_path_norm))
                 
                 if is_global_search:
                     final_files.append(f_data)
                 elif is_recursive:
-                    # Check if the file is inside the target folder tree
-                    # Adding a '/' ensures we don't match 'folder_backup' when looking for 'folder'
                     if f_path_norm.startswith(target_norm + '/'):
                         final_files.append(f_data)
                 else:
-                    # Strict match: must be exactly in the target folder
                     if f_dir_norm == target_norm:
                         final_files.append(f_data)
             
             gallery_view_cache = final_files
 
-    # 4. Final Metadata for Template
-    # --- RIGOROUS FILTER COUNTING LOGIC ---
     active_filters_count = 0
     if search_term: active_filters_count += 1
     if wf_files: active_filters_count += 1
     if wf_prompt: active_filters_count += 1
+    if request.args.get('comment_search', '').strip(): active_filters_count += 1
     if start_date: active_filters_count += 1
     if end_date: active_filters_count += 1
     if selected_exts: active_filters_count += 1
@@ -2907,40 +3804,38 @@ def gallery_view(folder_key):
     if request.args.get('favorites') == 'true': active_filters_count += 1
     if request.args.get('no_workflow') == 'true': active_filters_count += 1
     if ENABLE_AI_SEARCH and request.args.get('no_ai_caption') == 'true': active_filters_count += 1
+    if is_global_search or is_recursive: active_filters_count += 1
 
-    # Scope/Recursive Logic:
-    if is_global_search:
-        # Global search is a major state change, counts as 1 filter
-        active_filters_count += 1
-    elif is_recursive:
-        # Recursive only counts as a filter if we are in Local mode (modifying the default folder view)
-        active_filters_count += 1
-
-    # Important: count files correctly on disk for the badge
     total_folder_files, _, _ = scan_folder_and_extract_options(folder_path, recursive=is_recursive)
-    # Initialize DB Total
     total_db_files = 0 
     with get_db_connection() as conn_opts:
-        # NEW: Get the grand total of files in the database (for Global/AI context)
         try:
             total_db_files = conn_opts.execute("SELECT COUNT(*) FROM files").fetchone()[0]
         except:
             total_db_files = 0
 
         scope_for_opts = 'global' if is_global_search else 'local'
-        # FIX: Added recursive=is_recursive to ensure dropdowns match current view on load
         extensions, prefixes, pfx_limit = get_filter_options_from_db(conn_opts, scope_for_opts, folder_path, recursive=is_recursive)
     
     breadcrumbs, ancestor_keys = [], set()
-    curr = folder_key
-    while curr and curr in folders:
-        f_info = folders[curr]
-        breadcrumbs.append({'key': curr, 'display_name': f_info['display_name']})
-        ancestor_keys.add(curr)
-        curr = f_info.get('parent')
-    breadcrumbs.reverse()
-    return render_template('index.html', 
-                           files=gallery_view_cache[:PAGE_SIZE], 
+    
+    # In Exhibition Mode, don't show full physical breadcrumbs
+    if not IS_EXHIBITION_MODE:
+        curr = folder_key
+        while curr and curr in folders:
+            f_info = folders[curr]
+            breadcrumbs.append({'key': curr, 'display_name': f_info['display_name']})
+            ancestor_keys.add(curr)
+            curr = f_info.get('parent')
+        breadcrumbs.reverse()
+    else:
+        breadcrumbs.append({'key': '_root_', 'display_name': 'Exhibition Home'})
+    
+    # --- TEMPLATE SELECTION ---
+    template_name = 'exhibition.html' if IS_EXHIBITION_MODE else 'index.html'
+
+    return render_template(template_name, 
+                           files=gallery_view_cache[:PAGE_SIZE],
                            total_files=len(gallery_view_cache),
                            total_folder_files=total_folder_files, 
                            total_db_files=total_db_files,
@@ -2956,21 +3851,26 @@ def gallery_view(folder_key):
                            selected_prefixes=selected_prefixes,
                            protected_folder_keys=list(PROTECTED_FOLDER_KEYS),
                            show_favorites=request.args.get('favorites', 'false').lower() == 'true',
-                           enable_ai_search=ENABLE_AI_SEARCH,
-                           is_ai_search=is_ai_search,
-                           ai_query=ai_query_text,
-                           is_global_search=is_global_search,
-                           active_filters_count=active_filters_count,
+                           enable_ai_search=ENABLE_AI_SEARCH, is_ai_search=False, ai_query="",
+                           is_global_search=is_global_search, 
+                           active_filters_count=active_filters_count, 
                            current_scope=search_scope,
                            is_recursive=is_recursive,
-                           app_version=APP_VERSION,
-                           github_url=GITHUB_REPO_URL,
-                           update_available=UPDATE_AVAILABLE,
-                           remote_version=REMOTE_VERSION,
+                           server_dam_default=ENABLE_DAM_MODE,
+                           is_exhibition_mode=IS_EXHIBITION_MODE, # Pass flag to template
+                           app_version=APP_VERSION, github_url=GITHUB_REPO_URL,
+                           update_available=UPDATE_AVAILABLE, remote_version=REMOTE_VERSION,
                            ffmpeg_available=(FFPROBE_EXECUTABLE_PATH is not None),
-                           stream_threshold=STREAM_THRESHOLD_BYTES)
-    
+                           stream_threshold=STREAM_THRESHOLD_BYTES,
+                           page_size_from_backend=PAGE_SIZE,
+                           force_login=FORCE_LOGIN,
+                           session_username=session.get('username', 'Guest'), 
+                           session_user_id=session.get('user_id'),
+                           session_role=session.get('role'), 
+                           session_full_name=session.get('full_name'))
+                           
 @app.route('/galleryout/upload', methods=['POST'])
+@management_api_only
 def upload_files():
     folder_key = request.form.get('folder_key')
     if not folder_key: return jsonify({'status': 'error', 'message': 'No destination folder provided.'}), 400
@@ -3128,6 +4028,7 @@ def check_rescan_status(job_id):
     return jsonify(job)
     
 @app.route('/galleryout/create_folder', methods=['POST'])
+@management_api_only
 def create_folder():
     data = request.json
     parent_key = data.get('parent_key', '_root_')
@@ -3150,6 +4051,7 @@ def create_folder():
     except Exception as e: return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/galleryout/mount_folder', methods=['POST'])
+@management_api_only
 def mount_folder():
     data = request.json
     link_name_raw = data.get('link_name', '').strip()
@@ -3241,6 +4143,7 @@ def mount_folder():
         return jsonify({'status': 'error', 'message': str(e)}), 500
         
 @app.route('/galleryout/unmount_folder', methods=['POST'])
+@management_api_only
 def unmount_folder():
     data = request.json
     folder_key = data.get('folder_key')
@@ -3474,6 +4377,7 @@ def serve_zip_file(filename):
     return send_from_directory(ZIP_CACHE_DIR, filename, as_attachment=True)
 
 @app.route('/galleryout/rename_folder/<string:folder_key>', methods=['POST'])
+@management_api_only
 def rename_folder(folder_key):
     if folder_key in PROTECTED_FOLDER_KEYS: return jsonify({'status': 'error', 'message': 'This folder cannot be renamed.'}), 403
     
@@ -3581,6 +4485,7 @@ def rename_folder(folder_key):
         return jsonify({'status': 'error', 'message': f'Error: {e}'}), 500
         
 @app.route('/galleryout/delete_folder/<string:folder_key>', methods=['POST'])
+@management_api_only
 def delete_folder(folder_key):
     if folder_key in PROTECTED_FOLDER_KEYS: return jsonify({'status': 'error', 'message': 'This folder cannot be deleted.'}), 403
     folders = get_dynamic_folder_config()
@@ -3599,12 +4504,28 @@ def delete_folder(folder_key):
             
             conn.commit()
             
-        # 3. Physical deletion
-        shutil.rmtree(folder_path)
+        # 3. Physical deletion (Safe for Symlinks/Junctions)
+        if os.path.islink(folder_path):
+            os.unlink(folder_path)
+        elif os.name == 'nt' and os.path.isdir(folder_path) and not os.path.exists(os.path.join(folder_path, '..')):
+            # Fallback for Windows Junctions acting weirdly with islink
+            try:
+                os.rmdir(folder_path)
+            except OSError:
+                shutil.rmtree(folder_path)
+        else:
+            try:
+                # Extra check: if it's a junction, rmtree throws an error in some python versions.
+                # Let's try rmdir first for junctions, fallback to rmtree for real folders.
+                os.rmdir(folder_path)
+            except OSError:
+                shutil.rmtree(folder_path)
         
         get_dynamic_folder_config(force_refresh=True)
-        return jsonify({'status': 'success', 'message': 'Folder deleted.'})
-    except Exception as e: return jsonify({'status': 'error', 'message': f'Error: {e}'}), 500
+        return jsonify({'status': 'success', 'message': 'Folder deleted/unlinked.'})
+    except Exception as e: 
+        print(f"Delete Folder Error: {e}")
+        return jsonify({'status': 'error', 'message': f'Error: {e}'}), 500
     
 @app.route('/galleryout/load_more')
 def load_more():
@@ -3640,6 +4561,7 @@ def _get_unique_filepath(destination_folder, filename):
     return full_path
     
 @app.route('/galleryout/move_batch', methods=['POST'])
+@management_api_only
 def move_batch():
     data = request.json
     file_ids = data.get('file_ids', [])
@@ -3769,6 +4691,7 @@ def move_batch():
     return jsonify({'status': status, 'message': message})
 
 @app.route('/galleryout/copy_batch', methods=['POST'])
+@management_api_only
 def copy_batch():
     data = request.json
     file_ids = data.get('file_ids', [])
@@ -3848,6 +4771,7 @@ def copy_batch():
     return jsonify({'status': status, 'message': msg}) 
  
 @app.route('/galleryout/delete_batch', methods=['POST'])
+@management_api_only
 def delete_batch():
     try:
         # Preveniamo il crash gestendo tutto in un blocco try/except
@@ -3909,8 +4833,8 @@ def delete_batch():
         return jsonify({'status': status, 'message': message})
 
     except Exception as e:
-        # QUESTO risolve il "doctype is not json":
-        # Se c'è un errore grave, restituiamo un JSON di errore invece di una pagina HTML rotta.
+        # THIS solves the "doctype is not json" issue:
+        # If there is a critical error, return an error JSON instead of a broken HTML page.
         print(f"CRITICAL ERROR in delete_batch: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
         
@@ -3937,6 +4861,7 @@ def toggle_favorite(file_id):
 
 # --- FIX: ROBUST DELETE ROUTE ---
 @app.route('/galleryout/delete/<string:file_id>', methods=['POST'])
+@management_api_only
 def delete_file(file_id):
     with get_db_connection() as conn:
         file_info = conn.execute("SELECT path FROM files WHERE id = ?", (file_id,)).fetchone()
@@ -3962,6 +4887,7 @@ def delete_file(file_id):
 
 # --- RENAME FILE ---
 @app.route('/galleryout/rename_file/<string:file_id>', methods=['POST'])
+@management_api_only
 def rename_file(file_id):
     data = request.json
     new_name = data.get('new_name', '').strip()
@@ -4064,18 +4990,84 @@ def rename_file(file_id):
     except Exception as e:
         print(f"ERROR: Rename failed: {e}")
         return jsonify({'status': 'error', 'message': f'Error: {e}'}), 500
-        
+
+@app.route('/galleryout/file_clean/<string:file_id>')
+def serve_cleaned_file(file_id):
+    """
+    Serves the cleaned file from cache. 
+    If the cached file is corrupted (0 bytes) or the client specifically 
+    requests a retry, it deletes the cache and regenerates it.
+    """
+    # Check if the frontend is forcing a regeneration
+    force_retry = request.args.get('retry') == 'true'
+    
+    info = get_file_info_from_db(file_id)
+    filepath, mtime, file_type = info['path'], info['mtime'], info['type']
+    
+    # Calculate unique cache filename
+    cache_hash = hashlib.md5((filepath + str(mtime)).encode()).hexdigest()
+    _, ext = os.path.splitext(filepath)
+    clean_filename = f"{cache_hash}{ext}"
+    clean_path = os.path.join(CLEAN_CACHE_DIR, clean_filename)
+    
+    # --- AUTO-HEALING LOGIC ---
+    if os.path.exists(clean_path):
+        # 1. Check if file is empty (often happens after a crash)
+        # 2. Or if the client explicitly asked for a retry due to loading errors
+        if os.path.getsize(clean_path) == 0 or force_retry:
+            print(f"DEBUG: Cache corrupted or retry requested for {clean_filename}. Regenerating...")
+            try:
+                os.remove(clean_path)
+            except Exception as e:
+                print(f"DEBUG: Could not remove corrupted cache: {e}")
+
+    # Generate if not exists (either new or just deleted above)
+    if not os.path.exists(clean_path):
+        print(f"ACTION: Generating clean version for: {info['name']}")
+        os.makedirs(CLEAN_CACHE_DIR, exist_ok=True)
+        success = strip_media_metadata(filepath, clean_path, file_type)
+        if not success:
+            print(f"ERROR: Metadata stripping failed for {info['name']}")
+            abort(500, description="Stripping failed.")
+            
+    # Serve the file with correct mimetype for WebP
+    if filepath.lower().endswith('.webp'):
+        return send_file(clean_path, mimetype='image/webp')
+    return send_file(clean_path)
+    
 @app.route('/galleryout/file/<string:file_id>')
 def serve_file(file_id):
+    if should_strip_metadata():
+        return serve_cleaned_file(file_id)
+    
+    # Default: serve original
     filepath = get_file_info_from_db(file_id, 'path')
-    if filepath.lower().endswith('.webp'): return send_file(filepath, mimetype='image/webp')
+    if filepath.lower().endswith('.webp'): 
+        return send_file(filepath, mimetype='image/webp')
     return send_file(filepath)
 
+        
 @app.route('/galleryout/download/<string:file_id>')
 def download_file(file_id):
+    if should_strip_metadata():
+        # Logic for download is identical but we ensure serve_cleaned_file handles the cache
+        info = get_file_info_from_db(file_id)
+        filepath, mtime, file_type = info['path'], info['mtime'], info['type']
+        
+        cache_hash = hashlib.md5((filepath + str(mtime)).encode()).hexdigest()
+        _, ext = os.path.splitext(filepath)
+        clean_path = os.path.join(CLEAN_CACHE_DIR, f"{cache_hash}{ext}")
+
+        if not os.path.exists(clean_path):
+            os.makedirs(CLEAN_CACHE_DIR, exist_ok=True)
+            strip_media_metadata(filepath, clean_path, file_type)
+            
+        return send_file(clean_path, as_attachment=True, download_name=info['name'])
+    
+    # Admin/Staff: serve original
     filepath = get_file_info_from_db(file_id, 'path')
     return send_file(filepath, as_attachment=True)
-
+        
 @app.route('/galleryout/workflow/<string:file_id>')
 def download_workflow(file_id):
     info = get_file_info_from_db(file_id)
@@ -4726,9 +5718,15 @@ def stream_video(file_id):
     # -preset ultrafast: minimal CPU usage
     # -vf scale: ensures the stream is not larger than 720p for performance
     # -movflags frag_keyframe+empty_moov: required for fragmented MP4 streaming
+    
+    # FFmpeg command for fast on-the-fly transcoding
+    # ADDED: -map_metadata -1 to ensure NO workflow info is streamed to the client
     cmd = [
         ffmpeg_path,
         '-i', filepath,
+        '-map_metadata', '-1',             # <--- STRIP METADATA FROM STREAM
+        '-map_metadata:s:v', '-1',          # <--- STRIP VIDEO STREAM DATA
+        '-map_metadata:s:a', '-1',          # <--- STRIP AUDIO STREAM DATA
         '-vcodec', 'libx264',
         '-preset', 'ultrafast',
         '-tune', 'zerolatency',
@@ -4764,7 +5762,996 @@ def stream_video(file_id):
                 process.kill()
 
     return Response(generate(), mimetype='video/mp4')
+
+# --- COLLECTIONS / CATEGORIES API ---
+
+@app.route('/galleryout/api/collections', methods=['GET'])
+def get_collections():
+    with get_db_connection() as conn:
+        flags = conn.execute("SELECT * FROM collections WHERE type='system_flag' ORDER BY id").fetchall()
+        albums = conn.execute("SELECT * FROM collections WHERE type='user_album' ORDER BY name").fetchall()
+        return jsonify({
+            'flags': [dict(r) for r in flags],
+            'albums': [dict(r) for r in albums]
+        })
+
+@app.route('/galleryout/api/sidebar_state')
+def get_sidebar_state():
+    """Returns the current state of folders and collections for real-time sync."""
+    folders = get_dynamic_folder_config(force_refresh=True)
+    with get_db_connection() as conn:
+        flags = conn.execute("SELECT * FROM collections WHERE type='system_flag' ORDER BY id").fetchall()
+        albums = conn.execute("SELECT * FROM collections WHERE type='user_album' ORDER BY name").fetchall()
     
+    return jsonify({
+        'folders': folders,
+        'collections': {
+            'flags': [dict(r) for r in flags],
+            'albums': [dict(r) for r in albums]
+        }
+    })
+
+@app.route('/galleryout/api/collections/rename', methods=['POST'])
+@management_api_only
+def rename_collection_api():
+    data = request.json
+    coll_id = data.get('id')
+    new_name = data.get('name', '').strip()
+    
+    if not coll_id or not new_name:
+        return jsonify({'status': 'error', 'message': 'ID and Name required'}), 400
+        
+    try:
+        with get_db_connection() as conn:
+            # Prevent renaming system flags
+            row = conn.execute("SELECT type FROM collections WHERE id=?", (coll_id,)).fetchone()
+            if not row or row['type'] == 'system_flag':
+                return jsonify({'status': 'error', 'message': 'Cannot rename system tags'}), 403
+                
+            conn.execute("UPDATE collections SET name = ? WHERE id = ?", (new_name, coll_id))
+            conn.commit()
+            
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/galleryout/api/collections/create', methods=['POST'])
+@management_api_only
+def create_collection():
+    data = request.json
+    name = data.get('name', '').strip()
+    is_public = data.get('is_public', False)
+    
+    if not name: return jsonify({'status': 'error', 'message': 'Name required'}), 400
+    
+    try:
+        with get_db_connection() as conn:
+            # Execute insert and get the cursor to retrieve the lastrowid
+            cursor = conn.execute(
+                "INSERT INTO collections (name, type, color, is_public, created_at) VALUES (?, 'user_album', '#ffffff', ?, ?)",
+                (name, 1 if is_public else 0, time.time())
+            )
+            new_id = cursor.lastrowid # <--- Get the newly created ID
+            conn.commit()
+            
+        return jsonify({'status': 'success', 'id': new_id}) # <--- Return the ID
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+        
+@app.route('/galleryout/api/collections/delete', methods=['POST'])
+@management_api_only
+def delete_collection():
+    coll_id = request.json.get('id')
+    with get_db_connection() as conn:
+        row = conn.execute("SELECT type FROM collections WHERE id=?", (coll_id,)).fetchone()
+        if not row or row['type'] == 'system_flag':
+            return jsonify({'status': 'error', 'message': 'Cannot delete system tags'}), 403
+        conn.execute("DELETE FROM collections WHERE id=?", (coll_id,))
+        # Non serve cancellare da collection_files manualmente, ci pensa ON DELETE CASCADE
+        conn.commit()
+    return jsonify({'status': 'success'})
+    
+@app.route('/galleryout/api/collections/toggle_public', methods=['POST'])
+def toggle_collection_public():
+    try:
+        data = request.json
+        coll_id = int(data.get('id', 0))
+        
+        if not coll_id:
+            return jsonify({'status': 'error', 'message': 'ID required'}), 400
+            
+        with get_db_connection() as conn:
+            row = conn.execute("SELECT is_public FROM collections WHERE id=?", (coll_id,)).fetchone()
+            if not row:
+                return jsonify({'status': 'error', 'message': 'Collection not found'}), 404
+            
+            current_val = row['is_public'] if row['is_public'] is not None else 0
+            new_state = 0 if current_val else 1
+            
+            conn.execute("UPDATE collections SET is_public = ? WHERE id = ?", (new_state, coll_id))
+            conn.commit()
+            
+        return jsonify({'status': 'success', 'new_state': bool(new_state)})
+        
+    except Exception as e:
+        print(f"Toggle Public Error: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+    
+@app.route('/galleryout/api/file_collections/<string:file_id>')
+def get_file_collections(file_id):
+    """Returns a list of all collections and status flags associated with a file."""
+    # Check if frontend specifically requested only public collections (Exhibition mode)
+    public_only = request.args.get('public_only', 'false').lower() == 'true'
+    
+    query = """
+        SELECT c.name, c.type, c.color, c.is_public
+        FROM collections c
+        JOIN collection_files cf ON c.id = cf.collection_id
+        WHERE cf.file_id = ?
+    """
+    
+    # Exhibition Security: Only return public user albums. Hide system flags and private albums.
+    if public_only:
+        query += " AND c.is_public = 1 AND c.type = 'user_album'"
+        
+    query += " ORDER BY c.type DESC, c.name ASC"
+    
+    try:
+        with get_db_connection() as conn:
+            rows = conn.execute(query, (file_id,)).fetchall()
+            
+        return jsonify({
+            'status': 'success', 
+            'collections': [dict(r) for r in rows]
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+        
+@app.route('/galleryout/api/collections/tag_batch', methods=['POST'])
+@management_api_only
+def tag_batch():
+    """
+    Handles batch assignment/removal of files to/from collections and status tags.
+    Ensures data consistency and provides precise results for UI updates.
+    """
+    data = request.json
+    file_ids = data.get('file_ids', [])
+    collection_id = data.get('collection_id')
+    action = data.get('action', 'add') # 'add', 'remove', 'toggle', 'remove_all_status'
+    
+    if not file_ids: 
+        return jsonify({'status': 'error', 'message': 'No files selected'}), 400
+    
+    results_map = {}
+    
+    try:
+        with get_db_connection() as conn:
+            # --- CASE 1: REMOVE ALL STATUS (Shortcut '0') ---
+            # This doesn't need a specific collection_id check, it targets all 'system_flag' types
+            if action == 'remove_all_status':
+                placeholders = ','.join(['?'] * len(file_ids))
+                conn.execute(f"""
+                    DELETE FROM collection_files 
+                    WHERE file_id IN ({placeholders}) 
+                    AND collection_id IN (SELECT id FROM collections WHERE type='system_flag')
+                """, file_ids)
+                
+                for fid in file_ids: 
+                    results_map[fid] = 'removed'
+                
+                conn.commit()
+                return jsonify({'status': 'success', 'results': results_map})
+
+            # --- PRE-REQUISITE: FETCH COLLECTION TYPE ---
+            if not collection_id:
+                return jsonify({'status': 'error', 'message': 'Missing collection ID'}), 400
+                
+            coll_row = conn.execute("SELECT type FROM collections WHERE id=?", (collection_id,)).fetchone()
+            if not coll_row:
+                return jsonify({'status': 'error', 'message': 'Collection not found'}), 404
+            
+            coll_type = coll_row['type']
+
+            # --- CASE 2: SMART LOGIC FOR STATUS COLORS (system_flag) ---
+            if coll_type == 'system_flag' and action == 'toggle':
+                # NEW LOGIC: 
+                # If multiple files are selected, we ALWAYS 'add' (overwrite) to prevent 
+                # accidental desaturation of files that were already in that state.
+                # If only ONE file is selected, we 'toggle' (add or remove).
+                is_multiple = len(file_ids) > 1
+
+                for fid in file_ids:
+                    # Check current status for this specific file
+                    exists = conn.execute(
+                        "SELECT 1 FROM collection_files WHERE collection_id=? AND file_id=?", 
+                        (collection_id, fid)
+                    ).fetchone()
+                    
+                    if exists and not is_multiple:
+                        # SCENARIO A: Single file and already this color -> REMOVE
+                        conn.execute(
+                            "DELETE FROM collection_files WHERE collection_id=? AND file_id=?", 
+                            (collection_id, fid)
+                        )
+                        results_map[fid] = 'removed'
+                    else:
+                        # SCENARIO B: Multi-select OR file is not this color -> ASSIGN/OVERWRITE
+                        # First, clear any OTHER system flags (mutual exclusivity)
+                        conn.execute("""
+                            DELETE FROM collection_files 
+                            WHERE file_id = ? 
+                            AND collection_id IN (SELECT id FROM collections WHERE type='system_flag')
+                        """, (fid,))
+                        
+                        # Add the new color
+                        conn.execute(
+                            "INSERT INTO collection_files (collection_id, file_id, added_at) VALUES (?, ?, ?)", 
+                            (collection_id, fid, time.time())
+                        )
+                        results_map[fid] = 'added'
+
+            # --- CASE 3: EXPLICIT ADD/REMOVE (For User Collections/Albums) ---
+            else:
+                # If adding a system flag explicitly, still maintain mutual exclusivity
+                if coll_type == 'system_flag' and action == 'add':
+                    placeholders = ','.join(['?'] * len(file_ids))
+                    conn.execute(f"""
+                        DELETE FROM collection_files 
+                        WHERE file_id IN ({placeholders}) 
+                        AND collection_id IN (SELECT id FROM collections WHERE type='system_flag')
+                    """, file_ids)
+
+                for fid in file_ids:
+                    if action == 'add':
+                        try:
+                            conn.execute(
+                                "INSERT INTO collection_files (collection_id, file_id, added_at) VALUES (?, ?, ?)", 
+                                (collection_id, fid, time.time())
+                            )
+                            results_map[fid] = 'added'
+                        except sqlite3.IntegrityError:
+                            results_map[fid] = 'added' # Already exists
+                    
+                    elif action == 'remove':
+                        conn.execute(
+                            "DELETE FROM collection_files WHERE collection_id=? AND file_id=?", 
+                            (collection_id, fid)
+                        )
+                        results_map[fid] = 'removed'
+                        
+                    elif action == 'toggle':
+                        # Generic toggle for albums (multi-assignment allowed)
+                        exists = conn.execute(
+                            "SELECT 1 FROM collection_files WHERE collection_id=? AND file_id=?", 
+                            (collection_id, fid)
+                        ).fetchone()
+                        if exists:
+                            conn.execute("DELETE FROM collection_files WHERE collection_id=? AND file_id=?", (collection_id, fid))
+                            results_map[fid] = 'removed'
+                        else:
+                            conn.execute("INSERT INTO collection_files (collection_id, file_id, added_at) VALUES (?, ?, ?)", (collection_id, fid, time.time()))
+                            results_map[fid] = 'added'
+            
+            conn.commit()
+            return jsonify({'status': 'success', 'results': results_map})
+
+    except Exception as e:
+        print(f"ERROR in tag_batch: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+        
+
+# Updated route to accept both integer IDs and the string "all"
+@app.route('/galleryout/collection/<coll_id>')
+def collection_view(coll_id):
+    global gallery_view_cache
+    
+    # 1. Handle Virtual "All Categories" vs Specific Collection
+    coll_info = None
+    is_all_mode = (coll_id == 'all')
+
+    if is_all_mode:
+        # Create virtual metadata for the "All Categories" view
+        coll_info = {
+            'id': 'all',
+            'name': 'All Collections',
+            'type': 'user_album',
+            'is_public': 1,
+            'color': '#ffffff' # Default white for the virtual category
+        }
+    else:
+        # Standard logic: Fetch specific Collection Metadata from DB
+        try:
+            target_id = int(coll_id)
+            with get_db_connection() as conn:
+                row = conn.execute("SELECT * FROM collections WHERE id=?", (target_id,)).fetchone()
+                if row: coll_info = dict(row)
+        except ValueError:
+            return redirect(url_for('gallery_view', folder_key='_root_'))
+        
+    if not coll_info: 
+        return redirect(url_for('gallery_view', folder_key='_root_'))
+
+    # --- EXHIBITION SECURITY: Only allow PUBLIC content ---
+    if IS_EXHIBITION_MODE:
+        # In Exhibition mode, "all" is allowed, but specific collections must be public
+        if not is_all_mode and (coll_info['type'] == 'system_flag' or not coll_info['is_public']):
+             return redirect(url_for('gallery_view', folder_key='_root_'))
+
+    # 2. Capture Filter Parameters
+    search_term = request.args.get('search', '').strip()
+    wf_files = request.args.get('workflow_files', '').strip()
+    wf_prompt = request.args.get('workflow_prompt', '').strip()
+    comment_search = request.args.get('comment_search', '').strip()
+    start_date = request.args.get('start_date', '').strip()
+    end_date = request.args.get('end_date', '').strip()
+    selected_exts = request.args.getlist('extension')
+    selected_prefixes = request.args.getlist('prefix')
+    
+    req_sort_by = request.args.get('sort_by')
+    req_sort_order = request.args.get('sort_order', 'desc').upper()
+    if req_sort_order not in ['ASC', 'DESC']: req_sort_order = 'DESC'
+
+    # 3. Build Dynamic Query Conditions
+    conditions = []
+    params = []
+
+    if is_all_mode:
+        # Logic for "All Categories": Select files belonging to any user album
+        # If in Exhibition mode, only include files from Public albums
+        sub_query = "SELECT id FROM collections WHERE type='user_album'"
+        if IS_EXHIBITION_MODE:
+            sub_query += " AND is_public = 1"
+        
+        conditions.append(f"cf.collection_id IN ({sub_query})")
+    else:
+        # Standard logic for a specific collection ID
+        conditions.append("cf.collection_id = ?")
+        params.append(int(coll_id))
+    
+    # --- Apply common filters ---
+    active_filters_count = 0
+
+    if search_term:
+        conditions.append("f.name LIKE ?")
+        params.append(f"%{search_term}%")
+        active_filters_count += 1
+    
+    if wf_files:
+        active_filters_count += 1
+        for kw in [k.strip() for k in wf_files.split(',') if k.strip()]:
+            sub_kws = [s.strip() for s in kw.split(';') if s.strip()]
+            if not sub_kws: continue
+            
+            or_conds = []
+            not_conds = []
+            for s in sub_kws:
+                is_not = False
+                if s.startswith('!'):
+                    is_not = True
+                    s = s[1:].strip()
+                if not s: continue
+                
+                if s.startswith('"') and s.endswith('"') and len(s) > 2:
+                    clean_s = s[1:-1]
+                    col_expr = "(' ' || REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(f.workflow_files, ',', ' '), '|', ' '), '.', ' '), '_', ' '), ':', ' '), '(', ' '), ')', ' '), '[', ' '), ']', ' ') || ' ')"
+                    cond_str = f"{col_expr} {'NOT LIKE' if is_not else 'LIKE'} ?"
+                    param_val = f"% {normalize_smart_path(clean_s)} %"
+                else:
+                    cond_str = f"f.workflow_files {'NOT LIKE' if is_not else 'LIKE'} ?"
+                    param_val = f"%{normalize_smart_path(s)}%"
+                    
+                if is_not:
+                    not_conds.append((cond_str, param_val))
+                else:
+                    or_conds.append((cond_str, param_val))
+                    
+            if or_conds:
+                if len(or_conds) > 1:
+                    conditions.append("(" + " OR ".join([c[0] for c in or_conds]) + ")")
+                elif len(or_conds) == 1:
+                    conditions.append(or_conds[0][0])
+                params.extend([c[1] for c in or_conds])
+                
+            for cond, param in not_conds:
+                conditions.append(cond)
+                params.append(param)
+    
+    if wf_prompt:
+        active_filters_count += 1
+        for kw in [k.strip() for k in wf_prompt.split(',') if k.strip()]:
+            sub_kws = [s.strip() for s in kw.split(';') if s.strip()]
+            if not sub_kws: continue
+            
+            or_conds = []
+            not_conds = []
+            for s in sub_kws:
+                is_not = False
+                if s.startswith('!'):
+                    is_not = True
+                    s = s[1:].strip()
+                if not s: continue
+                
+                if s.startswith('"') and s.endswith('"') and len(s) > 2:
+                    clean_s = s[1:-1]
+                    col_expr = "(' ' || REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(f.workflow_prompt, ',', ' '), '|', ' '), '.', ' '), '_', ' '), ':', ' '), '(', ' '), ')', ' '), '[', ' '), ']', ' '), char(10), ' ') || ' ')"
+                    cond_str = f"{col_expr} {'NOT LIKE' if is_not else 'LIKE'} ?"
+                    param_val = f"% {clean_s} %"
+                else:
+                    cond_str = f"f.workflow_prompt {'NOT LIKE' if is_not else 'LIKE'} ?"
+                    param_val = f"%{s}%"
+                    
+                if is_not:
+                    not_conds.append((cond_str, param_val))
+                else:
+                    or_conds.append((cond_str, param_val))
+                    
+            if or_conds:
+                if len(or_conds) > 1:
+                    conditions.append("(" + " OR ".join([c[0] for c in or_conds]) + ")")
+                elif len(or_conds) == 1:
+                    conditions.append(or_conds[0][0])
+                params.extend([c[1] for c in or_conds])
+                
+            for cond, param in not_conds:
+                conditions.append(cond)
+                params.append(param)
+    
+    if comment_search:
+        active_filters_count += 1
+        for kw in [k.strip() for k in comment_search.split(',') if k.strip()]:
+            sub_kws = [s.strip() for s in kw.split(';') if s.strip()]
+            if not sub_kws: continue
+            
+            or_conds = []
+            not_conds = []
+            for s in sub_kws:
+                is_not = False
+                if s.startswith('!'):
+                    is_not = True
+                    s = s[1:].strip()
+                if not s: continue
+                
+                op_in = "NOT IN" if is_not else "IN"
+                if s.startswith('"') and s.endswith('"') and len(s) > 2:
+                    clean_s = s[1:-1]
+                    col_expr = "(' ' || REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(comment_text, ',', ' '), '?', ' '), '.', ' '), '!', ' '), char(10), ' ') || ' ')"
+                    cond_str = f"f.id {op_in} (SELECT file_id FROM file_comments WHERE {col_expr} LIKE ?)"
+                    param_val = f"% {clean_s} %"
+                else:
+                    cond_str = f"f.id {op_in} (SELECT file_id FROM file_comments WHERE comment_text LIKE ?)"
+                    param_val = f"%{s}%"
+                    
+                if is_not:
+                    not_conds.append((cond_str, param_val))
+                else:
+                    or_conds.append((cond_str, param_val))
+                    
+            if or_conds:
+                if len(or_conds) > 1:
+                    conditions.append("(" + " OR ".join([c[0] for c in or_conds]) + ")")
+                elif len(or_conds) == 1:
+                    conditions.append(or_conds[0][0])
+                params.extend([c[1] for c in or_conds])
+                
+            for cond, param in not_conds:
+                conditions.append(cond)
+                params.append(param)
+
+    if request.args.get('favorites') == 'true': 
+        conditions.append("f.is_favorite = 1")
+        active_filters_count += 1
+        
+    if request.args.get('no_workflow') == 'true': 
+        conditions.append("f.has_workflow = 0")
+        active_filters_count += 1
+        
+    if ENABLE_AI_SEARCH and request.args.get('no_ai_caption') == 'true': 
+        conditions.append("(f.ai_caption IS NULL OR f.ai_caption = '')")
+        active_filters_count += 1
+
+    if start_date:
+        active_filters_count += 1
+        try: 
+            conditions.append("f.mtime >= ?")
+            params.append(datetime.strptime(start_date, '%Y-%m-%d').timestamp())
+        except: pass
+    if end_date:
+        active_filters_count += 1
+        try: 
+            conditions.append("f.mtime <= ?")
+            params.append(datetime.strptime(end_date, '%Y-%m-%d').timestamp() + 86399)
+        except: pass
+
+    if selected_exts:
+        active_filters_count += 1
+        e_cond = [f"f.name LIKE ?" for e in selected_exts if e.strip()]
+        params.extend([f"%.{e.lstrip('.').lower()}" for e in selected_exts if e.strip()])
+        if e_cond: conditions.append(f"({' OR '.join(e_cond)})")
+
+    if selected_prefixes:
+        active_filters_count += 1
+        p_cond = [f"f.name LIKE ?" for p in selected_prefixes if p.strip()]
+        params.extend([f"{p.strip()}_%" for p in selected_prefixes if p.strip()])
+        if p_cond: conditions.append(f"({' OR '.join(p_cond)})")
+
+    # --- SORTING LOGIC ---
+    if req_sort_by == 'name':
+        order_clause = f"f.name {req_sort_order}"
+    elif req_sort_by == 'rating':
+        conditions.append("f.id IN (SELECT file_id FROM file_ratings)")
+        order_clause = f"avg_rating {req_sort_order}, f.mtime DESC"
+    elif req_sort_by in ['comments', 'latest_comment', 'latestcomment']:
+        conditions.append("f.id IN (SELECT file_id FROM file_comments)")
+        if req_sort_by == 'comments':
+            order_clause = f"comment_count {req_sort_order}, f.mtime DESC"
+        else:
+            order_clause = f"latest_comment_time {req_sort_order}, f.mtime DESC"
+    elif req_sort_by == 'date' or req_sort_by == 'mtime':
+        order_clause = f"f.mtime {req_sort_order}"
+    else:
+        order_clause = f"f.mtime DESC"
+        
+    final_files = []
+    total_db_files = 0
+    total_folder_files = 0 
+
+    with get_db_connection() as conn:
+        # Calculate total files in this view (without search/filters)
+        if is_all_mode:
+            count_subquery = "SELECT id FROM collections WHERE type='user_album'"
+            if IS_EXHIBITION_MODE: count_subquery += " AND is_public = 1"
+            total_folder_files = conn.execute(
+                f"SELECT COUNT(DISTINCT file_id) FROM collection_files WHERE collection_id IN ({count_subquery})"
+            ).fetchone()[0]
+        else:
+            total_folder_files = conn.execute(
+                "SELECT COUNT(*) FROM collection_files WHERE collection_id = ?", 
+                (int(coll_id),)
+            ).fetchone()[0]
+        
+        try:
+            total_db_files = conn.execute("SELECT COUNT(*) FROM files").fetchone()[0]
+        except: pass
+
+        where_clause = " AND ".join(conditions)
+        
+        # We use DISTINCT to avoid showing the same file twice if it's in multiple albums
+        user_role = session.get('role', 'GUEST')
+        safe_uuid = str(session.get('user_id', '')).replace("'", "''")
+        
+        # Allow Local Admin (no force login) to see all comments during sort
+        is_local_admin = (not FORCE_LOGIN and not IS_EXHIBITION_MODE)
+        
+        if is_local_admin or user_role in ['ADMIN', 'MANAGER', 'STAFF']:
+            comment_sub_filter = ""
+        else:
+            comment_sub_filter = f" AND (target_audience = 'public' OR target_audience = 'user:{safe_uuid}' OR client_uuid = '{safe_uuid}')"
+
+        query = f"""
+            SELECT DISTINCT f.*,
+            (SELECT c.color FROM collections c JOIN collection_files cf2 ON c.id = cf2.collection_id WHERE cf2.file_id = f.id AND c.type = 'system_flag' LIMIT 1) as status_color,
+            (SELECT AVG(rating) FROM file_ratings WHERE file_id = f.id) as avg_rating,
+            (SELECT COUNT(*) FROM file_ratings WHERE file_id = f.id) as vote_count,
+            (SELECT COUNT(*) FROM file_comments WHERE file_id = f.id {comment_sub_filter}) as comment_count,
+            (SELECT MAX(created_at) FROM file_comments WHERE file_id = f.id {comment_sub_filter}) as latest_comment_time
+            FROM files f
+            JOIN collection_files cf ON f.id = cf.file_id
+            WHERE {where_clause}
+            ORDER BY {order_clause}
+        """
+        
+        rows = conn.execute(query, params).fetchall()
+        
+        for r in rows:
+            d = dict(r)
+            if 'ai_embedding' in d: del d['ai_embedding']
+            final_files.append(d)
+            
+    gallery_view_cache = final_files
+    
+    fake_folder_key = f"collection_{coll_id}"
+
+    # --- JSON RESPONSE FOR AJAX/EXHIBITION ---
+    if request.headers.get('Accept') == 'application/json':
+        return jsonify({
+            'status': 'success',
+            'collection_name': coll_info['name'],
+            'files': final_files,
+            'total_count': total_folder_files 
+        })
+    
+    # --- TEMPLATE RENDERING ---
+    is_system_flag = (coll_info.get('type') == 'system_flag')
+    parent_name = "Status" if is_system_flag else "Collections"
+    
+    breadcrumbs = []
+    if not IS_EXHIBITION_MODE:
+        breadcrumbs = [
+            {'key': '_root_', 'display_name': 'Main'},
+            {'key': None, 'display_name': parent_name}, 
+            {'key': fake_folder_key, 'display_name': coll_info['name']}
+        ]
+    else:
+        breadcrumbs = [
+            {'key': '_root_', 'display_name': 'Exhibition Home'},
+            {'key': fake_folder_key, 'display_name': coll_info['name']}
+        ]
+    
+    current_folder_info = {
+        'display_name': coll_info['name'],
+        'path': f"{parent_name}: {coll_info['name']}",
+        'is_watched': False, 
+        'is_mount': False,
+        'is_collection': True,
+        'collection_id': coll_id, # Can be 'all' or int
+        'collection_color': coll_info.get('color', '#ffffff'),
+        'collection_type': coll_info.get('type', 'user_album')
+    }
+    
+    folders = get_dynamic_folder_config()
+    
+    # Standard metadata extraction for UI filters
+    extensions = set()
+    prefixes = set()
+    prefix_limit_reached = False
+    
+    for f in final_files:
+        fname = f['name']
+        if '.' in fname: extensions.add(fname.split('.')[-1].lower())
+        if not prefix_limit_reached and '_' in fname:
+            pfx = fname.split('_')[0]
+            if pfx:
+                prefixes.add(pfx)
+                if len(prefixes) > MAX_PREFIX_DROPDOWN_ITEMS:
+                    prefix_limit_reached = True
+                    prefixes.clear()
+
+    template_name = 'exhibition.html' if IS_EXHIBITION_MODE else 'index.html'
+
+    return render_template(template_name, 
+                           files=final_files[:PAGE_SIZE], 
+                           total_files=len(final_files),
+                           total_folder_files=total_folder_files, 
+                           total_db_files=total_db_files,
+                           folders=folders,
+                           current_folder_key=fake_folder_key, 
+                           current_folder_info=current_folder_info,
+                           breadcrumbs=breadcrumbs,
+                           ancestor_keys=[],
+                           available_extensions=sorted(list(extensions)), 
+                           available_prefixes=sorted(list(prefixes)), 
+                           prefix_limit_reached=prefix_limit_reached,  
+                           selected_extensions=selected_exts, selected_prefixes=selected_prefixes,
+                           protected_folder_keys=list(PROTECTED_FOLDER_KEYS),
+                           show_favorites=request.args.get('favorites', 'false').lower() == 'true',
+                           enable_ai_search=ENABLE_AI_SEARCH, is_ai_search=False, ai_query="",
+                           is_global_search=False, 
+                           active_filters_count=active_filters_count, 
+                           current_scope='local', is_recursive=False,
+                           server_dam_default=ENABLE_DAM_MODE,
+                           is_exhibition_mode=IS_EXHIBITION_MODE,
+                           app_version=APP_VERSION, github_url=GITHUB_REPO_URL,
+                           update_available=UPDATE_AVAILABLE, remote_version=REMOTE_VERSION,
+                           ffmpeg_available=(FFPROBE_EXECUTABLE_PATH is not None),
+                           stream_threshold=STREAM_THRESHOLD_BYTES)
+
+# --- EXHIBITION API: RATINGS & COMMENTS ---
+@app.route('/galleryout/api/exhibition/rate', methods=['POST'])
+def exhibition_rate_file():
+    data = request.json
+    file_id = data.get('file_id')
+    client_uuid = data.get('client_uuid')
+    rating = data.get('rating')  # 1-5 integer, or None/0 to delete
+    
+    if not all([file_id, client_uuid]):
+        return jsonify({'status': 'error', 'message': 'Missing data'}), 400
+    
+    # Allow None or 0 to delete rating
+    if rating is not None and rating != 0 and not (1 <= rating <= 5):
+        return jsonify({'status': 'error', 'message': 'Invalid rating'}), 400
+        
+    try:
+        with get_db_connection() as conn:
+            # Check if file exists
+            if not conn.execute("SELECT 1 FROM files WHERE id=?", (file_id,)).fetchone():
+                return jsonify({'status': 'error', 'message': 'File not found'}), 404
+            
+            # Delete rating if rating is None or 0
+            if rating is None or rating == 0:
+                conn.execute("""
+                    DELETE FROM file_ratings 
+                    WHERE file_id = ? AND client_uuid = ?
+                """, (file_id, client_uuid))
+                conn.commit()
+            else:
+                # Upsert Rating
+                conn.execute("""
+                    INSERT INTO file_ratings (file_id, client_uuid, rating, created_at)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(file_id, client_uuid) DO UPDATE SET
+                        rating = excluded.rating,
+                        created_at = excluded.created_at
+                """, (file_id, client_uuid, rating, time.time()))
+                conn.commit()
+            
+            # Get new Average and Vote Count
+            result = conn.execute("""
+                SELECT AVG(rating), COUNT(*) 
+                FROM file_ratings 
+                WHERE file_id=?
+            """, (file_id,)).fetchone()
+            
+            avg = result[0] if result[0] is not None else 0.0
+            vote_count = result[1] if result[1] is not None else 0
+            
+        return jsonify({
+            'status': 'success', 
+            'new_average': avg,
+            'vote_count': vote_count
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/galleryout/api/exhibition/rate_batch', methods=['POST'])
+def exhibition_rate_batch():
+    """
+    Handles batch rating for multiple files in a single database transaction.
+    Greatly improves performance and prevents SQLite locking issues on large selections.
+    """
+    data = request.json
+    file_ids = data.get('file_ids', [])
+    client_uuid = data.get('client_uuid')
+    rating = data.get('rating')  # 1-5 integer, or None/0 to delete
+    
+    if not file_ids or not client_uuid:
+        return jsonify({'status': 'error', 'message': 'Missing data'}), 400
+    
+    # Allow None or 0 to delete rating
+    if rating is not None and rating != 0 and not (1 <= rating <= 5):
+        return jsonify({'status': 'error', 'message': 'Invalid rating'}), 400
+        
+    try:
+        with get_db_connection() as conn:
+            if rating is None or rating == 0:
+                # Batch Delete
+                placeholders = ','.join(['?'] * len(file_ids))
+                query = f"""
+                    DELETE FROM file_ratings 
+                    WHERE file_id IN ({placeholders}) AND client_uuid = ?
+                """
+                params = file_ids + [client_uuid]
+                conn.execute(query, params)
+            else:
+                # Batch Upsert using executemany for optimal performance
+                current_time = time.time()
+                records = [(fid, client_uuid, rating, current_time) for fid in file_ids]
+                
+                conn.executemany("""
+                    INSERT INTO file_ratings (file_id, client_uuid, rating, created_at)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(file_id, client_uuid) DO UPDATE SET
+                        rating = excluded.rating,
+                        created_at = excluded.created_at
+                """, records)
+                
+            conn.commit()
+            
+        return jsonify({'status': 'success', 'message': f'Successfully updated {len(file_ids)} files.'})
+        
+    except Exception as e:
+        print(f"Batch Rating Error: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+        
+@app.route('/galleryout/api/exhibition/comments', methods=['GET'])
+def exhibition_get_comments():
+    file_id = request.args.get('file_id')
+    current_user_id = session.get('user_id')
+    current_role = session.get('role', 'GUEST')
+    client_uuid = str(current_user_id) if current_user_id else request.args.get('client_uuid', '')
+    
+    if not file_id: 
+        return jsonify({'status': 'error', 'message': 'File ID missing'}), 400
+    
+    with get_db_connection() as conn:
+        # --- FIX: LOCAL ADMIN EQUIVALENCE ---
+        # If FORCE_LOGIN is False and we are in the main interface, the user is implicitly Admin
+        is_local_admin = (not FORCE_LOGIN and not IS_EXHIBITION_MODE)
+        is_privileged = is_local_admin or (current_role in ['ADMIN', 'MANAGER', 'STAFF'])
+        
+        if is_privileged:
+            # Admins, Managers, and Staff see EVERYTHING
+            query = """
+                SELECT fc.*, u.full_name as target_user_name 
+                FROM file_comments fc
+                LEFT JOIN users u ON fc.target_audience = 'user:' || u.user_id
+                WHERE fc.file_id=? ORDER BY fc.created_at DESC
+            """
+            params = (file_id,)
+        else:
+            # Regular users (GUEST, CUSTOMER, FRIEND, USER) see only:
+            # 1. Public comments
+            # 2. Comments specifically directed to their UUID/User_ID
+            # 3. Comments authored by themselves
+            query = """
+                SELECT fc.*, u.full_name as target_user_name 
+                FROM file_comments fc
+                LEFT JOIN users u ON fc.target_audience = 'user:' || u.user_id
+                WHERE fc.file_id=? 
+                AND (
+                    fc.target_audience = 'public' 
+                    OR fc.target_audience = ? 
+                    OR fc.client_uuid = ?
+                ) 
+                ORDER BY fc.created_at DESC
+            """
+            params = (file_id, f"user:{client_uuid}", client_uuid)
+
+        comments = conn.execute(query, params).fetchall()
+        
+        # 2. PERSONAL RATING
+        my_rating = 0
+        if client_uuid:
+            r = conn.execute("SELECT rating FROM file_ratings WHERE file_id=? AND client_uuid=?", (file_id, client_uuid)).fetchone()
+            if r: my_rating = r['rating']
+            
+        # 3. GLOBAL STATS (Fresh Calculation for Real-Time Polling)
+        stats = conn.execute("SELECT AVG(rating), COUNT(*) FROM file_ratings WHERE file_id=?", (file_id,)).fetchone()
+        avg_rating = stats[0] if stats[0] is not None else 0.0
+        vote_count = stats[1] if stats[1] is not None else 0
+            
+    return jsonify({
+        'status': 'success', 
+        'comments': [dict(c) for c in comments],
+        'my_rating': my_rating,
+        # Send fresh stats to frontend
+        'avg_rating': avg_rating,
+        'vote_count': vote_count
+    })
+    
+@app.route('/galleryout/api/users/simple_list', methods=['GET'])
+def get_users_simple_list():
+    # --- FIX: LOCAL ADMIN EQUIVALENCE ---
+    is_local_admin = (not FORCE_LOGIN and not IS_EXHIBITION_MODE)
+    if not is_local_admin and session.get('role') not in ['ADMIN', 'MANAGER', 'STAFF']:
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 403
+        
+    try:
+        with get_db_connection() as conn:
+            rows = conn.execute("SELECT user_id, full_name, username FROM users WHERE is_active = 1 ORDER BY full_name ASC").fetchall()
+            return jsonify({'status': 'success', 'users': [dict(r) for r in rows]})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/galleryout/api/exhibition/post_comment', methods=['POST'])
+def exhibition_post_comment():
+    data = request.json
+    file_id = data.get('file_id')
+    text = data.get('text', '').strip()
+    target_audience = data.get('target_audience', 'public').strip()
+    if not target_audience:
+        # Se sono un Admin "locale" (non force_login), default = internal
+        if not FORCE_LOGIN and not IS_EXHIBITION_MODE:
+            target_audience = 'internal'
+        else:
+            target_audience = 'public'
+    # Get User Context from Session
+    user_id = session.get('user_id')
+    role = session.get('role', 'GUEST')
+    real_full_name = session.get('full_name', 'Guest')
+    
+    # --- FIX: LOCAL ADMIN EQUIVALENCE ---
+    is_local_admin = (not FORCE_LOGIN and not IS_EXHIBITION_MODE)
+    is_privileged = is_local_admin or (role in ['ADMIN', 'MANAGER', 'STAFF'])
+    
+    # Security: Non-privileged users can ONLY post 'public' or 'internal' (Staff Only).
+    # They cannot DM specific users (e.g., 'user:123').
+    if not is_privileged:
+        if target_audience not in ['public', 'internal']:
+            target_audience = 'public'
+
+    client_uuid = str(user_id) if user_id else data.get('client_uuid')
+    
+    if role != 'GUEST' and user_id:
+        author = real_full_name
+    elif is_local_admin:
+        # If we are the Local Admin (no login), override the author name to System Admin
+        # and force the UUID to 'admin' so the UI highlights it properly with the shield 🛡️
+        author = "System Admin"
+        client_uuid = "admin"
+    else:
+        author = data.get('author', 'Guest').strip()
+    
+    if not all([file_id, client_uuid, text]):
+        return jsonify({'status': 'error', 'message': 'Missing data'}), 400
+        
+    try:
+        with get_db_connection() as conn:
+            # --- SECURITY CHECK: Ensure target user actually exists ---
+            if target_audience.startswith('user:'):
+                target_user_id = target_audience.split(':')[1]
+                # We check if it's a registered user ID (guests don't have integer IDs)
+                if target_user_id.isdigit():
+                    user_exists = conn.execute("SELECT 1 FROM users WHERE user_id = ?", (target_user_id,)).fetchone()
+                    if not user_exists:
+                        return jsonify({'status': 'error', 'message': 'Target user has been deleted or does not exist.'}), 404
+
+            conn.execute("""
+                INSERT INTO file_comments (file_id, client_uuid, author_name, comment_text, target_audience, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (file_id, client_uuid, author, text, target_audience, time.time()))
+            conn.commit()
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+        
+@app.route('/galleryout/api/exhibition/delete_comment', methods=['POST'])
+def exhibition_delete_comment():
+    data = request.json
+    comment_id = data.get('comment_id')
+    current_user_id = session.get('user_id')
+    current_role = session.get('role')
+    
+    client_uuid = str(current_user_id) if current_user_id else data.get('client_uuid')
+    is_admin = (current_role == 'ADMIN')
+    
+    try:
+        with get_db_connection() as conn:
+            if IS_EXHIBITION_MODE and not is_admin:
+                # Normal user in exhibition: can only delete their own
+                if not client_uuid: return jsonify({'status': 'error', 'message': 'Auth required'}), 403
+                res = conn.execute("DELETE FROM file_comments WHERE id=? AND client_uuid=?", (comment_id, client_uuid))
+                if res.rowcount == 0:
+                    return jsonify({'status': 'error', 'message': 'Permission denied'}), 403
+            else:
+                # Admin (or Standard UI mode): Delete anything by ID
+                conn.execute("DELETE FROM file_comments WHERE id=?", (comment_id,))
+            
+            conn.commit()
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+        
+@app.route('/galleryout/api/exhibition/edit_comment', methods=['POST'])
+def exhibition_edit_comment():
+    data = request.json
+    comment_id = data.get('comment_id')
+    new_text = data.get('new_text', '').strip()
+    
+    # Secure ownership check using Session
+    current_user_id = session.get('user_id')
+    
+    # Fallback for non-logged session (Guest), though less secure
+    client_uuid = str(current_user_id) if current_user_id else data.get('client_uuid')
+    
+    if not all([comment_id, client_uuid, new_text]):
+        return jsonify({'status': 'error', 'message': 'Missing data'}), 400
+    
+    try:
+        with get_db_connection() as conn:
+            if IS_EXHIBITION_MODE:
+                # Check match: ID must match Session ID
+                res = conn.execute("""
+                    UPDATE file_comments 
+                    SET comment_text = ?
+                    WHERE id = ? AND client_uuid = ?
+                """, (new_text, comment_id, client_uuid))
+                
+                if res.rowcount == 0:
+                    return jsonify({'status': 'error', 'message': 'Cannot edit this comment (Not owner)'}), 403
+            else:
+                # Admin mode (Main Interface): Can edit anything
+                conn.execute("""
+                    UPDATE file_comments 
+                    SET comment_text = ?
+                    WHERE id = ?
+                """, (new_text, comment_id))
+            
+            conn.commit()
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+        
 def print_startup_banner():
     banner = rf"""
 {Colors.GREEN}{Colors.BOLD}   _____                      _      _____       _ _                 
@@ -4774,10 +6761,25 @@ def print_startup_banner():
   ____) | | | | | | (_| | |  | |_  | |__| | (_| | | |  __/ |  | |_| |
  |_____/|_| |_| |_|\__,_|_|   \__|  \_____|\__,_|_|_|\___|_|   \__, |
                                                                 __/ |
-                                                               |___/ {Colors.RESET}
-    """
+                                                               |___/ {Colors.RESET}"""
+
+    exh_banner = rf"""
+{Colors.YELLOW}{Colors.BOLD}   ______      _     _ _     _ _   _             
+  |  ____|    | |   (_) |   (_) | (_)            
+  | |__  __  _| |__  _| |__  _| |_ _  ___  _ __  
+  |  __| \ \/ / '_ \| | '_ \| | __| |/ _ \| '_ \ 
+  | |____ >  <| | | | | |_) | | |_| | (_) | | | |
+  |______/_/\_\_| |_|_|_.__/|_|\__|_|\___/|_| |_|{Colors.RESET}"""
+
     print(banner)
-    print(f"   {Colors.BOLD}Smart Gallery for ComfyUI{Colors.RESET}")
+    
+    if IS_EXHIBITION_MODE:
+        print(exh_banner)
+        print("")
+    else:
+        print("\n")
+        
+    print(f"   {Colors.BOLD}Smart Gallery DAM for ComfyUI{Colors.RESET}")
     print(f"   Author     : {Colors.BLUE}Biagio Maffettone{Colors.RESET}")
     print(f"   Version    : {Colors.YELLOW}{APP_VERSION}{Colors.RESET} ({APP_VERSION_DATE})")
     print(f"   GitHub     : {Colors.CYAN}{GITHUB_REPO_URL}{Colors.RESET}")
@@ -4889,10 +6891,95 @@ def show_ffmpeg_warning():
         print(f"\n{Colors.YELLOW}{Colors.BOLD}" + "="*70 + f"{Colors.RESET}")
         print(f"{Colors.YELLOW}{msg}{Colors.RESET}")
         print(f"{Colors.YELLOW}{Colors.BOLD}" + "="*70 + f"{Colors.RESET}\n")
+        
+def check_port_available(port):
+    """
+    Checks if the specified port is available on the host machine.
+    Returns True if available, False if already in use.
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.bind(('0.0.0.0', port))
+            return True
+        except socket.error:
+            return False
 
 if __name__ == '__main__':
-
+    run_integrity_check()
+    # --- CHECK: PORT AVAILABILITY ---
+    print(f"INFO: Checking port {SERVER_PORT} availability...")
+    if not check_port_available(SERVER_PORT):
+        print(f"\n{Colors.RED}{Colors.BOLD}❌ CRITICAL ERROR: PORT ALREADY IN USE{Colors.RESET}")
+        print(f"{Colors.RED}The port {SERVER_PORT} is currently being used by another application.{Colors.RESET}")
+        print(f"\n{Colors.CYAN}{Colors.BOLD}💡 HOW TO FIX IT:{Colors.RESET}")
+        print(f"  1. Ensure you don't have another instance of SmartGallery already running.")
+        print(f"  2. If using Docker, check if another container is bound to this port.")
+        print(f"  3. You can start SmartGallery on a different port using the --port argument:")
+        print(f"     {Colors.YELLOW}python smartgallery.py --port 8190{Colors.RESET}\n")
+        
+        # Cross-platform wait
+        try:
+            print(f"{Colors.DIM}Press Enter to exit...{Colors.RESET}")
+            input() 
+        except (EOFError, KeyboardInterrupt):
+            pass
+            
+        sys.exit(1)
+    
     print_startup_banner()
+    # --- CRITICAL SECURITY CHECK ---
+    # Stops the server immediately if login is forced but no admin credentials are provided.
+    if ADMIN_CONFIG_MISSING:
+        print(f"\n{Colors.RED}{Colors.BOLD}❌ CRITICAL SECURITY ERROR: Missing Admin Password{Colors.RESET}")
+        if IS_EXHIBITION_MODE:
+            print(f"{Colors.RED}You started the server with '--exhibition', which requires an admin account.{Colors.RESET}")
+        else:
+            print(f"{Colors.RED}You started the server with '--force-login', which requires an admin account.{Colors.RESET}")
+        
+        print(f"\n{Colors.CYAN}{Colors.BOLD}💡 HOW TO FIX IT:{Colors.RESET}")
+        print(f"Please restart the application and provide the password using one of these methods:")
+        print(f"  1. CLI Argument: {Colors.YELLOW}python smartgallery.py {'--exhibition' if IS_EXHIBITION_MODE else '--force-login'} --admin-pass YOUR_PASSWORD{Colors.RESET}")
+        print(f"  2. Environment Variable: Set {Colors.YELLOW}ADMIN_PASSWORD=YOUR_PASSWORD{Colors.RESET} before running.")
+        print(f"\nThe server cannot start in this state and will now exit.\n")
+        
+        # Cross-platform safe wait (Docker friendly)
+        try:
+            print(f"{Colors.DIM}Press Enter to exit...{Colors.RESET}")
+            input() 
+        except (EOFError, KeyboardInterrupt):
+            pass
+            
+        sys.exit(1)
+
+    # --- CRITICAL SECURITY CHECK: PASSWORD LENGTH ---
+    # Stops the server if the user provided a password but it is too weak (under 8 chars).
+    if ADMIN_PASS_TOO_SHORT:
+        print(f"\n{Colors.RED}{Colors.BOLD}❌ CRITICAL SECURITY ERROR: Weak Admin Password{Colors.RESET}")
+        print(f"{Colors.RED}The provided admin password is too short. It must be at least 8 characters long.{Colors.RESET}")
+        
+        print(f"\n{Colors.CYAN}{Colors.BOLD}💡 HOW TO FIX IT:{Colors.RESET}")
+        print(f"Please restart the application and provide a stronger password (8+ characters) using one of these methods:")
+        print(f"  1. CLI Argument: {Colors.YELLOW}python smartgallery.py {'--exhibition' if IS_EXHIBITION_MODE else '--force-login'} --admin-pass YOUR_STRONG_PASSWORD{Colors.RESET}")
+        print(f"  2. Environment Variable: Set {Colors.YELLOW}ADMIN_PASSWORD=YOUR_STRONG_PASSWORD{Colors.RESET} before running.")
+        print(f"\nThe server cannot start in this state and will now exit.\n")
+        
+        # Cross-platform safe wait (Docker friendly)
+        try:
+            print(f"{Colors.DIM}Press Enter to exit...{Colors.RESET}")
+            input() 
+        except (EOFError, KeyboardInterrupt):
+            pass
+            
+        sys.exit(1)
+    
+    # --- MODE ANNOUNCEMENTS ---
+    if IS_EXHIBITION_MODE:
+        print(f"{Colors.YELLOW}{Colors.BOLD}*** EXHIBITION MODE ACTIVE ***{Colors.RESET}")
+        print(f"Restricted view enabled. Granular messaging (Public/Private/Direct) is active.")
+    elif FORCE_LOGIN:
+        print(f"{Colors.YELLOW}{Colors.BOLD}*** SECURE TEAM MODE ACTIVE (--force-login) ***{Colors.RESET}")
+        print(f"Index view is protected. Users must log in to view or manage files.")
+    
     check_for_updates()
     print_configuration()
 
@@ -4910,21 +6997,19 @@ if __name__ == '__main__':
     # Initialize the gallery (Creates DB, Migrations, etc.)
     initialize_gallery()
     
+        
     # --- CHECK: FFMPEG WARNING ---
     if not FFPROBE_EXECUTABLE_PATH:
-        # Check if we are in a headless environment (like Docker) where tk might fail
         if os.environ.get('DISPLAY') or os.name == 'nt':
-            try:
-                show_ffmpeg_warning()
-            except:
-                print(f"{Colors.RED}WARNING: FFmpeg not found. Video workflows extraction disabled.{Colors.RESET}")
+            try: show_ffmpeg_warning()
+            except: print(f"{Colors.RED}WARNING: FFmpeg not found.{Colors.RESET}")
         else:
-            print(f"{Colors.RED}WARNING: FFmpeg not found. Video workflows extraction disabled.{Colors.RESET}")
+            print(f"{Colors.RED}WARNING: FFmpeg not found.{Colors.RESET}")
 
-    # --- START BACKGROUND WATCHER (New Integration) ---
-    if ENABLE_AI_SEARCH:
+    # --- START BACKGROUND WATCHER ---
+    # In exhibition mode, watcher might not be needed, but it's safe to run it (it reads DB config)
+    if ENABLE_AI_SEARCH and not IS_EXHIBITION_MODE:
         try:
-            # Daemon=True ensures the thread dies when the main app stops
             watcher = threading.Thread(target=background_watcher_task, daemon=True)
             watcher.start()
             print(f"{Colors.BLUE}INFO: AI Background Watcher started.{Colors.RESET}")
@@ -4932,7 +7017,19 @@ if __name__ == '__main__':
             print(f"{Colors.RED}ERROR: Failed to start AI Watcher: {e}{Colors.RESET}")
 
     print(f"{Colors.GREEN}{Colors.BOLD}🚀 Gallery started successfully!{Colors.RESET}")
-    print(f"👉 Access URL: {Colors.CYAN}{Colors.BOLD}http://127.0.0.1:{SERVER_PORT}/galleryout/{Colors.RESET}")
+    url_host = "localhost" if SERVER_PORT == 80 else "127.0.0.1"
+    print(f"👉 Access URL: {Colors.CYAN}{Colors.BOLD}http://{url_host}:{SERVER_PORT}/galleryout/{Colors.RESET}")
     print(f"   (Press CTRL+C to stop)")
+
+    if WAITRESS_AVAILABLE:
+        # PRODUCTION MODE: Launching with Waitress WSGI Server
+        # threads=8 allows handling multiple concurrent requests (images/video thumbnails)
+        # channel_timeout avoids drops during heavy video streaming
+        print(f"{Colors.GREEN}INFO: Starting Production WSGI Server (Waitress)...{Colors.RESET}")
+        serve(app, host='0.0.0.0', port=SERVER_PORT, threads=8, channel_timeout=120, _quiet=True)
+    else:
+        # DEVELOPMENT MODE: Falling back to Flask built-in server
+        print(f"{Colors.YELLOW}WARNING: 'waitress' not found. Using Flask development server.{Colors.RESET}")
+        print(f"INFO: For better performance, install it with: pip install waitress")
+        app.run(host='0.0.0.0', port=SERVER_PORT, debug=False)
     
-    app.run(host='0.0.0.0', port=SERVER_PORT, debug=False)

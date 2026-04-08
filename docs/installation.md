@@ -276,23 +276,6 @@ Pre-built images are available on DockerHub at [mmartial/smart-comfyui-gallery](
 
 ---
 
-### Direct File Edit - Not Recommended!
-
-If you prefer not to use Environment Variables (scripts) as shown above, you can manually edit the python file directly (Discouraged).  
-Manual edits to the Python file are at your own risk. Be aware that software updates will overwrite the file, causing the loss of all your custom modifications.  
-Open `smartgallery.py` and edit the **USER CONFIGURATION** section:
-
-```python
-BASE_OUTPUT_PATH = os.environ.get('BASE_OUTPUT_PATH', 'C:/ComfyUI/output')
-BASE_INPUT_PATH = os.environ.get('BASE_INPUT_PATH', 'C:/ComfyUI/input')
-BASE_SMARTGALLERY_PATH = os.environ.get('BASE_SMARTGALLERY_PATH', BASE_OUTPUT_PATH)
-FFPROBE_MANUAL_PATH = os.environ.get('FFPROBE_MANUAL_PATH', "C:/ffmpeg/bin/ffprobe.exe")
-SERVER_PORT = int(os.environ.get('SERVER_PORT', 8189))
-```
-
-> Always use forward slashes (`/`) even on Windows.
-
----
 
 ## FFmpeg / FFprobe Notes
 
