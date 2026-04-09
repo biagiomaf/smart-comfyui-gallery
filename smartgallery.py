@@ -635,8 +635,13 @@ def generate_node_summary(workflow_json_string):
         return []
 
     def get_id_safe(n):
-        try: return int(n.get('id', 0))
-        except: return str(n.get('id', 0))
+        raw_id = str(n.get('id', '0'))
+        try:
+            # Handle nested Node IDs (e.g., "301:297" -> (301, 297)) for perfect sorting
+            return tuple(int(x) for x in raw_id.split(':'))
+        except Exception:
+            # Fallback for pure string IDs (pushes them to the end of the list safely)
+            return (float('inf'), raw_id)
 
     sorted_nodes = sorted(nodes, key=lambda n: (
         NODE_CATEGORIES_ORDER.index(NODE_CATEGORIES.get(n.get('type'), 'others')),
