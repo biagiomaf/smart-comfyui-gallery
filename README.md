@@ -20,7 +20,7 @@ Cull batches from your laptop or also from your phone while ComfyUI is still gen
 
 ---
 
-![SmartGallery DAM — main workspace](assets/hero_main_workspace.png)
+![SmartGallery DAM — main workspace](assets/infographic.png)
 
 ---
 
