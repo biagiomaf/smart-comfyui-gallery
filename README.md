@@ -289,6 +289,32 @@ All feedback runs through the same database, with no file transfers, no email th
 <details>
 <summary><strong>Windows</strong></summary>
 
+There are two ways to run SmartGallery on Windows: using the ready-to-use **Portable Version** (Recommended) or the **Manual Git Installation**.
+
+---
+
+### Method 1: Portable Version (Recommended)
+This version includes a fully self-contained embedded Python environment (Python 3.12). You do not need to install Python on your system to use it.
+
+**1. Download & Extract**
+* Download the Portable ZIP from the [Releases page](https://github.com/biagiomaf/smart-comfyui-gallery/releases/latest). 
+*(Direct link to the v2.11 build: [SmartGallery-v2.11-Windows-Portable.zip](https://github.com/biagiomaf/smart-comfyui-gallery/releases/download/2.11/SmartGallery-v2.11-Windows-Portable.zip))*
+* Extract the `.zip` archive into a folder of your choice.
+
+**2. Configure and Run**
+* Please read the `README_PORTABLE.txt` included in the folder.
+* Right-click on the `run_smartgallery.bat` file and select **Edit**.
+* Modify the paths in the `CONFIGURATION` section to point to your real ComfyUI folders (remember to use forward slashes `/`).
+* Save the file and double-click `run_smartgallery.bat` to launch the server!
+
+**3. Update the Portable Version**
+To update to a newer version in the future, just download the new Portable ZIP, extract it, and overwrite the files. **Make sure to copy your old `run_smartgallery.bat`** into the new folder so you don't lose your path configurations!
+
+---
+
+### Method 2: Manual / Git Installation
+For advanced users who prefer managing their own Python virtual environments and updating via Git.
+
 **1. Clone and setup**
 
 ```bat
@@ -299,11 +325,11 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Or download the ZIP from [Releases](https://github.com/biagiomaf/smart-comfyui-gallery/releases/latest), extract, and run the pip commands above.
+Or download the Source Code ZIP from [Releases](https://github.com/biagiomaf/smart-comfyui-gallery/releases/latest), extract, and run the pip commands above.
 
 **2. Create your launch script**
 
-Create `run_smartgallery.bat` in the folder:
+Create `run_smartgallery.bat` in the root folder:
 
 ```bat
 @echo off
