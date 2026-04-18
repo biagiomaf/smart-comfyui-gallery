@@ -61,7 +61,8 @@ This is cross-platform in the full sense: **Windows, macOS, Linux, Docker**, acc
 | ⚖️ **Compare generations** | A/B slider with synchronized zoom and an automatic parameter diff table | 
 | 🎬 **Full video support** | Thumbnails, storyboard preview, and on-the-fly transcoding via FFmpeg. Handles ProRes and other professional formats |
 | 🌐 **Truly cross-platform** | Windows, macOS, Linux, Docker. Same interface, same features, every OS and device | 
-| 📱 **Best-in-class mobile UI** | Full DAM features on your phone. Rate, tag, cull and comment from any device on your network |
+| 📱 **Best-in-class mobile UI** | Full DAM features on your phone. Rate, tag, cull and comment from any device on your network |  
+| ⚡ **Simple installation** | Zero-config Portable App for Windows (just unzip and run) and official Docker image for Linux/Unraid |  
 
 ---
 
