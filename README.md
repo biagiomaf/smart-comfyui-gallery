@@ -1,22 +1,30 @@
 <div align="center">
-  <img src="assets/logo.png" width="100" alt="SmartGallery DAM logo"><br><br>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/biagiomaf/smart-comfyui-gallery?color=yellow" alt="License"></a>
-  <img src="https://img.shields.io/badge/Python-3.9+-blue.svg" alt="Python">
-  <a href="https://hub.docker.com/r/mmartial/smart-comfyui-gallery"><img src="https://img.shields.io/docker/pulls/mmartial/smart-comfyui-gallery?color=099cec&logo=docker&logoColor=white" alt="Docker Pulls"></a>
-  <a href="https://github.com/biagiomaf/smart-comfyui-gallery/stargazers"><img src="https://img.shields.io/github/stars/biagiomaf/smart-comfyui-gallery" alt="Stars"></a>
+<table border="0" cellspacing="0" cellpadding="0">
+  <tr>
+    <td width="120" valign="middle">
+      <img src="assets/logo.png" width="100" alt="SmartGallery DAM logo">
+    </td>
+    <td valign="middle">
+      <h1>SmartGallery DAM</h1>
+      <a href="LICENSE"><img src="https://img.shields.io/github/license/biagiomaf/smart-comfyui-gallery?color=yellow" alt="License"></a>
+      <img src="https://img.shields.io/badge/Python-3.10+-blue.svg" alt="Python">
+      <a href="https://hub.docker.com/r/mmartial/smart-comfyui-gallery"><img src="https://img.shields.io/docker/pulls/mmartial/smart-comfyui-gallery?color=099cec&logo=docker&logoColor=white" alt="Docker Pulls"></a>
+      <a href="https://github.com/biagiomaf/smart-comfyui-gallery/stargazers"><img src="https://img.shields.io/github/stars/biagiomaf/smart-comfyui-gallery" alt="Stars"></a>
+    </td>
+  </tr>
+</table>
+
+**The local-first Digital Asset Manager that works with ComfyUI, and survives without it.**  
+**Bridging the gap between your creative workflow and professional client approval.**
 </div>
-
-# SmartGallery DAM
-
-**The local-first Digital Asset Manager that works with ComfyUI, and survives without it.**
 
 Search 50,000 generations by prompt, model, LoRA, or comments in milliseconds.  
 Organize your gallery seamlessly across physical folders and virtual collections.  
 Share curated work with clients without exposing a single node, and let them rate and comment on your creations.  
 Compare two generations side-by-side with an automatic parameter diff.  
-Cull batches from your laptop or also from your phone while ComfyUI is still generating.  
+Cull batches from your laptop or also from your phone while ComfyUI is still generating.
 
-[**smartgallerydam.com**](https://smartgallerydam.com) · full documentation, wiki and feature reference
+[**🌐 smartgallerydam.com**](https://smartgallerydam.com) · full documentation, wiki and feature reference · [**▶️ Presentation Video**](https://smartgallerydam.com/smartgallerydam_2.12.mp4)
 
 ---
 
@@ -54,12 +62,13 @@ This is cross-platform in the full sense: **Windows, macOS, Linux, Docker**, acc
 | 🔍 **Find anything instantly** | Search by prompt keyword, checkpoint, LoRA, date or comment across tens of thousands of files | 
 | 🗂️ **Powerful file manager** | Rename, move, copy, delete files and create folders directly from the browser |
 | 🔗 **Works on any folder** | Point it at any ComfyUI output, photo archive, NAS volume or network path. Mix and match as many folders as you want |
+| 📤 **Magic Upload** | Drag & drop or upload files from your PC or smartphone directly into any folder. ComfyUI workflows are automatically extracted and indexed on the fly |
 | 👥 **Built for teams too** | Role-based access, per-image comments with visibility control, 1 to 5 star ratings |
-| 🗃️ **Virtual collections** | Group files from different folders into albums without moving anything on disk. Mark as private or ready for client sharing |
+| 🗃️ **Virtual collections** | Group files from different folders into albums without moving anything on disk. Mark as private or share exclusively with specific users |
 | 🏷️ **Color-coded status tags** | Mark files as Approved, Review, To Edit, Rejected or Select. Browse any status across your entire library at once, standard DAM pipeline workflow |
 | 🛡 **Share without exposing your process** | Clients access a dedicated Exhibition portal you launch only when needed. They see curated collections only. Workflows, prompts and models are always hidden |
 | ⚖️ **Compare generations** | A/B slider with synchronized zoom and an automatic parameter diff table | 
-| 🎬 **Full video support** | Thumbnails, storyboard preview, and on-the-fly transcoding via FFmpeg. Handles ProRes and other professional formats |
+| 🎬 **Full video & audio support** | Thumbnails, storyboard preview, dynamic audio waveforms, and on-the-fly transcoding via FFmpeg. Handles ProRes and other professional formats |
 | 🌐 **Truly cross-platform** | Windows, macOS, Linux, Docker. Same interface, same features, every OS and device | 
 | 📱 **Best-in-class mobile UI** | Full DAM features on your phone. Rate, tag, cull and comment from any device on your network |  
 | ⚡ **Simple installation** | Zero-config Portable App for Windows (just unzip and run) and official Docker image for Linux/Unraid |  
@@ -70,7 +79,7 @@ This is cross-platform in the full sense: **Windows, macOS, Linux, Docker**, acc
 
 1.  [**OVERVIEW & CONCEPTS**](#1-overview--concepts)
     *   [1.1 What is SmartGallery DAM?](#11-what-is-smartgallery-dam)
-    *   [1.2 What's New in v2](#12-whats-new-in-v2)
+    *   [1.2 What's New in v2.12](#12-whats-new-in-v212)
     *   [1.3 Core Features](#13-core-features)
     *   [1.4 Use Case Scenarios](#14-use-case-scenarios)
 2.  [**SETUP & CONFIGURATION**](#2-setup--configuration)
@@ -95,7 +104,9 @@ This is cross-platform in the full sense: **Windows, macOS, Linux, Docker**, acc
 
 ### 1.1 What is SmartGallery DAM?
 
-**SmartGallery DAM** is the evolution of *SmartGallery for ComfyUI*, a project that started as a fast local gallery for browsing ComfyUI outputs and has grown into a powerful and easy to use **Digital Asset Management system**, suitable for AI artists, digital creators and creative studios.
+**SmartGallery DAM** is the evolution of *SmartGallery for ComfyUI*. What started as a fast local gallery for browsing outputs has grown into a powerful and easy-to-use **Digital Asset Management system**. 
+
+Evolve your workflow from a simple collection of files into a structured, searchable library. Designed for individual creators and professional teams, this platform is ridiculously simple to use, yet powerful enough to act as the ultimate file manager for your generations. Every asset is automatically indexed, linked to its original generative parameters, and ready for secure review. The system is open-source, private, and entirely local: no cloud dependencies and no recurring costs.
 
 **Who is this for?**
 
@@ -109,22 +120,19 @@ This is cross-platform in the full sense: **Windows, macOS, Linux, Docker**, acc
 
 ---
 
-### 1.2 What's New in v2.11
+### 1.2 What's New in v2.12
 
-v2 is not just a feature drop. The version number jumped because the architecture, ACL system, and multi-user logic required a ground-up rethink. **Your existing setup, folders, and data are all forward-compatible**.
+**New in v2.12:**
 
-**New in v2.11:**
+-   **Enhanced Filtering & Sub-Menus:** The search capabilities have been vastly upgraded. You can now filter media using multi-select options for **star ranges** (e.g., viewing both "1-2 stars" and "4-5 stars" simultaneously) and filter by **specific raters** to isolate feedback from key clients. Furthermore, sorting criteria for Ratings and Comments have been moved into sleek sub-menus, allowing you to instantly toggle between states like "Most/Least Discussed", "Uncommented", or "Not Rated".
+-   **Persistent Metadata Hover Bar:** A new, sleek status bar appears dynamically at the bottom of your screen when hovering over files in the Gridview. It provides real-time file details including exact dimensions, calculated megapixels, file size, and current rating status without opening the Lightbox.
+-   **Advanced User Analytics & Moderation:** The User Manager panel now actively tracks and displays the **last login timestamp** for every user, including sorting functionality—making it effortless to monitor client engagement. Additionally, inside the Rating panel (shortcut `G`), a new "Details" icon (👁️) reveals exactly *who* assigned which rating.
+-   **Blind Rating System:** A professional curation feature rarely found even in high-end enterprise software. Launch with `--blind-rating` to hide global rating averages across the platform. Users see and sort only by their *own* votes, preventing group bias. Admins can bypass this via a UI toggle or the `B` shortcut. 
+-   **Interactive Audio Waveforms:** Set `GENERATE_WAVEFORMS=true` to render visual waveforms for video and audio tracks. Features a rare **real-time amplitude slider (🌊)** that lets you visually scale waveforms on the fly without needing to regenerate the media.
+-   **Collection-Level Sharing:** Granular permissions are here. You can now assign exclusive viewing rights for specific collections to individual users or clients, keeping everything else private.
+-   **Enhanced Media Controls:** Spacebar to Play/Pause, arrow keys for 5-second seeking, and dedicated volume/mute controls right in the lightbox player.
 
--   **Powerful search operators:** filter by multiple keywords at once using AND, OR and exclusion operators across prompts, models, LoRAs, comment text and more.
--   **Virtual Collections (Exhibition Ready / Private):** group files from different physical folders into named albums without moving anything on disk. Mark a collection as Exhibition Ready to make it visible in the sharing portal. Private collections are invisible to guests and never appear in Exhibition.
--   **1-5 Star Ratings:** rate any image from 1 to 5 stars. Works for solo users too: a great way to personally curate your own library and surface your best work. Ratings are per-user, a global average is shown instantly in the grid, and you can sort by highest rated.
--   **Real-Time Comments:** leave notes on any image, whether you work alone or with a team. Solo users can annotate their own files as personal memos. With a team, each message has its own visibility: Public (everyone), Internal (staff only), or Direct Message to a specific user. Comment keywords are fully searchable from the Filters panel. Press `G` on any image to open the details panel.
--   **Color-Coded Status Tags:** tag any image with a pipeline state using keys `1` to `5`: Approved (green), Review (yellow), To Edit (blue), Rejected (red), Select (purple). Browse all files carrying a given status across every folder at once from the Status tab in the sidebar.
--   **Full User Management with ACL Roles:** create accounts and assign roles: Admin, MANAGER, STAFF, FRIEND, USER, CUSTOMER, GUEST. Each role controls which interface they can access, what they can see, and what they can download.
--   **Exhibition Mode (fully optional):** a separate, read-only portal you can launch when you want to share work with clients, collaborators, or friends. Completely optional: if you have no need to share, simply never launch it. Only the collections you mark as Exhibition Ready are visible. Workflows and prompts are always hidden from guests.
--   **Clean Export (`Shift+W`):** download any file stripped of all embedded workflows, prompts and EXIF metadata. Safe to send to anyone without exposing your process.
--   **Mount Any External Drive or Folder:** (improved) mount external drives, NAS volumes or network paths directly from the UI. Mix ComfyUI output folders with photo archives, video collections or any other media library. All DAM features work on everything, workflow extraction only applies where there is a workflow to extract.
--   **Wiki Website:** Full documentation with screenshots at [smartgallerydam.com](https://smartgallerydam.com) (accessible from the top menu: "Docs").  
+> **Note:** This list only highlights the latest additions. Be sure to read the **[Full Changelog](CHANGELOG.md)** so you don't miss out on other **important previous updates**, quality-of-life improvements, and bug fixes!
 
 ---
 
@@ -133,14 +141,12 @@ v2 is not just a feature drop. The version number jumped because the architectur
 <details>
 <summary><strong>Live Workspace and File Management</strong></summary>
 
--   **Cross-platform, Cross-device:** Runs locally on Windows, macOS, Linux, and Docker. The responsive web interface works flawlessly across desktops, tablets, and smartphones. Work from your studio machine or cull batches from your phone on the couch.
--   **Auto-Watch:** detects new ComfyUI outputs the moment they are saved. Cull with `Del`, favorite with `F`, move with `M`, all while generation is still running. Your scroll position is never disturbed.
--   **Full File Manager:** select files individually or in bulk (Shift+Click range select, Ctrl+A select all). Move, copy, delete, or ZIP directly from the browser.
--   **Upload External Files:** import images generated elsewhere. If they contain embedded ComfyUI metadata, SmartGallery extracts and displays the full workflow automatically.
+-   **Cross-platform, Cross-device:** Runs locally on Windows, macOS, Linux, and Docker. The responsive web interface works flawlessly across desktops, tablets, and smartphones.
+-   **Auto-Watch:** detects new ComfyUI outputs the moment they are saved. Cull with `Del`, favorite with `F`, move with `M`, all while generation is still running.
+-   **Magic Upload:** Drag & drop or upload files from your PC or smartphone directly into any folder via the web interface. ComfyUI metadata is extracted automatically.
+-   **Full File Manager:** select files individually or in bulk. Move, copy, delete, or ZIP directly from the browser.
 -   **Focus Mode:** press `Q` to hide all UI chrome. Maximum screen space for pure curation.
--   **Compact Thumbnails:** toggle grid density via the Options menu.
--   **External Drive Mounting:** link any external drive, NAS, or network path via Symlinks directly from the UI. The folder appears in your sidebar alongside your ComfyUI folders.
--   **Fully Offline:** works perfectly even when ComfyUI is not running or completely uninstalled.
+-   **External Drive Mounting:** link any external drive, NAS, or network path via Symlinks directly from the UI.
 
 </details>
 
@@ -149,17 +155,18 @@ v2 is not just a feature drop. The version number jumped because the architectur
 
 -   **Node Summary Dashboard:** press `N` on any image to see Seed, CFG, Steps, Sampler, Scheduler, all active Models, LoRAs with weights, and full positive/negative prompts.
 -   **Workflow Download and Copy:** press `W` to download the raw JSON workflow, `C` to copy it to clipboard and paste directly back into ComfyUI.
--   **Clean Export:** press `Shift+W` to download a pixel-perfect copy stripped of all EXIF data and embedded workflows. Safe to share externally without exposing your process.
--   **Compare Mode:** select two generations, open the A/B slider with synchronized zoom and pan. A parameter diff table shows only the values that changed: Seed, CFG, LoRA weights, sampler, anything.
+-   **Clean Export:** press `Shift+W` to download a pixel-perfect copy stripped of all EXIF data and embedded workflows. Safe to share externally.
+-   **Compare Mode:** select two generations, open the A/B slider with synchronized zoom and pan. A parameter diff table shows only the values that changed.
 
 </details>
 
 <details>
 <summary><strong>Organization (DAM)</strong></summary>
 
--   **Virtual Collections:** group files from different physical folders into albums without duplicating a byte on disk. Mark as Exhibition Ready to expose in Exhibition, keep Private for internal use only.
--   **Status Tags:** keyboard shortcuts `1` to `5` apply color-coded team statuses: Approved, Review, To Edit, Rejected, Select. Browse all files in a given status across every folder at once from the Status tab.
--   **Favorites:** press `F` to toggle a Favorite flag on any file. Filter to Favorites-only from the search panel.
+-   **Virtual Collections:** group files from different physical folders into albums without duplicating a byte on disk.
+-   **Collection Sharing:** Keep collections private, mark them as Exhibition Ready for all guests, or share them *exclusively* with specific users.
+-   **Status Tags:** keyboard shortcuts `1` to `5` apply color-coded team statuses: Approved, Review, To Edit, Rejected, Select.
+-   **Favorites:** press `F` to toggle a Favorite flag on any file.
 
 </details>
 
@@ -168,30 +175,29 @@ v2 is not just a feature drop. The version number jumped because the architectur
 
 -   Search by **prompt keywords**, **checkpoint name**, **LoRA name**, **comment text**, date range, file extension.
 -   Scope to the current folder or search the **global database** instantly.  
--   Filter by multiple keywords at once using AND, OR and exclusion operators across prompts, models, LoRAs, comment text and more
--   Sort by date, name, rating, or comment count, ascending or descending. A dedicated **Last Commented** sort orders files by the most recent comment activity, newest first: useful for Admin and Staff to instantly surface the latest client, guest, or friend feedback without manually hunting through the grid.
--   Filter by Favorites only, or by files with no embedded workflow.
+-   Filter by multiple keywords at once using AND, OR and exclusion operators.
+-   Filter by **Star Rating Ranges** (e.g., 4-5 stars) and by **Specific Users** to quickly find how a certain client evaluated your work.
+-   Sort by date, name, rating, or comment count. Use the sub-menus on the Sort buttons to quickly isolate items that are **"Not Rated"** or **"Uncommented"**.
 
 </details>
 
 <details>
 <summary><strong>Media Tools</strong></summary>
 
--   **Video Storyboard:** press `E` in the Lightbox to generate a grid of 11 evenly-spaced frames from start to last frame. Instant video review without scrubbing.
+-   **Dynamic Audio Waveforms:** Real-time amplitude scaling (🌊) without media regeneration.
+-   **Video Storyboard:** press `E` in the Lightbox to generate a grid of 11 evenly-spaced frames from start to last frame.
 -   **Video Transcoding:** ProRes, MKV, AVI, MOV are auto-transcoded via FFmpeg for smooth browser playback.
--   **Smart Video Grid:** videos strictly pause when they leave the viewport, reducing CPU/GPU usage significantly.
--   **Video Autoplay Toggle:** press `P` to enable/disable autoplay. Default: off.
+-   **Enhanced Player:** Spacebar Play/Pause, Arrow seeking, integrated volume controls.
 
 </details>
 
 <details>
 <summary><strong>Exhibition Mode and Collaboration</strong></summary>
 
--   **Exhibition Mode (fully optional):** a separate, secure portal for clients, collaborators, friends, or family. Launch it only when you need it, on a separate port, independently from the Main Interface. Physical folder browsing is disabled. Only Exhibition Ready collections are visible. All workflows and EXIF data are stripped automatically before any download. Solo users with no sharing needs can ignore this entirely.
--   **1-5 Star Ratings:** per-image, per-user. Global average displayed in the grid. Searchable and sortable.
--   **Comments and Feedback:** every image has a comment thread where anyone with access can post messages, leave feedback, or exchange notes with the team. When writing a message, a visibility selector lets the author choose exactly who will see it. Public messages are visible to everyone. Internal messages go only to Staff. Direct Messages target a specific registered user and are visible only to that person and Staff.
--   **Multi-User ACL:** Admin, MANAGER, STAFF, FRIEND, USER, CUSTOMER, GUEST roles. Main interface access restricted to Admin, MANAGER, STAFF. Exhibition for all others.
--   **Guest Login:** optional anonymous access with `--enable-guest-login`. No account required to browse.
+-   **Exhibition Mode:** a separate, secure portal for clients or collaborators. Launch it only when you need it. Physical folder browsing is disabled.
+-   **Blind Rating System:** A unique enterprise-grade feature. Force users to rate blindly without seeing global averages to prevent group bias.
+-   **1-5 Star Ratings & Comments:** per-image, per-user rating transparency. Comment threads support Public, Internal (Staff), or Direct Message visibility.
+-   **Multi-User ACL:** Admin, MANAGER, STAFF, FRIEND, USER, CUSTOMER, GUEST roles.
 
 </details>
 
@@ -238,7 +244,7 @@ python smartgallery.py --port 8189 --admin-pass yourpassword --force-login
 
 Log in at `http://localhost:8189` with username `admin` (always lowercase) and the password you set above.
 
-**Step 2: Create Collections and mark them as Exhibition Ready.** In the left sidebar, open the Collections tab and click +. Give each collection a name (Interiors, Exteriors, Project X, or whatever fits) and toggle it as Exhibition Ready to make it visible in Exhibition. You can change this at any time. Add files to the collections you want to expose.
+**Step 2: Create Collections and set Permissions.** In the left sidebar, open the Collections tab and click +. Give each collection a name. You can toggle it as "Exhibition Ready" (public for everyone in the portal), or click the `⋮` menu -> 👥 **Share / Permissions** to assign it exclusively to a specific client.
 
 **Step 3: Create user accounts.** Click the user management icon in the sidebar. Create an account for each person who will access Exhibition. For clients and external viewers, assign the role CUSTOMER or USER. Share their credentials and the Exhibition URL with them directly.
 
@@ -250,14 +256,12 @@ Log in at `http://localhost:8189` with username `admin` (always lowercase) and t
 python smartgallery.py --exhibition --port 8190 --admin-pass yourpassword
 ```
 
-Share `http://youraddress:8190` with your users. They will see only the Exhibition Ready collections, with no prompts, no workflow data, and no folder structure. They can leave star ratings and write comments on individual images. You can read and reply to their feedback from the Main Interface at any time, and they will see your reply the next time they log in.
-
-You do not need to run both instances at the same time permanently. Launch Exhibition only when you have something to share, and shut it down when the review session is over. All other paths and settings you already have configured remain unchanged.
+Share `http://youraddress:8190` with your users. They will see only the collections assigned to them, with no prompts, no workflow data, and no folder structure. They can leave star ratings and write comments on individual images. You can read and reply to their feedback from the Main Interface at any time.
 
 </details>
 
 <details>
-<summary><strong>Scenario 3: Small team working together</strong></summary>
+<summary><strong>Scenario 3: Small team working together (Blind Rating)</strong></summary>
 
 The team lead runs the Main Interface with `--force-login` and `--admin-pass` so the workspace is password-protected. Each team member gets a STAFF account and logs into the same Main Interface remotely to review files, apply status tags, and leave internal comments on specific images.
 
@@ -265,15 +269,13 @@ The team lead runs the Main Interface with `--force-login` and `--admin-pass` so
 python smartgallery.py --port 8189 --admin-pass yourpassword --force-login
 ```
 
-Log in at `http://localhost:8189` with username `admin` (always lowercase) and the password you set above. Create STAFF accounts from the user management panel and share the URL with your team.
-
-When work is ready for a client, a CUSTOMER account is created, the relevant Collections are marked as Exhibition Ready, and Exhibition is launched on a separate port:
+When work is ready for a client, a CUSTOMER account is created, the relevant Collections are mapped, and Exhibition is launched on a separate port. To prevent the client (or team members) from being influenced by what others voted, the lead launches Exhibition with the `--blind-rating` flag:
 
 ```bash
-python smartgallery.py --exhibition --port 8190 --admin-pass yourpassword
+python smartgallery.py --exhibition --port 8190 --admin-pass yourpassword --blind-rating
 ```
 
-Share `http://youraddress:8190` with the client. They get a clean view with no access to the production workspace, no prompts, no workflow data. They can leave star ratings and comments on individual images. Admin, MANAGER, and STAFF can log into Exhibition too to see exactly what the client sees, and reply to their feedback from either interface.
+Now, when clients log into `http://youraddress:8190`, they cannot see the global average score. They only see their own stars. Admins reviewing the gallery can press `B` to toggle the blind mode off temporarily and see the real consensus. 
 
 All feedback runs through the same database, with no file transfers, no email threads, and no ZIP files.
 
@@ -285,8 +287,12 @@ All feedback runs through the same database, with no file transfers, no email th
 
 ### 2.1 Installation
 
-**Requirements:** Python 3.9+ · FFmpeg/FFprobe (recommended for video) · Windows, macOS, Linux or Docker. ComfyUI does **not** need to be running.
+**Requirements:**
+*   **Portable/Docker Installation:** No installation required. Everything is pre-configured (Python is already embedded).
+*   **Manual Installation:** Python 3.10+ installed on your system.
+*   **Strongly Recommended:** FFmpeg/FFprobe (for advanced video features).
 
+> **Choose your platform below and expand to view the installation instructions:**
 <details>
 <summary><strong>Windows</strong></summary>
 
@@ -295,21 +301,26 @@ There are two ways to run SmartGallery on Windows: using the ready-to-use **Port
 ---
 
 ### Method 1: Portable Version (Recommended)
-This version includes a fully self-contained embedded Python environment (Python 3.12). You do not need to install Python on your system to use it.
+This version includes a fully self-contained environment. You do not need to install Python or any dependencies on your system—it is **completely plug-and-play**.
 
 **1. Download & Extract**
-* Download the Portable ZIP from the [Releases page](https://github.com/biagiomaf/smart-comfyui-gallery/releases/latest). 
-*(Direct link to the v2.11 build: [SmartGallery-v2.11-Windows-Portable.zip](https://github.com/biagiomaf/smart-comfyui-gallery/releases/download/2.11/SmartGallery-v2.11-Windows-Portable.zip))*
-* Extract the `.zip` archive into a folder of your choice.
+* **Direct Download:** [SmartGallery-v2.12-Windows-Portable.zip](https://github.com/biagiomaf/smart-comfyui-gallery/releases/download/2.12/SmartGallery-v2.12-Windows-Portable.zip)
+* **Releases Page:** Alternatively, view all builds on the [Releases page](https://github.com/biagiomaf/smart-comfyui-gallery/releases/latest).
+* Extract the archive into a folder of your choice.
 
 **2. Configure and Run**
-* Please read the `README_PORTABLE.txt` included in the folder.
-* Right-click on the `run_smartgallery.bat` file and select **Edit**.
-* Modify the paths in the `CONFIGURATION` section to point to your real ComfyUI folders (remember to use forward slashes `/`).
-* Save the file and double-click `run_smartgallery.bat` to launch the server!
+* **Read First:** Before launching, open the `00_START_HERE.txt` file included in the root folder for essential setup instructions.
+* **Customize:** Rename `sample_run_smartgallery.bat` to `run_smartgallery.bat`, right-click it, and select **Edit**.
+* **Setup Paths:** Update the `CONFIGURATION` section to point to your specific ComfyUI folders (ensure you use forward slashes `/`).
+* **Launch:** Save the file and double-click `run_smartgallery.bat` to launch the server!
 
-**3. Update the Portable Version**
-To update to a newer version in the future, just download the new Portable ZIP, extract it, and overwrite the files. **Make sure to copy your old `run_smartgallery.bat`** into the new folder so you don't lose your path configurations!
+**3. Updating to a Newer Version**
+To update to a newer release while preserving your settings:
+1. Download and extract the new Portable ZIP into a fresh folder.
+2. Simply copy your existing `run_smartgallery.bat` (and any custom `.bat` files for Exhibition Mode) into the new folder.
+3. Launch your copied `.bat` file; your configuration will be preserved automatically.
+
+*Note: SmartGallery DAM is completely standalone; your database and settings are kept safe in your chosen configuration path.*
 
 ---
 
@@ -353,12 +364,13 @@ set SERVER_PORT=8189
 ::   --exhibition                Start in Exhibition Mode instead of the Main Interface
 ::   --port 8190                 Use a different port (default: 8189)
 ::   --enable-guest-login        Allow anonymous guest access in Exhibition
+::   --blind-rating              Hide global averages to prevent user bias
 ::
 :: Example – Main Interface with login enforced:
 ::   python smartgallery.py --port 8189 --admin-pass yourpassword --force-login
 ::
-:: Example – Exhibition on port 8190:
-::   python smartgallery.py --exhibition --port 8190 --admin-pass yourpassword
+:: Example – Exhibition on port 8190 with Blind Rating:
+::   python smartgallery.py --exhibition --port 8190 --admin-pass yourpassword --blind-rating
 
 :: --- START ---
 python smartgallery.py
@@ -417,12 +429,13 @@ export SERVER_PORT=8189
 #   --exhibition                Start in Exhibition Mode instead of the Main Interface
 #   --port 8190                 Use a different port (default: 8189)
 #   --enable-guest-login        Allow anonymous guest access in Exhibition
+#   --blind-rating              Hide global averages to prevent user bias
 #
 # Example – Main Interface with login enforced:
 #   python smartgallery.py --port 8189 --admin-pass yourpassword --force-login
 #
-# Example – Exhibition on port 8190:
-#   python smartgallery.py --exhibition --port 8190 --admin-pass yourpassword
+# Example – Exhibition on port 8190 with Blind Rating:
+#   python smartgallery.py --exhibition --port 8190 --admin-pass yourpassword --blind-rating
 
 # --- START ---
 python smartgallery.py
@@ -477,12 +490,13 @@ export SERVER_PORT=8189
 #   --exhibition                Start in Exhibition Mode instead of the Main Interface
 #   --port 8190                 Use a different port (default: 8189)
 #   --enable-guest-login        Allow anonymous guest access in Exhibition
+#   --blind-rating              Hide global averages to prevent user bias
 #
 # Example – Main Interface with login enforced:
 #   python smartgallery.py --port 8189 --admin-pass yourpassword --force-login
 #
 # Example – Exhibition on port 8190:
-#   python smartgallery.py --exhibition --port 8190 --admin-pass yourpassword
+#   python smartgallery.py --exhibition --port 8190 --admin-pass yourpassword --blind-rating
 
 # --- START ---
 python smartgallery.py
@@ -530,9 +544,10 @@ The `CLI_ARGS` environment variable passes optional launch parameters to SmartGa
 
 | Scenario | CLI_ARGS value | Port mapping |
 |---|---|---|
-| Main Interface with login enforced | `--admin-pass yourpassword --force-login` | `-p 8189:8189` |
+| Main Interface with login | `--admin-pass yourpassword --force-login` | `-p 8189:8189` |
 | Exhibition | `--exhibition --admin-pass yourpassword` | `-p 8190:8189` |
 | Exhibition with guest access | `--exhibition --admin-pass yourpassword --enable-guest-login` | `-p 8190:8189` |
+| Exhibition with Blind Rating | `--exhibition --admin-pass yourpassword --blind-rating` | `-p 8190:8189` |
 
 For Exhibition scenarios, replace `-p 8189:8189` in the `docker run` command above with `-p 8190:8189`. This maps port 8190 on your host to the container's internal port 8189, so clients reach Exhibition at `http://youraddress:8190`.
 
@@ -559,11 +574,16 @@ http://127.0.0.1:8189/galleryout
 <br>
 
 > [!IMPORTANT]
-> **Note on Updates:** When updating from a previous version, always remember to update your virtual environment as well, following the specific instructions for your platform:
+> **When you update to a new version:**
+> 
+> * **For Portable Installations:** Simply download the new version, extract it, and overwrite your existing files. Remember to **keep your existing launch scripts** (`.bat` or `.sh` files) to preserve your custom paths and settings.
 >
-> ```bash
-> pip install -r requirements.txt
-> ```
+> * **For Docker Installations:** Pull the latest image and restart your container. Your configuration is preserved via your volume mappings.
+>
+> * **For Manual Installations:** Remember to keep your existing launch scripts (`.bat` or `.sh` files). After updating your files, refresh your environment dependencies by running:
+>   ```bash
+>   pip install -r requirements.txt
+>   ```
 
 ---
 
@@ -581,6 +601,7 @@ All parameters are optional. Launched with no flags, SmartGallery runs on port 8
 | `--port <number>` | Optional | Override the default port (8189). |
 | `--admin-pass <pwd>` | Optional* | Set the Admin password. Required to enable user management. Minimum 8 characters. Log in with username `admin` (always lowercase) and the password you set here. |
 | `--force-login` | Optional* | Enforces authentication. Must always be combined with `--admin-pass`. Use when accessing from outside the local network. |
+| `--blind-rating` | Optional | Forces Blind Rating mode. Useful if you want team members in the main UI to vote without bias. |
 
 `*` `--admin-pass` and `--force-login` must be used together when either is specified.
 
@@ -593,10 +614,11 @@ All parameters are optional. Launched with no flags, SmartGallery runs on port 8
 
 | Flag | Required | Description |
 |---|---|---|
-| `--exhibition` | Yes | Start in Exhibition Mode. Only Exhibition Ready collections are visible. Physical folder browsing is disabled. |
-| `--admin-pass <pwd>` | Yes | Set the Admin password. Required to protect the instance and enable user management. Minimum 8 characters. Log in with username `admin` (always lowercase) and the password you set here. |
+| `--exhibition` | Yes | Start in Exhibition Mode. Only assigned or public collections are visible. Physical folder browsing is disabled. |
+| `--admin-pass <pwd>` | Yes | Set the Admin password. Required to protect the instance and enable user management. Minimum 8 characters. |
 | `--port <number>` | Yes | Use a different port when running Exhibition alongside the main interface. Typically 8190. |
 | `--enable-guest-login` | Optional | Shows a "Login as Guest" button. No account needed to browse Exhibition. |
+| `--blind-rating` | Optional | **Blind Rating Mode.** Hides global average ratings from the UI. Users see and sort only by their own personal ratings, ensuring unbiased curation feedback from clients and guests. |
 
 </details>
 
@@ -611,8 +633,8 @@ The two instances can run at the same time from two separate terminals or script
 # Terminal 1: Main interface
 python smartgallery.py --port 8189 --admin-pass yourpassword --force-login
 
-# Terminal 2: Exhibition (launch only when needed)
-python smartgallery.py --exhibition --port 8190 --admin-pass yourpassword
+# Terminal 2: Exhibition (launch only when needed, with Blind Rating active)
+python smartgallery.py --exhibition --port 8190 --admin-pass yourpassword --blind-rating
 ```
 
 **Docker: same image, launched twice**
@@ -642,7 +664,7 @@ docker run --name smartgallery-exhibition \
   -e BASE_SMARTGALLERY_PATH=/mnt/SmartGallery \
   -e WANTED_UID=`id -u` \
   -e WANTED_GID=`id -g` \
-  -e CLI_ARGS="--exhibition --admin-pass yourpassword" \
+  -e CLI_ARGS="--exhibition --admin-pass yourpassword --blind-rating" \
   -p 8190:8189 \
   mmartial/smart-comfyui-gallery
 ```
@@ -664,6 +686,7 @@ If you only work with images, you can skip this entirely.
 
 -   Thumbnail generation for MP4, WEBM, and all transcoded formats
 -   Video Storyboard: the 11-frame grid preview (`E` key in the Lightbox)
+-   Interactive Audio Waveforms (`GENERATE_WAVEFORMS=true`)
 -   On-the-fly transcoding of ProRes, MKV, AVI, MOV to a browser-compatible format
 -   Workflow extraction from video files generated by ComfyUI
 
@@ -791,7 +814,8 @@ The left sidebar contains three main tabs:
 -   **⚙️ Options:** Global settings — thumbnail size (Normal 320px / Compact 220px), video autoplay.
 -   **? Shortcuts:** Full keyboard shortcut list for the current interface.
 -   **⚡ Focus (Q):** Toggle Focus Mode.
--   **📤 Upload:** Drag & drop files into the current folder. ComfyUI metadata is extracted automatically.
+-   **🕵️ My Ratings:** Quickly toggle between the global average rating view and your personal, blind rating view.
+-   **📤 Upload:** Magic Upload via drag & drop. ComfyUI metadata is extracted automatically.
 -   **♻️ Rescan:** Forces a background disk scan for externally added or modified files.
 
 #### Auto-Watch & Refresh
@@ -832,14 +856,21 @@ Click **🔍 Filters** to open the advanced search engine. Filters work across b
 
 **Options:** Favorites Only · No Workflow. 
 
+**Advanced Ratings Filtering:**
+You can now drill down into feedback by filtering by **Star Rating Ranges** (e.g., select '4-5 stars' and '1-2 stars' simultaneously) and by **Specific Raters** to isolate feedback from key clients or team members.
 
 #### Sort Buttons
 
-Sort by **Date** (📅), **Name** (🔤), **Rating** (⭐), or **Comments** (💬). Clicking Comments twice toggles between *Most Discussed* and *Recent Activity* (newest first) — useful for surfacing the latest client feedback.
+Sort by **Date** (📅), **Name** (🔤), **Rating** (⭐), or **Comments** (💬). 
+
+Sorting criteria for Ratings and Comments have been upgraded with **Sub-menus**. Click the dropdown arrow next to the Rating or Comment buttons to effortlessly toggle between "Highest/Lowest Rated", **"Not Rated"**, "Most/Least Discussed", or **"Uncommented"** items. A dedicated *Newest Comments* sort orders files by the most recent activity, making it perfect for Admins to surface the latest client feedback without manually hunting through the grid.
 
 ---
 
 ### 3.1.4 Gallery Grid & Focus Mode
+
+**Persistent Metadata Hover Bar:** 
+Hovering over any image now reveals a sleek status bar at the bottom of the screen. It provides instant, real-time access to crucial file details including exact dimensions, calculated megapixels, file size, and current rating status without needing to open the Lightbox.
 
 **Standard Grid View (Focus Mode OFF):** Hovering over an image reveals the quick-action card with Node Summary (📝), Favorite (⭐), Download (💾), Delete (🗑️). Clicking opens the Lightbox.
 
@@ -853,7 +884,7 @@ Sort by **Date** (📅), **Name** (🔤), **Rating** (⭐), or **Comments** (�
 
 *Focus Mode ON: all clutter removed, fuchsia border on the selected file, batch bar still accessible.*
 
-> **Power User Tip:** Enable Auto-Watch, activate Focus Mode with `Q`, then use `←→` arrows + `Del`/`F`/`X` to blaze through a batch while it's still generating.
+> **Power User Tip:** Enable Auto-Watch, activate Focus Mode with `Q`, then use `←→` arrows + `Del`/`F`/`X` to blaze through a batch while it's still generating. Press `I` on any item to view its exact file path and linked real-source mapping (crucial for diagnosing mounted external drives).
 
 ---
 
@@ -892,9 +923,9 @@ Open the full-screen Lightbox with `V` or `Enter`. When Focus Mode is OFF, click
 
 *The Lightbox: Node Summary panel (left), full-resolution image (center), Ratings & Comments panel (right). All three panels can be shown or hidden independently.*
 
- ![Lightbox toolbar showing all action buttons](assets/lightbox_toolbar.png)
+**Enhanced Player Controls:** The custom video/audio player now supports Spacebar to Play/Pause, arrow keys to seek by 5 seconds, and full volume/mute controls (Shortcut `M`).
 
-*The Lightbox toolbar: / MENU · − · + · Rotate · Download · Clean Export · Rename · Node Summary · Ratings&Comments · Workflow · Copy JSON · Delete · Open in New Tab · × Exit*
+**Dynamic Audio Waveforms:** If `GENERATE_WAVEFORMS=true` is set, visual audio tracks will map onto the seek bar. A dedicated amplitude slider (🌊) lets you visually boost or reduce the waveform height in real time—a rare feature that saves you from needing to regenerate the media file.
 
 **Toolbar Buttons:**
 
@@ -972,7 +1003,7 @@ SmartGallery uses FFmpeg to extract **11 perfectly spaced frames** and display t
 
 ## 3.3 Digital Asset Management (DAM) & Communication
 
-### 3.3.1 Virtual Collections
+### 3.3.1 Virtual Collections & Sharing
 
 Collections are **virtual albums** — group files from different physical folders without moving them on disk.
 
@@ -980,16 +1011,17 @@ Collections are **virtual albums** — group files from different physical folde
 
 *Left: Collections sidebar tab with the context menu (Rename, Set as Exhibition Ready, Delete). Right: Manage Collections modal — add or remove the selected file from any collection, with pending changes shown.*
 
--   **Create:** Collections tab in the sidebar → `+` → name it → choose Public or Private.
+-   **Create:** Collections tab in the sidebar → `+` → name it → choose Public, Private, or select specific users.
 -   **Add files:** Select files → click 📚 in the Selection Bar or press `A`.
 -   **Untag (`U`):** Remove files from the current collection without deleting them from disk.
 
-#### Exhibition Ready vs. Private
+#### Exhibition Ready vs. Private vs. Shared
 
-Click `⋮` next to any collection to toggle **Exhibition Ready** status:
+Click `⋮` next to any collection to manage visibility:
 
 -   **Private (default):** Strictly internal. Invisible to clients and guests.
--   **Exhibition Ready 👁:** Pushed to the Exhibition Portal, visible to clients and guests. Toggleable at any time.
+-   **Exhibition Ready 👁:** Pushed to the Exhibition Portal, visible to ALL clients and guests.
+-   **Shared Access 👥:** Click "Share / Permissions" to assign a collection *exclusively* to specific clients or users.
 
 ---
 
@@ -1028,10 +1060,12 @@ Both interfaces share a **unified communication database**. Press `G` on any ima
 
 *The Ratings & Comments panel: Global Rating (average of all users), your personal vote with Reset button, file's collections and pipeline status, and comment thread.*
 
-#### Ratings
+#### Ratings & Transparency
 
 -   Click ⭐ stars (1–5) to cast a personal vote. Click 🗑 **Reset** to remove it.
 -   **Global Rating** = average of all users (staff + clients in Exhibition).
+-   **Rating Details (👁️):** Click the "Details" icon next to the global rating to see exactly *who* voted and what rating they gave.
+-   **Blind Rating Mode:** Use `--blind-rating` at launch to force users to rate without seeing the global average, eliminating group bias. 
 -   **Batch rating:** select multiple files → press `Shift+R`.
 
 #### Comments & Visibility
@@ -1058,7 +1092,7 @@ If you work alone, skip this section — the system works without it.
 
  ![User Management panel with role table and user creation form](assets/user_management_modal.png)
 
-*User Management panel: role permissions table (Admin/Manager/Staff, Friend, User/Customer/Guest), and the user registration form below.*
+*User Management panel: role permissions table (Admin/Manager/Staff, Friend, User/Customer/Guest), user registration form, and login timestamp tracking.*
 
 Click the 👥 icon at the bottom of the sidebar to open the User Management panel.
 
@@ -1076,9 +1110,13 @@ Click the 👥 icon at the bottom of the sidebar to open the User Management pan
 -   **USER / CUSTOMER / GUEST:** Exhibition only. All downloads are metadata-stripped — no workflow can be recovered even with external tools.
 -   **Guest (anonymous):** With `--enable-guest-login`, anonymous users browse Exhibition without an account; they choose a nickname before posting their first comment.
 
+### User Analytics
+
+The User Manager panel now displays the **Last Login timestamp** for every user. You can easily sort the user list by this timestamp, making it incredibly easy for admins to monitor client activity and see exactly who has recently engaged with the Exhibition portal.
+
 ### Creating a User Account
 
-Fill in: **User ID** (login name) · **Password** (min. 8 chars) · **Full Name** (display name) · **Email** (optional) · **Role** · **Expiration** (optional) · **Active** toggle.
+Fill in: **User ID** (login name) · **Password** (min. 8 chars) · **Full Name** (display name) · **Email** (optional) · **Phone** (optional) · **Role** · **Expiration** (optional) · **Active** toggle.
 
 ---
 
@@ -1090,13 +1128,14 @@ Fill in: **User ID** (login name) · **Password** (min. 8 chars) · **Full Name*
 
 ![Exhibition Portal grid showing curated collections with ratings and comment counts on each card](assets/hero_exhibition_portal.png)
 
-*The Exhibition Portal: clean, curated grid showing only Exhibition Ready collections. Each card shows the global average rating and comment count. No prompts, no folders, no workflow data visible.*
+*The Exhibition Portal: clean, curated grid showing only assigned/public collections. Each card shows the rating and comment count. No prompts, no folders, no workflow data visible.*
 
 The Exhibition portal is designed for non-technical users — clients, art directors, friends.
 
 -   **Strictly Read-Only:** Guests can vote and comment; they cannot delete, move, rename, or alter files.
 -   **Metadata Stripped:** Workflows, prompts, and EXIF are completely hidden. Downloads are always clean.
--   **Curated View:** Guests see only collections marked Exhibition Ready by the Admin.
+-   **Curated View:** Guests see only public collections OR collections explicitly shared with them by the Admin.
+-   **Blind Rating System:** If the server is launched with `--blind-rating`, clients will only see their own ratings, ensuring completely unbiased feedback.
 
 **Grid & Navigation:**
 -   **Sidebar:** Switch between collections, search by collection name.
@@ -1109,7 +1148,7 @@ The Exhibition portal is designed for non-technical users — clients, art direc
 
 ![Theater Mode in Exhibition showing image with ratings panel open on the right, with comment thread and post form](assets/theater_comments_panel.png)
 
-*Theater Mode: full-resolution image with the Ratings & Comments panel open. Shows the global average rating, the user's personal vote, and a comment thread with visibility badges (To: John Doe, Private Staff Only).*
+*Theater Mode: full-resolution image with the Ratings & Comments panel open. Shows the global average rating, the user's personal vote, and a comment thread with visibility badges.*
 
 Clicking any image opens it in the **Theater** — the Exhibition's version of the Lightbox.
 
@@ -1249,6 +1288,7 @@ Docker users: the same approach works identically. Run your Exhibition container
 | Shortcut | Action |
 |---|---|
 | `V` / `Enter` | Open Lightbox (full screen view) |
+| `I` | Display actual file path and real-source mapping (Diagnostic) |
 | `X` / `Space` | Select / deselect item |
 | `N` | View Node Summary (ComfyUI generation data) |
 | `F` | Toggle Favorite |
@@ -1296,6 +1336,8 @@ Docker users: the same approach works identically. Run your Exhibition container
 | Shortcut | Action |
 |---|---|
 | `←` / `→` | Navigate previous / next media |
+| `Space` | Play/Pause video or audio |
+| `M` | Mute/Unmute audio |
 | `+` / `-` | Zoom in / out |
 | `0` | Reset zoom and pan |
 | `T` | Rotate media 90° |
@@ -1355,9 +1397,12 @@ Docker users: the same approach works identically. Run your Exhibition container
 | Shortcut | Action |
 |---|---|
 | `←` / `→` | Navigate previous / next media |
+| `Space` | Play/Pause video or audio |
+| `M` | Mute/Unmute audio |
 | `/` | Open Quick Action Menu |
 | `H` | Toggle toolbar (clean view) |
 | `G` | Toggle Ratings and Comments panel |
+| `B` | Toggle Admin Blind Rating Override (Admins/Staff only) |
 | `T` | Rotate media 90° |
 | `+` / `-` | Zoom in / out |
 | `0` | Reset zoom and rotation |
@@ -1401,14 +1446,13 @@ MIT License. See [LICENSE](LICENSE)
 
 ---
 
-> ### 🎞️ **High-level video overview**
+> ### 🎞️ **Presentation Video**
 >
 > <div align="center">
->   <a href="https://smartgallerydam.com/smartgallery-dam.mp4">
->     <img src="assets/video-concepts-readme-page.png" width="550" alt="Watch the video overview">
+>   <a href="https://smartgallerydam.com/smartgallerydam_2.12.mp4">
+>     <img src="assets/media_hub_01.png" width="550" alt="Watch the presentation video">
 >   </a>
 >   <br>
->   <em>If you have 6 minutes, watch this video to understand the concept and strategy behind SmartGallery DAM.</em><br>
 >   <em>(Click on the image to play the video)</em>
 > </div>
 
@@ -1419,5 +1463,3 @@ MIT License. See [LICENSE](LICENSE)
   <br><br>
   <em>Made for the ComfyUI community and every digital creator who takes their work seriously.</em>
 </p>
-
----

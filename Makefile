@@ -5,7 +5,7 @@ endif
 
 .PHONY: all build_main build_exp build_core run kill buildx_rm docker_tag docker_push
 
-SMARTGALLERY_VERSION = 2.11
+SMARTGALLERY_VERSION = 2.12
 
 DOCKERFILE = Dockerfile
 DOCKER_TAG_PRE = smartgallery
@@ -20,7 +20,7 @@ SMARTGALLERY_CONTAINER_NAME_EXP = ${DOCKER_TAG_PRE}:${DOCKER_TAG_POST_EXP}
 # used for builfx
 SMARTGALLERY_NAME = ${DOCKER_TAG_PRE}
 
-TEMPLATE_FILE=templates/index.html
+TEMPLATE_DIR=templates
 SMARTGALLERY_FILE=smartgallery.py
 
 # Try to optimize caching for development
@@ -32,9 +32,9 @@ BUILD_APT_PROXY ?=
 EXP_FOLDER=experiments
 # if EXP_FOLDER/templates/index.html exists, set EXP_TEMPLATE_FILE to it
 ifneq (,$(wildcard ${EXP_FOLDER}/templates/index.html))
-	EXP_TEMPLATE_FILE=${EXP_FOLDER}/templates/index.html
+	EXP_TEMPLATE_DIR=${EXP_FOLDER}/templates
 else
-	EXP_TEMPLATE_FILE=${TEMPLATE_FILE}
+	EXP_TEMPLATE_DIR=${TEMPLATE_DIR}
 endif
 # Same with smartgallery.py
 ifneq (,$(wildcard ${EXP_FOLDER}/smartgallery.py))
@@ -73,10 +73,10 @@ all:
 	@echo "Available targets: build build_exp run kill buildx_rm"
 
 build:
-	CHOOSEN_NAME=${SMARTGALLERY_NAME} CHOOSEN_CONTAINER_NAME=${SMARTGALLERY_CONTAINER_NAME} CHOOSEN_TEMPLATE_FILE=${TEMPLATE_FILE} CHOOSEN_SMARTGALLERY_FILE=${SMARTGALLERY_FILE} make build_core
+	CHOOSEN_NAME=${SMARTGALLERY_NAME} CHOOSEN_CONTAINER_NAME=${SMARTGALLERY_CONTAINER_NAME} CHOOSEN_TEMPLATE_DIR=${TEMPLATE_DIR} CHOOSEN_SMARTGALLERY_FILE=${SMARTGALLERY_FILE} make build_core
 
 build_exp:
-	CHOOSEN_NAME=${SMARTGALLERY_NAME_EXP} CHOOSEN_CONTAINER_NAME=${SMARTGALLERY_CONTAINER_NAME_EXP} CHOOSEN_TEMPLATE_FILE=${EXP_TEMPLATE_FILE} CHOOSEN_SMARTGALLERY_FILE=${EXP_SMARTGALLERY_FILE} make build_core
+	CHOOSEN_NAME=${SMARTGALLERY_NAME_EXP} CHOOSEN_CONTAINER_NAME=${SMARTGALLERY_CONTAINER_NAME_EXP} CHOOSEN_TEMPLATE_DIR=${EXP_TEMPLATE_DIR} CHOOSEN_SMARTGALLERY_FILE=${EXP_SMARTGALLERY_FILE} make build_core
 
 build_core:
 	@echo ""; echo ""; echo "===== Building ${CHOOSEN_CONTAINER_NAME}"
@@ -94,7 +94,7 @@ build_core:
 		echo "docker buildx use default || exit 1" > ${VAR_NT}.cmd; \
 	fi
 	@echo "BUILDX_EXPERIMENTAL=1 ${DOCKER_PRE} docker buildx debug --on=error build --progress plain ${DOCKER_BUILD_ARGS} \\" >> ${VAR_NT}.cmd
-	@echo "  --build-arg CHOOSEN_TEMPLATE_FILE=\"${CHOOSEN_TEMPLATE_FILE}\" \\" >> ${VAR_NT}.cmd
+	@echo "  --build-arg CHOOSEN_TEMPLATE_DIR=\"${CHOOSEN_TEMPLATE_DIR}\" \\" >> ${VAR_NT}.cmd
 	@echo "  --build-arg CHOOSEN_SMARTGALLERY_FILE=\"${CHOOSEN_SMARTGALLERY_FILE}\" \\" >> ${VAR_NT}.cmd
 	@echo "  --build-arg BUILD_APT_PROXY=\"${BUILD_APT_PROXY}\" \\" >> ${VAR_NT}.cmd
 	@echo "  --tag=\"${CHOOSEN_CONTAINER_NAME}\" \\" >> ${VAR_NT}.cmd

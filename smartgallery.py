@@ -1,7 +1,7 @@
-# Smart Gallery DAM for ComfyUI
+# SmartGallery DAM for ComfyUI
 # Author: Biagio Maffettone © 2025-2026 — MIT License (free to use and modify)
 #
-# Version: 2.11 - April 08, 2026
+# Version: 2.12 - May 08, 2026
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -314,6 +314,7 @@ IS_EXHIBITION_MODE = False
 #   Docker:      -e ENABLE_AI_SEARCH=false
 #
 ENABLE_AI_SEARCH = os.environ.get('ENABLE_AI_SEARCH', 'false').lower() == 'true'
+GENERATE_WAVEFORMS = os.environ.get('GENERATE_WAVEFORMS', 'false').lower() == 'true'
 
 # ============================================================================
 # END OF USER CONFIGURATION
@@ -329,8 +330,8 @@ AI_MODELS_FOLDER_NAME = '.AImodels'
 ENABLE_DAM_MODE = True
 
 # --- APP INFO ---
-APP_VERSION = "2.11"
-APP_VERSION_DATE = "April 08, 2026"
+APP_VERSION = "2.12"
+APP_VERSION_DATE = "May 08, 2026"
 GITHUB_REPO_URL = "https://github.com/biagiomaf/smart-comfyui-gallery"
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/biagiomaf/smart-comfyui-gallery/main/smartgallery.py"
 
@@ -338,12 +339,13 @@ GITHUB_RAW_URL = "https://raw.githubusercontent.com/biagiomaf/smart-comfyui-gall
 # RUNTIME FLAGS (Set via command line arguments)
 # ============================================================================
 import argparse
-_parser = argparse.ArgumentParser(description="Smart Gallery DAM for ComfyUI")
+_parser = argparse.ArgumentParser(description="SmartGallery DAM for ComfyUI")
 _parser.add_argument('--exhibition', action='store_true', help="Start in Exhibition Mode")
 _parser.add_argument('--enable-guest-login', action='store_true', help="Allow anyone to login as Guest without password")
 _parser.add_argument('--port', type=int, default=None, help="Override server port")
 _parser.add_argument('--admin-pass', type=str, help="Set or reset the Admin password")
 _parser.add_argument('--force-login', action='store_true', help="Force login for the standard index.html interface")
+_parser.add_argument('--blind-rating', action='store_true', help="Hide global average ratings to prevent user bias")
 
 _args, _unknown = _parser.parse_known_args()
 
@@ -352,9 +354,15 @@ if _args.port:
     SERVER_PORT = _args.port
 ENABLE_GUEST_LOGIN = _args.enable_guest_login
 FORCE_LOGIN = _args.force_login
+BLIND_RATING = _args.blind_rating
 
 # Priority: CLI Param > Environment Variable
 ADMIN_PASS_INPUT = _args.admin_pass or os.environ.get('ADMIN_PASSWORD')
+
+# If an admin password is provided, automatically enforce login
+if ADMIN_PASS_INPUT:
+    FORCE_LOGIN = True
+
 # Security Lockdown: If either restricted mode is requested but no password is provided
 ADMIN_CONFIG_MISSING = (IS_EXHIBITION_MODE or FORCE_LOGIN) and not ADMIN_PASS_INPUT
 # Security Enhancement: Enforce minimum length of 8 characters for the admin password
@@ -520,12 +528,42 @@ def print_configuration():
     print_row("Thumbnail Width", f"{THUMBNAIL_WIDTH}px")
     print_row("WebP Animated FPS", WEBP_ANIMATED_FPS)
     print_row("Page Size", PAGE_SIZE)
-    print_row("Batch Size", BATCH_SIZE)
     print_row("Stream Threshold", f"{STREAM_THRESHOLD_MB} MB")
     print_row("Max Parallel Workers", MAX_PARALLEL_WORKERS if MAX_PARALLEL_WORKERS else "All Cores")
-    print_row("DAM Mode (Pro)", "Enabled" if ENABLE_DAM_MODE else "Disabled")
+    
+    # Process Command Line Arguments to display them securely
+    import sys
+    cli_args = sys.argv[1:]
+    if not cli_args:
+        cli_display = "None"
+    else:
+        masked_args =[]
+        skip_next = False
+        for i, arg in enumerate(cli_args):
+            if skip_next:
+                skip_next = False
+                continue
+            
+            # Handle space-separated password argument
+            if arg == '--admin-pass':
+                masked_args.append('--admin-pass ********')
+                # If there is a value after --admin-pass, skip it in the next loop iteration
+                if i + 1 < len(cli_args):
+                    skip_next = True
+            # Handle equals-separated password argument (e.g. --admin-pass=12345)
+            elif arg.startswith('--admin-pass='):
+                masked_args.append('--admin-pass=********')
+            else:
+                masked_args.append(arg)
+                
+        cli_display = " ".join(masked_args)
+
     if ENABLE_AI_SEARCH:
         print_row("AI Search", "Enabled" if ENABLE_AI_SEARCH else "Disabled")
+    if GENERATE_WAVEFORMS:
+        print_row("Audio Waveforms", "Enabled")
+    
+    print(f" {Colors.BOLD}{'CLI Parameters':<25}{Colors.RESET} : {Colors.YELLOW}{cli_display}{Colors.RESET}")
     print(f"{Colors.HEADER}-----------------------------{Colors.RESET}\n")
 
 def management_api_only(f):
@@ -1239,6 +1277,30 @@ def analyze_file_metadata(filepath):
     if total_duration_sec > 0: details['duration'] = format_duration(total_duration_sec)
     return details
 
+def create_waveform(filepath, file_hash, file_type, amp=1.0):
+    if not GENERATE_WAVEFORMS or not FFPROBE_EXECUTABLE_PATH: return None
+    suffix = f"_{amp}" if amp != 1.0 else ""
+    cache_path = os.path.join(THUMBNAIL_CACHE_DIR, f"{file_hash}_wave{suffix}.png")
+    if os.path.exists(cache_path): return cache_path
+    
+    try:
+        ffmpeg_name = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
+        ffmpeg_bin = os.path.join(os.path.dirname(FFPROBE_EXECUTABLE_PATH), ffmpeg_name)
+        if not os.path.exists(ffmpeg_bin): ffmpeg_bin = ffmpeg_name
+        
+        # Generates a white waveform on black background
+        cmd =[
+            ffmpeg_bin, '-y', '-i', filepath,
+            '-filter_complex', f'volume={amp},showwavespic=s=1000x120:colors=white',
+            '-frames:v', '1', '-c:v', 'png', cache_path
+        ]
+        cf = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=20, creationflags=cf)
+        if os.path.exists(cache_path): return cache_path
+    except Exception:
+        pass # Silently fail if corrupted or timeout
+    return None
+
 def create_thumbnail(filepath, file_hash, file_type):
     Image.MAX_IMAGE_PIXELS = None 
     
@@ -1552,6 +1614,9 @@ def process_single_file(filepath):
         if not glob.glob(os.path.join(THUMBNAIL_CACHE_DIR, f"{file_hash_for_thumbnail}.*")):
             create_thumbnail(filepath, file_hash_for_thumbnail, metadata['type'])
         
+        if GENERATE_WAVEFORMS and metadata['type'] in ['video', 'audio']:
+            create_waveform(filepath, file_hash_for_thumbnail, metadata['type'])
+        
         file_id = hashlib.md5(filepath.encode()).hexdigest()
         file_size = os.path.getsize(filepath)
         
@@ -1765,7 +1830,17 @@ def init_db(conn=None):
             );
         ''')
         # Index for faster login lookups
-        conn.execute('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);')    
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);')
+        
+        # --- MIGRATION: Add last_login to users table ---
+        try:
+            cursor_usr = conn.execute("PRAGMA table_info(users)")
+            usr_columns = {row['name'] for row in cursor_usr.fetchall()}
+            if 'last_login' not in usr_columns:
+                print("INFO: Updating Database Schema... Adding 'last_login' to users")
+                conn.execute("ALTER TABLE users ADD COLUMN last_login REAL")
+        except Exception as e:
+            print(f"WARNING: Could not migrate users table: {e}")    
         
         # 6. COLUMN MIGRATION
         required_columns = {
@@ -1796,6 +1871,9 @@ def init_db(conn=None):
             if 'is_public' not in col_columns:
                 print("INFO: Updating Database Schema... Adding 'is_public' to collections")
                 conn.execute("ALTER TABLE collections ADD COLUMN is_public INTEGER DEFAULT 0")
+            if 'shared_users' not in col_columns:
+                print("INFO: Updating Database Schema... Adding 'shared_users' to collections")
+                conn.execute("ALTER TABLE collections ADD COLUMN shared_users TEXT DEFAULT ''")
         except Exception as e:
             print(f"WARNING: Could not migrate collections table: {e}")
 
@@ -2429,7 +2507,7 @@ def pregenerate_exhibition_cache():
             FROM files f
             JOIN collection_files cf ON f.id = cf.file_id
             JOIN collections c ON cf.collection_id = c.id
-            WHERE c.is_public = 1 AND c.type = 'user_album'
+            WHERE c.type = 'user_album' AND (c.is_public = 1 OR c.shared_users != '')
         """
         rows = conn.execute(query).fetchall()
         
@@ -2822,6 +2900,14 @@ def exhibition_login():
                 is_valid = (password == stored_password)
                 
             if is_valid:
+                # Update last login timestamp
+                try:
+                    import time
+                    conn.execute("UPDATE users SET last_login = ? WHERE user_id = ?", (time.time(), user['user_id']))
+                    conn.commit()
+                except Exception as e:
+                    print(f"Login timestamp update error: {e}")
+                
                 session.permanent = False
                 session['user_id'] = str(user['user_id'])
                 session['username'] = user['username']
@@ -3496,7 +3582,9 @@ def gallery_view(folder_key):
             # Extract ID part (can be 'all' or a numeric string)
             coll_id_raw = folder_key.split('_', 1)[1]
             if coll_id_raw == 'all' or coll_id_raw.isdigit():
-                return redirect(url_for('collection_view', coll_id=coll_id_raw, **request.args))
+                # FIX: Convert MultiDict to dict with lists to preserve multi-select filters
+                args_dict = request.args.to_dict(flat=False)
+                return redirect(url_for('collection_view', coll_id=coll_id_raw, **args_dict))
         except IndexError:
             pass
 
@@ -3532,6 +3620,8 @@ def gallery_view(folder_key):
     end_date = request.args.get('end_date', '').strip()
     selected_exts = request.args.getlist('extension')
     selected_prefixes = request.args.getlist('prefix')
+    selected_raters = request.args.getlist('rated_by')
+    selected_rating_ranges = request.args.getlist('rating_range')
 
     is_ai_search = False
     ai_query_text = ""
@@ -3699,6 +3789,31 @@ def gallery_view(folder_key):
                 try: conditions.append("mtime <= ?"); params.append(datetime.strptime(end_date, '%Y-%m-%d').timestamp() + 86399)
                 except: pass
 
+            if selected_rating_ranges:
+                r_conds = []
+                avg_sql = "IFNULL((SELECT AVG(rating) FROM file_ratings WHERE file_id = f.id), 0)"
+                for rr in selected_rating_ranges:
+                    if rr == '0 stars': r_conds.append(f"{avg_sql} = 0")
+                    elif rr == '1-2 stars': r_conds.append(f"({avg_sql} > 0 AND {avg_sql} <= 2)")
+                    elif rr == '2-3 stars': r_conds.append(f"({avg_sql} > 2 AND {avg_sql} <= 3)")
+                    elif rr == '3-4 stars': r_conds.append(f"({avg_sql} > 3 AND {avg_sql} <= 4)")
+                    elif rr == '4-5 stars': r_conds.append(f"({avg_sql} > 4 AND {avg_sql} <= 5)")
+                if r_conds:
+                    conditions.append(f"({' OR '.join(r_conds)})")
+
+            if selected_raters:
+                expanded_raters = list(selected_raters)
+                if 'admin' in expanded_raters:
+                    try:
+                        admin_id = conn.execute("SELECT user_id FROM users WHERE username = 'admin'").fetchone()
+                        if admin_id and str(admin_id[0]) not in expanded_raters:
+                            expanded_raters.append(str(admin_id[0]))
+                    except:
+                        pass
+                placeholders = ','.join(['?'] * len(expanded_raters))
+                conditions.append(f"f.id IN (SELECT file_id FROM file_ratings WHERE client_uuid IN ({placeholders}))")
+                params.extend(expanded_raters)
+
             if selected_exts:
                 e_cond = [f"name LIKE ?" for e in selected_exts if e.strip()]
                 params.extend([f"%.{e.lstrip('.').lower()}" for e in selected_exts if e.strip()])
@@ -3708,7 +3823,7 @@ def gallery_view(folder_key):
                 p_cond = [f"name LIKE ?" for p in selected_prefixes if p.strip()]
                 params.extend([f"{p.strip()}_%" for p in selected_prefixes if p.strip()])
                 if p_cond: conditions.append(f"({' OR '.join(p_cond)})")
-
+                
             req_sort_by = request.args.get('sort_by', 'date')
             sort_order = "ASC" if request.args.get('sort_order', 'desc').lower() == 'asc' else "DESC"
             
@@ -3730,8 +3845,29 @@ def gallery_view(folder_key):
             if req_sort_by == 'name':
                 order_clause = f"f.name {sort_order}"
             elif req_sort_by == 'rating':
-                conditions.append("f.id IN (SELECT file_id FROM file_ratings)")
-                order_clause = f"avg_rating {sort_order}, f.mtime DESC"
+                if is_effectively_blind():
+
+                    conditions.append(f"f.id IN (SELECT file_id FROM file_ratings WHERE client_uuid = '{safe_uuid}')")
+
+                    order_clause = f"my_rating {sort_order}, f.mtime DESC"
+
+                else:
+
+                    conditions.append("f.id IN (SELECT file_id FROM file_ratings)")
+
+                    order_clause = f"avg_rating {sort_order}, f.mtime DESC"
+            elif req_sort_by == 'unrated':
+                if is_effectively_blind():
+                    conditions.append(f"f.id NOT IN (SELECT file_id FROM file_ratings WHERE client_uuid = '{safe_uuid}')")
+                else:
+                    conditions.append("f.id NOT IN (SELECT file_id FROM file_ratings)")
+                order_clause = f"f.mtime {sort_order}"
+            elif req_sort_by == 'uncommented':
+                if is_effectively_blind():
+                    conditions.append(f"f.id NOT IN (SELECT file_id FROM file_comments WHERE client_uuid = '{safe_uuid}')")
+                else:
+                    conditions.append("f.id NOT IN (SELECT file_id FROM file_comments)")
+                order_clause = f"f.mtime {sort_order}"
             elif req_sort_by == 'comments':
                 conditions.append(f"f.id IN ({comment_exists_filter})")
                 order_clause = f"comment_count {sort_order}, f.mtime DESC"
@@ -3758,6 +3894,7 @@ def gallery_view(folder_key):
                 (
                     SELECT COUNT(*) FROM file_ratings WHERE file_id = f.id
                 ) as vote_count,
+            (SELECT rating FROM file_ratings WHERE file_id = f.id AND client_uuid = '{safe_uuid}') as my_rating,
                 (
                     SELECT COUNT(*) FROM file_comments WHERE file_id = f.id {comment_sub_filter}
                 ) as comment_count,
@@ -3806,6 +3943,8 @@ def gallery_view(folder_key):
     if end_date: active_filters_count += 1
     if selected_exts: active_filters_count += 1
     if selected_prefixes: active_filters_count += 1
+    if selected_raters: active_filters_count += 1
+    if selected_rating_ranges: active_filters_count += 1
     if request.args.get('favorites') == 'true': active_filters_count += 1
     if request.args.get('no_workflow') == 'true': active_filters_count += 1
     if ENABLE_AI_SEARCH and request.args.get('no_ai_caption') == 'true': active_filters_count += 1
@@ -3821,6 +3960,12 @@ def gallery_view(folder_key):
 
         scope_for_opts = 'global' if is_global_search else 'local'
         extensions, prefixes, pfx_limit = get_filter_options_from_db(conn_opts, scope_for_opts, folder_path, recursive=is_recursive)
+        try:
+            users_rows = conn_opts.execute("SELECT user_id, full_name FROM users WHERE is_active=1 AND username != 'admin'").fetchall()
+            available_raters = [{'id': str(r['user_id']), 'name': r['full_name']} for r in users_rows]
+        except:
+            available_raters =[]
+        available_raters.insert(0, {'id': 'admin', 'name': 'System Admin'})
     
     breadcrumbs, ancestor_keys = [], set()
     
@@ -3837,6 +3982,13 @@ def gallery_view(folder_key):
         breadcrumbs.append({'key': '_root_', 'display_name': 'Exhibition Home'})
     
     # --- TEMPLATE SELECTION ---
+    try:
+        with get_db_connection() as conn_opts:
+            users_rows = conn_opts.execute("SELECT user_id, full_name FROM users WHERE is_active=1 AND username != 'admin'").fetchall()
+            available_raters = [{'id': str(r['user_id']), 'name': r['full_name']} for r in users_rows]
+    except:
+        available_raters =[]
+    available_raters.insert(0, {'id': 'admin', 'name': 'System Admin'})
     template_name = 'exhibition.html' if IS_EXHIBITION_MODE else 'index.html'
 
     return render_template(template_name, 
@@ -3854,15 +4006,16 @@ def gallery_view(folder_key):
                            prefix_limit_reached=pfx_limit,  
                            selected_extensions=selected_exts, 
                            selected_prefixes=selected_prefixes,
+                           available_raters=available_raters, selected_raters=selected_raters, selected_rating_ranges=selected_rating_ranges,
                            protected_folder_keys=list(PROTECTED_FOLDER_KEYS),
                            show_favorites=request.args.get('favorites', 'false').lower() == 'true',
-                           enable_ai_search=ENABLE_AI_SEARCH, is_ai_search=False, ai_query="",
+                           generate_waveforms=GENERATE_WAVEFORMS, enable_ai_search=ENABLE_AI_SEARCH, is_ai_search=False, ai_query="",
                            is_global_search=is_global_search, 
                            active_filters_count=active_filters_count, 
                            current_scope=search_scope,
                            is_recursive=is_recursive,
                            server_dam_default=ENABLE_DAM_MODE,
-                           is_exhibition_mode=IS_EXHIBITION_MODE, # Pass flag to template
+                           is_exhibition_mode=IS_EXHIBITION_MODE, blind_rating=is_effectively_blind(), global_blind_active=BLIND_RATING, # Pass flag to template
                            app_version=APP_VERSION, github_url=GITHUB_REPO_URL,
                            update_available=UPDATE_AVAILABLE, remote_version=REMOTE_VERSION,
                            ffmpeg_available=(FFPROBE_EXECUTABLE_PATH is not None),
@@ -4532,6 +4685,14 @@ def delete_folder(folder_key):
         print(f"Delete Folder Error: {e}")
         return jsonify({'status': 'error', 'message': f'Error: {e}'}), 500
     
+
+@app.route('/galleryout/api/current_view_ids')
+def get_current_view_ids():
+    """Returns all file IDs currently in the global search cache."""
+    global gallery_view_cache
+    ids = [f['id'] for f in gallery_view_cache]
+    return jsonify({'status': 'success', 'ids': ids})
+
 @app.route('/galleryout/load_more')
 def load_more():
     offset = request.args.get('offset', 0, type=int)
@@ -5159,6 +5320,34 @@ def get_node_summary(file_id):
         print(f"ERROR generating node summary: {e}")
         return jsonify({'status': 'error', 'message': str(e)})
 
+@app.route('/galleryout/waveform/<string:file_id>')
+def serve_waveform(file_id):
+    if not GENERATE_WAVEFORMS: abort(404)
+    info = get_file_info_from_db(file_id)
+    filepath = info['path']
+    file_type = info['type']
+    file_hash = hashlib.md5((filepath + str(info['mtime'])).encode()).hexdigest()
+    
+    try:
+        amp = float(request.args.get('amp', '1.0'))
+    except ValueError:
+        amp = 1.0
+        
+    suffix = f"_{amp}" if amp != 1.0 else ""
+    cache_path = os.path.join(THUMBNAIL_CACHE_DIR, f"{file_hash}_wave{suffix}.png")
+    
+    # 1. Return cached waveform if it exists
+    if os.path.exists(cache_path): 
+        return send_file(cache_path, mimetype='image/png')
+        
+    # 2. On-the-fly generation for old/existing files
+    if file_type in ['video', 'audio']:
+        new_cache_path = create_waveform(filepath, file_hash, file_type, amp)
+        if new_cache_path and os.path.exists(new_cache_path):
+            return send_file(new_cache_path, mimetype='image/png')
+            
+    abort(404)
+
 @app.route('/galleryout/thumbnail/<string:file_id>')
 def serve_thumbnail(file_id):
     info = get_file_info_from_db(file_id)
@@ -5770,14 +5959,51 @@ def stream_video(file_id):
 
 # --- COLLECTIONS / CATEGORIES API ---
 
+
 @app.route('/galleryout/api/collections', methods=['GET'])
 def get_collections():
+    user_id = str(session.get('user_id', '')).strip()
+    user_role = session.get('role', 'GUEST')
     with get_db_connection() as conn:
-        flags = conn.execute("SELECT * FROM collections WHERE type='system_flag' ORDER BY id").fetchall()
-        albums = conn.execute("SELECT * FROM collections WHERE type='user_album' ORDER BY name").fetchall()
+        # Fetch collections and force field types
+        rows = conn.execute("SELECT * FROM collections ORDER BY name").fetchall()
+        
+        filtered = []
+        for r in rows:
+            c = dict(r)
+            
+            # Logic for Exhibition Mode
+            if IS_EXHIBITION_MODE and user_role not in ['ADMIN', 'MANAGER', 'STAFF']:
+                if c['type'] == 'system_flag': continue
+                
+                # Check Public flag
+                is_public = int(c.get('is_public', 0)) == 1
+                
+                # Robust Shared Users extraction
+                shared_raw = str(c.get('shared_users', '')).split(',')
+                # Remove spaces, ensure they are strings
+                shared_list = [str(uid).strip() for uid in shared_raw if uid.strip()]
+                
+                #DEBUG: Log what we are comparing
+                #print(f"DEBUG: Comparing UserID '{user_id}' against shared_list {shared_list}", c['name'])
+                
+                if not is_public and str(user_id) not in shared_list:
+                    continue
+                if not is_public and str(user_id) in shared_list:
+                    c['is_shared_access'] = True
+            
+            if IS_EXHIBITION_MODE and user_role in ['ADMIN', 'MANAGER', 'STAFF']:
+                # Robust Shared Users extraction
+                shared_raw = str(c.get('shared_users', '')).split(',')
+                # Remove spaces, ensure they are strings
+                shared_list =[str(uid).strip() for uid in shared_raw if uid.strip()]
+                if shared_list:
+                    c['is_shared_access'] = True
+                
+            filtered.append(c)
         return jsonify({
-            'flags': [dict(r) for r in flags],
-            'albums': [dict(r) for r in albums]
+            'flags': [c for c in filtered if c['type'] == 'system_flag'],
+            'albums': [c for c in filtered if c['type'] == 'user_album']
         })
 
 @app.route('/galleryout/api/sidebar_state')
@@ -5882,6 +6108,33 @@ def toggle_collection_public():
         print(f"Toggle Public Error: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
     
+
+@app.route('/galleryout/api/collections/share', methods=['POST'])
+@management_api_only
+def share_collection():
+    data = request.json
+    coll_id = data.get('id')
+    user_ids = data.get('user_ids', []) # List of user ID strings
+    
+    if not coll_id:
+        return jsonify({'status': 'error', 'message': 'ID required'}), 400
+        
+    try:
+        # Join IDs with commas
+        shared_str = ','.join(str(uid) for uid in user_ids)
+        
+        with get_db_connection() as conn:
+            # Force is_public to 0 if we are setting specific users (to avoid logic conflicts)
+            if shared_str:
+                conn.execute("UPDATE collections SET shared_users = ?, is_public = 0 WHERE id = ?", (shared_str, coll_id))
+            else:
+                conn.execute("UPDATE collections SET shared_users = ? WHERE id = ?", (shared_str, coll_id))
+            conn.commit()
+            
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
 @app.route('/galleryout/api/file_collections/<string:file_id>')
 def get_file_collections(file_id):
     """Returns a list of all collections and status flags associated with a file."""
@@ -6078,9 +6331,21 @@ def collection_view(coll_id):
 
     # --- EXHIBITION SECURITY: Only allow PUBLIC content ---
     if IS_EXHIBITION_MODE:
-        # In Exhibition mode, "all" is allowed, but specific collections must be public
-        if not is_all_mode and (coll_info['type'] == 'system_flag' or not coll_info['is_public']):
-             return redirect(url_for('gallery_view', folder_key='_root_'))
+        # In Exhibition mode, "all" is allowed, but specific collections must be public OR shared with the current user
+        if not is_all_mode and coll_info['type'] == 'system_flag':
+            return redirect(url_for('gallery_view', folder_key='_root_'))
+        
+        if not is_all_mode and not coll_info['is_public']:
+            # It's private. Check if shared with this specific user OR if user is Staff
+            user_id = str(session.get('user_id', ''))
+            user_role = session.get('role', 'GUEST')
+            is_local_admin = (not FORCE_LOGIN and not IS_EXHIBITION_MODE)
+            is_privileged = is_local_admin or (user_role in ['ADMIN', 'MANAGER', 'STAFF'])
+            
+            shared_list = [u.strip() for u in str(coll_info.get('shared_users', '')).split(',') if u.strip()]
+            
+            if not is_privileged and user_id not in shared_list:
+                return redirect(url_for('gallery_view', folder_key='_root_'))
 
     # 2. Capture Filter Parameters
     search_term = request.args.get('search', '').strip()
@@ -6091,6 +6356,8 @@ def collection_view(coll_id):
     end_date = request.args.get('end_date', '').strip()
     selected_exts = request.args.getlist('extension')
     selected_prefixes = request.args.getlist('prefix')
+    selected_raters = request.args.getlist('rated_by')
+    selected_rating_ranges = request.args.getlist('rating_range')
     
     req_sort_by = request.args.get('sort_by')
     req_sort_order = request.args.get('sort_order', 'desc').upper()
@@ -6102,10 +6369,16 @@ def collection_view(coll_id):
 
     if is_all_mode:
         # Logic for "All Categories": Select files belonging to any user album
-        # If in Exhibition mode, only include files from Public albums
         sub_query = "SELECT id FROM collections WHERE type='user_album'"
         if IS_EXHIBITION_MODE:
-            sub_query += " AND is_public = 1"
+            user_role = session.get('role', 'GUEST')
+            safe_uid = str(session.get('user_id', '')).replace("'", "''")
+            is_local_admin = (not FORCE_LOGIN and not IS_EXHIBITION_MODE)
+            
+            if is_local_admin or user_role in ['ADMIN', 'MANAGER', 'STAFF']:
+                sub_query += " AND (is_public = 1 OR shared_users != '')"
+            else:
+                sub_query += f" AND (is_public = 1 OR (',' || shared_users || ',') LIKE '%,{safe_uid},%')"
         
         conditions.append(f"cf.collection_id IN ({sub_query})")
     else:
@@ -6261,11 +6534,41 @@ def collection_view(coll_id):
             params.append(datetime.strptime(start_date, '%Y-%m-%d').timestamp())
         except: pass
     if end_date:
+            active_filters_count += 1
+            try: 
+                conditions.append("f.mtime <= ?")
+                params.append(datetime.strptime(end_date, '%Y-%m-%d').timestamp() + 86399)
+            except: pass
+
+    if selected_rating_ranges:
         active_filters_count += 1
-        try: 
-            conditions.append("f.mtime <= ?")
-            params.append(datetime.strptime(end_date, '%Y-%m-%d').timestamp() + 86399)
-        except: pass
+        r_conds = []
+        avg_sql = "IFNULL((SELECT AVG(rating) FROM file_ratings WHERE file_id = f.id), 0)"
+        for rr in selected_rating_ranges:
+            if rr == '0 stars': r_conds.append(f"{avg_sql} = 0")
+            elif rr == '1-2 stars': r_conds.append(f"({avg_sql} > 0 AND {avg_sql} <= 2)")
+            elif rr == '2-3 stars': r_conds.append(f"({avg_sql} > 2 AND {avg_sql} <= 3)")
+            elif rr == '3-4 stars': r_conds.append(f"({avg_sql} > 3 AND {avg_sql} <= 4)")
+            elif rr == '4-5 stars': r_conds.append(f"({avg_sql} > 4 AND {avg_sql} <= 5)")
+        if r_conds:
+            conditions.append(f"({' OR '.join(r_conds)})")
+
+    if selected_raters:
+        active_filters_count += 1
+        expanded_raters = list(selected_raters)
+        if 'admin' in expanded_raters:
+            try:
+                # FIX: Ensure a database connection is explicitly opened to fetch the admin ID.
+                # Solves the missing ID bug in "All Collections" mode where 'conn' is not yet defined.
+                with get_db_connection() as temp_conn:
+                    admin_id = temp_conn.execute("SELECT user_id FROM users WHERE username = 'admin'").fetchone()
+                    if admin_id and str(admin_id[0]) not in expanded_raters:
+                        expanded_raters.append(str(admin_id[0]))
+            except:
+                pass
+        placeholders = ','.join(['?'] * len(expanded_raters))
+        conditions.append(f"f.id IN (SELECT file_id FROM file_ratings WHERE client_uuid IN ({placeholders}))")
+        params.extend(expanded_raters)
 
     if selected_exts:
         active_filters_count += 1
@@ -6280,12 +6583,34 @@ def collection_view(coll_id):
         if p_cond: conditions.append(f"({' OR '.join(p_cond)})")
 
     # --- SORTING LOGIC ---
+    safe_uuid = str(session.get('user_id', '')).replace("'", "''")
     if req_sort_by == 'name':
         order_clause = f"f.name {req_sort_order}"
     elif req_sort_by == 'rating':
-        conditions.append("f.id IN (SELECT file_id FROM file_ratings)")
-        order_clause = f"avg_rating {req_sort_order}, f.mtime DESC"
-    elif req_sort_by in ['comments', 'latest_comment', 'latestcomment']:
+        if is_effectively_blind():
+
+            conditions.append(f"f.id IN (SELECT file_id FROM file_ratings WHERE client_uuid = '{safe_uuid}')")
+
+            order_clause = f"my_rating {req_sort_order}, f.mtime DESC"
+
+        else:
+
+            conditions.append("f.id IN (SELECT file_id FROM file_ratings)")
+
+            order_clause = f"avg_rating {req_sort_order}, f.mtime DESC"
+    elif req_sort_by == 'unrated':
+        if is_effectively_blind():
+            conditions.append(f"f.id NOT IN (SELECT file_id FROM file_ratings WHERE client_uuid = '{safe_uuid}')")
+        else:
+            conditions.append("f.id NOT IN (SELECT file_id FROM file_ratings)")
+        order_clause = f"f.mtime {req_sort_order}"
+    elif req_sort_by == 'uncommented':
+        if is_effectively_blind():
+            conditions.append(f"f.id NOT IN (SELECT file_id FROM file_comments WHERE client_uuid = '{safe_uuid}')")
+        else:
+            conditions.append("f.id NOT IN (SELECT file_id FROM file_comments)")
+        order_clause = f"f.mtime {req_sort_order}"
+    elif req_sort_by in['comments', 'latest_comment', 'latestcomment']:
         conditions.append("f.id IN (SELECT file_id FROM file_comments)")
         if req_sort_by == 'comments':
             order_clause = f"comment_count {req_sort_order}, f.mtime DESC"
@@ -6304,7 +6629,13 @@ def collection_view(coll_id):
         # Calculate total files in this view (without search/filters)
         if is_all_mode:
             count_subquery = "SELECT id FROM collections WHERE type='user_album'"
-            if IS_EXHIBITION_MODE: count_subquery += " AND is_public = 1"
+            if IS_EXHIBITION_MODE: 
+                user_role = session.get('role', 'GUEST')
+                safe_uid = str(session.get('user_id', '')).replace("'", "''")
+                if user_role in['ADMIN', 'MANAGER', 'STAFF']:
+                    count_subquery += " AND (is_public = 1 OR shared_users != '')"
+                else:
+                    count_subquery += f" AND (is_public = 1 OR (',' || shared_users || ',') LIKE '%,{safe_uid},%')"
             total_folder_files = conn.execute(
                 f"SELECT COUNT(DISTINCT file_id) FROM collection_files WHERE collection_id IN ({count_subquery})"
             ).fetchone()[0]
@@ -6337,6 +6668,7 @@ def collection_view(coll_id):
             (SELECT c.color FROM collections c JOIN collection_files cf2 ON c.id = cf2.collection_id WHERE cf2.file_id = f.id AND c.type = 'system_flag' LIMIT 1) as status_color,
             (SELECT AVG(rating) FROM file_ratings WHERE file_id = f.id) as avg_rating,
             (SELECT COUNT(*) FROM file_ratings WHERE file_id = f.id) as vote_count,
+            (SELECT rating FROM file_ratings WHERE file_id = f.id AND client_uuid = '{safe_uuid}') as my_rating,
             (SELECT COUNT(*) FROM file_comments WHERE file_id = f.id {comment_sub_filter}) as comment_count,
             (SELECT MAX(created_at) FROM file_comments WHERE file_id = f.id {comment_sub_filter}) as latest_comment_time
             FROM files f
@@ -6351,6 +6683,13 @@ def collection_view(coll_id):
             d = dict(r)
             if 'ai_embedding' in d: del d['ai_embedding']
             final_files.append(d)
+            
+        try:
+            users_rows = conn.execute("SELECT user_id, full_name FROM users WHERE is_active=1 AND username != 'admin'").fetchall()
+            available_raters = [{'id': str(r['user_id']), 'name': r['full_name']} for r in users_rows]
+        except:
+            available_raters =[]
+        available_raters.insert(0, {'id': 'admin', 'name': 'System Admin'})
             
     gallery_view_cache = final_files
     
@@ -6411,6 +6750,13 @@ def collection_view(coll_id):
                     prefix_limit_reached = True
                     prefixes.clear()
 
+    try:
+        with get_db_connection() as conn_opts:
+            users_rows = conn_opts.execute("SELECT user_id, full_name FROM users WHERE is_active=1 AND username != 'admin'").fetchall()
+            available_raters = [{'id': str(r['user_id']), 'name': r['full_name']} for r in users_rows]
+    except:
+        available_raters =[]
+    available_raters.insert(0, {'id': 'admin', 'name': 'System Admin'})
     template_name = 'exhibition.html' if IS_EXHIBITION_MODE else 'index.html'
 
     return render_template(template_name, 
@@ -6427,20 +6773,58 @@ def collection_view(coll_id):
                            available_prefixes=sorted(list(prefixes)), 
                            prefix_limit_reached=prefix_limit_reached,  
                            selected_extensions=selected_exts, selected_prefixes=selected_prefixes,
-                           protected_folder_keys=list(PROTECTED_FOLDER_KEYS),
+                           available_raters=available_raters, selected_raters=selected_raters, selected_rating_ranges=selected_rating_ranges, protected_folder_keys=list(PROTECTED_FOLDER_KEYS),
                            show_favorites=request.args.get('favorites', 'false').lower() == 'true',
-                           enable_ai_search=ENABLE_AI_SEARCH, is_ai_search=False, ai_query="",
+                           generate_waveforms=GENERATE_WAVEFORMS, enable_ai_search=ENABLE_AI_SEARCH, is_ai_search=False, ai_query="",
                            is_global_search=False, 
                            active_filters_count=active_filters_count, 
                            current_scope='local', is_recursive=False,
                            server_dam_default=ENABLE_DAM_MODE,
-                           is_exhibition_mode=IS_EXHIBITION_MODE,
+                           is_exhibition_mode=IS_EXHIBITION_MODE, blind_rating=is_effectively_blind(), global_blind_active=BLIND_RATING,
                            app_version=APP_VERSION, github_url=GITHUB_REPO_URL,
                            update_available=UPDATE_AVAILABLE, remote_version=REMOTE_VERSION,
                            ffmpeg_available=(FFPROBE_EXECUTABLE_PATH is not None),
                            stream_threshold=STREAM_THRESHOLD_BYTES)
 
 # --- EXHIBITION API: RATINGS & COMMENTS ---
+
+@app.route('/galleryout/api/exhibition/rating_details', methods=['GET'])
+@management_api_only
+def get_rating_details():
+    file_id = request.args.get('file_id')
+    if not file_id:
+        return jsonify({'status': 'error', 'message': 'Missing file ID'}), 400
+        
+    try:
+        with get_db_connection() as conn:
+            # Join ratings with users to get real names
+            query = '''
+                SELECT r.rating, r.client_uuid, u.full_name 
+                FROM file_ratings r
+                LEFT JOIN users u ON r.client_uuid = CAST(u.user_id AS TEXT)
+                WHERE r.file_id = ?
+                ORDER BY r.rating DESC, r.created_at DESC
+            '''
+            rows = conn.execute(query, (file_id,)).fetchall()
+            
+            details = []
+            for row in rows:
+                name = "Guest (Anonymous)"
+                if row['client_uuid'] == 'admin':
+                    name = "System Admin"
+                elif row['full_name']:
+                    name = row['full_name']
+                    
+                details.append({
+                    'rating': row['rating'],
+                    'name': name
+                })
+                
+            return jsonify({'status': 'success', 'details': details})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
 @app.route('/galleryout/api/exhibition/rate', methods=['POST'])
 def exhibition_rate_file():
     data = request.json
@@ -6621,9 +7005,14 @@ def get_users_simple_list():
     if not is_local_admin and session.get('role') not in ['ADMIN', 'MANAGER', 'STAFF']:
         return jsonify({'status': 'error', 'message': 'Unauthorized'}), 403
         
+    exclude_staff = request.args.get('exclude_staff', 'false').lower() == 'true'
     try:
         with get_db_connection() as conn:
-            rows = conn.execute("SELECT user_id, full_name, username FROM users WHERE is_active = 1 ORDER BY full_name ASC").fetchall()
+            query = "SELECT user_id, full_name, username FROM users WHERE is_active = 1 AND username != 'admin'"
+            if exclude_staff:
+                query += " AND role NOT IN ('ADMIN', 'MANAGER', 'STAFF')"
+            query += " ORDER BY full_name ASC"
+            rows = conn.execute(query).fetchall()
             return jsonify({'status': 'success', 'users': [dict(r) for r in rows]})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
@@ -6756,6 +7145,36 @@ def exhibition_edit_comment():
         return jsonify({'status': 'success'})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# --- ADMIN BLIND RATING OVERRIDE ---
+def is_effectively_blind():
+    """Determines if blind rating should be applied for the current user session."""
+    if not BLIND_RATING: 
+        # User opt-in if server doesn't enforce it globally
+        return session.get('my_ratings_only', False)
+    # Check if user is privileged
+    role = session.get('role', 'GUEST')
+    is_local_admin = (not FORCE_LOGIN and not IS_EXHIBITION_MODE)
+    if is_local_admin or role in ['ADMIN', 'MANAGER', 'STAFF']:
+        # If they toggled the override, disable blind mode
+        if session.get('override_blind', False):
+            return False
+    return True
+
+@app.route('/galleryout/api/exhibition/toggle_my_ratings', methods=['POST'])
+def toggle_my_ratings():
+    session['my_ratings_only'] = not session.get('my_ratings_only', False)
+    return jsonify({'status': 'success'})
+
+@app.route('/galleryout/api/exhibition/toggle_blind', methods=['POST'])
+def toggle_blind_override():
+    role = session.get('role', 'GUEST')
+    is_local_admin = (not FORCE_LOGIN and not IS_EXHIBITION_MODE)
+    if not is_local_admin and role not in ['ADMIN', 'MANAGER', 'STAFF']:
+        return jsonify({'status': 'error', 'message': 'Unauthorized'}), 403
+    
+    session['override_blind'] = not session.get('override_blind', False)
+    return jsonify({'status': 'success'})
         
 def print_startup_banner():
     banner = rf"""
@@ -6784,7 +7203,7 @@ def print_startup_banner():
     else:
         print("\n")
         
-    print(f"   {Colors.BOLD}Smart Gallery DAM for ComfyUI{Colors.RESET}")
+    print(f"   {Colors.BOLD}SmartGallery DAM for ComfyUI{Colors.RESET}")
     print(f"   Author     : {Colors.BLUE}Biagio Maffettone{Colors.RESET}")
     print(f"   Version    : {Colors.YELLOW}{APP_VERSION}{Colors.RESET} ({APP_VERSION_DATE})")
     print(f"   GitHub     : {Colors.CYAN}{GITHUB_REPO_URL}{Colors.RESET}")
@@ -6909,7 +7328,55 @@ def check_port_available(port):
         except socket.error:
             return False
 
+
+# --- OS FILE DESCRIPTOR BOOSTER (macOS/Linux) ---
+# Safely attempts to increase the open file limit to prevent 'Too many open files' 
+# or 'ValueError: filedescriptor out of range in select()' during heavy grid loads.
+# Windows ignores this block automatically.
+try:
+    import resource
+    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    target_soft = 4096
+    if soft < target_soft:
+        new_soft = min(target_soft, hard) if hard != resource.RLIM_INFINITY else target_soft
+        resource.setrlimit(resource.RLIMIT_NOFILE, (new_soft, hard))
+except Exception:
+    pass
+
 if __name__ == '__main__':
+
+    # --- OS SIGNAL HANDLER FOR TMUX/LINUX/MAC PORT RELEASE ---
+    import signal
+    import socket
+    
+    def force_hard_kill(signum, frame):
+        """
+        Aggressive shutdown sequence to prevent 'Port already in use' errors 
+        in persistent terminal multiplexers like tmux/screen on Linux/macOS.
+        """
+        print(f"\n{Colors.YELLOW}INFO: Shutdown signal ({signum}) received. Releasing port {SERVER_PORT}...{Colors.RESET}")
+        
+        # 1. Kill the entire Process Group (terminates zombie Waitress threads and ProcessPools)
+        try:
+            if os.name != 'nt':
+                import signal
+                os.killpg(os.getpgrp(), signal.SIGKILL)
+        except Exception as e:
+            pass
+            
+        # 2. Absolute final fallback
+        os._exit(0)
+
+    try:
+        signal.signal(signal.SIGINT, force_hard_kill)  # Ctrl+C
+        signal.signal(signal.SIGTERM, force_hard_kill) # System kill/Docker stop
+        if os.name != 'nt':
+            signal.signal(signal.SIGHUP, force_hard_kill)  # Terminal/Tmux window closed
+    except Exception as e:
+        print(f"WARN: Could not bind shutdown signals: {e}")
+    # ---------------------------------------------------------
+
+
     run_integrity_check()
     # --- CHECK: PORT AVAILABILITY ---
     print(f"INFO: Checking port {SERVER_PORT} availability...")
@@ -7023,15 +7490,47 @@ if __name__ == '__main__':
 
     print(f"{Colors.GREEN}{Colors.BOLD}🚀 Gallery started successfully!{Colors.RESET}")
     url_host = "localhost" if SERVER_PORT == 80 else "127.0.0.1"
-    print(f"👉 Access URL: {Colors.CYAN}{Colors.BOLD}http://{url_host}:{SERVER_PORT}/galleryout/{Colors.RESET}")
+    print(f"👉 Local Access:   {Colors.CYAN}{Colors.BOLD}http://{url_host}:{SERVER_PORT}/galleryout/{Colors.RESET}")
+    
+    # Safely attempt to discover the local network IP
+    try:
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # We don't actually send any data. We just use UDP to ask the OS 
+        # which network interface it would use to reach an external IP.
+        # This works on Windows, Linux, macOS, and inside Docker containers.
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+        
+        # Only print if it's a valid LAN IP (ignoring local loopback)
+        if local_ip and local_ip != "127.0.0.1":
+            print(f"👉 Network Access: {Colors.CYAN}{Colors.BOLD}http://{local_ip}:{SERVER_PORT}/galleryout/{Colors.RESET}")
+    except Exception:
+        # If the machine is completely offline or strict Docker network rules apply,
+        # fail silently to prevent application crashes.
+        pass
+        
     print(f"   (Press CTRL+C to stop)")
+
+    # --- FORCE SOCKET REUSE (LINUX/TMUX FIX) ---
+    # This tells the OS kernel: "If the server crashes, don't lock the port in TIME_WAIT. Let me reuse it immediately."
+    try:
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        if hasattr(socket, 'SO_REUSEPORT'): # Linux/macOS specific
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        s.close()
+    except Exception:
+        pass
 
     if WAITRESS_AVAILABLE:
         # PRODUCTION MODE: Launching with Waitress WSGI Server
         # threads=8 allows handling multiple concurrent requests (images/video thumbnails)
         # channel_timeout avoids drops during heavy video streaming
         print(f"{Colors.GREEN}INFO: Starting Production WSGI Server (Waitress)...{Colors.RESET}")
-        serve(app, host='0.0.0.0', port=SERVER_PORT, threads=8, channel_timeout=120, _quiet=True)
+        serve(app, host='0.0.0.0', port=SERVER_PORT, threads=8, connection_limit=150, channel_timeout=120, asyncore_use_poll=True, _quiet=True)
     else:
         # DEVELOPMENT MODE: Falling back to Flask built-in server
         print(f"{Colors.YELLOW}WARNING: 'waitress' not found. Using Flask development server.{Colors.RESET}")

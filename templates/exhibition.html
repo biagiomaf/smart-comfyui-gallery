@@ -1,6 +1,6 @@
 {% set app_logo_b64 = "data:image/png;base64,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" %}
 <!DOCTYPE html>
-<!-- Version: 2.11 - April 08, 2026 -->
+<!-- Version: 2.12 - May 08, 2026 -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -387,7 +387,7 @@
 
     /* Actions Toolbar */
     .theater-actions-desktop { 
-        position: absolute; top: 20px; left: 20px; display: flex; gap: 15px; z-index: 2500; 
+        position: absolute; top: 20px; left: 20px; display: flex; gap: 15px; z-index: 9999; 
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
     }
     
@@ -428,7 +428,7 @@
         position: absolute; 
         top: 20px; 
         left: 15px; /* Moved to the left! */
-        z-index: 2500; 
+        z-index: 9999; 
         background: rgba(255, 255, 255, 0.05); 
         border: 1px solid rgba(255, 255, 255, 0.1); 
         color: #aaa; 
@@ -453,7 +453,7 @@
 
     /* Global Theater Close X (Outside the Panel, Top Right screen corner) */
     .close-theater-global { 
-        position: absolute; top: 20px; right: 20px; z-index: 2500;
+        position: absolute; top: 20px; right: 20px; z-index: 9999;
         width: 55px; height: 55px; border-radius: 50%; background: rgba(0,0,0,0.6);
         border: 1px solid #444; color: white; display: flex; align-items: center; justify-content: center;
         font-size: 2rem; cursor: pointer; transition: 0.2s; line-height: 1; padding-bottom: 4px;
@@ -1411,7 +1411,65 @@
     .ear-desc { flex-grow: 1; font-size: 0.95rem; color: #ddd; font-weight: 500; line-height: 1.3; }
     .ear-key { display: flex; gap: 5px; align-items: center; flex-shrink: 0; margin-left: 10px; }
     .ear-key .key { background: #111; border: 1px solid #444; color: #aaa; box-shadow: 0 2px 0 #000; font-size: 0.8rem; padding: 2px 6px; border-radius:4px; font-family:monospace; font-weight:bold;}
+
+        /* --- SORT POPOVER MENUS --- */
+        .sort-popover {
+            display: none; position: fixed; background: var(--surface-color); border: 1px solid var(--border-color);
+            border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); z-index: 10000;
+            padding: 6px; flex-direction: column; gap: 2px; min-width: 210px;
+        }
+        .sort-popover.visible { display: flex; animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .sort-popover button {
+            background: transparent; border: none; color: white; padding: 12px 15px; text-align: left;
+            border-radius: 8px; cursor: pointer; transition: 0.2s; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center;
+        }
+        .sort-popover button:hover { background: rgba(255,255,255,0.1); }
+        .sort-popover button.active { color: var(--primary-color); background: rgba(0,123,255,0.15); font-weight:bold; border: 1px solid rgba(0,123,255,0.3); }
+
+
+    /* --- RETURN FOCUS BLINK --- */
+    .exh-card.return-focus {
+        outline: 6px solid #007bff !important;
+        outline-offset: 4px !important;
+        box-shadow: 0 0 30px rgba(0, 123, 255, 0.8) !important;
+        z-index: 20;
+    }
+    .exh-card.return-focus-blink {
+        outline: 6px solid transparent !important;
+        outline-offset: 4px !important;
+        animation: returnBlinkAnimExh 0.3s ease-in-out 3 !important;
+        z-index: 20;
+    }
+    @keyframes returnBlinkAnimExh {
+        0%, 100% { outline-color: transparent !important; box-shadow: none !important; }
+        50% { outline-color: #007bff !important; box-shadow: 0 0 30px rgba(0, 123, 255, 0.8) !important; }
+    }
+        50% { outline: 6px solid #007bff !important; outline-offset: 4px !important; box-shadow: 0 0 30px rgba(0, 123, 255, 0.8) !important; }
+    }
 </style>
+{% if blind_rating %}
+    <style>
+        /* BLIND RATING MODE: Hide global averages to prevent user bias */
+        .vote-count, .global-avg-row, .mobile-rating-left { display: none !important; }
+        .mobile-rating-strip { justify-content: center !important; } 
+        #fi-rating-badge { display: none !important; }
+    
+        /* --- SORT POPOVER MENUS --- */
+        .sort-popover {
+            display: none; position: fixed; background: var(--surface-color); border: 1px solid var(--border-color);
+            border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); z-index: 10000;
+            padding: 6px; flex-direction: column; gap: 2px; min-width: 210px;
+        }
+        .sort-popover.visible { display: flex; animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .sort-popover button {
+            background: transparent; border: none; color: white; padding: 12px 15px; text-align: left;
+            border-radius: 8px; cursor: pointer; transition: 0.2s; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center;
+        }
+        .sort-popover button:hover { background: rgba(255,255,255,0.1); }
+        .sort-popover button.active { color: var(--primary-color); background: rgba(0,123,255,0.15); font-weight:bold; border: 1px solid rgba(0,123,255,0.3); }
+
+</style>
+    {% endif %}
 </head>
 <body>
 
@@ -1419,7 +1477,7 @@
 
     <aside class="exh-sidebar" id="sidebar">
         <button class="sidebar-close-btn" onclick="toggleMenu()" title="Close sidebar">×</button>
-        <a href="#" onclick="loadGallery('all', 'All Collections'); return false;" class="brand-link">
+        <a href="#" onclick="activeSortCriteria='date'; activeSortOrder='desc'; updateSortUI(); if(document.getElementById('sort-select')) document.getElementById('sort-select').value='date_desc'; loadGallery('all', 'All Collections'); return false;" class="brand-link">
             <div class="brand-block">
                 <img src="{{ app_logo_b64 }}" class="brand-logo">
                 <div class="brand-title">
@@ -1486,22 +1544,26 @@
                 
                 <button class="tool-btn" onclick="toggleShortcutsHelp()" title="Keyboard Shortcuts" style="height:42px; width:auto; padding:0 15px; font-weight:bold; font-size:0.95rem; border-radius:10px;">? Shortcuts</button>
                 
+                {% if not global_blind_active %}
+                <button class="tool-btn" onclick="openMyRatingsInfoModal()" title="Show only my ratings" style="display: inline-flex !important; align-items: center; justify-content: center; height:42px; width:auto; padding:0 10px; font-weight:bold; font-size:0.95rem; border-radius:10px; border-color: {% if blind_rating %}var(--favorite-color){% else %}var(--glass-border){% endif %}; color: {% if blind_rating %}var(--favorite-color){% else %}white{% endif %};">
+                    <span class="desktop-only">🕵️ My Ratings: {{ 'ON' if blind_rating else 'OFF' }}</span>
+                    <span class="mobile-only">🕵️ {{ 'ON' if blind_rating else 'OFF' }}</span>
+                </button>
+                {% endif %}
+                
                 <!-- NEW: Desktop Sort Buttons (Visible only on Desktop) -->
                 <div class="sort-group-desktop" id="desktop-sort-bar">
                     <button class="sort-btn-item active" data-sort="date" onclick="setSort('date')" title="Sort by Upload Date">
                         <span>📅 Date</span> <span class="sort-direction-arrow">↓</span>
                     </button>
-                    <button class="sort-btn-item" data-sort="rating" onclick="setSort('rating')" title="Sort by Star Rating">
-                        <span>⭐ Rating</span> <span class="sort-direction-arrow">↓</span>
-                    </button>
-                    <button class="sort-btn-item" data-sort="comments" onclick="setSort('comments')" title="Sort by Total Comments">
-                        <span>💬 Comment</span> <span class="sort-direction-arrow">↓</span>
-                    </button>
-                    <button class="sort-btn-item" data-sort="latestcomment" onclick="setSort('latestcomment')" title="Sort by Most Recent Comments">
-                        <span>🕒 Activity</span> <span class="sort-direction-arrow">↓</span>
-                    </button>
                     <button class="sort-btn-item" data-sort="name" onclick="setSort('name')" title="Sort Alphabetically">
                         <span>🔤 Name</span> <span class="sort-direction-arrow">↑</span>
+                    </button>
+                    <button class="sort-btn-item" data-sort="rating" onclick="showExhSortMenu(event, 'exh-rating-menu')" title="Sort by Star Rating">
+                        <span>⭐ Rating</span> <span class="sort-direction-arrow">↓</span>
+                    </button>
+                    <button class="sort-btn-item" data-sort="comments" onclick="showExhSortMenu(event, 'exh-comments-menu')" title="Sort by Total Comments">
+                        <span>💬 Comment</span> <span class="sort-direction-arrow">↓</span>
                     </button>
                 </div>
 
@@ -1511,8 +1573,10 @@
                     <option value="date_asc">📅 Oldest First</option>
                     <option value="rating_desc">⭐ Top Rated</option>
                     <option value="rating_asc">⭐ Lowest Rated</option>
+                    <option value="unrated_desc">⭐ Not Rated</option>
                     <option value="comments_desc">💬 Most Discussed</option>
                     <option value="comments_asc">💬 Least Discussed</option>
+                    <option value="uncommented_desc">💬 Not Commented</option>
                     <option value="latestcomment_desc">💬🕒 Newest Comment</option> 
                     <option value="name_asc">🔤 Name A-Z</option>
                     <option value="name_desc">🔤 Name Z-A</option>
@@ -1686,6 +1750,9 @@
                     <div class="sc-row"><span>Quick Menu</span> <span class="sc-key">/</span></div>
                     <div class="sc-row"><span>Toggle Toolbar (Clean View)</span> <span class="sc-key">H</span></div>
                     <div class="sc-row"><span>Toggle Ratings & Comments (Panel)</span> <span class="sc-key">G</span></div>
+                    {% if global_blind_active and session.role in ['ADMIN', 'MANAGER', 'STAFF'] %}
+                    <div class="sc-row"><span style="color:var(--favorite-color);">Override Blind Rating</span> <span class="sc-key">B</span></div>
+                    {% endif %}
                     <div class="sc-row"><span>Rotate 90°</span> <span class="sc-key">T</span></div>
                     <div class="sc-row"><span>Zoom In / Out</span> <span><span class="sc-key">+</span> <span class="sc-key">-</span></span></div>
                     <div class="sc-row"><span>Reset Zoom / Rot</span> <span class="sc-key">0</span></div>
@@ -1697,6 +1764,36 @@
             </div>
         </div>
     </div>
+    
+    <!-- MY RATINGS INFO MODAL -->
+    <div id="my-ratings-info-overlay" style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0, 0, 0, 0.85); backdrop-filter:blur(8px); z-index:9500; display:none; justify-content:center; align-items:center; opacity:0; transition:opacity 0.3s;">
+        <div style="background:var(--surface-color); border:1px solid {% if blind_rating %}var(--favorite-color){% else %}var(--primary-color){% endif %}; border-radius:16px; padding:30px; width:500px; max-width:95vw; box-shadow:0 20px 60px rgba(0,0,0,0.8); position:relative; text-align:left; overscroll-behavior:contain;">
+            <button onclick="closeMyRatingsInfoModal()" style="position:absolute; top:15px; right:15px; background:transparent; border:none; color:var(--text-muted); font-size:1.8rem; cursor:pointer; line-height:1; transition:color 0.2s;" onmouseover="this.style.color='var(--danger-color)'" onmouseout="this.style.color='var(--text-muted)'">&times;</button>
+            
+            <h3 style="margin-top:0; color:white; font-size:1.4rem; display:flex; align-items:center; gap:10px;">🕵️ Private Rating Mode</h3>
+            
+            <p style="color:var(--text-muted); line-height:1.6; font-size:0.95rem; margin-bottom:15px;">
+                Enable this mode to evaluate media without being influenced by other users.
+            </p>
+            
+            <ul style="color:#ccc; font-size:0.9rem; line-height:1.6; padding-left:20px; margin-bottom:20px;">
+                <li style="margin-bottom:8px;"><strong>Hide Global Averages:</strong> Other people's ratings are hidden from your view.</li>
+                <li style="margin-bottom:8px;"><strong>Personalized Sorting:</strong> Sorting by '⭐ Rating' will now use <em>your</em> personal votes instead of the global average.</li>
+                <li style="margin-bottom:8px;"><strong>Total Privacy:</strong> Perfect for giving honest, unbiased feedback.</li>
+            </ul>
+            
+            <div style="display:flex; gap:12px; margin-top:25px;">
+                {% if blind_rating %}
+                    <button onclick="closeMyRatingsInfoModal()" class="send-btn-premium" style="flex:1; background:var(--surface-hover); border:1px solid var(--border-color); color:white;">Keep ON</button>
+                    <button onclick="executeMyRatingsToggle()" class="send-btn-premium" style="flex:1; background:var(--danger-color);">Turn OFF</button>
+                {% else %}
+                    <button onclick="closeMyRatingsInfoModal()" class="send-btn-premium" style="flex:1; background:var(--surface-hover); border:1px solid var(--border-color); color:white;">Keep OFF</button>
+                    <button onclick="executeMyRatingsToggle()" class="send-btn-premium" style="flex:1; background:var(--favorite-color); color:black;">Turn ON</button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
     <!-- CUSTOM STYLE ALERT -->
     <div id="smart-alert-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:20000; display:none; justify-content:center; align-items:center; backdrop-filter:blur(8px);">
         <div style="background:#1a1a1a; width:400px; max-width:85vw; border-radius:16px; border:1px solid var(--primary-color); border-top:4px solid var(--primary-color); padding:30px; box-shadow:0 20px 60px rgba(0,0,0,1); text-align:center;">
@@ -1762,6 +1859,14 @@
                     <div class="ear-key"><span class="key">H</span></div>
                 </div>
 
+                {% if global_blind_active and session.role in ['ADMIN', 'MANAGER', 'STAFF'] %}
+                <div class="exh-action-row" onclick="closeExhMenu(); toggleAdminBlindRating();">
+                    <div class="ear-icon" style="color:var(--favorite-color);">🕵️</div>
+                    <div class="ear-desc">Toggle Blind Rating Override</div>
+                    <div class="ear-key"><span class="key">B</span></div>
+                </div>
+                {% endif %}
+
                 <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 15px 0;">
 
                 <div class="exh-action-row" onclick="closeExhMenu(); toggleTheaterPanel();" title="Click to toggle Rating Panel, or press 1-5 on keyboard">
@@ -1803,6 +1908,445 @@
     {% if session.role in ['ADMIN', 'MANAGER'] %}
         {% include 'modals/user_manager_module.html' %}
     {% endif %}
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+
+    <!-- ========================================== -->
+    <!-- CUSTOM MEDIA PLAYER (Perfect Video Sync)   -->
+    <!-- ========================================== -->
+    <style>
+        .custom-player-wrapper {
+            position: fixed; 
+            background: rgba(15, 15, 15, 0.95);
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.15); border-top: none;
+            border-radius: 0 0 12px 12px;
+            padding: 0; display: none; flex-direction: column; gap: 0;
+            z-index: 9999; box-shadow: 0 10px 30px rgba(0,0,0,0.8); user-select: none;
+            box-sizing: border-box; transform-origin: top center;
+        }
+        
+        .custom-player-wrapper.visible {
+            display: flex; animation: fadeInPlayer 0.2s ease-out;
+        }
+        @keyframes fadeInPlayer {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .cp-progress-container { 
+            position: relative; 
+            width: 100%; 
+            display: flex; 
+            align-items: center; 
+            height: 16px; 
+            cursor: pointer; 
+            background: rgba(0,0,0,0.8); 
+            border-bottom: 1px solid rgba(255,255,255,0.05); 
+            overflow: hidden; 
+            transition: height 0.3s; 
+        }
+        .cp-progress-container.with-wave { height: 80px; }
+        .cp-waveform-bg { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background-size: 100% 100%; background-repeat: no-repeat; 
+            background-position: center; mix-blend-mode: screen; 
+            pointer-events: none; transition: opacity 0.3s; 
+            transform: scaleY(var(--wave-scale, 5.0)); transform-origin: center; 
+            filter: contrast(300%) brightness(1.5); opacity: 0.95; 
+        }
+        .cp-range {
+            -webkit-appearance: none; appearance: none; width: 100%; height: 100%; margin: 0;
+            background: rgba(255, 255, 255, 0.2); border-radius: 0; outline: none; cursor: pointer;
+        }
+        .cp-range:hover { background: rgba(255, 255, 255, 0.3); }
+        
+        .cp-range::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 4px; height: 16px;
+            border-radius: 0; background: var(--primary-color); cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.8); transition: height 0.3s;
+        }
+        .cp-range::-moz-range-thumb {
+            width: 4px; height: 16px; border: none; border-radius: 0;
+            background: var(--primary-color); cursor: pointer; box-shadow: 0 0 10px rgba(0, 123, 255, 0.8);
+            transition: height 0.3s;
+        }
+        .cp-progress-container.with-wave .cp-range::-webkit-slider-thumb { height: 80px; }
+        .cp-progress-container.with-wave .cp-range::-moz-range-thumb { height: 80px; }
+
+        .cp-controls { display: flex; align-items: center; justify-content: space-between; padding: 12px 15px; transition: all 0.3s; }
+        .cp-btn {
+            background: transparent; border: none; color: #fff; font-size: 1.2rem; cursor: pointer;
+            width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+        }
+        .cp-btn:hover { background: rgba(255, 255, 255, 0.15); color: var(--primary-color); }
+        .cp-play-btn {
+            font-size: 1.5rem; background: var(--primary-color); border-radius: 50%;
+            width: 44px; height: 44px; box-shadow: 0 4px 15px rgba(0, 123, 255, 0.4); transition: all 0.2s;
+        }
+        .cp-play-btn:hover { background: #fff; color: var(--primary-color); transform: scale(1.05); }
+
+        /* --- SQUASHED CONTROLS FOR WAVEFORM MODE --- */
+        .cp-progress-container.with-wave + .cp-controls { 
+            padding: 0px 15px; /* Ultra minimal vertical padding */
+        }
+        .cp-progress-container.with-wave + .cp-controls .cp-btn { 
+            width: 26px; height: 26px; font-size: 0.95rem; 
+        }
+        .cp-progress-container.with-wave + .cp-controls .cp-play-btn { 
+            width: 32px; height: 32px; font-size: 1.1rem; 
+        }
+        .cp-time { font-family: monospace; font-size: 0.9rem; color: #ddd; margin-left: 10px; font-weight: bold; letter-spacing: 0.5px; cursor: default; }
+        .cp-volume-wrapper {
+            display: flex; align-items: center; gap: 8px; margin-left: auto; background: rgba(0, 0, 0, 0.4);
+            padding: 0px 12px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: default;
+        }
+        .cp-vol-range {
+            -webkit-appearance: none; width: 80px; height: 4px; background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px; outline: none; cursor: pointer;
+        }
+        .cp-vol-range::-webkit-slider-thumb { -webkit-appearance: none; width: 10px; height: 10px; border-radius: 50%; background: #fff; cursor: pointer; }
+        @media (max-width: 768px) {
+            .cp-volume-wrapper { padding: 4px; }
+            .cp-vol-range { display: none; }
+            .cp-time { font-size: 0.75rem; }
+        }
+    
+        /* --- SORT POPOVER MENUS --- */
+        .sort-popover {
+            display: none; position: fixed; background: var(--surface-color); border: 1px solid var(--border-color);
+            border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); z-index: 10000;
+            padding: 6px; flex-direction: column; gap: 2px; min-width: 210px;
+        }
+        .sort-popover.visible { display: flex; animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .sort-popover button {
+            background: transparent; border: none; color: white; padding: 12px 15px; text-align: left;
+            border-radius: 8px; cursor: pointer; transition: 0.2s; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center;
+        }
+        .sort-popover button:hover { background: rgba(255,255,255,0.1); }
+        .sort-popover button.active { color: var(--primary-color); background: rgba(0,123,255,0.15); font-weight:bold; border: 1px solid rgba(0,123,255,0.3); }
+
+</style>
+
+    <div id="custom-media-player" class="custom-player-wrapper">
+        <div class="cp-progress-container">
+            <div id="cp-waveform" class="cp-waveform-bg"></div>
+            <input type="range" id="cp-seekbar" class="cp-range" min="0" max="100" value="0" step="0.1" title="Seek">
+        </div>
+        <div class="cp-controls">
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <button id="cp-skip-back" class="cp-btn" title="Rewind 5s (Left Arrow)">↺</button>
+                <button id="cp-play-pause" class="cp-btn cp-play-btn" title="Play/Pause (Space)">⏸</button>
+                <button id="cp-skip-forward" class="cp-btn" title="Forward 5s (Right Arrow)">↻</button>
+                <div id="cp-time-display" class="cp-time">00:00 / 00:00</div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-left: auto;">
+            <div class="cp-volume-wrapper" id="cp-wave-ctrl" style="display: none; margin-left: 0;">
+                <span style="font-size: 0.9rem; margin-right: 4px; cursor: help;" title="Waveform Amplitude">🌊</span>
+                <input type="range" id="cp-wave-slider" class="cp-vol-range" min="0.1" max="10.0" value="1.0" step="0.1" title="Waveform Amplitude">
+            </div>
+            <div class="cp-volume-wrapper" style="margin-left: 0;">
+                <button id="cp-mute-btn" class="cp-btn" style="width: 28px; height: 28px; font-size: 1rem;" title="Mute (M)">🔊</button>
+                <input type="range" id="cp-volume-slider" class="cp-vol-range" min="0" max="1" value="1" step="0.05" title="Volume">
+            </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            if (window._sgPlayerInitialized) return;
+            window._sgPlayerInitialized = true;
+
+            let currentCustomMedia = null;
+            let isSeeking = false;
+            let syncFrame = null;
+
+            const cpWrapper = document.getElementById('custom-media-player');
+            const cpSeekbar = document.getElementById('cp-seekbar');
+            const cpPlayBtn = document.getElementById('cp-play-pause');
+            const cpSkipBack = document.getElementById('cp-skip-back');
+            const cpSkipForward = document.getElementById('cp-skip-forward');
+            const cpTimeDisplay = document.getElementById('cp-time-display');
+            const cpMuteBtn = document.getElementById('cp-mute-btn');
+            const cpVolSlider = document.getElementById('cp-volume-slider');
+            const cpWaveCtrl = document.getElementById('cp-wave-ctrl');
+            const cpWaveSlider = document.getElementById('cp-wave-slider');
+
+            if (!cpWrapper) return;
+
+            // DYNAMIC TRACKING: Matches player exactly to video's physical rendering bounds
+            function syncPlayerToVideo() {
+                if (!currentCustomMedia || !cpWrapper.classList.contains('visible')) return;
+                
+                const rect = currentCustomMedia.getBoundingClientRect();
+                
+                if (rect.width > 0 && rect.height > 0) {
+                    cpWrapper.style.left = rect.left + 'px';
+                    cpWrapper.style.width = rect.width + 'px';
+                    cpWrapper.style.top = rect.bottom + 'px'; // Anchors to the bottom
+                }
+                
+                syncFrame = requestAnimationFrame(syncPlayerToVideo);
+            }
+
+            function formatTime(seconds) {
+                if (isNaN(seconds) || seconds < 0) return "00:00";
+                const m = Math.floor(seconds / 60);
+                const s = Math.floor(seconds % 60);
+                return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            }
+
+            function updateTimeDisplay() {
+                if (!currentCustomMedia) return;
+                const current = formatTime(currentCustomMedia.currentTime);
+                const total = formatTime(currentCustomMedia.duration);
+                cpTimeDisplay.innerHTML = `${current} / ${total}`;
+            }
+
+            window.initCustomPlayer = function(mediaElement, fileId) {
+                if (!mediaElement || !['VIDEO', 'AUDIO'].includes(mediaElement.tagName)) {
+                    window.hideCustomPlayer();
+                    return;
+                }
+
+                currentCustomMedia = mediaElement;
+                currentCustomMedia.controls = false; 
+                
+                cpWrapper.classList.add('visible');
+
+                cpPlayBtn.innerHTML = currentCustomMedia.paused ? '▶' : '⏸';
+                cpTimeDisplay.innerHTML = "00:00 / 00:00";
+                cpSeekbar.value = 0;
+
+                const waveBg = document.getElementById('cp-waveform');
+                if (waveBg) {
+                    const progressCont = cpWrapper.querySelector('.cp-progress-container');
+                    if (fileId && typeof GENERATE_WAVEFORMS !== 'undefined' && GENERATE_WAVEFORMS) {
+                const savedAmp = localStorage.getItem('sg_wave_amp') || '1.0';
+                waveBg.style.backgroundImage = `url('/galleryout/waveform/${fileId}?amp=${savedAmp}')`;
+                if(progressCont) progressCont.classList.add('with-wave');
+                if(cpWaveCtrl) cpWaveCtrl.style.display = 'flex';
+                
+                if (cpWaveSlider) {
+                    cpWaveSlider.min = "0.1";
+                    cpWaveSlider.max = "10.0";
+                    cpWaveSlider.step = "0.1";
+                    cpWaveSlider.value = savedAmp;
+                    
+                    // Uses 'onchange' so it only fires when the user releases the mouse button
+                    cpWaveSlider.onchange = (e) => {
+                        const amp = e.target.value;
+                        localStorage.setItem('sg_wave_amp', amp);
+                        
+                        // Visual feedback while server generates the new image
+                        waveBg.style.opacity = '0.3'; 
+                        
+                        const tempImg = new Image();
+                        tempImg.onload = () => {
+                            waveBg.style.backgroundImage = `url('${tempImg.src}')`;
+                            waveBg.style.opacity = '0.95';
+                        };
+                        tempImg.src = `/galleryout/waveform/${fileId}?amp=${amp}`;
+                    };
+                }
+            } else {
+                waveBg.style.backgroundImage = 'none';
+                if(progressCont) progressCont.classList.remove('with-wave');
+                if(cpWaveCtrl) cpWaveCtrl.style.display = 'none';
+            }
+                }
+
+                currentCustomMedia.addEventListener('loadedmetadata', updateTimeDisplay);
+                currentCustomMedia.addEventListener('timeupdate', () => {
+                    if (!isSeeking && currentCustomMedia.duration && isFinite(currentCustomMedia.duration)) {
+                        const progress = (currentCustomMedia.currentTime / currentCustomMedia.duration) * 100;
+                        cpSeekbar.value = progress;
+                        updateTimeDisplay();
+                    }
+                });
+
+                currentCustomMedia.addEventListener('play', () => cpPlayBtn.innerHTML = '⏸');
+                currentCustomMedia.addEventListener('pause', () => cpPlayBtn.innerHTML = '▶');
+                currentCustomMedia.addEventListener('ended', () => cpPlayBtn.innerHTML = '▶');
+
+                currentCustomMedia.addEventListener('volumechange', () => {
+                    cpVolSlider.value = currentCustomMedia.volume;
+                    if (currentCustomMedia.muted || currentCustomMedia.volume === 0) {
+                        cpMuteBtn.innerHTML = '🔇';
+                    } else if (currentCustomMedia.volume < 0.5) {
+                        cpMuteBtn.innerHTML = '🔉';
+                    } else {
+                        cpMuteBtn.innerHTML = '🔊';
+                    }
+                });
+                
+                // Start sync loop
+                if (syncFrame) cancelAnimationFrame(syncFrame);
+                syncPlayerToVideo();
+            };
+
+            window.hideCustomPlayer = function() {
+                if(cpWrapper) cpWrapper.classList.remove('visible');
+                currentCustomMedia = null;
+                if (syncFrame) {
+                    cancelAnimationFrame(syncFrame);
+                    syncFrame = null;
+                }
+            };
+
+            cpPlayBtn.addEventListener('click', () => {
+                if (!currentCustomMedia) return;
+                if (currentCustomMedia.paused) currentCustomMedia.play();
+                else currentCustomMedia.pause();
+            });
+
+            cpSkipBack.addEventListener('click', () => {
+                if (currentCustomMedia) currentCustomMedia.currentTime = Math.max(0, currentCustomMedia.currentTime - 5);
+            });
+
+            cpSkipForward.addEventListener('click', () => {
+                if (currentCustomMedia) currentCustomMedia.currentTime = Math.min(currentCustomMedia.duration, currentCustomMedia.currentTime + 5);
+            });
+
+            cpSeekbar.addEventListener('input', (e) => {
+                isSeeking = true;
+                if (currentCustomMedia && currentCustomMedia.duration) {
+                    const seekTo = currentCustomMedia.duration * (e.target.value / 100);
+                    cpTimeDisplay.innerHTML = `${formatTime(seekTo)} / ${formatTime(currentCustomMedia.duration)}`;
+                }
+            });
+
+            cpSeekbar.addEventListener('change', (e) => {
+                if (currentCustomMedia && currentCustomMedia.duration) {
+                    currentCustomMedia.currentTime = currentCustomMedia.duration * (e.target.value / 100);
+                }
+                isSeeking = false;
+            });
+
+            cpMuteBtn.addEventListener('click', () => {
+                if (!currentCustomMedia) return;
+                currentCustomMedia.muted = !currentCustomMedia.muted;
+            });
+
+            cpVolSlider.addEventListener('input', (e) => {
+                if (!currentCustomMedia) return;
+                currentCustomMedia.volume = e.target.value;
+                currentCustomMedia.muted = false;
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || !currentCustomMedia || !cpWrapper.classList.contains('visible')) return;
+
+                if (e.code === 'Space') {
+                    e.preventDefault(); e.stopPropagation();
+                    cpPlayBtn.click();
+                } else if (e.code === 'ArrowRight') {
+                    e.preventDefault(); e.stopPropagation();
+                    cpSkipForward.click();
+                } else if (e.code === 'ArrowLeft') {
+                    e.preventDefault(); e.stopPropagation();
+                    cpSkipBack.click();
+                } else if (e.code === 'KeyM') {
+                    e.preventDefault(); e.stopPropagation();
+                    cpMuteBtn.click();
+                }
+            });
+            
+            // Re-sync on window resize just to be safe
+            window.addEventListener('resize', () => {
+                if (cpWrapper.classList.contains('visible')) syncPlayerToVideo();
+            });
+        })();
+    </script>
+    
+    <!-- DETACHED SORT MENUS (EXHIBITION) -->
+    <div id="exh-rating-menu" class="sort-popover">
+        <button onclick="applyExhSpecificSort('rating', 'desc')" id="btn-sort-rating-desc"><span>⭐ Highest Rated</span> <span>↓</span></button>
+        <button onclick="applyExhSpecificSort('rating', 'asc')" id="btn-sort-rating-asc"><span>⭐ Lowest Rated</span> <span>↑</span></button>
+        <button onclick="applyExhSpecificSort('unrated', 'desc')" id="btn-sort-unrated-desc"><span>∅ Not Rated</span> <span>-</span></button>
+    </div>
+    <div id="exh-comments-menu" class="sort-popover">
+        <button onclick="applyExhSpecificSort('latestcomment', 'desc')" id="btn-sort-latestcomment-desc"><span>🕒 Newest Comments</span> <span>↓</span></button>
+        <button onclick="applyExhSpecificSort('comments', 'desc')" id="btn-sort-comments-desc"><span>💬 Most Discussed</span> <span>↓</span></button>
+        <button onclick="applyExhSpecificSort('comments', 'asc')" id="btn-sort-comments-asc"><span>💬 Least Discussed</span> <span>↑</span></button>
+        <button onclick="applyExhSpecificSort('uncommented', 'desc')" id="btn-sort-uncommented-desc"><span>∅ No Comments</span> <span>-</span></button>
+    </div>
+
+
+<!-- INJECTED SORT LOGIC FOR EXHIBITION -->
+<script>
+    function showExhSortMenu(e, menuId) {
+        e.stopPropagation(); 
+        e.preventDefault();
+        document.querySelectorAll('.sort-popover.visible').forEach(m => m.classList.remove('visible'));
+        
+        const menu = document.getElementById(menuId);
+        if (!menu) return;
+
+        const rect = e.currentTarget.getBoundingClientRect();
+        let left = rect.left;
+        let top = rect.bottom + 5;
+        
+        // Adjust for right screen edge to prevent the menu from being cut off
+        if (left + 230 > window.innerWidth) {
+            left = window.innerWidth - 240;
+        }
+        
+        menu.style.top = top + 'px';
+        menu.style.left = left + 'px';
+        menu.classList.add('visible');
+        
+        // Update active class dynamically
+        menu.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        const activeId = 'btn-sort-' + (typeof activeSortCriteria !== 'undefined' ? activeSortCriteria : '') + '-' + (typeof activeSortOrder !== 'undefined' ? activeSortOrder : '');
+        const activeBtn = document.getElementById(activeId);
+        if (activeBtn) activeBtn.classList.add('active');
+    }
+
+    document.addEventListener('click', () => {
+        document.querySelectorAll('.sort-popover.visible').forEach(m => m.classList.remove('visible'));
+    });
+
+    document.addEventListener('scroll', () => {
+        document.querySelectorAll('.sort-popover.visible').forEach(m => m.classList.remove('visible'));
+    }, { passive: true });
+
+    function applyExhSpecificSort(by, order) {
+        if (typeof activeSortCriteria !== 'undefined') {
+            activeSortCriteria = by;
+            activeSortOrder = order;
+            
+            if (typeof updateSortUI === 'function') updateSortUI();
+            
+            const mobileSelect = document.getElementById('sort-select');
+            if (mobileSelect) mobileSelect.value = by + '_' + order;
+            
+            const collId = (typeof currentCollectionId !== 'undefined' && currentCollectionId) ? currentCollectionId : 'all';
+            const titleEl = document.getElementById('page-title');
+            const pageTitle = titleEl ? titleEl.textContent : 'Gallery';
+            
+            if (typeof loadGalleryInternal === 'function') {
+                loadGalleryInternal(collId, pageTitle);
+            }
+        }
+    }
+</script>
+
 </body>
 <script>
     // --- LOGOUT CONFIRMATION ---
@@ -1853,6 +2397,10 @@
     }
    
    // --- USER SESSION CONTEXT (Passed from Python Backend) ---
+    // Injected for Waveforms
+    const GENERATE_WAVEFORMS = {{ 'true' if generate_waveforms else 'false' }};
+    const BLIND_RATING = {{ 'true' if blind_rating else 'false' }};
+
     const CURRENT_USER = {
         username: "{{ session.username | default('Guest', true) }}",
         id: "{{ session.user_id | default('', true) }}",
@@ -1916,7 +2464,7 @@
 
     // Theater Mode Zoom & Pan state
     let thZoom = 1, thPanX = 0, thPanY = 0, thRot = 0;
-    let isThDragging = false, thStartX = 0, thStartY = 0;
+    let isThDragging = false, thHasMoved = false, thStartX = 0, thStartY = 0;
     
     let cachedUsersList = null;
 
@@ -2107,6 +2655,63 @@
     
     function toggleMenu() { document.body.classList.toggle('menu-open'); }
 
+    function openMyRatingsInfoModal() {
+        const overlay = document.getElementById('my-ratings-info-overlay');
+        overlay.style.display = 'flex';
+        setTimeout(() => overlay.style.opacity = '1', 10);
+        document.body.classList.add('modal-open');
+    }
+
+    function closeMyRatingsInfoModal() {
+        const overlay = document.getElementById('my-ratings-info-overlay');
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.style.display = 'none', 300);
+        const damInfo = document.getElementById('dam-info-overlay');
+        if (!document.querySelector('.folder-dropdown.show') && !(damInfo && damInfo.classList.contains('visible'))) {
+            document.body.classList.remove('modal-open');
+        }
+    }
+
+    async function executeMyRatingsToggle() {
+        try {
+            // Give immediate visual feedback
+            const overlay = document.getElementById('my-ratings-info-overlay');
+            overlay.style.opacity = '0.5';
+            overlay.style.pointerEvents = 'none';
+            
+            const res = await fetch('/galleryout/api/exhibition/toggle_my_ratings', { method: 'POST' });
+            if (res.ok) {
+                sessionStorage.setItem('exh_scroll_pos', document.getElementById('gallery-grid').scrollTop);
+                window.location.reload();
+            }
+        } catch (e) {
+            console.error("Error toggling personal ratings view:", e);
+        }
+    }
+
+    async function toggleAdminBlindRating() {
+        try {
+            const res = await fetch('/galleryout/api/exhibition/toggle_blind', { method: 'POST' });
+            if (res.ok) {
+                sessionStorage.setItem('exh_scroll_pos', document.getElementById('gallery-grid').scrollTop);
+                window.location.reload();
+            }
+        } catch (e) {
+            console.error("Error toggling blind rating:", e);
+        }
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        const savedScroll = sessionStorage.getItem('exh_scroll_pos');
+        if (savedScroll) {
+            setTimeout(() => {
+                const grid = document.getElementById('gallery-grid');
+                if (grid) grid.scrollTop = parseInt(savedScroll);
+                sessionStorage.removeItem('exh_scroll_pos');
+            }, 100);
+        }
+    });
+
     document.addEventListener('DOMContentLoaded', () => {
         const searchInput = document.getElementById('category-search');
         // --- NICKNAME UI LOGIC ---
@@ -2165,6 +2770,17 @@
 
             stage.addEventListener('mousedown', (e) => {
                 if (e.target.closest('button, a')) return;
+                thHasMoved = false;
+                const macMediaEl = document.getElementById('active-theater-media');
+                const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+                if (macMediaEl && macMediaEl.tagName === 'VIDEO' && isMac && !e.shiftKey) {
+                    if (!window.macDragHintShown) {
+                        showNotification("Hold 'Shift' + Drag to pan videos on macOS.", "info", 3000);
+                        window.macDragHintShown = true;
+                    }
+                    return;
+                }
+
                 e.preventDefault();
                 isThDragging = true;
                 thStartX = e.clientX - thPanX;
@@ -2176,6 +2792,7 @@
 
         window.addEventListener('mousemove', (e) => {
             if (!isThDragging) return;
+            thHasMoved = true;
             e.preventDefault();
             thPanX = e.clientX - thStartX;
             thPanY = e.clientY - thStartY;
@@ -2187,6 +2804,20 @@
             const el = document.getElementById('active-theater-media');
             if(el) el.style.cursor = 'grab';
         });
+
+        if (stage) {
+            stage.addEventListener('click', (e) => {
+                if (thHasMoved) {
+                    thHasMoved = false;
+                    return;
+                }
+                const el = document.getElementById('active-theater-media');
+                if (el && el.tagName === 'VIDEO' && e.target === el) {
+                    if (el.paused) el.play();
+                    else el.pause();
+                }
+            });
+        }
 
         grid.addEventListener('scroll', () => {
             document.getElementById('backToTopBtn').style.display = (grid.scrollTop > 400) ? 'flex' : 'none';
@@ -2203,7 +2834,7 @@
         try {
             const res = await fetch('/galleryout/api/collections');
             const data = await res.json();
-            const newPublicAlbums = data.albums.filter(a => a.is_public);
+            const newPublicAlbums = data.albums.filter(a => a.is_public || a.is_shared_access);
             
             // Generate a unique fingerprint of the public albums list
             const newHash = newPublicAlbums.map(c => `${c.id}:${c.name}`).join('|');
@@ -2315,7 +2946,15 @@
                 
                 if (card) {
                     const starsInner = card.querySelector('.stars-inner');
-                    if (starsInner) starsInner.style.width = (data.new_average / 5 * 100) + '%';
+                    file.my_rating = val;
+
+                    if (starsInner) {
+
+                        const displayRating = BLIND_RATING ? file.my_rating : data.new_average;
+
+                        starsInner.style.width = (displayRating / 5 * 100) + '%';
+
+                    }
                     
                     const voteCountBadge = card.querySelector(`.vote-count[data-file-id="${file.id}"]`);
                     if (voteCountBadge) voteCountBadge.textContent = `${file.vote_count}`;
@@ -2408,23 +3047,30 @@
                 if (focusedGridIndex !== absIdx) {
                     if (focusedGridIndex !== -1) {
                         const oldCard = document.querySelector(`.exh-card[data-index="${focusedGridIndex}"]`);
-                        if (oldCard) oldCard.classList.remove('keyboard-focused');
+                        if (oldCard) {
+                        oldCard.classList.remove('keyboard-focused');
+                        oldCard.classList.remove('return-focus');
+                        }
                     }
                     focusedGridIndex = absIdx;
-                    card.classList.add('keyboard-focused');
+                    card.classList.add('keyboard-focused', 'return-focus');
                 }
             });
 
             card.onclick = () => { focusedGridIndex = absIdx; openTheater(absIdx); };
 
-            const starPct = ((file.avg_rating || 0) / 5) * 100;
+            const displayRating = BLIND_RATING ? (file.my_rating || 0) : (file.avg_rating || 0);
+
+
+            const starPct = (displayRating / 5) * 100;
             
             let media = '';
             if (file.type === 'video') {
-                const isMov = file.name.toLowerCase().endsWith('.mov');
-                const isLarge = (file.size > streamThresholdBytes);
-                const useStream = ffmpegAvailable && (isMov || isLarge);
-                const videoSource = useStream ? `/galleryout/stream/${file.id}` : `/galleryout/thumbnail/${file.id}`;
+                const ext = file.name.toLowerCase().split('.').pop();
+                const isNative =['mp4', 'webm'].includes(ext);
+                // PATCHED: Never stream native formats to allow full duration seeking
+                const useStream = ffmpegAvailable && !isNative;
+                const videoSource = useStream ? `/galleryout/stream/${file.id}` : `/galleryout/file/${file.id}`;
                 
                 // Note: poster image is crucial for mobile performance
                 media = `
@@ -2532,7 +3178,8 @@
 
     async function closeTheater() { 
         stopTheaterPolling(); // STOP POLLING
-        document.getElementById('theater-overlay').classList.remove('visible'); 
+        document.getElementById('theater-overlay').classList.remove('visible');
+        if(window.hideCustomPlayer) window.hideCustomPlayer(); 
         const v = document.querySelector('#theater-media-container video'); 
         if(v) v.pause(); 
         
@@ -2565,7 +3212,7 @@
 
                     if (card) {
                         // If the card is rendered (in the first chunk), focus and scroll to it
-                        card.classList.add('keyboard-focused');
+                        card.classList.add('keyboard-focused', 'return-focus');
                         card.scrollIntoView({block: 'center', behavior: 'auto'});
                     } else {
                         // Edge Case: If the sort moved the item way down (outside the first loaded chunk),
@@ -2626,14 +3273,15 @@
         
         if (isVideo) {
             mediaEl = document.createElement('video');
-            const isMov = file.name.toLowerCase().endsWith('.mov');
-            const isLarge = (file.size > streamThresholdBytes);
-            const useStream = ffmpegAvailable && (isMov || isLarge);
+            const ext = file.name.toLowerCase().split('.').pop();
+                const isNative =['mp4', 'webm'].includes(ext);
+                // PATCHED: Never stream native formats to allow full duration seeking
+                const useStream = ffmpegAvailable && !isNative;
             mediaEl.src = useStream ? `/galleryout/stream/${file.id}` : `/galleryout/file/${file.id}`;
-            mediaEl.controls = true; 
+            mediaEl.controls = false; 
             mediaEl.autoplay = true; 
             mediaEl.loop = true;
-            mediaEl.muted = true; 
+            mediaEl.muted = false; 
             mediaEl.playsInline = true;
         } else {
             mediaEl = document.createElement('img');
@@ -2696,6 +3344,11 @@
         }
 
         container.appendChild(mediaEl);
+        if (isVideo) {
+            if(window.initCustomPlayer) window.initCustomPlayer(mediaEl, file.id);
+        } else {
+            if(window.hideCustomPlayer) window.hideCustomPlayer();
+        }
         document.getElementById('theater-title').textContent = file.name;
         document.getElementById('theater-date').textContent = new Date(file.mtime * 1000).toLocaleString();
         
@@ -3169,7 +3822,13 @@
                 const card = document.getElementById(`card-${file.id}`); 
                 if(card) {
                     const starsInner = card.querySelector('.stars-inner');
-                    if(starsInner) starsInner.style.width = (data.new_average/5*100) + '%';
+                    if(starsInner) {
+
+                        const displayRating = BLIND_RATING ? val : data.new_average;
+
+                        starsInner.style.width = (displayRating/5*100) + '%';
+
+                    }
                     
                     const voteCountBadge = card.querySelector(`.vote-count`);
                     if (voteCountBadge) voteCountBadge.textContent = `${file.vote_count}`;
@@ -3312,6 +3971,9 @@
             if (key === 'o') { e.preventDefault(); document.getElementById('theater-open-tab-desk').click(); closeExhMenu(); return; }
             if (key === 'g') { e.preventDefault(); toggleTheaterPanel(); closeExhMenu(); return; }
             if (key === 'h') { e.preventDefault(); toggleTheaterToolbar(); closeExhMenu(); return; }
+            {% if global_blind_active and session.role in ['ADMIN', 'MANAGER', 'STAFF'] %}
+            if (key === 'b') { e.preventDefault(); toggleAdminBlindRating(); closeExhMenu(); return; }
+            {% endif %}
             
             // Handle all rating numbers (0 to 5)
             if (['0', '1', '2', '3', '4', '5'].includes(key)) { 
@@ -3334,6 +3996,15 @@
             return;
         }
 
+        // --- GLOBAL ACTIONS (Admin Override) ---
+        {% if global_blind_active and session.role in ['ADMIN', 'MANAGER', 'STAFF'] %}
+        if (e.key === 'b' || e.key === 'B') {
+            e.preventDefault();
+            if (typeof toggleAdminBlindRating === 'function') toggleAdminBlindRating();
+            return;
+        }
+        {% endif %}
+
         // --- LIGHTBOX CONTEXT ---
         if (isTh) {
             if (e.key === 'ArrowLeft') { e.preventDefault(); navTheater(-1); }
@@ -3342,6 +4013,9 @@
             else if (e.key === 't' || e.key === 'T') { e.preventDefault(); rotateTheater(); }
             else if (e.key === 'g' || e.key === 'G') { e.preventDefault(); toggleTheaterPanel(); }
             else if (e.key === 'h' || e.key === 'H') { e.preventDefault(); toggleTheaterToolbar(); }
+            {% if global_blind_active and session.role in ['ADMIN', 'MANAGER', 'STAFF'] %}
+            else if (e.key === 'b' || e.key === 'B') { e.preventDefault(); toggleAdminBlindRating(); }
+            {% endif %}
             else if (e.key === '+' || e.key === '=') { e.preventDefault(); zoomTheater(0.2); }
             else if (e.key === '-' || e.key === '_') { e.preventDefault(); zoomTheater(-0.2); }
             else if (e.key === '0') { e.preventDefault(); resetTheaterZoom(); }
@@ -3390,14 +4064,17 @@
         // Remove focus from previous
         if (focusedGridIndex !== -1) {
             const oldCard = document.querySelector(`.exh-card[data-index="${focusedGridIndex}"]`);
-            if (oldCard) oldCard.classList.remove('keyboard-focused');
+            if (oldCard) {
+                        oldCard.classList.remove('keyboard-focused');
+                        oldCard.classList.remove('return-focus');
+                        }
         }
 
         focusedGridIndex = n;
         
         const card = document.querySelector(`.exh-card[data-index="${focusedGridIndex}"]`);
         if (card) { 
-            card.classList.add('keyboard-focused'); 
+            card.classList.add('keyboard-focused', 'return-focus'); 
             // Smooth scroll to keep focused item in view
             card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); 
         }
@@ -3417,6 +4094,10 @@
             <span class="nav-text-wrapper" style="font-weight: bold;">All Collections</span>
         `;
         allLi.onclick = () => { 
+            activeSortCriteria = 'date';
+            activeSortOrder = 'desc';
+            updateSortUI();
+            if (document.getElementById('sort-select')) document.getElementById('sort-select').value = 'date_desc';
             loadGallery('all', 'All Collections', allLi); 
             if(window.innerWidth <= 1024) toggleMenu(); 
         };
@@ -3434,13 +4115,19 @@
             li.className = `nav-item ${currentCollectionId == col.id ? 'active' : ''}`;
             li.dataset.id = col.id;
             const safeName = escapeHtml(col.name).replace(/'/g, "\\'");
+            let iconStr = col.is_shared_access ? "👥" : "📚";
+            let textStyle = col.is_shared_access ? "color: var(--favorite-color);" : "";
             li.innerHTML = `
-                <span style="flex-shrink:0;">📚</span> 
-                <span class="nav-text-wrapper">${escapeHtml(col.name)}</span>
+                <span style="flex-shrink:0; font-size:1.05rem;">${iconStr}</span> 
+                <span class="nav-text-wrapper" style="${textStyle}">${escapeHtml(col.name)}</span>
                 <button class="nav-expand-btn" title="Show full name" onclick="showFullName(event, '${safeName}')">•••</button>
             `;
             li.onclick = (e) => { 
                 if(e.target.closest('.nav-expand-btn')) return;
+                activeSortCriteria = 'date';
+                activeSortOrder = 'desc';
+                updateSortUI();
+                if (document.getElementById('sort-select')) document.getElementById('sort-select').value = 'date_desc';
                 loadGallery(col.id, col.name, li); 
                 if(window.innerWidth <= 1024) toggleMenu(); 
             };
@@ -3606,14 +4293,26 @@
      * Toggles direction if clicking the same criteria
      */
     function setSort(criteria) {
-        if (activeSortCriteria === criteria) {
-            // Toggle direction
+        if (criteria === 'rating' || criteria === 'unrated') {
+            if (activeSortCriteria === 'rating' && activeSortOrder === 'desc') {
+                activeSortCriteria = 'rating'; activeSortOrder = 'asc';
+            } else if (activeSortCriteria === 'rating' && activeSortOrder === 'asc') {
+                activeSortCriteria = 'unrated'; activeSortOrder = 'desc';
+            } else {
+                activeSortCriteria = 'rating'; activeSortOrder = 'desc';
+            }
+        } else if (criteria === 'comments' || criteria === 'uncommented') {
+            if (activeSortCriteria === 'comments' && activeSortOrder === 'desc') {
+                activeSortCriteria = 'comments'; activeSortOrder = 'asc';
+            } else if (activeSortCriteria === 'comments' && activeSortOrder === 'asc') {
+                activeSortCriteria = 'uncommented'; activeSortOrder = 'desc';
+            } else {
+                activeSortCriteria = 'comments'; activeSortOrder = 'desc';
+            }
+        } else if (activeSortCriteria === criteria) {
             activeSortOrder = (activeSortOrder === 'desc') ? 'asc' : 'desc';
         } else {
-            // New criteria selected
             activeSortCriteria = criteria;
-            // Default orders for better UX:
-            // Names usually start A-Z (asc), others usually show "most/newest" first (desc)
             activeSortOrder = (criteria === 'name') ? 'asc' : 'desc';
         }
 
@@ -3637,17 +4336,24 @@
             const criteria = btn.dataset.sort;
             const arrow = btn.querySelector('.sort-direction-arrow');
             
-            if (criteria === activeSortCriteria) {
+            let isMatch = (criteria === activeSortCriteria);
+            if (criteria === 'rating' && activeSortCriteria === 'unrated') isMatch = true;
+            if (criteria === 'comments' && activeSortCriteria === 'uncommented') isMatch = true;
+
+            if (isMatch) {
                 btn.classList.add('active');
-                arrow.textContent = (activeSortOrder === 'asc') ? '↑' : '↓';
                 
-                // Update tooltip to show direction
-                const label = btn.querySelector('span:first-child').textContent;
-                const dirText = (activeSortOrder === 'asc') ? 'Ascending' : 'Descending';
-                btn.title = `Currently sorted by ${label} (${dirText})`;
+                if (activeSortCriteria === 'unrated' || activeSortCriteria === 'uncommented') {
+                    arrow.textContent = '∅';
+                    btn.title = `Showing: Not ${criteria === 'rating' ? 'Rated' : 'Commented'}`;
+                } else {
+                    arrow.textContent = (activeSortOrder === 'asc') ? '↑' : '↓';
+                    const dirText = (activeSortOrder === 'asc') ? 'Ascending' : 'Descending';
+                    const label = btn.querySelector('span:first-child').textContent;
+                    btn.title = `Currently sorted by ${label} (${dirText})`;
+                }
             } else {
                 btn.classList.remove('active');
-                // Reset arrow to default visual for inactive buttons
                 arrow.textContent = (criteria === 'name') ? '↑' : '↓';
             }
         });
@@ -3715,5 +4421,444 @@
     window.loadGallery = loadGalleryInternal;
     
 </script>
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+
+    
+    
+
+    <!-- ========================================== -->
+    <!-- CUSTOM MEDIA PLAYER (Perfect Video Sync)   -->
+    <!-- ========================================== -->
+    <style>
+        .custom-player-wrapper {
+            position: fixed; 
+            background: rgba(15, 15, 15, 0.95);
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.15); border-top: none;
+            border-radius: 0 0 12px 12px;
+            padding: 0; display: none; flex-direction: column; gap: 0;
+            z-index: 9999; box-shadow: 0 10px 30px rgba(0,0,0,0.8); user-select: none;
+            box-sizing: border-box; transform-origin: top center;
+        }
+        
+        .custom-player-wrapper.visible {
+            display: flex; animation: fadeInPlayer 0.2s ease-out;
+        }
+        @keyframes fadeInPlayer {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .cp-progress-container { 
+            position: relative; 
+            width: 100%; 
+            display: flex; 
+            align-items: center; 
+            height: 16px; 
+            cursor: pointer; 
+            background: rgba(0,0,0,0.8); 
+            border-bottom: 1px solid rgba(255,255,255,0.05); 
+            overflow: hidden; 
+            transition: height 0.3s; 
+        }
+        .cp-progress-container.with-wave { height: 80px; }
+        .cp-waveform-bg { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background-size: 100% 100%; background-repeat: no-repeat; 
+            background-position: center; mix-blend-mode: screen; 
+            pointer-events: none; transition: opacity 0.3s; 
+            transform: scaleY(var(--wave-scale, 5.0)); transform-origin: center; 
+            filter: contrast(300%) brightness(1.5); opacity: 0.95; 
+        }
+        .cp-range {
+            -webkit-appearance: none; appearance: none; width: 100%; height: 100%; margin: 0;
+            background: rgba(255, 255, 255, 0.2); border-radius: 0; outline: none; cursor: pointer;
+        }
+        .cp-range:hover { background: rgba(255, 255, 255, 0.3); }
+        
+        .cp-range::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 4px; height: 16px;
+            border-radius: 0; background: var(--primary-color); cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.8); transition: height 0.3s;
+        }
+        .cp-range::-moz-range-thumb {
+            width: 4px; height: 16px; border: none; border-radius: 0;
+            background: var(--primary-color); cursor: pointer; box-shadow: 0 0 10px rgba(0, 123, 255, 0.8);
+            transition: height 0.3s;
+        }
+        .cp-progress-container.with-wave .cp-range::-webkit-slider-thumb { height: 80px; }
+        .cp-progress-container.with-wave .cp-range::-moz-range-thumb { height: 80px; }
+
+        .cp-controls { display: flex; align-items: center; justify-content: space-between; padding: 12px 15px; transition: all 0.3s; }
+        .cp-btn {
+            background: transparent; border: none; color: #fff; font-size: 1.2rem; cursor: pointer;
+            width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+        }
+        .cp-btn:hover { background: rgba(255, 255, 255, 0.15); color: var(--primary-color); }
+        .cp-play-btn {
+            font-size: 1.5rem; background: var(--primary-color); border-radius: 50%;
+            width: 44px; height: 44px; box-shadow: 0 4px 15px rgba(0, 123, 255, 0.4); transition: all 0.2s;
+        }
+        .cp-play-btn:hover { background: #fff; color: var(--primary-color); transform: scale(1.05); }
+
+        /* --- SQUASHED CONTROLS FOR WAVEFORM MODE --- */
+        .cp-progress-container.with-wave + .cp-controls { 
+            padding: 0px 15px; /* Ultra minimal vertical padding */
+        }
+        .cp-progress-container.with-wave + .cp-controls .cp-btn { 
+            width: 26px; height: 26px; font-size: 0.95rem; 
+        }
+        .cp-progress-container.with-wave + .cp-controls .cp-play-btn { 
+            width: 32px; height: 32px; font-size: 1.1rem; 
+        }
+        .cp-time { font-family: monospace; font-size: 0.9rem; color: #ddd; margin-left: 10px; font-weight: bold; letter-spacing: 0.5px; cursor: default; }
+        .cp-volume-wrapper {
+            display: flex; align-items: center; gap: 8px; margin-left: auto; background: rgba(0, 0, 0, 0.4);
+            padding: 0px 12px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: default;
+        }
+        .cp-vol-range {
+            -webkit-appearance: none; width: 80px; height: 4px; background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px; outline: none; cursor: pointer;
+        }
+        .cp-vol-range::-webkit-slider-thumb { -webkit-appearance: none; width: 10px; height: 10px; border-radius: 50%; background: #fff; cursor: pointer; }
+        @media (max-width: 768px) {
+            .cp-volume-wrapper { padding: 4px; }
+            .cp-vol-range { display: none; }
+            .cp-time { font-size: 0.75rem; }
+        }
+    
+        /* --- SORT POPOVER MENUS --- */
+        .sort-popover {
+            display: none; position: fixed; background: var(--surface-color); border: 1px solid var(--border-color);
+            border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); z-index: 10000;
+            padding: 6px; flex-direction: column; gap: 2px; min-width: 210px;
+        }
+        .sort-popover.visible { display: flex; animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .sort-popover button {
+            background: transparent; border: none; color: white; padding: 12px 15px; text-align: left;
+            border-radius: 8px; cursor: pointer; transition: 0.2s; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center;
+        }
+        .sort-popover button:hover { background: rgba(255,255,255,0.1); }
+        .sort-popover button.active { color: var(--primary-color); background: rgba(0,123,255,0.15); font-weight:bold; border: 1px solid rgba(0,123,255,0.3); }
+
+</style>
+
+    <div id="custom-media-player" class="custom-player-wrapper">
+        <div class="cp-progress-container">
+            <div id="cp-waveform" class="cp-waveform-bg"></div>
+            <input type="range" id="cp-seekbar" class="cp-range" min="0" max="100" value="0" step="0.1" title="Seek">
+        </div>
+        <div class="cp-controls">
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <button id="cp-skip-back" class="cp-btn" title="Rewind 5s (Left Arrow)">↺</button>
+                <button id="cp-play-pause" class="cp-btn cp-play-btn" title="Play/Pause (Space)">⏸</button>
+                <button id="cp-skip-forward" class="cp-btn" title="Forward 5s (Right Arrow)">↻</button>
+                <div id="cp-time-display" class="cp-time">00:00 / 00:00</div>
+            </div>
+            <div style="display: flex; gap: 10px; margin-left: auto;">
+            <div class="cp-volume-wrapper" id="cp-wave-ctrl" style="display: none; margin-left: 0;">
+                <span style="font-size: 0.9rem; margin-right: 4px; cursor: help;" title="Waveform Amplitude">🌊</span>
+                <input type="range" id="cp-wave-slider" class="cp-vol-range" min="0.1" max="10.0" value="1.0" step="0.1" title="Waveform Amplitude">
+            </div>
+            <div class="cp-volume-wrapper" style="margin-left: 0;">
+                <button id="cp-mute-btn" class="cp-btn" style="width: 28px; height: 28px; font-size: 1rem;" title="Mute (M)">🔊</button>
+                <input type="range" id="cp-volume-slider" class="cp-vol-range" min="0" max="1" value="1" step="0.05" title="Volume">
+            </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            if (window._sgPlayerInitialized) return;
+            window._sgPlayerInitialized = true;
+
+            let currentCustomMedia = null;
+            let isSeeking = false;
+            let syncFrame = null;
+
+            const cpWrapper = document.getElementById('custom-media-player');
+            const cpSeekbar = document.getElementById('cp-seekbar');
+            const cpPlayBtn = document.getElementById('cp-play-pause');
+            const cpSkipBack = document.getElementById('cp-skip-back');
+            const cpSkipForward = document.getElementById('cp-skip-forward');
+            const cpTimeDisplay = document.getElementById('cp-time-display');
+            const cpMuteBtn = document.getElementById('cp-mute-btn');
+            const cpVolSlider = document.getElementById('cp-volume-slider');
+            const cpWaveCtrl = document.getElementById('cp-wave-ctrl');
+            const cpWaveSlider = document.getElementById('cp-wave-slider');
+
+            if (!cpWrapper) return;
+
+            // DYNAMIC TRACKING: Matches player exactly to video's physical rendering bounds
+            function syncPlayerToVideo() {
+                if (!currentCustomMedia || !cpWrapper.classList.contains('visible')) return;
+                
+                const rect = currentCustomMedia.getBoundingClientRect();
+                
+                if (rect.width > 0 && rect.height > 0) {
+                    cpWrapper.style.left = rect.left + 'px';
+                    cpWrapper.style.width = rect.width + 'px';
+                    cpWrapper.style.top = rect.bottom + 'px'; // Anchors to the bottom
+                }
+                
+                syncFrame = requestAnimationFrame(syncPlayerToVideo);
+            }
+
+            function formatTime(seconds) {
+                if (isNaN(seconds) || seconds < 0) return "00:00";
+                const m = Math.floor(seconds / 60);
+                const s = Math.floor(seconds % 60);
+                return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            }
+
+            function updateTimeDisplay() {
+                if (!currentCustomMedia) return;
+                const current = formatTime(currentCustomMedia.currentTime);
+                const total = formatTime(currentCustomMedia.duration);
+                cpTimeDisplay.innerHTML = `${current} / ${total}`;
+            }
+
+            window.initCustomPlayer = function(mediaElement, fileId) {
+                if (!mediaElement || !['VIDEO', 'AUDIO'].includes(mediaElement.tagName)) {
+                    window.hideCustomPlayer();
+                    return;
+                }
+
+                currentCustomMedia = mediaElement;
+                currentCustomMedia.controls = false; 
+                
+                cpWrapper.classList.add('visible');
+
+                cpPlayBtn.innerHTML = currentCustomMedia.paused ? '▶' : '⏸';
+                cpTimeDisplay.innerHTML = "00:00 / 00:00";
+                cpSeekbar.value = 0;
+
+                const waveBg = document.getElementById('cp-waveform');
+                if (waveBg) {
+                    const progressCont = cpWrapper.querySelector('.cp-progress-container');
+                    if (fileId && typeof GENERATE_WAVEFORMS !== 'undefined' && GENERATE_WAVEFORMS) {
+                const savedAmp = localStorage.getItem('sg_wave_amp') || '1.0';
+                waveBg.style.backgroundImage = `url('/galleryout/waveform/${fileId}?amp=${savedAmp}')`;
+                if(progressCont) progressCont.classList.add('with-wave');
+                if(cpWaveCtrl) cpWaveCtrl.style.display = 'flex';
+                
+                if (cpWaveSlider) {
+                    cpWaveSlider.min = "0.1";
+                    cpWaveSlider.max = "10.0";
+                    cpWaveSlider.step = "0.1";
+                    cpWaveSlider.value = savedAmp;
+                    
+                    // Uses 'onchange' so it only fires when the user releases the mouse button
+                    cpWaveSlider.onchange = (e) => {
+                        const amp = e.target.value;
+                        localStorage.setItem('sg_wave_amp', amp);
+                        
+                        // Visual feedback while server generates the new image
+                        waveBg.style.opacity = '0.3'; 
+                        
+                        const tempImg = new Image();
+                        tempImg.onload = () => {
+                            waveBg.style.backgroundImage = `url('${tempImg.src}')`;
+                            waveBg.style.opacity = '0.95';
+                        };
+                        tempImg.src = `/galleryout/waveform/${fileId}?amp=${amp}`;
+                    };
+                }
+            } else {
+                waveBg.style.backgroundImage = 'none';
+                if(progressCont) progressCont.classList.remove('with-wave');
+                if(cpWaveCtrl) cpWaveCtrl.style.display = 'none';
+            }
+                }
+
+                currentCustomMedia.addEventListener('loadedmetadata', updateTimeDisplay);
+                currentCustomMedia.addEventListener('timeupdate', () => {
+                    if (!isSeeking && currentCustomMedia.duration && isFinite(currentCustomMedia.duration)) {
+                        const progress = (currentCustomMedia.currentTime / currentCustomMedia.duration) * 100;
+                        cpSeekbar.value = progress;
+                        updateTimeDisplay();
+                    }
+                });
+
+                currentCustomMedia.addEventListener('play', () => cpPlayBtn.innerHTML = '⏸');
+                currentCustomMedia.addEventListener('pause', () => cpPlayBtn.innerHTML = '▶');
+                currentCustomMedia.addEventListener('ended', () => cpPlayBtn.innerHTML = '▶');
+
+                currentCustomMedia.addEventListener('volumechange', () => {
+                    cpVolSlider.value = currentCustomMedia.volume;
+                    if (currentCustomMedia.muted || currentCustomMedia.volume === 0) {
+                        cpMuteBtn.innerHTML = '🔇';
+                    } else if (currentCustomMedia.volume < 0.5) {
+                        cpMuteBtn.innerHTML = '🔉';
+                    } else {
+                        cpMuteBtn.innerHTML = '🔊';
+                    }
+                });
+                
+                // Start sync loop
+                if (syncFrame) cancelAnimationFrame(syncFrame);
+                syncPlayerToVideo();
+            };
+
+            window.hideCustomPlayer = function() {
+                if(cpWrapper) cpWrapper.classList.remove('visible');
+                currentCustomMedia = null;
+                if (syncFrame) {
+                    cancelAnimationFrame(syncFrame);
+                    syncFrame = null;
+                }
+            };
+
+            cpPlayBtn.addEventListener('click', () => {
+                if (!currentCustomMedia) return;
+                if (currentCustomMedia.paused) currentCustomMedia.play();
+                else currentCustomMedia.pause();
+            });
+
+            cpSkipBack.addEventListener('click', () => {
+                if (currentCustomMedia) currentCustomMedia.currentTime = Math.max(0, currentCustomMedia.currentTime - 5);
+            });
+
+            cpSkipForward.addEventListener('click', () => {
+                if (currentCustomMedia) currentCustomMedia.currentTime = Math.min(currentCustomMedia.duration, currentCustomMedia.currentTime + 5);
+            });
+
+            cpSeekbar.addEventListener('input', (e) => {
+                isSeeking = true;
+                if (currentCustomMedia && currentCustomMedia.duration) {
+                    const seekTo = currentCustomMedia.duration * (e.target.value / 100);
+                    cpTimeDisplay.innerHTML = `${formatTime(seekTo)} / ${formatTime(currentCustomMedia.duration)}`;
+                }
+            });
+
+            cpSeekbar.addEventListener('change', (e) => {
+                if (currentCustomMedia && currentCustomMedia.duration) {
+                    currentCustomMedia.currentTime = currentCustomMedia.duration * (e.target.value / 100);
+                }
+                isSeeking = false;
+            });
+
+            cpMuteBtn.addEventListener('click', () => {
+                if (!currentCustomMedia) return;
+                currentCustomMedia.muted = !currentCustomMedia.muted;
+            });
+
+            cpVolSlider.addEventListener('input', (e) => {
+                if (!currentCustomMedia) return;
+                currentCustomMedia.volume = e.target.value;
+                currentCustomMedia.muted = false;
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || !currentCustomMedia || !cpWrapper.classList.contains('visible')) return;
+
+                if (e.code === 'Space') {
+                    e.preventDefault(); e.stopPropagation();
+                    cpPlayBtn.click();
+                } else if (e.code === 'ArrowRight') {
+                    e.preventDefault(); e.stopPropagation();
+                    cpSkipForward.click();
+                } else if (e.code === 'ArrowLeft') {
+                    e.preventDefault(); e.stopPropagation();
+                    cpSkipBack.click();
+                } else if (e.code === 'KeyM') {
+                    e.preventDefault(); e.stopPropagation();
+                    cpMuteBtn.click();
+                }
+            });
+            
+            // Re-sync on window resize just to be safe
+            window.addEventListener('resize', () => {
+                if (cpWrapper.classList.contains('visible')) syncPlayerToVideo();
+            });
+        })();
+    </script>
+    
+    <!-- DETACHED SORT MENUS (EXHIBITION) -->
+    <div id="exh-rating-menu" class="sort-popover">
+        <button onclick="applyExhSpecificSort('rating', 'desc')" id="btn-sort-rating-desc"><span>⭐ Highest Rated</span> <span>↓</span></button>
+        <button onclick="applyExhSpecificSort('rating', 'asc')" id="btn-sort-rating-asc"><span>⭐ Lowest Rated</span> <span>↑</span></button>
+        <button onclick="applyExhSpecificSort('unrated', 'desc')" id="btn-sort-unrated-desc"><span>∅ Not Rated</span> <span>-</span></button>
+    </div>
+    <div id="exh-comments-menu" class="sort-popover">
+        <button onclick="applyExhSpecificSort('latestcomment', 'desc')" id="btn-sort-latestcomment-desc"><span>🕒 Newest Comments</span> <span>↓</span></button>
+        <button onclick="applyExhSpecificSort('comments', 'desc')" id="btn-sort-comments-desc"><span>💬 Most Discussed</span> <span>↓</span></button>
+        <button onclick="applyExhSpecificSort('comments', 'asc')" id="btn-sort-comments-asc"><span>💬 Least Discussed</span> <span>↑</span></button>
+        <button onclick="applyExhSpecificSort('uncommented', 'desc')" id="btn-sort-uncommented-desc"><span>∅ No Comments</span> <span>-</span></button>
+    </div>
+
+
+<!-- INJECTED SORT LOGIC FOR EXHIBITION -->
+<script>
+    function showExhSortMenu(e, menuId) {
+        e.stopPropagation(); 
+        e.preventDefault();
+        document.querySelectorAll('.sort-popover.visible').forEach(m => m.classList.remove('visible'));
+        
+        const menu = document.getElementById(menuId);
+        if (!menu) return;
+
+        const rect = e.currentTarget.getBoundingClientRect();
+        let left = rect.left;
+        let top = rect.bottom + 5;
+        
+        // Adjust for right screen edge to prevent the menu from being cut off
+        if (left + 230 > window.innerWidth) {
+            left = window.innerWidth - 240;
+        }
+        
+        menu.style.top = top + 'px';
+        menu.style.left = left + 'px';
+        menu.classList.add('visible');
+        
+        // Update active class dynamically
+        menu.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        const activeId = 'btn-sort-' + (typeof activeSortCriteria !== 'undefined' ? activeSortCriteria : '') + '-' + (typeof activeSortOrder !== 'undefined' ? activeSortOrder : '');
+        const activeBtn = document.getElementById(activeId);
+        if (activeBtn) activeBtn.classList.add('active');
+    }
+
+    document.addEventListener('click', () => {
+        document.querySelectorAll('.sort-popover.visible').forEach(m => m.classList.remove('visible'));
+    });
+
+    document.addEventListener('scroll', () => {
+        document.querySelectorAll('.sort-popover.visible').forEach(m => m.classList.remove('visible'));
+    }, { passive: true });
+
+    function applyExhSpecificSort(by, order) {
+        if (typeof activeSortCriteria !== 'undefined') {
+            activeSortCriteria = by;
+            activeSortOrder = order;
+            
+            if (typeof updateSortUI === 'function') updateSortUI();
+            
+            const mobileSelect = document.getElementById('sort-select');
+            if (mobileSelect) mobileSelect.value = by + '_' + order;
+            
+            const collId = (typeof currentCollectionId !== 'undefined' && currentCollectionId) ? currentCollectionId : 'all';
+            const titleEl = document.getElementById('page-title');
+            const pageTitle = titleEl ? titleEl.textContent : 'Gallery';
+            
+            if (typeof loadGalleryInternal === 'function') {
+                loadGalleryInternal(collId, pageTitle);
+            }
+        }
+    }
+</script>
+
 </body>
 </html>

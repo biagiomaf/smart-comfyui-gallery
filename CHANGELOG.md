@@ -1,5 +1,43 @@
 # Changelog
 
+### **[2.12] - 2026-05-06**
+
+### Main Space (Management Interface)
+*   **User Analytics & Moderation:**
+    *   **Rating Transparency:** Inside the Rating panel (shortcut 'G'), a new "Details" icon (eye) next to "Global Rating" opens a view showing exactly which user assigned which rating.
+    *   **Enhanced Filtering:** Added multi-select filters for star ranges (e.g., "1-2 stars" + "4-5 stars") and specific raters.
+    *   **Sorting Refinements:** Sorting criteria for Ratings and Comments have been moved to sub-menus, allowing you to toggle between "Most/Least Discussed", "Uncommented", and "Not Rated" states effortlessly.
+    *   **User Login Tracking:** The User Manager panel now displays the last login timestamp for each user, with associated sorting functionality.
+*   **Gridview Metadata:**
+    *   **Added a persistent status bar that appears on hover, showing real-time file details including dimensions, megapixels, file size, and rating status.**
+    *   New shortcut 'I' from Gridview displays the file path and real-source mapping for diagnostic purposes.
+
+
+### Video & Playback
+*   **Waveform Integration:** Added `GENERATE_WAVEFORMS=true` configuration. When enabled, visual waveforms are rendered on the seek bar for precise navigation.
+*   **Dynamic Waveform Amplitude:** Added a dedicated amplitude slider (🌊) to the playback bar. This allows real-time adjustment of waveform vertical scaling, ensuring clear visibility for both low-level and high-level audio tracks without needing to regenerate media.
+*   **Enhanced Media Controls:** The playback interface now supports:
+    *   **Keyboard Shortcuts:** Spacebar for Play/Pause.
+    *   **Back/Forward buttons:** for 5-second seeking.
+    *   **Volume Control:** Integrated precise volume slider and mute toggle.
+    *   **Click-to-Play/Pause:** Intuitive playback control directly from the video area.
+
+
+### Exhibition Mode
+*   **Collection-Level Sharing:**
+    *   Administrators can now assign exclusive viewing permissions for specific collections to individual users via the "Share" option (three-dot menu).
+    *   In Exhibition mode, Admin/Staff/Manager roles see collections assigned exclusively to specific users highlighted in gold in the sidebar.
+*   **Blind Rating System Logic:**
+    *   **Global Enforcement:** Use the new `--blind-rating` launch parameter to force the blind rating mode globally for all users. In this mode, users see only their own ratings (both in sorting and in panels), preventing bias.
+    *   **"My Ratings: ON/OFF" Toggle:** If `--blind-rating` is **not** forced at launch, a new "My Ratings" button appears in the header. This allows all users (including Admins) to toggle their personal rating view on or off. 
+    *   **Admin Override:** When `--blind-rating` is forced, Admin/Staff users can use the 'B' keyboard shortcut to toggle blind rating visibility for their own session, facilitating moderation.
+    *   **UX Guidance:** Added an informative modal triggered by the "My Ratings" button to explain the benefits of the mode (sorting by personal ratings, hiding global averages, etc.).
+    *   **Configuration Notes:** 
+           1.  **For Forced Privacy:** Use `--blind-rating` at startup to ensure users are never influenced by global ratings.
+           2.  **For User Autonomy:** Leave `--blind-rating` unset; users can then use the "My Ratings: ON/OFF" toggle to decide if they want to view the exhibition based on global stats or their personal progress.
+           3.  **Permissions:** Admin/Staff users retain the ability to manage or preview exhibition content as needed, ensuring full control over the curation flow.
+
+
 ### **[2.11] - 2026-04-08**
 
 v2 is not just a feature drop. The version number jumped because the architecture, ACL system, and multi-user logic required a ground-up rethink. Your existing setup, folders, and data are all forward-compatible.

@@ -1,5 +1,5 @@
 <!-- USER MANAGER MODULE -->
-<!-- Version: 2.11 - April 08, 2026 -->
+<!-- Version: 2.12 - May 08, 2026 -->
 <style>
     /* --- RESTORED CSS FROM ORIGINAL EXHIBITION --- */
     #um-manager-overlay, #um-invite-overlay, #um-dialog-overlay {
@@ -129,6 +129,7 @@
                 <div style="display:flex; gap:8px;">
                     <button class="um-tool-btn" id="um-sort-name" onclick="umSetSort('name')">A-Z</button>
                     <button class="um-tool-btn active-blue" id="um-sort-date" onclick="umSetSort('date')">Newest ↓</button>
+                    <button class="um-tool-btn" id="um-sort-login" onclick="umSetSort('login')" title="Sort by Last Login">Recent Login ↓</button>
                 </div>
             </div>
         </div>
@@ -339,7 +340,9 @@
         document.querySelectorAll('.um-tool-btn').forEach(b => b.classList.remove('active-blue'));
         const btn = document.getElementById(`um-sort-${key}`);
         btn.classList.add('active-blue');
-        btn.textContent = key === 'name' ? (userSort.dir === 'asc' ? 'A-Z ↑' : 'Z-A ↓') : (userSort.dir === 'desc' ? 'Newest ↓' : 'Oldest ↑');
+        if (key === 'name') btn.textContent = userSort.dir === 'asc' ? 'A-Z ↑' : 'Z-A ↓';
+        else if (key === 'date') btn.textContent = userSort.dir === 'desc' ? 'Newest ↓' : 'Oldest ↑';
+        else if (key === 'login') btn.textContent = userSort.dir === 'desc' ? 'Recent Login ↓' : 'Old Login ↑';
         umFilterAndRender();
     }
 
@@ -350,6 +353,7 @@
         filtered.sort((a, b) => {
             let valA, valB;
             if (userSort.key === 'date') { valA = a.user_id; valB = b.user_id; }
+            else if (userSort.key === 'login') { valA = a.last_login || 0; valB = b.last_login || 0; }
             else { valA = (a.full_name || '').toLowerCase(); valB = (b.full_name || '').toLowerCase(); }
             if (valA < valB) return userSort.dir === 'asc' ? -1 : 1;
             if (valA > valB) return userSort.dir === 'asc' ? 1 : -1;
@@ -372,6 +376,9 @@
                     </div>
                     <div style="font-size:0.85rem; color:#888;">
                         👤 @${u.username} • 🔑 <span style="font-family:monospace; color:#ccc;">${u.plain_password}</span>
+                        <div style="margin-top:4px; font-size:0.75rem; color:var(--text-muted);">
+                            🕒 Last Login: ${u.last_login ? new Date(u.last_login * 1000).toLocaleString() : '<span style="color:var(--favorite-color);">Never</span>'}
+                        </div>
                     </div>
                     ${u.expiry_date ? `<div style="font-size:0.75rem; margin-top:5px; color:${isExpired ? 'var(--danger-color)' : 'var(--favorite-color)'}">⌛ Exp: ${new Date(u.expiry_date).toLocaleString()}</div>` : ''}
                 </div>
@@ -392,6 +399,7 @@
         currentList.sort((a, b) => {
             let valA, valB;
             if (userSort.key === 'date') { valA = a.user_id; valB = b.user_id; }
+            else if (userSort.key === 'login') { valA = a.last_login || 0; valB = b.last_login || 0; }
             else { valA = (a.full_name || '').toLowerCase(); valB = (b.full_name || '').toLowerCase(); }
             if (valA < valB) return userSort.dir === 'asc' ? -1 : 1;
             if (valA > valB) return userSort.dir === 'asc' ? 1 : -1;

@@ -88,8 +88,10 @@ RUN --mount=type=cache,target=/uv_cache,uid=1025,gid=1025,mode=0755 \
     && test -x /app/venv/bin/uv \
     && unset UV_CACHE_DIR
 
-COPY smartgallery.py /app/smartgallery.py
-COPY templates/ /app/templates/
+ARG CHOOSEN_SMARTGALLERY_FILE
+ARG CHOOSEN_TEMPLATE_DIR
+COPY ${CHOOSEN_SMARTGALLERY_FILE} /app/smartgallery.py
+COPY ${CHOOSEN_TEMPLATE_DIR}/ /app/templates/
 
 USER root
 
