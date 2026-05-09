@@ -157,7 +157,7 @@ multiarch_buildx_push:
 		--platform linux/amd64,linux/arm64 \
 		-t ${DOCKERHUB_REPO}:${DOCKER_TAG} \
 		-t ${DOCKERHUB_REPO}:${DOCKER_LATEST_TAG} \
-		--build-arg CHOOSEN_TEMPLATE_FILE=${TEMPLATE_FILE} \
+		--build-arg CHOOSEN_TEMPLATE_DIR=${TEMPLATE_DIR} \
 		--build-arg CHOOSEN_SMARTGALLERY_FILE=${SMARTGALLERY_FILE} \
 		-f ${DOCKERFILE} \
 		--push \
