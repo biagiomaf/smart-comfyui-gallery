@@ -1,5 +1,43 @@
 # Changelog
 
+### **[2.13] - 2026-05-21**
+
+### 🪄 Experimental Remix Workflow (New!)
+* **Zero-UI Background Generation:** Tweak prompts, modify parameters, or randomize seeds and submit jobs directly to ComfyUI without ever opening the ComfyUI web canvas. Once generated, the new file instantly and automatically appears indexed inside your gallery.
+* **Instant Shortcut Activation:** Trigger the Remix panel instantly for any focused image or video directly from the gallery grid by pressing **"B"** on your keyboard (or by clicking the magical wand 🪄 icon).
+* **Dynamic Parameter & Prompt Extraction:** Automatically traces the workflow graph to extract text prompts (positive, negative, system), seeds, and key generation variables (Steps, CFG, Denoise, Resolution, etc.) into a clean, human-readable panel.
+* **Source Image Swapping:** Easily replace input/source images directly from the form, supporting Image-to-Image, ControlNet, and IP-Adapter nodes.
+* **Multi-Gen Batching:** Queue up to 100 generations in one click. Toggle the **Random Seed** option to ensure each background iteration produces a fresh variation instead of being skipped by ComfyUI's duplicate cache.
+* **Flexible Manual Exports (Copy / Download):** Don't want to queue directly via API? Instantly **Copy** the modified JSON to your clipboard or **Download** it as a file. Pasting or importing it manually into the ComfyUI canvas will perfectly preserve all your parameter edits and input image swaps on the workspace.
+* **High-Performance Architecture (Error 134 & 413 Resolution):** Complete structural refactoring of the submission workflow. The server now reads, modifies, and streams huge workflow files (100MB+) directly on local disk via `file_id` and binary Blob streaming. This entirely bypasses browser string memory crashes and proxy payload limitations (like Nginx `client_max_body_size`).
+* **Intelligent Autofix & Interactive Corrections:** Translates standard UI-format JSON graphs into execution-ready ComfyUI API formats. If ComfyUI rejects the workflow due to validation errors (e.g., missing custom models or sampler mismatches), the panel guides you through interactive choice dropdowns to correct them.
+* **Video Companion Sync:** Automatically detects video sidecar metadata files (such as `.png` companion files saved by VHS nodes) so you can remix prompt workflows directly from your video player card.
+* **⚠️ Pragmatic "Quick & Dirty" Honest Disclaimer:** Despite major technical efforts, this remains an *experimental* and *stateless helper tool* designed for rapid iterations. It is **not** a replacement for ComfyUI's full native node canvas. It simply lets you edit the variables it successfully intercepts. If you use highly complex workflows, the system might find it harder to accurately capture all parameters and/or label them correctly; however, for standard, medium-to-simple workflows, it is an incredibly useful time-saver. If a workflow fails to map, no worries: it just means it's time to open the full ComfyUI canvas.  
+
+### 🖥️ Desktop UI & UX Improvements
+* **Cleaner Thumbnail Cards:** Removed the bulky, multi-line metadata from the grid view cards for a much cleaner and modern look.
+* **Compact Inline Metadata:** Added a sleek, single-line metadata string (`Date • Dimensions • Size`) positioned at the bottom left of the card, perfectly aligned with the selection checkmark. 
+* **Responsive Typography:** Implemented CSS Container Queries. The new compact metadata automatically scales down its font size when the user switches to the "Compact" thumbnail size.
+* **Easier Selection:** The entire bottom dark area of the card (where the filename is) is now clickable. You can select or deselect a file simply by clicking the card's footer, without needing to precisely aim for the small checkmark.
+* **Smart Focus Status Bar:** 
+  * The bottom colored info bar no longer appears automatically on every mouse hover (reducing visual clutter), unless *Focus Mode* is explicitly enabled.
+  * Added a small **"i" (Info)** hover icon next to the compact metadata. Hovering over this icon seamlessly reveals the full bottom info bar.
+  * Added the **"Last Scanned"** timestamp to the data displayed in the bottom info bar.
+  * Added a subtle "pop" animation to the status bar, making data updates visually distinct when moving between files.
+
+### 📱 Mobile Enhancements
+* **New 2-Column Grid Mode:** Added a "2-Column Grid" toggle in the mobile Options (⚙️) menu.
+* **Optimized Compact Layout:** When 2-Column mode is active:
+  * Action buttons (Favorite, Download, Delete) are forced into a single, space-saving horizontal line.
+  * Cluttering overlay badges (workflow, video duration, star ratings) are hidden to maximize image visibility.
+* **Mobile Info Modal:** In 2-Column mode, a new "i" icon appears in the bottom left corner of the thumbnail. Tapping it opens a sleek, mobile-friendly modal displaying all the file details (Dimensions, Size, Date, Scanned, Workflow).
+
+### 🎵 Media Player & Waveform Fixes
+* **Dynamic Waveform Height:** Fixed a visual bug where the media player reserved blank vertical space even if the video had no audio/waveform. The player now dynamically expands only *after* the waveform image successfully loads.
+* **Mobile Waveform Amplitude Control:** Replaced the bulky amplitude slider on mobile. Now, users can simply tap the wave icon (🌊) to cycle through amplitude presets (`0.5x`, `1.0x`, `2.0x`, `5.0x`, `10.0x`), triggering a brief toast notification with the current value.
+
+***
+
 ### **[2.12] - 2026-05-06**
 
 ### Main Space (Management Interface)

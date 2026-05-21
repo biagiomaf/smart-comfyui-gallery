@@ -5,7 +5,7 @@ endif
 
 .PHONY: all build_main build_exp build_core run kill buildx_rm docker_tag docker_push
 
-SMARTGALLERY_VERSION = 2.12
+SMARTGALLERY_VERSION = 2.13
 
 DOCKERFILE = Dockerfile
 DOCKER_TAG_PRE = smartgallery
@@ -157,7 +157,7 @@ multiarch_buildx_push:
 		--platform linux/amd64,linux/arm64 \
 		-t ${DOCKERHUB_REPO}:${DOCKER_TAG} \
 		-t ${DOCKERHUB_REPO}:${DOCKER_LATEST_TAG} \
-		--build-arg CHOOSEN_TEMPLATE_DIR=${TEMPLATE_DIR} \
+		--build-arg CHOOSEN_TEMPLATE_FILE=${TEMPLATE_FILE} \
 		--build-arg CHOOSEN_SMARTGALLERY_FILE=${SMARTGALLERY_FILE} \
 		-f ${DOCKERFILE} \
 		--push \

@@ -1,0 +1,855 @@
+<!-- REMIX OVERLAY MODULE -->
+<!-- Version: 2.13 - May 21, 2026 -->
+<style>
+    /* --- MAIN REMIX MODAL STYLES --- */
+    #remix-overlay {
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px);
+        z-index: 10500; display: none; justify-content: center; align-items: center;
+    }
+    #remix-overlay.visible { display: flex; }
+    
+    .remix-panel {
+        background: var(--surface-color); border: 1px solid var(--primary-color);
+        border-radius: 16px; width: 750px; max-width: 95vw; max-height: 90vh;
+        display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.9);
+        overflow: hidden; 
+    }
+    
+    .remix-header {
+        padding: 15px 20px; background: var(--surface-hover);
+        border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;
+        flex-shrink: 0; flex-wrap: wrap; gap: 8px;
+    }
+    
+    .remix-body {
+        padding: 20px; overflow-y: auto; flex-grow: 1; display: flex; flex-direction: column; gap: 15px;
+    }
+    
+    .remix-footer {
+        padding: 12px 16px; border-top: 1px solid var(--border-color);
+        background: var(--surface-hover); flex-shrink: 0;
+        display: flex; flex-direction: column; gap: 8px;
+    }
+    .remix-footer-row {
+        display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    }
+    .remix-footer-row.space-between { justify-content: space-between; }
+    .remix-footer-row.end { justify-content: flex-end; }
+
+    @media (max-width: 480px) {
+        .remix-panel { max-width: 100vw; max-height: 100vh; border-radius: 0; }
+        .remix-header h3 { font-size: 0.9rem; }
+        #remix-how-it-works-btn { display: none; }
+        .remix-footer-row { flex-wrap: wrap; }
+        #remix-gen-controls { flex-wrap: wrap; gap: 6px !important; }
+        #remix-gen-controls label { white-space: normal !important; font-size: 0.75rem; }
+        .glass-btn { padding: 6px 10px; font-size: 0.8rem; }
+    }
+    
+    .remix-section-title { font-size: 0.85rem; color: var(--primary-color); text-transform: uppercase; font-weight: bold; margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between;}
+    .remix-input { width: 100%; background: #000; border: 1px solid var(--glass-border); color: #eee; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 0.9rem; transition: border-color 0.2s;}
+    .remix-input:focus { border-color: var(--primary-color); outline: none; }
+    
+    /* Dedicated INTERNAL Status Box */
+    #remix-status-box {
+        display: none; padding: 12px 20px; font-size: 0.95rem; flex-shrink: 0; border-bottom: 1px solid transparent;
+    }
+    #remix-status-box.status-error {
+        background: rgba(220, 53, 69, 0.15); border-color: var(--danger-color); color: #ffcccc;
+    }
+    #remix-status-box.status-success {
+        background: rgba(40, 167, 69, 0.15); border-color: var(--success-color); color: #ccffcc;
+    }
+    #remix-status-box.status-info {
+        background: rgba(100, 100, 100, 0.15); border-color: #555; color: #aaa;
+    }
+    
+    .remix-image-preview {
+        width: 80px; height: 80px; flex-shrink: 0; background: #000; border-radius: 8px; 
+        overflow: hidden; border: 1px solid #444; display: flex; align-items: center; justify-content: center;
+    }
+
+    /* --- FULLSCREEN TEXT EDITOR SUB-MODAL --- */
+    #remix-text-editor-overlay {
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(12px);
+        z-index: 10600; display: none; justify-content: center; align-items: center;
+    }
+    #remix-text-editor-overlay.visible { display: flex; }
+    
+    .remix-text-editor-panel {
+        background: #111; border: 1px solid var(--primary-color); border-radius: 12px;
+        width: 90vw; height: 85vh; display: flex; flex-direction: column; overflow: hidden;
+    }
+    
+    .remix-text-editor-textarea {
+        flex-grow: 1; width: 100%; background: #000; border: none; color: #fff;
+        padding: 20px; font-family: monospace; font-size: 1.1rem; resize: none; outline: none; line-height: 1.5;
+    }
+</style>
+
+<!-- MAIN REMIX MODAL -->
+<div id="remix-overlay">
+    <div class="remix-panel">
+        <div class="remix-header">
+            <h3 style="margin:0; color:white; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span style="background:var(--favorite-color); color:#000; border-radius:6px; padding:2px 8px; font-size:0.85rem; font-weight:bold;">✦ Remix</span>
+                <span style="font-size:0.95rem;">Workflow</span>
+                <span onclick="toggleRemixInfo()" style="font-size:0.7rem; font-weight:normal; color:var(--favorite-color); border:1px solid var(--favorite-color); padding:2px 6px; border-radius:10px; cursor:pointer;" title="How it works">Experimental</span>
+            </h3>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <button id="remix-how-it-works-btn" class="glass-btn" onclick="toggleRemixInfo()" style="padding: 4px 10px; height:auto; min-height:0; font-size:0.8rem;">❓ How it works</button>
+                <button class="close-btn" onclick="closeRemixModal()" style="font-size: 1.5rem; background:none; border:none; color:#888; cursor:pointer;">×</button>
+            </div>
+        </div>
+        
+        <!-- STATIC INFO BOX (Toggled via JS) -->
+        <div id="remix-info-box" style="display: none; background: rgba(0, 123, 255, 0.1); border-bottom: 1px solid var(--primary-color); padding: 15px 20px; font-size: 0.9rem; color: #ddd; line-height: 1.5; flex-shrink: 0;">
+            <strong>✨ Generate without even opening ComfyUI.</strong><br>
+            Tweak your parameters right here and hit Queue. Your image or video will appear in ComfyUI's output folder as if by magic. It's a quick-and-dirty tool, rough around the edges, and won't catch every parameter, so you'll need to know your own workflow. But when it works, it's pretty great.<br>
+            <small style="color:#888;">Some parameters like width, height, or frame count may not appear. This is not a bug; it means they are wired to other nodes in the workflow and cannot be safely overridden from here.</small><br><br>
+            
+            <strong style="color:#aaa; font-size:0.85rem;">⚙️ Server configuration</strong><br>
+            <small style="color:#888;">Set this environment variable (if different from the default) before starting SmartGallery (e.g., in your shell, <code>.env</code> file, or via the Docker <code>-e</code> flag):<br>
+            <code style="color:#bbb;">COMFYUI_SERVER_URL</code> — The URL of your ComfyUI instance. Defaults to <code>http://127.0.0.1:8188</code>. This must be set if ComfyUI runs on a different host or port. For example, in Docker, set it to <code>http://host.docker.internal:8188</code> or the container name. The URL field in this form is pre-filled with this value and can be overridden per session. Click ↺ Reset to restore the default value.</small>
+        </div>
+        
+        <!-- INLINE STATUS BOX (Success/Error Messages) -->
+        <div id="remix-status-box"></div>
+        
+        <div class="remix-body" id="remix-dynamic-content">
+            <div class="loader" style="margin: 2rem auto;"></div>
+        </div>
+        
+        <!-- FOOTER -->
+        <div class="remix-footer">
+            <div class="remix-footer-row space-between">
+                <div class="remix-footer-row" id="remix-manual-tools">
+                    <button class="glass-btn" id="remix-dl-btn" onclick="submitRemix('download')">💾 Download</button>
+                    <button class="glass-btn" id="remix-copy-btn" onclick="submitRemix('copy')">📋 Copy</button>
+                </div>
+                <div class="remix-footer-row end">
+                    <button class="glass-btn" onclick="closeRemixModal()">Close</button>
+                    <button class="glass-btn active-blue" id="remix-submit-btn" onclick="submitRemix('api')" style="display:none;">🚀 Queue</button>
+                </div>
+            </div>
+            <div id="remix-gen-controls" style="display:none; align-items:center; gap:12px; flex-wrap:wrap;">
+                <label style="display:flex; align-items:center; gap:5px; font-size:0.8rem; color:#aaa; cursor:pointer;">
+                    <input type="checkbox" id="remix-random-seed" checked onchange="checkMultiGenWarning()" style="cursor:pointer;">
+                    Random seed
+                </label>
+                <label style="font-size:0.8rem; color:#aaa;">Generations:</label>
+                <input type="number" id="remix-gen-count" min="1" max="100" value="1"
+                    style="width:60px; padding:4px 6px; background:#1a1a1a; border:1px solid var(--border-color); border-radius:6px; color:white; font-size:0.9rem; text-align:center;"
+                    oninput="checkMultiGenWarning()">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SUB-MODAL: FULLSCREEN TEXT EDITOR -->
+<div id="remix-text-editor-overlay">
+    <div class="remix-text-editor-panel">
+        <div class="remix-header">
+            <h3 style="margin:0; color:white;">✏️ Edit Text / Prompt</h3>
+            <button class="close-btn" onclick="closeRemixTextEditor()">×</button>
+        </div>
+        <textarea id="remix-fullscreen-textarea" class="remix-text-editor-textarea"></textarea>
+        <div style="padding: 15px 20px; background: var(--surface-hover); border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 10px;">
+            <button class="glass-btn" onclick="closeRemixTextEditor()">Cancel</button>
+            <button class="glass-btn active-blue" onclick="saveRemixTextEditor()">💾 Done</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentRemixData = null;
+    let remixTargetFile = null;
+    let activeTextareaId = null;
+
+    function escapeHTML(str) {
+        if (!str) return '';
+        return String(str).replace(/[&<>'"]/g, 
+            tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag)
+        );
+    }
+    
+    function toggleRemixInfo() {
+        const box = document.getElementById('remix-info-box');
+        if (box) {
+            if (box.style.display === 'block') {
+                box.style.display = 'none';
+            } else {
+                box.style.display = 'block';
+            }
+        }
+    }
+    
+    function showRemixStatus(message, isSuccess, allowHtml) {
+        const box = document.getElementById('remix-status-box');
+        if (!box) return;
+        if (box._hideTimer) clearTimeout(box._hideTimer);
+
+        // isSuccess === null = neutral info (no icon, grey) — used for in-progress messages
+        if (isSuccess === null) {
+            box.className = 'status-info';
+            box.innerHTML = (allowHtml ? message : escapeHTML(message));
+        } else {
+            box.className = isSuccess ? 'status-success' : 'status-error';
+            box.innerHTML = (isSuccess ? '<strong>✅ Success:</strong><br>' : '<strong>❌ Error:</strong><br>') + (allowHtml ? message : escapeHTML(message));
+        }
+        box.style.display = 'block';
+
+        // Auto-hide: success after 8s, info never, error never
+        if (isSuccess === true) {
+            box._hideTimer = setTimeout(() => { box.style.display = 'none'; }, 8000);
+        }
+    }
+    
+    // --- FULLSCREEN EDITOR LOGIC ---
+    function openRemixTextEditor(textareaId) {
+        activeTextareaId = textareaId;
+        const sourceElement = document.getElementById(textareaId);
+        const editorOverlay = document.getElementById('remix-text-editor-overlay');
+        const fullscreenTextarea = document.getElementById('remix-fullscreen-textarea');
+        
+        if (sourceElement && editorOverlay && fullscreenTextarea) {
+            fullscreenTextarea.value = sourceElement.value;
+            editorOverlay.classList.add('visible');
+            fullscreenTextarea.focus();
+        }
+    }
+    
+    function closeRemixTextEditor() {
+        document.getElementById('remix-text-editor-overlay').classList.remove('visible');
+        activeTextareaId = null;
+    }
+    
+    function saveRemixTextEditor() {
+        if (activeTextareaId) {
+            const sourceElement = document.getElementById(activeTextareaId);
+            const fullscreenTextarea = document.getElementById('remix-fullscreen-textarea');
+            sourceElement.value = fullscreenTextarea.value;
+        }
+        closeRemixTextEditor();
+    }
+    
+    // --- CLIPBOARD LOGIC (Fallback) ---
+    function remixCopyToClipboard(text, returnedType) {
+        let msg = returnedType === 'api' 
+            ? 'API Workflow copied! Use this JSON for developer API calls (not the canvas).' 
+            : 'UI Workflow copied! Paste it into the ComfyUI canvas.';
+            
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+                showRemixStatus(msg, true);
+            }).catch(err => { fallbackCopy(text, msg); });
+        } else { fallbackCopy(text, msg); }
+    }
+    
+    function fallbackCopy(text, msg) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed"; textArea.style.left = "-9999px"; textArea.style.top = "0";
+        document.body.appendChild(textArea);
+        textArea.focus(); textArea.select();
+        try {
+            document.execCommand('copy');
+            showRemixStatus(msg, true);
+        } catch (err) {
+            showRemixStatus('Clipboard API not supported by your browser.', false);
+        }
+        document.body.removeChild(textArea);
+    }
+
+    function openRemixModal(targetFileId = null, companionPath = null) {
+        // --- ARCHITECTURE FIX: STORE COMPANION PATH GLOBALLY ---
+        // This ensures subsequent POST requests (Queue, Copy, Autofix) 
+        // can tell the server where to read the workflow from.
+        window._remixCompanionPath = companionPath; 
+        
+        if (targetFileId) {
+            remixTargetFile = allFilesData.find(f => f.id === targetFileId);
+        } else if (currentLightboxFile) {
+            remixTargetFile = currentLightboxFile;
+        } else {
+            if(typeof showNotification === 'function') showNotification('No file selected for remix.', 'warning');
+            return;
+        }
+        
+        if (!remixTargetFile || !remixTargetFile.has_workflow) {
+            if(typeof showNotification === 'function') showNotification('No workflow available for this file.', 'warning');
+            return;
+        }
+        
+        const overlay = document.getElementById('remix-overlay');
+        const content = document.getElementById('remix-dynamic-content');
+        const apiQueueBtn = document.getElementById('remix-submit-btn');
+        const copyBtn = document.getElementById('remix-copy-btn');
+        const statusBox = document.getElementById('remix-status-box');
+        
+        overlay.classList.add('visible');
+        document.body.classList.add('modal-open');
+        content.innerHTML = '<div class="loader" style="margin: 2rem auto;"></div>';
+        
+        statusBox.style.display = 'none'; 
+        document.getElementById('remix-info-box').style.display = 'none';
+        apiQueueBtn.style.display = 'none';
+        document.getElementById('remix-gen-controls').style.display = 'none';
+        copyBtn.classList.remove('active-blue'); 
+        
+        const infoUrl = companionPath
+            ? `/galleryout/api/remix/info/${remixTargetFile.id}?companion=${encodeURIComponent(companionPath)}`
+            : `/galleryout/api/remix/info/${remixTargetFile.id}`;
+        fetch(infoUrl)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status !== 'success') {
+                    content.innerHTML = `<div style="color:var(--danger-color); text-align:center; margin-top:20px;">Error: ${data.message}</div>`;
+                    return;
+                }
+                
+                currentRemixData = data.data;
+                let html = '';
+                
+                const serverDefaultUrl = currentRemixData.default_comfy_url || "http://127.0.0.1:8188";
+                window._remixServerDefaultUrl = serverDefaultUrl;
+                const savedUrl = localStorage.getItem('sg_comfy_url') || serverDefaultUrl;
+                html += `
+                <div style="margin-bottom: 15px; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px;">
+                    <label style="font-size:0.75rem; color:var(--primary-color); font-weight:bold; display:block; margin-bottom:5px;">🔗 ComfyUI Server URL</label>
+                    <div style="display:flex; gap:6px; align-items:center;">
+                        <input type="text" id="remix-comfy-url" class="remix-input" value="${escapeHTML(savedUrl)}"
+                            style="padding: 6px 10px; flex:1;"
+                            oninput="
+                                const v = this.value.trim();
+                                if (v) localStorage.setItem('sg_comfy_url', v);
+                                else { localStorage.removeItem('sg_comfy_url'); this.value = window._remixServerDefaultUrl; }
+                            "
+                            placeholder="${escapeHTML(savedUrl)}">
+                        <button class="glass-btn" title="Reset to server default"
+                            onclick="localStorage.removeItem('sg_comfy_url'); document.getElementById('remix-comfy-url').value = window._remixServerDefaultUrl;"
+                            style="padding:4px 8px; height:auto; min-height:0; font-size:0.8rem; white-space:nowrap;">↺ Reset</button>
+                    </div>
+                    <div style="font-size:0.7rem; color:#666; margin-top:4px;">Server default: <code style="color:#888;" id="remix-server-default-display">${escapeHTML(serverDefaultUrl)}</code></div>
+                </div>`;
+                
+                // --- DYNAMIC UI MESSAGING BASED ON EXTRACTED FORMATS ---
+                const hasApi = currentRemixData.has_api;
+                const hasUi = currentRemixData.has_ui;
+                
+                if (hasApi && hasUi) {
+                    // Best case: We have both. Can queue and copy perfectly.
+                    apiQueueBtn.style.display = 'flex';
+                    document.getElementById('remix-gen-controls').style.display = 'flex';
+                    copyBtn.classList.add('active-blue');
+                } else if (hasUi && !hasApi) {
+                    // UI ONLY: Warn that queueing is disabled
+                    apiQueueBtn.style.display = 'none';
+                    copyBtn.classList.add('active-blue');
+                    const isVideo = remixTargetFile && /[.](mp4|webm|mov|avi|mkv|gif)$/i.test(remixTargetFile.name || '');
+                    const companionHint = isVideo
+                        ? ` Or, since this is a video, try <button class="glass-btn" onclick="findCompanionPng()" style="font-size:0.8rem; padding:2px 8px;">&#128269; Find companion PNG</button> — if found, you can queue directly from here without opening ComfyUI.`
+                        : '';
+                    html += `
+                    <div style="background: rgba(255, 193, 7, 0.1); border-left: 3px solid var(--favorite-color); padding: 12px; border-radius: 4px; margin-bottom: 15px; font-size: 0.9rem; color: #ddd; line-height: 1.6;">
+                        ⚠️ <strong>UI Workflow Only</strong><br>
+                        No API data found in this file — you can't queue directly. Edit the values below, then <strong>Copy</strong> and paste the JSON into the ComfyUI canvas.${companionHint}
+                    </div>`;
+                } else if (hasApi && !hasUi) {
+                    // API ONLY: Warn that copying will give API format
+                    apiQueueBtn.style.display = 'flex';
+                    document.getElementById('remix-gen-controls').style.display = 'flex';
+                    copyBtn.classList.remove('active-blue');
+                    html += `
+                    <div style="display:none; background: rgba(23, 162, 184, 0.1); border-left: 3px solid #17a2b8; padding: 12px; border-radius: 4px; margin-bottom: 15px; font-size: 0.9rem; color: #ddd; line-height: 1.4;">
+                        ℹ️ <strong>API Workflow Only</strong><br>
+                        This file only contains developer API data. You can queue it to ComfyUI automatically. If you click Copy, you will get the API JSON (which <strong>cannot</strong> be pasted into the ComfyUI canvas).
+                    </div>`;
+                }
+                
+                // --- SAVE PATH DISPLAY ---
+                try {
+                    // We removed raw_json from the payload, so we only extract what we need
+                    // if it was passed back. But for UI sake we'll rely on server sending it 
+                    // or just omit it safely. Let's wrap it nicely.
+                    if (currentRemixData.raw_api) {
+                        const apiJson = JSON.parse(currentRemixData.raw_api);
+                        const saveClasses = ['SaveImage','SaveAnimatedWEBP','SaveAnimatedPNG','VHS_VideoCombine','SaveVideo','SaveLatent'];
+                        let savePrefix = null;
+                        let saveNodeType = null;
+                        for (const nodeId of Object.keys(apiJson)) {
+                            const node = apiJson[nodeId];
+                            if (saveClasses.some(c => (node.class_type || '').includes(c) || c.includes(node.class_type || ''))) {
+                                const fp = node.inputs && node.inputs.filename_prefix;
+                                if (fp && typeof fp === 'string') {
+                                    savePrefix = fp;
+                                    saveNodeType = node._meta && node._meta.title ? node._meta.title : node.class_type;
+                                    break;
+                                }
+                            }
+                        }
+                        if (savePrefix) {
+                            // Split prefix into subfolder path + file prefix
+                            const parts = savePrefix.split(String.fromCharCode(92)).join('/').split('/').filter(Boolean);
+                            const filePrefix = parts.length > 1 ? parts[parts.length - 1] : savePrefix;
+                            const subFolder = parts.length > 1 ? parts.slice(0, -1).join('/') + '/' : '';
+                            const short = parts.length > 2 ? '…/' + parts.slice(-3, -1).join('/') + '/' : subFolder;
+                            // Store for success message reference
+                            window._remixSavePrefix = savePrefix;
+                            window._remixFilePrefix = filePrefix;
+                            window._remixSubFolder = subFolder;
+                            // Display: if no subfolder, show "output/" as the root to make it clear
+                            const subFolderDisplay = subFolder || '(ComfyUI root output folder)';
+                            const shortDisplay = short || '(ComfyUI root output folder)';
+                            html += `
+                            <div style="background:rgba(255,255,255,0.04); border:1px solid var(--border-color); border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:0.82rem; color:#aaa;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:6px;">
+                                    <span>📁 <strong style="color:#ddd;">Save node output</strong> <span style="color:#666; font-size:0.75rem;">(${saveNodeType})</span></span>
+                                    ${parts.length > 2 ? `<button class="glass-btn" onclick="const d=this.parentElement.parentElement.querySelector('.remix-fullpath');d.style.display=d.style.display==='none'?'block':'none';this.textContent=this.textContent==='▼ full'?'▲ hide':'▼ full';" style="padding:1px 7px; height:20px; font-size:0.72rem;">▼ full</button>` : ''}
+                                </div>
+                                <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end;">
+                                    <div>
+                                        <div style="font-size:0.72rem; color:#666; margin-bottom:2px;">folder <span style="color:#444;">(inside ComfyUI output/)</span></div>
+                                        <div style="font-family:monospace; font-size:0.85rem; color:var(--primary-color);">${escapeHTML(shortDisplay)}</div>
+                                    </div>
+                                    <div style="color:#555; font-size:1rem; padding-bottom:2px;">+</div>
+                                    <div>
+                                        <div style="font-size:0.72rem; color:#666; margin-bottom:2px;">file prefix</div>
+                                        <div style="font-family:monospace; font-size:0.85rem; color:#e0c070;">${escapeHTML(filePrefix)}</div>
+                                    </div>
+                                </div>
+                                ${parts.length > 2 ? `<div class="remix-fullpath" style="display:none; font-family:monospace; font-size:0.78rem; color:#666; margin-top:6px; word-break:break-all;">${escapeHTML(savePrefix)}</div>` : ''}
+                            </div>`;
+                        }
+                    }
+                } catch(e) { /* silently skip if JSON parse fails */ }
+
+                // 1. Text Nodes
+                if (currentRemixData.texts.length > 0) {
+                    html += '<div class="remix-section-title">💬 Prompts & Texts</div>';
+                    currentRemixData.texts.forEach((t, idx) => {
+                        const nodeName = t.title ? t.title : (t.node_type || 'Unknown');
+                        const displayLabel = t.label ? t.label : 'Text Block';
+                        const txtId = `remix-txt-${idx}`;
+                        html += `
+                            <div style="margin-bottom: 10px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                    <label style="font-size:0.75rem; color:#888;">
+                                        <span style="color:var(--text-color); font-weight:bold;">${displayLabel}</span> | Node ${t.node_id} (${nodeName})
+                                    </label>
+                                    <button class="glass-btn" onclick="openRemixTextEditor('${txtId}')" style="padding:2px 8px; height:24px; font-size:0.75rem;">⛶ Expand</button>
+                                </div>
+                                <textarea id="${txtId}" class="remix-input remix-text-field" data-node-id="${t.node_id}" data-key="${t.key || 'text'}" data-orig-val="${escapeHTML(String(t.value))}" data-widget-idx="${t.widget_index !== undefined ? t.widget_index : ''}" rows="3">${escapeHTML(t.value)}</textarea>
+                            </div>
+                        `;
+                    });
+                }
+                
+                // 2. Seeds
+                if (currentRemixData.seeds.length > 0) {
+                    html += '<div class="remix-section-title" style="margin-top:10px;">🎲 Seeds</div>';
+                    currentRemixData.seeds.forEach((s, idx) => {
+                        const nodeName = s.title ? s.title : (s.node_type || 'Unknown');
+                        html += `
+                            <div style="display:flex; gap:10px; align-items:center; margin-bottom: 10px;">
+                                <div style="flex:1;">
+                                    <label style="font-size:0.75rem; color:#888;">Node ${s.node_id} (${nodeName})</label>
+                                    <input type="number" class="remix-input remix-seed-field" data-node-id="${s.node_id}" data-key="${s.key}" data-orig-val="${s.value}" data-widget-idx="${s.widget_index !== undefined ? s.widget_index : ''}" value="${s.value}">
+                                </div>
+                                <button class="glass-btn" onclick="this.previousElementSibling.querySelector('input').value = Math.floor(Math.random() * 999999999999999)" style="padding: 8px; margin-top:15px;">🎲 Random</button>
+                            </div>
+                        `;
+                    });
+                }
+                
+                // 3. Other Numeric Parameters (Steps, CFG)
+                if (currentRemixData.numbers && currentRemixData.numbers.length > 0) {
+                    html += '<div class="remix-section-title" style="margin-top:10px;">⚙️ Parameters</div>';
+                    html += '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 10px;">';
+                    currentRemixData.numbers.forEach((num, idx) => {
+                        const nodeName = num.title ? num.title : (num.node_type || 'Unknown');
+                        const label = num.label || (num.key ? num.key.toUpperCase() : 'Param');
+                        const stepAttr = Number.isInteger(num.value) ? '1' : '0.1';
+                        html += `
+                            <div>
+                                <label style="font-size:0.75rem; color:#888;">
+                                    <span style="color:var(--text-color); font-weight:bold;">${label}</span> <span style="opacity:0.5">(Node ${num.node_id}: ${nodeName})</span>
+                                </label>
+                                <input type="number" step="${stepAttr}" class="remix-input remix-num-field" data-node-id="${num.node_id}" data-key="${num.key}" data-orig-val="${num.value}" data-widget-idx="${num.widget_index !== undefined ? num.widget_index : ''}" value="${num.value}">
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                }
+                
+                // 4. Image Upload with Preview
+                if (currentRemixData.images.length > 0) {
+                    html += '<div class="remix-section-title" style="margin-top:10px;">🖼️ Input Images</div>';
+                    currentRemixData.images.forEach((img, idx) => {
+                        const nodeName = img.title ? img.title : (img.node_type || 'Unknown');
+                        const safeImgName = encodeURIComponent(img.value);
+                        html += `
+                            <div style="margin-bottom: 10px; display: flex; gap: 15px; align-items: flex-start;">
+                                <div class="remix-image-preview">
+                                    <img src="/galleryout/input_file/${safeImgName}" style="width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\'color:#555;font-size:2rem;\'>?</span>'">
+                                </div>
+                                <div style="flex-grow: 1;">
+                                    <label style="font-size:0.75rem; color:#888;">Replace image in Node ${img.node_id} (${nodeName})</label>
+                                    <input type="file" id="remix-image-upload-${idx}" class="remix-input remix-img-field" accept="image/*" data-node-id="${img.node_id}" data-key="${img.key || 'image'}" data-orig-val="${escapeHTML(String(img.value))}" data-widget-idx="${img.widget_index !== undefined ? img.widget_index : ''}"
+                                        onchange="(function(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=function(e){const preview=inp.closest('div[style]').parentElement.querySelector('.remix-image-preview img');if(preview)preview.src=e.target.result;};r.readAsDataURL(f);})(this)">
+                                    <div style="font-size:0.7rem; color:#666; margin-top:4px; word-break: break-all;">Current: ${img.value}</div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+                
+                if (html === '') {
+                    html = '<div style="color:var(--text-muted)">No editable fields found in this workflow format.</div>';
+                }
+                
+                content.innerHTML = html;
+            })
+            .catch(err => {
+                content.innerHTML = `<div style="color:var(--danger-color); text-align:center; margin-top:20px;">Network Error: Failed to fetch workflow info.</div>`;
+            });
+    }
+    
+    function closeRemixModal() {
+        document.getElementById('remix-overlay').classList.remove('visible');
+        if (!document.getElementById('node-summary-overlay').classList.contains('visible') && 
+            !document.getElementById('file-info-overlay').classList.contains('visible')) {
+            document.body.classList.remove('modal-open');
+        }
+    }
+    
+    function submitRemix(actionType) {
+        let btn;
+        if (actionType === 'api') btn = document.getElementById('remix-submit-btn');
+        else if (actionType === 'copy') btn = document.getElementById('remix-copy-btn');
+        else btn = document.getElementById('remix-dl-btn');
+        
+        document.getElementById('remix-status-box').style.display = 'none';
+        
+        const origHtml = btn.innerHTML;
+        btn.innerHTML = '⏳...';
+        
+        document.getElementById('remix-submit-btn').disabled = true;
+        document.getElementById('remix-copy-btn').disabled = true;
+        document.getElementById('remix-dl-btn').disabled = true;
+        
+        // --- BUILD FORMDATA ---
+        function buildFormData(actType, randomizeSeeds) {
+            const fd = new FormData();
+            fd.append('file_id', remixTargetFile.id);
+            fd.append('file_name', remixTargetFile.name); // Used by backend for download naming
+            
+            if (window._remixCompanionPath) {
+                fd.append('companion_path', window._remixCompanionPath);
+            }
+
+            // Define which format type to request from backend
+            if ((actType === 'copy' || actType === 'download') && currentRemixData.has_ui) {
+                fd.append('workflow_type', 'ui');
+            } else if ((actType === 'copy' || actType === 'download') && currentRemixData.has_api) {
+                fd.append('workflow_type', 'api');
+            } else if (actType === 'api' && currentRemixData.has_api) {
+                fd.append('workflow_type', 'api');
+            } else {
+                fd.append('workflow_type', currentRemixData.workflow_type);
+            }
+
+            fd.append('action_type', actType);
+
+            const urlInput = document.getElementById('remix-comfy-url');
+            if (urlInput) fd.append('target_url', urlInput.value.trim());
+
+            const modifications = { texts: [], seeds: [], numbers: [] };
+
+            document.querySelectorAll('.remix-text-field').forEach(el => {
+                let m = { node_id: el.dataset.nodeId, value: el.value, orig_value: el.dataset.origVal };
+                if (el.dataset.key) m.key = el.dataset.key;
+                if (el.dataset.widgetIdx !== '') m.widget_index = parseInt(el.dataset.widgetIdx);
+                modifications.texts.push(m);
+            });
+
+            document.querySelectorAll('.remix-seed-field').forEach(el => {
+                let seedVal = parseFloat(el.value);
+                if (randomizeSeeds) seedVal = Math.floor(Math.random() * 999999999999999);
+                let m = { node_id: el.dataset.nodeId, key: el.dataset.key, value: seedVal, orig_value: el.dataset.origVal };
+                if (el.dataset.widgetIdx !== '') m.widget_index = parseInt(el.dataset.widgetIdx);
+                modifications.seeds.push(m);
+            });
+
+            document.querySelectorAll('.remix-num-field').forEach(el => {
+                let val = el.value;
+                let numVal = el.step === '1' ? parseInt(val) : parseFloat(val);
+                let m = { node_id: el.dataset.nodeId, key: el.dataset.key, value: numVal, orig_value: el.dataset.origVal };
+                if (el.dataset.widgetIdx !== '') m.widget_index = parseInt(el.dataset.widgetIdx);
+                modifications.numbers.push(m);
+            });
+
+            const imgInputs = document.querySelectorAll('.remix-img-field');
+            for (let i = 0; i < imgInputs.length; i++) {
+                if (imgInputs[i].files.length > 0) {
+                    fd.append('image_upload', imgInputs[i].files[0]);
+                    modifications.image_node_id = imgInputs[i].dataset.nodeId;
+                    if (imgInputs[i].dataset.key) modifications.image_key = imgInputs[i].dataset.key;
+                    modifications.image_orig_value = imgInputs[i].dataset.origVal;
+                    if (imgInputs[i].dataset.widgetIdx !== '') modifications.image_widget_index = parseInt(imgInputs[i].dataset.widgetIdx);
+                    break;
+                }
+            }
+
+            fd.append('modifications', JSON.stringify(modifications));
+            return fd;
+        }
+
+        let chosenWfType;
+        if ((actionType === 'copy' || actionType === 'download') && currentRemixData.has_ui) chosenWfType = 'ui';
+        else if ((actionType === 'copy' || actionType === 'download') && currentRemixData.has_api) chosenWfType = 'api';
+        else chosenWfType = 'api';
+
+        const formData = buildFormData(actionType, false);
+
+        // --- MEMORY EFFICIENT FETCH FOR COPY & DOWNLOAD ---
+        if (actionType === 'copy' || actionType === 'download') {
+            fetch('/galleryout/api/remix/submit', { method: 'POST', body: formData })
+            .then(async res => {
+                if (!res.ok) {
+                    let errMsg = "Server Error";
+                    try {
+                        const errData = await res.json();
+                        errMsg = errData.message || errMsg;
+                    } catch(e) {}
+                    throw new Error(errMsg);
+                }
+
+                const returnedType = res.headers.get('X-Workflow-Type') || chosenWfType;
+
+                if (actionType === 'download') {
+                    // Fetch as binary Blob to bypass JavaScript string memory limits
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    
+                    let filename = `remixed_${remixTargetFile.name}.json`;
+                    const disp = res.headers.get('Content-Disposition');
+                    if (disp && disp.includes('filename=')) {
+                        filename = disp.split('filename=')[1].replace(/"/g, '');
+                    }
+                    
+                    a.download = filename;
+                    document.body.appendChild(a); 
+                    a.click(); 
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                    showRemixStatus("JSON file generated and downloaded!", true);
+                } else {
+                    // Copy action (Extract text directly)
+                    const jsonText = await res.text();
+                    remixCopyToClipboard(jsonText, returnedType);
+                }
+            })
+            .catch(err => {
+                showRemixStatus(err.message || "Network Error: Failed to communicate with the Gallery Server.", false);
+            })
+            .finally(() => {
+                btn.innerHTML = origHtml;
+                document.getElementById('remix-submit-btn').disabled = false;
+                document.getElementById('remix-copy-btn').disabled = false;
+                document.getElementById('remix-dl-btn').disabled = false;
+            });
+        } else {
+            // --- STANDARD QUEUE LOGIC ---
+            const genCount = Math.max(1, parseInt(document.getElementById('remix-gen-count').value) || 1);
+            (async () => {
+                for (let i = 0; i < genCount; i++) {
+                    const label = genCount > 1 ? ` (${i + 1}/${genCount})` : '';
+                    btn.innerHTML = `⏳ Queuing${label}...`;
+                    try {
+                        const randomize = document.getElementById('remix-random-seed').checked;
+                        const iterFd = buildFormData(actionType, randomize);
+                        
+                        const res = await fetch('/galleryout/api/remix/submit', { method: 'POST', body: iterFd });
+                        const data = await res.json();
+                        
+                        if (data.status === 'success') {
+                            if (i === genCount - 1) {
+                                let successMsg = genCount > 1
+                                    ? `All ${genCount} jobs successfully queued in ComfyUI!`
+                                    : (data.message || "Job successfully sent to ComfyUI!");
+                                if (window._remixSavePrefix) {
+                                    const folder = window._remixSubFolder || 'ComfyUI root output folder';
+                                    const prefix = window._remixFilePrefix || window._remixSavePrefix;
+                                    successMsg += `<br><small style="color:#aaa;">📁 Output will be saved in <code>${folder}</code> with prefix <code>${prefix}</code></small>`;
+                                }
+                                showRemixStatus(successMsg, true, true);
+                            }
+                        } else {
+                            let stopMsg = genCount > 1 && i > 0
+                                ? `Error on generation ${i + 1}/${genCount} — stopped. Fix the issue before retrying.<br><small>${data.message}</small>`
+                                : (data.message || "ComfyUI returned an error.");
+                            if (i === 0 && data.message &&
+                                (data.message.includes('not in valid ComfyUI API format') || data.message.includes('ComfyUI rejected'))) {
+                                stopMsg += `<br><button class="glass-btn" onclick="doAutofix()" style="margin-top:8px; font-size:0.8rem;">🔧 Try Autofix</button>`;
+                                stopMsg += ` <button class="glass-btn" onclick="doAutofixDebug()" style="margin-top:8px; font-size:0.8rem;">🔍 Debug JSON</button>`;
+                            }
+                            showRemixStatus(stopMsg, false, true);
+                            break;
+                        }
+                    } catch (err) {
+                        const stopMsg = genCount > 1 && i > 0
+                            ? `Network error on generation ${i + 1}/${genCount} — stopped. Check that ComfyUI is reachable.`
+                            : "Network Error: Failed to communicate with the Gallery Server.";
+                        showRemixStatus(stopMsg, false);
+                        break;
+                    }
+                }
+                btn.innerHTML = origHtml;
+                document.getElementById('remix-submit-btn').disabled = false;
+                document.getElementById('remix-copy-btn').disabled = false;
+                document.getElementById('remix-dl-btn').disabled = false;
+            })();
+        }
+    }
+
+    // --- AUTOFIX: attempt UI→API conversion and requeue ---
+    async function doAutofix() {
+        const urlInput = document.getElementById('remix-comfy-url');
+        const targetUrl = urlInput ? urlInput.value.trim() : '';
+        const fd = new FormData();
+        fd.append('file_id', remixTargetFile.id);
+        if (window._remixCompanionPath) fd.append('companion_path', window._remixCompanionPath);
+        fd.append('target_url', targetUrl);
+        showRemixStatus('⏳ Attempting autofix…', null);
+        try {
+            const res = await fetch('/galleryout/api/remix/autofix', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (data.status === 'success') {
+                showRemixStatus(data.message + '<br><small>⚠️ Autofix is best-effort — check ComfyUI for results.</small>', true);
+            } else if (data.status === 'needs_choices') {
+                window._autofixChoices = data.choices;
+                let html = '⚠️ Some inputs need correction. Choose the right values:<br><br>';
+                data.choices.forEach((c, i) => {
+                    html += `<div style="margin-bottom:8px;">
+                        <label style="font-size:0.82rem;color:#aaa;">[Node ${c.node_id} (${c.node_title})] <strong>${c.inp_name}</strong>
+                        ${c.bad_value !== null && c.bad_value !== undefined ? ` — current: <code>${c.bad_value}</code>` : ' — missing'}</label><br>
+                        <select id="autofix-choice-${i}" style="background:#1a1a1a;border:1px solid var(--border-color);color:white;padding:4px 8px;border-radius:4px;font-size:0.85rem;margin-top:3px;">
+                            ${c.valid_options.map(v => `<option value="${v}">${v}</option>`).join('')}
+                        </select>
+                    </div>`;
+                });
+                html += `<button class="glass-btn active-blue" onclick="doAutofixApply()"
+                    style="margin-top:8px;font-size:0.85rem;">✅ Apply & Queue</button>`;
+                showRemixStatus(html, false, true);
+            } else {
+                let msg = 'Autofix failed: ' + data.message;
+                msg += `<br><small style="color:#aaa;">If the error mentions missing nodes or validation failures, the original workflow may have broken or missing custom nodes — autofix cannot repair that.</small>`;
+                msg += `<br><button class="glass-btn" onclick="doAutofixDebug()" style="margin-top:6px; font-size:0.8rem;">🔍 Show converted JSON</button>`;
+                showRemixStatus(msg, false, true);
+            }
+        } catch(e) {
+            showRemixStatus('Autofix network error: ' + e.message, false);
+        }
+    }
+
+    async function doAutofixApply() {
+        const urlInput = document.getElementById('remix-comfy-url');
+        const targetUrl = urlInput ? urlInput.value.trim() : '';
+        const choices = window._autofixChoices || [];
+        const filledChoices = choices.map((c, i) => {
+            const sel = document.getElementById(`autofix-choice-${i}`);
+            return { ...c, chosen: sel ? sel.value : c.valid_options[0] };
+        });
+        const fd = new FormData();
+        fd.append('file_id', remixTargetFile.id);
+        if (window._remixCompanionPath) fd.append('companion_path', window._remixCompanionPath);
+        fd.append('choices', JSON.stringify(filledChoices));
+        fd.append('target_url', targetUrl);
+        showRemixStatus('⏳ Applying corrections and queuing…', null);
+        try {
+            const res = await fetch('/galleryout/api/remix/autofix_apply', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (data.status === 'success') {
+                showRemixStatus(data.message, true, true);
+            } else {
+                showRemixStatus('Apply failed: ' + data.message, false);
+            }
+        } catch(e) {
+            showRemixStatus('Network error: ' + e.message, false);
+        }
+    }
+
+    async function doAutofixDebug() {
+        const urlInput = document.getElementById('remix-comfy-url');
+        const targetUrl = urlInput ? urlInput.value.trim() : '';
+        const fd = new FormData();
+        fd.append('file_id', remixTargetFile.id);
+        if (window._remixCompanionPath) fd.append('companion_path', window._remixCompanionPath);
+        fd.append('target_url', targetUrl);
+        fd.append('debug', '1');
+        showRemixStatus('⏳ Fetching debug info…', null);
+        try {
+            const res = await fetch('/galleryout/api/remix/autofix', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (data.status === 'debug') {
+                const jsonStr = JSON.stringify(data.converted, null, 2);
+                const msg = `Converted API workflow (copy and inspect):<br>
+                    <textarea readonly style="width:100%;height:200px;margin-top:6px;background:#111;color:#eee;
+                    font-size:0.75rem;font-family:monospace;border:1px solid #444;padding:6px;border-radius:4px;"
+                    onclick="this.select()">${jsonStr.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea>`;
+                showRemixStatus(msg, false, true);
+            } else {
+                showRemixStatus('Debug failed: ' + data.message, false);
+            }
+        } catch(e) {
+            showRemixStatus('Debug network error: ' + e.message, false);
+        }
+    }
+
+    async function findCompanionPng() {
+        showRemixStatus('⏳ Looking for companion PNG…', null);
+        try {
+            const res = await fetch(`/galleryout/api/remix/companion/${remixTargetFile.id}`);
+            const data = await res.json();
+            if (data.status === 'success') {
+                showRemixStatus(`Companion PNG found: ${data.companion_name}. Reloading workflow…`, null);
+                setTimeout(() => {
+                    openRemixModal(remixTargetFile.id, data.companion_path);
+                    setTimeout(() => {
+                        showRemixStatus(
+                            `✅ Workflow loaded from <strong>${data.companion_name}</strong>. ` +
+                            `Parameters have been reset to the original values from that file — ` +
+                            `make any changes you need, then hit <strong>Queue</strong>.`,
+                            true, true
+                        );
+                    }, 600);
+                }, 300);
+            } else {
+                showRemixStatus(data.message, false);
+            }
+        } catch(e) {
+            showRemixStatus('Network error: ' + e.message, false);
+        }
+    }
+
+    function checkMultiGenWarning() {
+        const existingWarning = document.getElementById('remix-multigen-warning');
+        if (existingWarning) existingWarning.remove();
+        const genCount = parseInt(document.getElementById('remix-gen-count').value) || 1;
+        const randomSeed = document.getElementById('remix-random-seed').checked;
+        if (genCount > 1 && !randomSeed) {
+            const warning = document.createElement('div');
+            warning.id = 'remix-multigen-warning';
+            warning.style.cssText = 'background:rgba(255,193,7,0.12); border-left:3px solid var(--favorite-color); padding:8px 12px; border-radius:4px; font-size:0.82rem; color:#ddd; margin-bottom:8px;';
+            warning.innerHTML = '⚠️ You are queuing multiple generations with a fixed seed. ComfyUI will likely execute only the first and skip the rest as duplicates (0 seconds). Enable <strong>Random seed</strong> for meaningful multiple generations.';
+            const footer = document.querySelector('.remix-footer');
+            if (footer) footer.insertAdjacentElement('beforebegin', warning);
+        }
+    }
+
+</script>

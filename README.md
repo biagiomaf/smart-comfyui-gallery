@@ -18,11 +18,12 @@
 **Bridging the gap between your creative workflow and professional client approval.**
 </div>
 
-Search 50,000 generations by prompt, model, LoRA, or comments in milliseconds.  
-Organize your gallery seamlessly across physical folders and virtual collections.  
-Share curated work with clients without exposing a single node, and let them rate and comment on your creations.  
-Compare two generations side-by-side with an automatic parameter diff.  
-Cull batches from your laptop or also from your phone while ComfyUI is still generating.
+* Search 50,000 generations by prompt, model, LoRA, or comments in milliseconds.  
+* Organize your gallery seamlessly across physical folders and virtual collections.  
+* **(NEW) Remix workflows**, swap input images, and trigger background generations directly from your gallery without ever opening ComfyUI.  
+* Share curated work with clients without exposing a single node, and let them rate and comment on your creations.  
+* Compare two generations side-by-side with an automatic parameter diff.  
+* Cull batches from your laptop or also from your phone while ComfyUI is still generating.
 
 [**🌐 smartgallerydam.com**](https://smartgallerydam.com) · full documentation, wiki and feature reference · [**▶️ Presentation Video**](https://smartgallerydam.com/smartgallerydam_2.12.mp4)
 
@@ -59,6 +60,7 @@ This is cross-platform in the full sense: **Windows, macOS, Linux, Docker**, acc
 ## Why SmartGallery?
 | | |
 |---|---|
+| 🪄 **Remix Workflow (new)** | Generate without opening ComfyUI. Press `B` to tweak prompts, seeds, and parameters, then queue directly to your ComfyUI server | 
 | 🔍 **Find anything instantly** | Search by prompt keyword, checkpoint, LoRA, date or comment across tens of thousands of files | 
 | 🗂️ **Powerful file manager** | Rename, move, copy, delete files and create folders directly from the browser |
 | 🔗 **Works on any folder** | Point it at any ComfyUI output, photo archive, NAS volume or network path. Mix and match as many folders as you want |
@@ -79,7 +81,7 @@ This is cross-platform in the full sense: **Windows, macOS, Linux, Docker**, acc
 
 1.  [**OVERVIEW & CONCEPTS**](#1-overview--concepts)
     *   [1.1 What is SmartGallery DAM?](#11-what-is-smartgallery-dam)
-    *   [1.2 What's New in v2.12](#12-whats-new-in-v212)
+    *   [1.2 What's New in v2.13](#12-whats-new-in-v213)
     *   [1.3 Core Features](#13-core-features)
     *   [1.4 Use Case Scenarios](#14-use-case-scenarios)
 2.  [**SETUP & CONFIGURATION**](#2-setup--configuration)
@@ -89,6 +91,11 @@ This is cross-platform in the full sense: **Windows, macOS, Linux, Docker**, acc
 3.  [**INTERFACE WALKTHROUGH**](#3-interface-walkthrough)
     *   [3.1 The Main Workspace (Creator Hub)](#31-the-main-workspace-creator-hub)
     *   [3.2 Advanced Media Inspection](#32-advanced-media-inspection)
+        *   [3.2.1 The Lightbox](#321-the-lightbox-media-viewer)
+        *   [3.2.2 Node Summary](#322-comfyui-node-summary-)
+        *   [3.2.3 Remix Workflow](#323-remix-workflow-)
+        *   [3.2.4 Compare Mode](#324-compare-mode-)
+        *   [3.2.5 Video Storyboard](#325-video-storyboard-)
     *   [3.3 Digital Asset Management (DAM) & Communication](#33-digital-asset-management-dam--communication)
     *   [3.4 User Management & Access Control](#34-user-management--access-control)
     *   [3.5 The Exhibition Portal (Client Hub)](#35-the-exhibition-portal-client-hub)
@@ -120,19 +127,12 @@ Evolve your workflow from a simple collection of files into a structured, search
 
 ---
 
-### 1.2 What's New in v2.12
+### 1.2 What's New in v2.13
 
-**New in v2.12:**
-
--   **Enhanced Filtering & Sub-Menus:** The search capabilities have been vastly upgraded. You can now filter media using multi-select options for **star ranges** (e.g., viewing both "1-2 stars" and "4-5 stars" simultaneously) and filter by **specific raters** to isolate feedback from key clients. Furthermore, sorting criteria for Ratings and Comments have been moved into sleek sub-menus, allowing you to instantly toggle between states like "Most/Least Discussed", "Uncommented", or "Not Rated".
--   **Persistent Metadata Hover Bar:** A new, sleek status bar appears dynamically at the bottom of your screen when hovering over files in the Gridview. It provides real-time file details including exact dimensions, calculated megapixels, file size, and current rating status without opening the Lightbox.
--   **Advanced User Analytics & Moderation:** The User Manager panel now actively tracks and displays the **last login timestamp** for every user, including sorting functionality—making it effortless to monitor client engagement. Additionally, inside the Rating panel (shortcut `G`), a new "Details" icon (👁️) reveals exactly *who* assigned which rating.
--   **Blind Rating System:** A professional curation feature rarely found even in high-end enterprise software. Launch with `--blind-rating` to hide global rating averages across the platform. Users see and sort only by their *own* votes, preventing group bias. Admins can bypass this via a UI toggle or the `B` shortcut. 
--   **Interactive Audio Waveforms:** Set `GENERATE_WAVEFORMS=true` to render visual waveforms for video and audio tracks. Features a rare **real-time amplitude slider (🌊)** that lets you visually scale waveforms on the fly without needing to regenerate the media.
--   **Collection-Level Sharing:** Granular permissions are here. You can now assign exclusive viewing rights for specific collections to individual users or clients, keeping everything else private.
--   **Enhanced Media Controls:** Spacebar to Play/Pause, arrow keys for 5-second seeking, and dedicated volume/mute controls right in the lightbox player.
-
-> **Note:** This list only highlights the latest additions. Be sure to read the **[Full Changelog](CHANGELOG.md)** so you don't miss out on other **important previous updates**, quality-of-life improvements, and bug fixes!
+- 🪄 **Remix Workflow (Experimental):** Generate new media without opening ComfyUI. Press `B` to edit prompts, seeds, and parameters directly from the gallery, then queue new generations straight to your ComfyUI server. Includes an Autofix engine for UI workflows and Companion PNG support for video files.  
+- 🖥️ **UI & UX Improvements**  
+- 📱 **Mobile Enhancements**  
+> **Note:** Read the **[Full Changelog](CHANGELOG.md)** so you don't miss out all the **important updates**, quality-of-life improvements, and bug fixes!
 
 ---
 
@@ -154,6 +154,7 @@ Evolve your workflow from a simple collection of files into a structured, search
 <summary><strong>Workflow Intelligence (ComfyUI)</strong></summary>
 
 -   **Node Summary Dashboard:** press `N` on any image to see Seed, CFG, Steps, Sampler, Scheduler, all active Models, LoRAs with weights, and full positive/negative prompts.
+-   **Remix Workflow:** press `B` to edit prompts and parameters directly from the UI, and queue new generations to ComfyUI. Includes Autofix for UI workflows and Companion PNG support for video files.
 -   **Workflow Download and Copy:** press `W` to download the raw JSON workflow, `C` to copy it to clipboard and paste directly back into ComfyUI.
 -   **Clean Export:** press `Shift+W` to download a pixel-perfect copy stripped of all EXIF data and embedded workflows. Safe to share externally.
 -   **Compare Mode:** select two generations, open the A/B slider with synchronized zoom and pan. A parameter diff table shows only the values that changed.
@@ -304,7 +305,7 @@ There are two ways to run SmartGallery on Windows: using the ready-to-use **Port
 This version includes a fully self-contained environment. You do not need to install Python or any dependencies on your system—it is **completely plug-and-play**.
 
 **1. Download & Extract**
-* **Direct Download:** [SmartGallery-v2.12-Windows-Portable.zip](https://github.com/biagiomaf/smart-comfyui-gallery/releases/download/2.12/SmartGallery-v2.12-Windows-Portable.zip)
+* **Direct Download:** [SmartGallery-v2.13-Windows-Portable.zip](https://github.com/biagiomaf/smart-comfyui-gallery/releases/download/2.13/SmartGallery-v2.13-Windows-Portable.zip)
 * **Releases Page:** Alternatively, view all builds on the [Releases page](https://github.com/biagiomaf/smart-comfyui-gallery/releases/latest).
 * Extract the archive into a folder of your choice.
 
@@ -938,6 +939,7 @@ Open the full-screen Lightbox with `V` or `Enter`. When Focus Mode is OFF, click
 | 🛡 Clean Export | `Shift+W` | Download with all metadata stripped (prompts, nodes, EXIF) |
 | ✏️ Rename | `R` | Rename file on disk |
 | 📝 Node Summary | `N` | Open ComfyUI generation dashboard |
+| ✦ Remix Workflow | `B` | Edit workflow parameters and queue new generations |
 | ⭐💬 Ratings & Comments | `G` | Open side panel for ratings and messages |
 | ⚙️ Workflow JSON | `W` | Download raw ComfyUI `.json` workflow |
 | 📋 Copy JSON | `C` | Copy workflow to clipboard |
@@ -976,7 +978,24 @@ Press `N` on any image (in the grid or in the Lightbox) to open the Node Summary
 
 ---
 
-### 3.2.3 Compare Mode (⚖️)
+### 3.2.3 Remix Workflow (✦)
+
+Generate new images or videos without even opening the ComfyUI canvas. SmartGallery extracts the workflow and gives you a clean UI to tweak the parameters on the fly.
+
+![Remix Workflow modal](assets/remix01.png)
+*The Remix Workflow modal: edit prompts, seeds, and parameters, then Queue directly to ComfyUI.*
+
+- **Open:** Press `B` on any image or video in the grid, or click the **✦ Remix** icon in the Lightbox toolbar (or via the Quick Menu `/`).
+- **Edit Parameters:** Modify texts, positive/negative prompts, seeds, steps, CFG, and replace input images directly from the modal.
+- **Queue directly:** Set the number of generations, optionally check "Random seed", and click **Queue in ComfyUI**. SmartGallery talks directly to the ComfyUI API to start the job.
+- **Autofix Engine:** If an image only has a UI-format workflow (which normally can't be queued via API), Remix includes an "Autofix" tool that attempts to convert and repair it automatically.
+- **Video Companion PNGs:** Video files often lack embedded API data. Remix automatically looks for a companion `.png` file in the same folder to load the full workflow.
+- **Flexible Manual Exports (Copy / Download):** Don't want to queue directly via API? Instantly Copy the modified JSON to your clipboard or Download it as a file. Pasting or importing it manually into the ComfyUI canvas will perfectly preserve all your parameter edits and input image swaps on the workspace.
+- **⚠️ Pragmatic "Quick & Dirty" Honest Disclaimer:** Despite major technical efforts, this remains an *experimental* and *stateless helper tool* designed for rapid iterations. It is **not** a replacement for ComfyUI's full native node canvas. It simply lets you edit the variables it successfully intercepts. If you use highly complex workflows, the system might find it harder to accurately capture all parameters and/or label them correctly; however, for standard, medium-to-simple workflows, it is an incredibly useful time-saver. If a workflow fails to map, no worries: it just means it's time to open the full ComfyUI canvas.  
+ 
+---
+
+### 3.2.4 Compare Mode (⚖️)
 
 Select exactly **2 files**, click `⋮` in the Selection Bar → **Compare Selected**.
 
@@ -989,7 +1008,7 @@ Select exactly **2 files**, click `⋮` in the Selection Bar → **Compare Selec
 
 ---
 
-### 3.2.4 Video Storyboard (🎞)
+### 3.2.5 Video Storyboard (🎞)
 
 Press `E` in the Lightbox on any video file.
 
@@ -1291,6 +1310,7 @@ Docker users: the same approach works identically. Run your Exhibition container
 | `I` | Display actual file path and real-source mapping (Diagnostic) |
 | `X` / `Space` | Select / deselect item |
 | `N` | View Node Summary (ComfyUI generation data) |
+| `B` | **Open Remix Workflow modal (edit & queue)** |
 | `F` | Toggle Favorite |
 | `A` | Add to / remove from Virtual Collection |
 | `W` | Download Workflow JSON |
@@ -1344,6 +1364,7 @@ Docker users: the same approach works identically. Run your Exhibition container
 | `H` | Hide / show UI (clean view) |
 | `/` | Open interactive Quick Menu |
 | `N` | View Node Summary |
+| `B` | **Open Remix Workflow modal** |
 | `F` | Toggle Favorite |
 | `A` | Add to / remove from Collection |
 | `Y` | Set Status Tag |

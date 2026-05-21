@@ -1,7 +1,7 @@
 # SmartGallery DAM for ComfyUI
 # Author: Biagio Maffettone © 2025-2026 — MIT License (free to use and modify)
 #
-# Version: 2.12 - May 08, 2026
+# Version: 2.13 - May 21, 2026
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -315,6 +315,7 @@ IS_EXHIBITION_MODE = False
 #
 ENABLE_AI_SEARCH = os.environ.get('ENABLE_AI_SEARCH', 'false').lower() == 'true'
 GENERATE_WAVEFORMS = os.environ.get('GENERATE_WAVEFORMS', 'false').lower() == 'true'
+COMFYUI_SERVER_URL = os.environ.get('COMFYUI_SERVER_URL', 'http://127.0.0.1:8188')
 
 # ============================================================================
 # END OF USER CONFIGURATION
@@ -330,8 +331,8 @@ AI_MODELS_FOLDER_NAME = '.AImodels'
 ENABLE_DAM_MODE = True
 
 # --- APP INFO ---
-APP_VERSION = "2.12"
-APP_VERSION_DATE = "May 08, 2026"
+APP_VERSION = "2.13"
+APP_VERSION_DATE = "May 21, 2026"
 GITHUB_REPO_URL = "https://github.com/biagiomaf/smart-comfyui-gallery"
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/biagiomaf/smart-comfyui-gallery/main/smartgallery.py"
 
@@ -558,6 +559,7 @@ def print_configuration():
                 
         cli_display = " ".join(masked_args)
 
+    print_row("ComfyUI API URL", COMFYUI_SERVER_URL, True)
     if ENABLE_AI_SEARCH:
         print_row("AI Search", "Enabled" if ENABLE_AI_SEARCH else "Disabled")
     if GENERATE_WAVEFORMS:
@@ -7342,6 +7344,685 @@ try:
         resource.setrlimit(resource.RLIMIT_NOFILE, (new_soft, hard))
 except Exception:
     pass
+
+# --- EXPERIMENTAL REMIX API (INLINE) ---
+import urllib.request
+import urllib.error
+import urllib.parse
+
+# Increase max request body size to handle large workflow JSON payloads (if users manually upload them, though we now read from disk)
+app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('COMFYUI_MAX_UPLOAD_MB', 100)) * 1024 * 1024
+
+
+# Experimental Remix API Module
+import json
+import os
+
+
+def _register_remix_routes_inline():
+    
+    def parse_workflow(raw_json, wf_type):
+        wf_data = json.loads(raw_json)
+        extract = {
+            'workflow_type': wf_type, 
+            'texts': [], 
+            'seeds': [], 
+            'numbers': [],
+            'images': [], 
+            'raw_json': raw_json,
+            'default_comfy_url': COMFYUI_SERVER_URL
+        }
+        
+        # --- API FORMAT EXTRACTION ---
+        if wf_type == 'api':
+            if isinstance(wf_data, list):
+                wf_data = {str(i): n for i, n in enumerate(wf_data)}
+                
+            for node_id, node in wf_data.items():
+                if not isinstance(node, dict): continue
+                inputs = node.get('inputs', {})
+                n_type = node.get('class_type', 'Unknown')
+                n_title = node.get('_meta', {}).get('title', n_type)
+                
+                type_title_lower = (n_type + " " + n_title).lower()
+                
+                for key, val in inputs.items():
+                    key_l = key.lower()
+                    
+                    if isinstance(val, str) and any(val.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.webp', '.jfif', '.bmp']):
+                        extract['images'].append({'node_id': node_id, 'value': val, 'key': key, 'node_type': n_type, 'title': n_title})
+                    
+                    elif ('seed' in key_l or 'seed' in type_title_lower) and isinstance(val, (int, float)):
+                        extract['seeds'].append({'node_id': node_id, 'key': key, 'value': val, 'node_type': n_type, 'title': n_title})
+                        
+                    elif isinstance(val, int) and val > 10000:
+                        if 'width' not in key_l and 'height' not in key_l and 'width' not in type_title_lower and 'height' not in type_title_lower:
+                            if not any(s['node_id'] == node_id and s['key'] == key for s in extract['seeds']):
+                                extract['seeds'].append({'node_id': node_id, 'key': key, 'value': val, 'node_type': n_type, 'title': n_title})
+                                
+                    elif isinstance(val, (int, float)):
+                        is_target = any(x in key_l or x in type_title_lower for x in ['step', 'cfg', 'guidance', 'denoise', 'width', 'height', 'batch', 'literal', 'scale', 'length', 'frame', 'total_second', 'num_frame', 'video_length', 'num_frames', 'fps', 'frame_rate', 'duration', 'second'])
+                        if is_target:
+                            label = "Param"
+                            if 'step' in key_l or 'step' in type_title_lower: label = "Steps"
+                            elif 'cfg' in key_l or 'cfg' in type_title_lower or 'scale' in type_title_lower: label = "CFG"
+                            elif 'width' in key_l or 'width' in type_title_lower: label = "Width"
+                            elif 'height' in key_l or 'height' in type_title_lower: label = "Height"
+                            elif 'denoise' in key_l or 'denoise' in type_title_lower: label = "Denoise"
+                            elif any(x in key_l for x in ['fps', 'frame_rate']): label = "FPS"
+                            elif any(x in key_l for x in ['total_second', 'duration', 'second_length']): label = "Duration (s)"
+                            elif any(x in key_l for x in ['length', 'num_frame', 'video_length', 'num_frames', 'frame_count']): label = "Frames"
+                            elif 'frame' in key_l: label = "Frames"
+                            elif n_title and n_title != n_type: label = n_title
+                            
+                            if not any(s['node_id'] == node_id and s['key'] == key for s in extract['seeds']):
+                                extract['numbers'].append({'node_id': node_id, 'key': key, 'value': val, 'node_type': n_type, 'title': n_title, 'label': label})
+                        
+                    elif isinstance(val, str):
+                        # Handle numeric strings for known numeric keys
+                        numeric_string_keys = ['fps', 'frame_rate', 'steps', 'length', 'num_frames', 'width', 'height', 'seed', 'cfg', 'denoise', 'total_second', 'duration', 'overlap', 'batch']
+                        if any(x in key_l for x in numeric_string_keys) and val.strip().lstrip('-').replace('.','',1).isdigit():
+                            num_val = float(val) if '.' in val else int(val)
+                            label = "FPS" if any(x in key_l for x in ['fps', 'frame_rate']) else                                     "Frames" if any(x in key_l for x in ['length', 'num_frames']) else                                     "Duration (s)" if any(x in key_l for x in ['total_second', 'duration']) else                                     "Steps" if 'step' in key_l else                                     "Width" if 'width' in key_l else                                     "Height" if 'height' in key_l else                                     n_title if (n_title and n_title != n_type) else "Param"
+                            if not any(s['node_id'] == node_id and s['key'] == key for s in extract['seeds']):
+                                extract['numbers'].append({'node_id': node_id, 'key': key, 'value': num_val, 'node_type': n_type, 'title': n_title, 'label': label})
+                        else:
+                            # Normal string handling
+                            is_prompt_key = ('text' in key_l or 'prompt' in key_l or 'data' in key_l)
+                            is_text_target = any(x in type_title_lower for x in ['text', 'string', 'prompt', 'wildcard', 'positive', 'negative'])
+                            is_long_text = len(val) > 15 and (' ' in val or '\n' in val)
+                            
+                            if (is_prompt_key or is_long_text or is_text_target) and not val.endswith(('.ckpt', '.safetensors', '.pth', '.bin', '.gguf', '.pt', '.json')):
+                                if '|' not in val:
+                                    label = "Text"
+                                    if 'positive' in type_title_lower or 'positive' in key_l: label = "Positive Prompt"
+                                    elif 'negative' in type_title_lower or 'negative' in key_l: label = "Negative Prompt"
+                                    elif 'system' in type_title_lower: label = "System Prompt"
+                                    elif 'wildcard' in type_title_lower: label = "Wildcard Text"
+                                    elif n_title and n_title != n_type: label = n_title
+                                    
+                                    extract['texts'].append({'node_id': node_id, 'value': val, 'key': key, 'node_type': n_type, 'title': n_title, 'label': label})
+        
+        # --- UI FORMAT EXTRACTION ---
+        else:
+            nodes = wf_data.get('nodes', []) if isinstance(wf_data, dict) else wf_data
+            for node in nodes:
+                if not isinstance(node, dict): continue
+                n_id = str(node.get('id', ''))
+                n_type = node.get('type', node.get('class_type', 'Unknown'))
+                n_title = node.get('title', n_type)
+                widgets = node.get('widgets_values', [])
+                
+                if not widgets: continue
+                if ('Note' in n_type and 'Project' not in n_type) or n_type == 'PrimitiveNode': continue
+                
+                type_title_lower = (n_type + " " + n_title).lower()
+                
+                for i, w in enumerate(widgets):
+                    if isinstance(w, str) and any(w.lower().endswith(ext) for ext in ['.png', '.jpg', '.jpeg', '.webp', '.jfif', '.bmp']):
+                        extract['images'].append({'node_id': n_id, 'value': w, 'widget_index': i, 'node_type': n_type, 'title': n_title})
+                    
+                    elif isinstance(w, (int, float)) and (w > 10000 or (n_type.endswith('Looper') and i == 1) or 'seed' in type_title_lower):
+                        if not any(s['node_id'] == n_id for s in extract['seeds']):
+                            extract['seeds'].append({'node_id': n_id, 'key': f'widget_{i}', 'value': w, 'widget_index': i, 'node_type': n_type, 'title': n_title})
+                    
+                    elif isinstance(w, (int, float)):
+                        is_target_param = any(x in type_title_lower or x in n_type.lower() for x in ['sampler', 'noise', 'step', 'cfg', 'guidance', 'detailer', 'scale', 'denoise', 'literal', 'width', 'height', 'resolution', 'video', 'latent', 'looper', 'wan', 'hunyuan', 'mochi', 'framepack', 'frame', 'vantage', 'i2v', 't2v', 'combine', 'fps'])
+                        if is_target_param:
+                            label = "Param"
+                            if 'step' in type_title_lower: label = "Steps"
+                            elif 'cfg' in type_title_lower or 'scale' in type_title_lower: label = "CFG"
+                            elif 'denoise' in type_title_lower: label = "Denoise"
+                            elif 'width' in type_title_lower: label = "Width"
+                            elif 'height' in type_title_lower: label = "Height"
+                            elif any(x in n_type.lower() for x in ['combine', 'save']) and 1 <= w <= 240: label = "FPS"
+                            elif any(x in n_type.lower() for x in ['video', 'latent', 'looper', 'wan', 'hunyuan', 'mochi', 'framepack', 'vantage', 'i2v', 't2v']) and isinstance(w, int) and 1 < w < 10000: label = "Frames"
+                            elif n_title and n_title != n_type: label = n_title
+                            elif isinstance(w, float): label = "Float Value"
+                            elif isinstance(w, int): label = "Int Value"
+                            
+                            if not any(s['node_id'] == n_id and s['key'] == f'widget_{i}' for s in extract['seeds']):
+                                extract['numbers'].append({'node_id': n_id, 'key': f'widget_{i}', 'value': w, 'widget_index': i, 'node_type': n_type, 'title': n_title, 'label': label})
+                    
+                    elif isinstance(w, str):
+                        is_text_target = any(x in type_title_lower for x in ['text', 'string', 'prompt', 'wildcard', 'positive', 'negative', 'literal'])
+                        is_long_text = len(w) > 15 and (' ' in w or '\n' in w or '\r' in w)
+                        
+                        if (is_text_target or is_long_text) and not w.endswith(('.ckpt', '.safetensors', '.pth', '.bin', '.gguf', '.pt', '.json')) and '|' not in w:
+                            label = "Text"
+                            if 'positive' in type_title_lower: label = "Positive Prompt"
+                            elif 'negative' in type_title_lower: label = "Negative Prompt"
+                            elif 'system' in type_title_lower: label = "System Prompt"
+                            elif 'wildcard' in type_title_lower: label = "Wildcard Text"
+                            elif n_title and n_title != n_type: label = n_title
+                            
+                            extract['texts'].append({'node_id': n_id, 'value': w, 'widget_index': i, 'node_type': n_type, 'title': n_title, 'label': label})
+
+        return extract
+
+    @app.route('/galleryout/api/remix/info/<string:file_id>')
+    def api_remix_info(file_id):
+        try:
+            info = get_file_info_from_db(file_id)
+            file_path = info['path']
+
+            companion_override = request.args.get('companion')
+            if companion_override and os.path.isfile(companion_override):
+                file_path = companion_override
+
+            raw_api = extract_workflow(file_path, target_type='api')
+            raw_ui  = extract_workflow(file_path, target_type='ui')
+
+            if not raw_api:
+                stem = os.path.splitext(file_path)[0]
+                for ext in ('.png', '.PNG'):
+                    companion = stem + ext
+                    if os.path.isfile(companion):
+                        candidate_api = extract_workflow(companion, target_type='api')
+                        candidate_ui  = extract_workflow(companion, target_type='ui')
+                        if candidate_api:
+                            raw_api = candidate_api
+                            if not raw_ui:
+                                raw_ui = candidate_ui
+                            break
+            extract = None
+
+            if raw_api:
+                extract = parse_workflow(raw_api, 'api')
+                if len(extract['texts']) == 0 and len(extract['seeds']) == 0 and len(extract['images']) == 0:
+                    extract = None
+            
+            if not extract and raw_ui:
+                extract = parse_workflow(raw_ui, 'ui')
+                    
+            if not extract or (len(extract['texts']) == 0 and len(extract['seeds']) == 0 and len(extract['images']) == 0):
+                return jsonify({'status': 'error', 'message': 'No editable fields found in this file format.'}), 404
+
+            # Don't send raw json back to frontend to save memory!
+            # The frontend only needs to know IF they exist, not their full content.
+            try:
+                _api_check = json.loads(raw_api) if raw_api else None
+                if isinstance(_api_check, dict):
+                    _api_nodes = [v for v in _api_check.values() if isinstance(v, dict) and 'class_type' in v]
+                    extract['has_api'] = len(_api_nodes) > 0
+                else:
+                    extract['has_api'] = False
+            except Exception:
+                extract['has_api'] = False
+
+            try:
+                _ui_check = json.loads(raw_ui) if raw_ui else None
+                _ui_nodes = _ui_check.get('nodes', []) if isinstance(_ui_check, dict) else (_ui_check if isinstance(_ui_check, list) else [])
+                extract['has_ui'] = bool(raw_ui) and len(_ui_nodes) > 0
+            except Exception:
+                extract['has_ui'] = False
+
+            extract['default_comfy_url'] = COMFYUI_SERVER_URL
+            
+            # Remove raw_json to prevent sending huge data to browser (prevents memory crash)
+            if 'raw_json' in extract: del extract['raw_json']
+
+            return jsonify({'status': 'success', 'data': extract})
+            
+        except Exception as e:
+            return jsonify({'status': 'error', 'message': str(e)}), 500
+
+    @app.route('/galleryout/api/remix/submit', methods=['POST'])
+    @management_api_only
+    def api_remix_submit():
+        try:
+            file_id = request.form.get('file_id')
+            action_req = request.form.get('action_type', 'api')
+            modifications = json.loads(request.form.get('modifications', '{}'))
+            wf_type = request.form.get('workflow_type', 'api')
+            target_comfy_url = request.form.get('target_url', COMFYUI_SERVER_URL).strip()
+            companion_path = request.form.get('companion_path')
+            
+            file_name = request.form.get('file_name', 'workflow.json')
+            base_name = os.path.splitext(file_name)[0]
+            
+            # --- READ WORKFLOW DIRECTLY FROM DISK ---
+            # This avoids the 413 Error / Memory Crash by reading directly on the server
+            if companion_path and os.path.exists(companion_path):
+                raw_json = extract_workflow(companion_path, target_type=wf_type)
+                if not raw_json:
+                    raw_json = extract_workflow(companion_path, target_type='ui' if wf_type == 'api' else 'api')
+            else:
+                info = get_file_info_from_db(file_id)
+                raw_json = extract_workflow(info['path'], target_type=wf_type)
+                if not raw_json:
+                    raw_json = extract_workflow(info['path'], target_type='ui' if wf_type == 'api' else 'api')
+            
+            if not raw_json:
+                return jsonify({'status': 'error', 'message': 'Could not read workflow data from file on server.'}), 400
+                
+            wf_data = json.loads(raw_json)
+            
+            # --- APPLY MODIFICATIONS ---
+            if wf_type == 'api':
+                for mod in modifications.get('texts', []):
+                    if mod['node_id'] in wf_data: wf_data[mod['node_id']]['inputs'][mod.get('key', 'text')] = mod['value']
+                for mod in modifications.get('seeds', []) + modifications.get('numbers', []):
+                    if mod['node_id'] in wf_data: wf_data[mod['node_id']]['inputs'][mod['key']] = mod['value']
+                
+                if 'image_upload' in request.files and modifications.get('image_node_id'):
+                    img_file = request.files['image_upload']
+                    if img_file.filename:
+                        filename = secure_filename("remix_" + img_file.filename)
+                        img_file.save(os.path.join(BASE_INPUT_PATH, filename))
+                        img_node_id = modifications['image_node_id']
+                        if img_node_id in wf_data: wf_data[img_node_id]['inputs'][modifications.get('image_key', 'image')] = filename
+            else:
+                # UI FORMAT
+                nodes = wf_data.get('nodes', []) if isinstance(wf_data, dict) else wf_data
+                all_mods = modifications.get('texts', []) + modifications.get('seeds', []) + modifications.get('numbers', [])
+                
+                for mod in all_mods:
+                    target_node = next((n for n in nodes if str(n.get('id')) == str(mod['node_id'])), None)
+                    if target_node and 'widgets_values' in target_node:
+                        orig_val_str = str(mod.get('orig_value', ''))
+                        is_numeric = False
+                        orig_val_float = 0.0
+                        try:
+                            orig_val_float = float(orig_val_str)
+                            is_numeric = True
+                        except: pass
+                        
+                        matched = False
+                        for i, w in enumerate(target_node['widgets_values']):
+                            if str(w) == orig_val_str:
+                                target_node['widgets_values'][i] = mod['value']
+                                matched = True
+                                break
+                            elif is_numeric and isinstance(w, (int, float)):
+                                if abs(w - orig_val_float) < 0.0001:
+                                    target_node['widgets_values'][i] = mod['value']
+                                    matched = True
+                                    break
+                                    
+                        if not matched:
+                            idx = mod.get('widget_index')
+                            if idx is not None and 0 <= idx < len(target_node['widgets_values']):
+                                target_node['widgets_values'][idx] = mod['value']
+                                
+                if 'image_upload' in request.files and modifications.get('image_node_id'):
+                    img_file = request.files['image_upload']
+                    if img_file.filename:
+                        filename = secure_filename("remix_" + img_file.filename)
+                        img_file.save(os.path.join(BASE_INPUT_PATH, filename))
+                        
+                        target_node = next((n for n in nodes if str(n.get('id')) == str(modifications['image_node_id'])), None)
+                        if target_node and 'widgets_values' in target_node:
+                            orig_img = str(modifications.get('image_orig_value', ''))
+                            matched = False
+                            for i, w in enumerate(target_node['widgets_values']):
+                                if str(w) == orig_img:
+                                    target_node['widgets_values'][i] = filename
+                                    matched = True
+                                    break
+                            if not matched:
+                                idx = modifications.get('image_widget_index')
+                                if idx is not None and 0 <= idx < len(target_node['widgets_values']):
+                                    target_node['widgets_values'][idx] = filename
+
+            # --- ROUTING ACTION LOGIC ---
+            
+            # MEMORY/PAYLOAD SAFETY FIX (Error 134 / 413 resolution)
+            if action_req in ['copy', 'download']:
+                modified_json_string = json.dumps(wf_data, indent=2)
+                headers = {'X-Workflow-Type': wf_type}
+                
+                if action_req == 'download':
+                    headers['Content-Disposition'] = f'attachment;filename="remixed_{base_name}.json"'
+                    
+                return Response(modified_json_string, mimetype='application/json', headers=headers)
+
+            # FOR COMYUI QUEUE ACTION
+            if action_req == 'api':
+                if wf_type == 'ui':
+                    return jsonify({'status': 'error', 'message': 'Cannot queue UI-format workflow via API. Use Copy/Download instead.'}), 400
+
+                if not target_comfy_url:
+                    return jsonify({'status': 'error', 'message': 'ComfyUI URL is required.'}), 400
+                try:
+                    ping_req = urllib.request.Request(
+                        f"{target_comfy_url.rstrip('/')}/system_stats",
+                        headers={'Content-Type': 'application/json'}
+                    )
+                    urllib.request.urlopen(ping_req, timeout=4)
+                except urllib.error.URLError:
+                    return jsonify({'status': 'error', 'message': f'Cannot reach ComfyUI at {target_comfy_url} — check the URL and make sure ComfyUI is running.'}), 502
+                except Exception:
+                    pass
+
+                invalid_nodes = []
+                for node_id, node_val in wf_data.items():
+                    if not isinstance(node_val, dict) or 'class_type' not in node_val or 'inputs' not in node_val:
+                        invalid_nodes.append(str(node_id))
+                if invalid_nodes:
+                    return jsonify({'status': 'error', 'message': f'Workflow data is not in valid ComfyUI API format (invalid nodes: {", ".join(invalid_nodes[:5])}). This file contains a UI-format workflow only — it cannot be queued directly. Try: (1) click <strong>Try Autofix</strong> to attempt an automatic conversion, or (2) use <strong>Copy</strong> to copy the workflow and paste it manually into the ComfyUI canvas.'}), 400
+
+                payload = json.dumps({"prompt": wf_data}).encode('utf-8')
+                req = urllib.request.Request(
+                    f"{target_comfy_url.rstrip('/')}/prompt",
+                    data=payload,
+                    headers={'Content-Type': 'application/json'}
+                )
+                try:
+                    with urllib.request.urlopen(req, timeout=5) as response:
+                        resp_data = json.loads(response.read().decode('utf-8'))
+                        job_id = resp_data.get('prompt_id', 'Unknown')
+                        return jsonify({'status': 'success', 'action': 'queued', 'message': f'Job queued in ComfyUI! ID: {job_id}'})
+                except urllib.error.HTTPError as e:
+                    try:
+                        err_data = json.loads(e.read().decode('utf-8'))
+                        error_msg = err_data.get('error', {}).get('message', 'Validation failed.')
+                        
+                        node_errors = err_data.get('node_errors', {})
+                        details = []
+                        for n_id, n_err in node_errors.items():
+                            if 'errors' in n_err:
+                                node_title = wf_data.get(n_id, {}).get('_meta', {}).get('title') or wf_data.get(n_id, {}).get('class_type', '')
+                                label = f"Node {n_id} ({node_title})" if node_title else f"Node {n_id}"
+                                for err_detail in n_err['errors']:
+                                    msg = err_detail.get('message', '')
+                                    if not msg: continue
+                                    extra = err_detail.get('extra_info', {})
+                                    inp_name = extra.get('input_name') or extra.get('key', '')
+                                    inp_value = extra.get('input_value')
+                                    detail_str = err_detail.get('details', '')
+                                    suffix = ''
+                                    if inp_name: suffix += f" '{inp_name}'"
+                                    if inp_value is not None: suffix += f" (current value: {repr(inp_value)})"
+                                    elif detail_str: suffix += f" ({detail_str})"
+                                    details.append(f"[{label}] {msg}{suffix}")
+                        
+                        if details:
+                            error_msg += " -> " + " | ".join(details)
+                            
+                        return jsonify({'status': 'error', 'message': f'ComfyUI rejected the workflow: {error_msg}'}), 400
+                    except Exception:
+                        return jsonify({'status': 'error', 'message': f'ComfyUI rejected the workflow: HTTP {e.code} {e.reason}'}), 400
+                except urllib.error.URLError as e:
+                    return jsonify({'status': 'error', 'message': f'Failed to connect to ComfyUI at {target_comfy_url}. Is it running?'}), 502
+
+        except Exception as e:
+            return jsonify({'status': 'error', 'message': str(e)}), 500
+
+    def _convert_ui_to_api(ui_data, object_info):
+        # Converts UI-format workflow to API format using object_info for widget name mapping.
+        nodes = ui_data.get('nodes', [])
+        links = ui_data.get('links', [])
+
+        link_map = {}
+        for lnk in links:
+            if len(lnk) >= 4:
+                link_map[lnk[0]] = [str(lnk[1]), lnk[2]]
+
+        api = {}
+        for node in nodes:
+            node_id = str(node.get('id'))
+            node_type = node.get('type', '')
+
+            if node_type in ('Note', 'PrimitiveNode', 'Reroute'): continue
+            if node_type not in object_info: continue
+
+            node_inputs_connected = node.get('inputs', [])
+            widgets_values = node.get('widgets_values', [])
+            inputs = {}
+
+            linked_names = set()
+            for inp in node_inputs_connected:
+                link_id = inp.get('link')
+                if link_id is not None and link_id in link_map:
+                    inputs[inp['name']] = link_map[link_id]
+                    linked_names.add(inp['name'])
+
+            if isinstance(widgets_values, dict):
+                for k, v in widgets_values.items():
+                    if isinstance(v, (str, int, float, bool)):
+                        inputs[k] = v
+            elif node_type in object_info:
+                node_def = object_info[node_type]
+                required = node_def.get('input', {}).get('required', {})
+                optional = node_def.get('input', {}).get('optional', {})
+                hidden  = node_def.get('input', {}).get('hidden', {})
+                all_inputs = list(required.items()) + list(optional.items())
+                hidden_names = set(hidden.keys())
+
+                widget_names = []
+                for inp_name, inp_def in all_inputs:
+                    if inp_name in linked_names: continue
+                    inp_type = inp_def[0] if (isinstance(inp_def, (list, tuple)) and inp_def) else inp_def
+                    is_connection = isinstance(inp_type, str) and inp_type == inp_type.upper() and inp_type not in ('INT', 'FLOAT', 'STRING', 'BOOLEAN')
+                    if not is_connection:
+                        widget_names.append((inp_name, inp_name in hidden_names))
+
+                for inp_name in hidden_names:
+                    if inp_name not in linked_names and not any(n == inp_name for n, _ in widget_names):
+                        widget_names.append((inp_name, True))
+
+                wv_list = list(widgets_values)
+                for i, (wname, is_hidden) in enumerate(widget_names):
+                    if i < len(wv_list) and not is_hidden:
+                        inputs[wname] = wv_list[i]
+
+            title = node.get('title') or node_type
+            api[node_id] = {
+                'class_type': node_type,
+                '_meta': {'title': title},
+                'inputs': inputs
+            }
+
+        return api
+
+    @app.route('/galleryout/api/remix/companion/<string:file_id>')
+    @management_api_only
+    def api_remix_companion(file_id):
+        try:
+            info = get_file_info_from_db(file_id)
+            file_path = info['path']
+            stem = os.path.splitext(file_path)[0]
+            for ext in ('.png', '.PNG'):
+                companion_path = stem + ext
+                if os.path.isfile(companion_path):
+                    candidate_api = extract_workflow(companion_path, target_type='api')
+                    if candidate_api:
+                        try:
+                            _check = json.loads(candidate_api)
+                            _nodes = [v for v in _check.values() if isinstance(v, dict) and 'class_type' in v]
+                            if _nodes:
+                                companion_name = os.path.basename(companion_path)
+                                return jsonify({'status': 'success', 'companion_path': companion_path, 'companion_name': companion_name})
+                        except Exception:
+                            pass
+            return jsonify({'status': 'error', 'message': 'No companion PNG with valid workflow data found next to this video.'}), 404
+        except Exception as e:
+            return jsonify({'status': 'error', 'message': str(e)}), 500
+
+    @app.route('/galleryout/api/remix/autofix', methods=['POST'])
+    @management_api_only
+    def api_remix_autofix():
+        try:
+            file_id = request.form.get('file_id')
+            companion_path = request.form.get('companion_path')
+            target_comfy_url = request.form.get('target_url', COMFYUI_SERVER_URL).strip()
+
+            if not target_comfy_url:
+                return jsonify({'status': 'error', 'message': 'ComfyUI URL is required.'}), 400
+
+            # --- READ WORKFLOW DIRECTLY FROM DISK ---
+            if companion_path and os.path.exists(companion_path):
+                raw_api = extract_workflow(companion_path, target_type='api')
+                raw_ui  = extract_workflow(companion_path, target_type='ui')
+            else:
+                info = get_file_info_from_db(file_id)
+                raw_api = extract_workflow(info['path'], target_type='api')
+                raw_ui  = extract_workflow(info['path'], target_type='ui')
+                
+            if not raw_ui and not raw_api:
+                return jsonify({'status': 'error', 'message': 'No workflow data found on server for autofix.'}), 400
+
+            object_info = {}
+            try:
+                info_req = urllib.request.Request(
+                    f"{target_comfy_url.rstrip('/')}/object_info",
+                    headers={'Content-Type': 'application/json'}
+                )
+                with urllib.request.urlopen(info_req, timeout=5) as r:
+                    object_info = json.loads(r.read().decode('utf-8'))
+            except Exception:
+                pass
+
+            if raw_api:
+                api_wf = json.loads(raw_api)
+            else:
+                ui_data = json.loads(raw_ui)
+                nodes = ui_data.get('nodes', []) if isinstance(ui_data, dict) else []
+                if not nodes:
+                    return jsonify({'status': 'error', 'message': 'UI workflow contains no nodes — cannot autofix.'}), 400
+                api_wf = _convert_ui_to_api(ui_data, object_info)
+
+            if request.form.get('debug') == '1':
+                return jsonify({'status': 'debug', 'converted': api_wf, 'object_info_keys': list(object_info.keys())})
+
+            payload = json.dumps({"prompt": api_wf}).encode('utf-8')
+            req = urllib.request.Request(
+                f"{target_comfy_url.rstrip('/')}/prompt",
+                data=payload,
+                headers={'Content-Type': 'application/json'}
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=5) as response:
+                    resp_data = json.loads(response.read().decode('utf-8'))
+                    job_id = resp_data.get('prompt_id', 'Unknown')
+                    return jsonify({'status': 'success', 'message': f'Autofix succeeded! Job queued in ComfyUI — ID: {job_id}'})
+            except urllib.error.HTTPError as e:
+                try:
+                    err_data = json.loads(e.read().decode('utf-8'))
+                    error_msg = err_data.get('error', {}).get('message', 'Validation failed.')
+                    node_errors = err_data.get('node_errors', {})
+
+                    choices_needed = []
+                    for n_id, n_err in node_errors.items():
+                        node_class = api_wf.get(n_id, {}).get('class_type', '')
+                        node_title = api_wf.get(n_id, {}).get('_meta', {}).get('title', node_class)
+                        if not node_class or node_class not in object_info:
+                            continue
+                        node_def = object_info[node_class]
+                        all_inp = {**node_def.get('input', {}).get('required', {}),
+                                   **node_def.get('input', {}).get('optional', {})}
+                        for err_detail in n_err.get('errors', []):
+                            msg = err_detail.get('message', '')
+                            fixable = 'Value not in list' in msg or 'Required input is missing' in msg
+                            if not fixable:
+                                continue
+                            extra = err_detail.get('extra_info', {})
+                            inp_name = extra.get('input_name') or extra.get('key', '')
+                            bad_value = extra.get('input_value')
+                            if not inp_name:
+                                continue
+                            inp_def = all_inp.get(inp_name)
+                            if inp_def and isinstance(inp_def[0], list) and inp_def[0]:
+                                choices_needed.append({
+                                    'node_id': n_id,
+                                    'node_title': node_title,
+                                    'inp_name': inp_name,
+                                    'bad_value': bad_value,
+                                    'valid_options': inp_def[0]
+                                })
+
+                    if choices_needed:
+                        return jsonify({'status': 'needs_choices', 'choices': choices_needed})
+
+                    details = []
+                    for n_id, n_err in node_errors.items():
+                        node_class = api_wf.get(n_id, {}).get('class_type', '')
+                        node_title = api_wf.get(n_id, {}).get('_meta', {}).get('title') or node_class
+                        label = f"Node {n_id} ({node_title})" if node_title else f"Node {n_id}"
+                        for err_detail in n_err.get('errors', []):
+                            msg = err_detail.get('message', '')
+                            if not msg: continue
+                            extra = err_detail.get('extra_info', {})
+                            inp_name = extra.get('input_name') or extra.get('key', '')
+                            inp_value = extra.get('input_value')
+                            detail_str = err_detail.get('details', '')
+                            suffix = ''
+                            if inp_name: suffix += f" '{inp_name}'"
+                            if inp_value is not None: suffix += f" (current: {repr(inp_value)})"
+                            elif detail_str: suffix += f" ({detail_str})"
+                            if 'Value not in list' in msg and inp_name and node_class in object_info:
+                                all_inp = {**object_info[node_class].get('input', {}).get('required', {}),
+                                           **object_info[node_class].get('input', {}).get('optional', {})}
+                                inp_def = all_inp.get(inp_name)
+                                if inp_def and isinstance(inp_def[0], list):
+                                    suffix += f" — valid: {inp_def[0]}"
+                            details.append(f"[{label}] {msg}{suffix}")
+                    if details:
+                        error_msg += ' -> ' + ' | '.join(details)
+                    return jsonify({'status': 'error', 'message': f'Autofix attempted but ComfyUI rejected it: {error_msg}'}), 400
+                except Exception:
+                    return jsonify({'status': 'error', 'message': f'Autofix attempted but ComfyUI rejected it: HTTP {e.code}'}), 400
+            except urllib.error.URLError as e:
+                return jsonify({'status': 'error', 'message': f'Failed to connect to ComfyUI at {target_comfy_url}.'}), 502
+
+        except Exception as e:
+            return jsonify({'status': 'error', 'message': f'Autofix error: {str(e)}'}), 500
+
+    @app.route('/galleryout/api/remix/autofix_apply', methods=['POST'])
+    @management_api_only
+    def api_remix_autofix_apply():
+        try:
+            file_id = request.form.get('file_id')
+            companion_path = request.form.get('companion_path')
+            choices_json = request.form.get('choices')
+            target_comfy_url = request.form.get('target_url', COMFYUI_SERVER_URL).strip()
+            
+            if not choices_json:
+                return jsonify({'status': 'error', 'message': 'Missing data.'}), 400
+
+            if companion_path and os.path.exists(companion_path):
+                raw_api = extract_workflow(companion_path, target_type='api')
+            else:
+                info = get_file_info_from_db(file_id)
+                raw_api = extract_workflow(info['path'], target_type='api')
+                
+            if not raw_api:
+                return jsonify({'status': 'error', 'message': 'Could not read API workflow from server disk.'}), 400
+                
+            api_wf = json.loads(raw_api)
+            choices = json.loads(choices_json)
+            applied = []
+            
+            for c in choices:
+                n_id = c['node_id']
+                inp_name = c['inp_name']
+                chosen = c['chosen']
+                if n_id in api_wf:
+                    api_wf[n_id]['inputs'][inp_name] = chosen
+                    applied.append(f"[Node {n_id} ({c.get('node_title','')})] '{inp_name}' → {repr(chosen)}")
+                    
+            payload = json.dumps({"prompt": api_wf}).encode('utf-8')
+            req = urllib.request.Request(
+                f"{target_comfy_url.rstrip('/')}/prompt",
+                data=payload,
+                headers={'Content-Type': 'application/json'}
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=5) as response:
+                    resp_data = json.loads(response.read().decode('utf-8'))
+                    job_id = resp_data.get('prompt_id', 'Unknown')
+                    return jsonify({'status': 'success',
+                        'message': f'Queued successfully! Job ID: {job_id}<br><small>Applied: {" | ".join(applied)}</small>'})
+            except urllib.error.HTTPError as e:
+                return jsonify({'status': 'error', 'message': f'ComfyUI rejected even after corrections: HTTP {e.code}'}), 400
+            except urllib.error.URLError as e:
+                return jsonify({'status': 'error', 'message': f'Cannot reach ComfyUI.'}), 502
+        except Exception as e:
+            return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+_register_remix_routes_inline()
 
 if __name__ == '__main__':
 
