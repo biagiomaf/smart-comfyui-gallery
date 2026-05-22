@@ -20,7 +20,7 @@
 
 * Search 50,000 generations by prompt, model, LoRA, or comments in milliseconds.  
 * Organize your gallery seamlessly across physical folders and virtual collections.  
-* **(NEW) Remix workflows:** Generate directly from your gallery without opening ComfyUI. Modify prompts, seeds, and parameters, replace input images, then send the workflow straight to your ComfyUI server to trigger background generations, or copy the remixed workflow and open it directly in the ComfyUI interface. 
+* **(NEW) [Remix workflows](#323-remix-workflow-):** Generate directly from your gallery without opening ComfyUI. Modify prompts, seeds, and parameters, replace input images, then send the workflow straight to your ComfyUI server to trigger background generations, or copy the remixed workflow and open it directly in the ComfyUI interface. 
 * Share curated work with clients without exposing a single node, and let them rate and comment on your creations.  
 * Compare two generations side-by-side with an automatic parameter diff.  
 * Cull batches from your laptop or also from your phone while ComfyUI is still generating.
@@ -129,7 +129,7 @@ Evolve your workflow from a simple collection of files into a structured, search
 
 ### 1.2 What's New in v2.13
 
-- 🪄 **Remix Workflow (Experimental):** Generate new media without opening ComfyUI. Press `B` to edit prompts, seeds, and parameters directly from the gallery, then queue new generations straight to your ComfyUI server. Includes an Autofix engine for UI workflows and Companion PNG support for video files. [The Remix feature](323-remix-workflow-)  
+- 🪄 **Remix Workflow (Experimental):** Generate new media without opening ComfyUI. Press `B` to edit prompts, seeds, and parameters directly from the gallery, then queue new generations straight to your ComfyUI server. Includes an Autofix engine for UI workflows and Companion PNG support for video files. [The Remix feature](#323-remix-workflow-)  
 - 🖥️ **UI & UX Improvements**  
 - 📱 **Mobile Enhancements**  
 > **Note:** Read the **[Full Changelog](CHANGELOG.md)** so you don't miss out all the **important updates**, quality-of-life improvements, and bug fixes!
