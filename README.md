@@ -984,7 +984,10 @@ Generate new images or videos without even opening the ComfyUI canvas. SmartGall
 
 ![Remix Workflow modal](assets/remix01.png)
 *The Remix Workflow modal: edit prompts, seeds, and parameters, then Queue directly to ComfyUI.*
-
+- **⚠️ First, a quick reality check:** This utility does its best to detect editable parameters and assign meaningful labels, but it is not designed to understand every possible workflow structure. It is not a replacement for ComfyUI’s excellent App Mode.  
+What it does offer is speed and convenience. If it works with your workflow, you can instantly "remix" an image or video directly from your gallery. Adjust prompts, change seeds, tweak parameters, replace input images, and generate variations without leaving the gallery view.  
+On complex workflows with heavy custom-node usage, parameter detection may be incomplete or fail entirely. If that happens, consider it as a lightweight utility trying its best to adapt to many different workflow setups.  
+Community contributions and improvements are always welcome. If you find ways to make the utility smarter, more reliable, or compatible with more workflows, any help from the community is greatly appreciated.  
 - **Open:** Press `B` on any image or video in the grid, or click the **✦ Remix** icon in the Lightbox toolbar (or via the Quick Menu `/`).
 - **Edit Parameters:** Modify texts, positive/negative prompts, seeds, steps, CFG, and replace input images directly from the modal.
 - **Queue directly:** Set the number of generations, optionally check "Random seed", and click **Queue in ComfyUI**. SmartGallery talks directly to the ComfyUI API to start the job.
