@@ -980,7 +980,7 @@ Press `N` on any image (in the grid or in the Lightbox) to open the Node Summary
 
 ### 3.2.3 Remix Workflow (✦)
 
-Generate new images or videos without even opening the ComfyUI canvas. SmartGallery extracts the workflow and gives you a clean UI to tweak the parameters on the fly.
+Generate new images or videos without even opening the ComfyUI canvas. SmartGallery extracts the workflow and gives you a clean UI to tweak the parameters on the fly. [**▶️ Video**](https://smartgallerydam.com/smartgallery-remix.mp4)  
 
 ![Remix Workflow modal](assets/remix01.png)
 *The Remix Workflow modal: edit prompts, seeds, and parameters, then Queue directly to ComfyUI.*
