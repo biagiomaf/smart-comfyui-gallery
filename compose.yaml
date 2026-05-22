@@ -23,3 +23,5 @@ services:
       # Set to true to force chown of the BASE_SMARTGALLERY_PATH folder only
 #      - FORCE_CHOWN=true
 #      - DELETE_TO=/deleteto
+      # Your ComfyUI interface is not accessible on localhost, update to reflect your host's IP
+      - COMFYUI_SERVER_URL=http://192.168.100.1:8188
