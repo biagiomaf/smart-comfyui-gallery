@@ -20,7 +20,7 @@
 
 * Search 50,000 generations by prompt, model, LoRA, or comments in milliseconds.  
 * Organize your gallery seamlessly across physical folders and virtual collections.  
-* ** (NEW)Remix workflows**: Generate directly from your gallery without opening ComfyUI. Modify prompts, seeds, and parameters, replace input images, then send the workflow straight to your ComfyUI server to trigger background generations, or copy the remixed workflow and open it directly in the ComfyUI interface. 
+* **(NEW) Remix workflows:** Generate directly from your gallery without opening ComfyUI. Modify prompts, seeds, and parameters, replace input images, then send the workflow straight to your ComfyUI server to trigger background generations, or copy the remixed workflow and open it directly in the ComfyUI interface. 
 * Share curated work with clients without exposing a single node, and let them rate and comment on your creations.  
 * Compare two generations side-by-side with an automatic parameter diff.  
 * Cull batches from your laptop or also from your phone while ComfyUI is still generating.
