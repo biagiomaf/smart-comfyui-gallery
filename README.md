@@ -129,7 +129,7 @@ Evolve your workflow from a simple collection of files into a structured, search
 
 ### 1.2 What's New in v2.13
 
-- 🪄 **Remix Workflow (Experimental):** Generate new media without opening ComfyUI. Press `B` to edit prompts, seeds, and parameters directly from the gallery, then queue new generations straight to your ComfyUI server. Includes an Autofix engine for UI workflows and Companion PNG support for video files.  
+- 🪄 **Remix Workflow (Experimental):** Generate new media without opening ComfyUI. Press `B` to edit prompts, seeds, and parameters directly from the gallery, then queue new generations straight to your ComfyUI server. Includes an Autofix engine for UI workflows and Companion PNG support for video files. [The Remix feature](323-remix-workflow-)  
 - 🖥️ **UI & UX Improvements**  
 - 📱 **Mobile Enhancements**  
 > **Note:** Read the **[Full Changelog](CHANGELOG.md)** so you don't miss out all the **important updates**, quality-of-life improvements, and bug fixes!
