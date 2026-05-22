@@ -987,14 +987,16 @@ Generate new images or videos without even opening the ComfyUI canvas. SmartGall
 - **⚠️ First, a quick reality check:** This utility does its best to detect editable parameters and assign meaningful labels, but it is not designed to understand every possible workflow structure. It is not a replacement for ComfyUI’s excellent App Mode.  
 What it does offer is speed and convenience. If it works with your workflow, you can instantly "remix" an image or video directly from your gallery. Adjust prompts, change seeds, tweak parameters, replace input images, and generate variations without leaving the gallery view.  
 On complex workflows with heavy custom-node usage, parameter detection may be incomplete or fail entirely. If that happens, consider it as a lightweight utility trying its best to adapt to many different workflow setups.  
-Community contributions and improvements are always welcome. If you find ways to make the utility smarter, more reliable, or compatible with more workflows, any help from the community is greatly appreciated.  
 - **Open:** Press `B` on any image or video in the grid, or click the **✦ Remix** icon in the Lightbox toolbar (or via the Quick Menu `/`).
 - **Edit Parameters:** Modify texts, positive/negative prompts, seeds, steps, CFG, and replace input images directly from the modal.
 - **Queue directly:** Set the number of generations, optionally check "Random seed", and click **Queue in ComfyUI**. SmartGallery talks directly to the ComfyUI API to start the job.
 - **Autofix Engine:** If an image only has a UI-format workflow (which normally can't be queued via API), Remix includes an "Autofix" tool that attempts to convert and repair it automatically.
 - **Video Companion PNGs:** Video files often lack embedded API data. Remix automatically looks for a companion `.png` file in the same folder to load the full workflow.
-- **Flexible Manual Exports (Copy / Download):** Don't want to queue directly via API? Instantly Copy the modified JSON to your clipboard or Download it as a file. Pasting or importing it manually into the ComfyUI canvas will perfectly preserve all your parameter edits and input image swaps on the workspace.
-- **⚠️ Pragmatic "Quick & Dirty" Honest Disclaimer:** Despite major technical efforts, this remains an *experimental* and *stateless helper tool* designed for rapid iterations. It is **not** a replacement for ComfyUI's full native node canvas. It simply lets you edit the variables it successfully intercepts. If you use highly complex workflows, the system might find it harder to accurately capture all parameters and/or label them correctly; however, for standard, medium-to-simple workflows, it is an incredibly useful time-saver. If a workflow fails to map, no worries: it just means it's time to open the full ComfyUI canvas.  
+- **Flexible Manual Exports (Copy / Download):** Don't want to queue directly via API? Instantly Copy the modified JSON to your clipboard or Download it as a file. Pasting or importing it manually into the ComfyUI canvas will perfectly preserve all your parameter edits and input image swaps on the workspace.  
+  
+- **"Quick & Dirty" Honest Disclaimer:** Despite major technical efforts, this remains an *experimental* and *stateless helper tool* designed for rapid iterations. It is **not** a replacement for ComfyUI's full native node canvas.   
+- **Community contributions and improvements are welcome.** If you find ways to make the utility smarter, more reliable, or compatible with more workflows, any help from the community is greatly appreciated.  
+
  
 ---
 
