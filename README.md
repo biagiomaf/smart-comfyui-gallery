@@ -20,12 +20,12 @@
 
 * Search 50,000 generations by prompt, model, LoRA, or comments in milliseconds.  
 * Organize your gallery seamlessly across physical folders and virtual collections.  
-* **(NEW) [Remix workflows](#323-remix-workflow-):** Generate directly from your gallery without opening ComfyUI. Modify prompts, seeds, and parameters, replace input images, then send the workflow straight to your ComfyUI server to trigger background generations, or copy the remixed workflow and open it directly in the ComfyUI interface. 
+* **(NEW) [Remix workflows](#323-remix-workflow-):** Generate directly from your gallery without opening ComfyUI. Modify prompts, seeds, and parameters, replace input images, then send the workflow straight to your ComfyUI server to trigger background generations, or copy the remixed workflow and open it directly in the ComfyUI interface. [▶️ Video](https://smartgallerydam.com/smartgallery-remix.mp4)
 * Share curated work with clients without exposing a single node, and let them rate and comment on your creations.  
 * Compare two generations side-by-side with an automatic parameter diff.  
 * Cull batches from your laptop or also from your phone while ComfyUI is still generating.
 
-[**🌐 smartgallerydam.com**](https://smartgallerydam.com) · full documentation, wiki and feature reference · [**▶️ Presentation Video**](https://smartgallerydam.com/smartgallerydam_2.12.mp4)
+[**🌐 smartgallerydam.com**](https://smartgallerydam.com) · full documentation, wiki and feature reference · [**▶️ Presentation Video**](https://smartgallerydam.com/smartgallerydam-2.13.mp4)
 
 ---
 
@@ -1000,7 +1000,7 @@ On complex workflows with heavy custom-node usage, parameter detection may be in
  
 ---
 
-### 3.2.4 Compare Mode (⚖️)
+### 3.2.4 Compare Mode  
 
 Select exactly **2 files**, click `⋮` in the Selection Bar → **Compare Selected**.
 
@@ -1475,8 +1475,8 @@ MIT License. See [LICENSE](LICENSE)
 > ### 🎞️ **Presentation Video**
 >
 > <div align="center">
->   <a href="https://smartgallerydam.com/smartgallerydam_2.12.mp4">
->     <img src="assets/media_hub_01.png" width="550" alt="Watch the presentation video">
+>   <a href="https://smartgallerydam.com/smartgallerydam-2.13.mp4">
+>     <img src="assets/video-cover_2.13.png" width="550" alt="Watch the presentation video">
 >   </a>
 >   <br>
 >   <em>(Click on the image to play the video)</em>
