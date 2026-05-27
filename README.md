@@ -8,7 +8,7 @@
       <h1>SmartGallery DAM</h1>
       <a href="LICENSE"><img src="https://img.shields.io/github/license/biagiomaf/smart-comfyui-gallery?color=yellow" alt="License"></a>
       <img src="https://img.shields.io/badge/Python-3.10+-blue.svg" alt="Python">
-      <a href="https://hub.docker.com/r/mmartial/smart-comfyui-gallery"><img src="https://img.shields.io/docker/pulls/mmartial/smart-comfyui-gallery?color=099cec&logo=docker&logoColor=white" alt="Docker Pulls"></a>
+      <a href="https://hub.docker.com/r/mmartial/smart-comfyui-gallery"><img src="https://badgen.net/docker/pulls/mmartial/smart-comfyui-gallery?icon=docker&label=docker%20pulls&color=099cec" alt="Docker Pulls"></a>
       <a href="https://github.com/biagiomaf/smart-comfyui-gallery/stargazers"><img src="https://img.shields.io/github/stars/biagiomaf/smart-comfyui-gallery" alt="Stars"></a>
     </td>
   </tr>
