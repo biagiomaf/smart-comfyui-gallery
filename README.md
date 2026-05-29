@@ -1061,11 +1061,11 @@ The **Status tab** in the sidebar lets you browse all files at a given pipeline 
 
 | Key | Status | Color |
 |---|---|---|
-| `1` | Approved | Green |
-| `2` | Review | Yellow |
-| `3` | To Edit | Blue |
-| `4` | Rejected | Red |
-| `5` | Select | Purple |
+| `1` | Approved | Green |  
+| `2` | Rejected | Red |  
+| `3` | Review | Yellow |
+| `4` | Select | Purple |  
+| `5` | To Edit | Blue |  
 | `0` | Remove status | — |
 
 ![Thumbnails with color status bars on the left edge](assets/status_color_vertical_strips.png)
@@ -1350,11 +1350,11 @@ Docker users: the same approach works identically. Run your Exhibition container
 | Shortcut | Action |
 |---|---|
 | `1` | Approved (Green) |
-| `2` | Review (Yellow) |
-| `3` | To Edit (Blue) |
-| `4` | Rejected (Red) |
-| `5` | Select (Purple) |
-| `0` | Clear status |
+| `2` | Rejected (Red) |
+| `3` | Review (Yellow) |
+| `4` | Select (Purple) |
+| `5` | To Edit (Blue) |
+| `0` | Clear status |  
 
 **Lightbox**
 
