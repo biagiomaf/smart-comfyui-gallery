@@ -20,7 +20,7 @@
 
 * Search 50,000 generations by prompt, model, LoRA, or comments in milliseconds.  
 * Organize your gallery seamlessly across physical folders and virtual collections.  
-* **(NEW) [Remix workflows with The Nodepad](#323-remix-workflow--the---nodepad-)**: Generate directly from your gallery without opening ComfyUI. Build custom dashboards, edit raw JSON with live server dictionary lookups, and queue jobs in the background. [▶️](https://smartgallerydam.com/notepad.mp4)
+* **(NEW) [Remix workflows with The Nodepad](#323-remix-workflow--the---nodepad-)**: Generate directly from your gallery without opening ComfyUI. Build custom dashboards, edit raw JSON with live server dictionary lookups, and queue jobs in the background. [▶️](https://smartgallerydam.com/nodepad.mp4)
 * Share curated work with clients without exposing a single node, and let them rate and comment on your creations.  
 * Compare two generations side-by-side with an automatic parameter diff.  
 * Cull batches from your laptop or also from your phone while ComfyUI is still generating.
