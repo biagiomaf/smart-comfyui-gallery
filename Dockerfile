@@ -78,6 +78,7 @@ RUN which uv && uv --version
 COPY requirements.txt /app/requirements.txt
 RUN --mount=type=cache,target=/uv_cache,uid=1025,gid=1025,mode=0755 \
     export UV_CACHE_DIR=/uv_cache \
+    export UV_LINK_MODE=copy \
     && cd /app \
     && uv venv venv \
     && VIRTUAL_ENV=/app/venv uv pip install -r requirements.txt --trusted-host pypi.org --trusted-host files.pythonhosted.org \

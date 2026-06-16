@@ -20,7 +20,7 @@
 
 * Search 50,000 generations by prompt, model, LoRA, or comments in milliseconds.  
 * Organize your gallery seamlessly across physical folders and virtual collections.  
-* **(NEW) [Remix workflows](#323-remix-workflow-):** Generate directly from your gallery without opening ComfyUI. Modify prompts, seeds, and parameters, replace input images, then send the workflow straight to your ComfyUI server to trigger background generations, or copy the remixed workflow and open it directly in the ComfyUI interface. [▶️](https://smartgallerydam.com/smartgallery-remix.mp4)
+* **(NEW) [Remix workflows with The Nodepad](#323-remix-workflow--the---nodepad-)**: Generate directly from your gallery without opening ComfyUI. Build custom dashboards, edit raw JSON with live server dictionary lookups, and queue jobs in the background. [▶️](https://smartgallerydam.com/notepad.mp4)
 * Share curated work with clients without exposing a single node, and let them rate and comment on your creations.  
 * Compare two generations side-by-side with an automatic parameter diff.  
 * Cull batches from your laptop or also from your phone while ComfyUI is still generating.
@@ -60,7 +60,7 @@ This is cross-platform in the full sense: **Windows, macOS, Linux, Docker**, acc
 ## Why SmartGallery?
 | | |
 |---|---|
-| 🪄 **Remix Workflow (new)** | Generate without opening ComfyUI. Press `B` to tweak prompts, seeds, and parameters, then queue directly to your ComfyUI server | 
+| 🪄 **The Remix Engine (new)** | Generate without opening ComfyUI. A 3-tier workspace to extract workflows, build custom dashboards, edit raw JSON with live dictionary lookups, and queue directly. | 
 | 🔍 **Find anything instantly** | Search by prompt keyword, checkpoint, LoRA, date or comment across tens of thousands of files | 
 | 🗂️ **Powerful file manager** | Rename, move, copy, delete files and create folders directly from the browser |
 | 🔗 **Works on any folder** | Point it at any ComfyUI output, photo archive, NAS volume or network path. Mix and match as many folders as you want |
@@ -81,7 +81,7 @@ This is cross-platform in the full sense: **Windows, macOS, Linux, Docker**, acc
 
 1.  [**OVERVIEW & CONCEPTS**](#1-overview--concepts)
     *   [1.1 What is SmartGallery DAM?](#11-what-is-smartgallery-dam)
-    *   [1.2 What's New in v2.13](#12-whats-new-in-v213)
+    *   [1.2 What's New in v2.14](#12-whats-new-in-v214)
     *   [1.3 Core Features](#13-core-features)
     *   [1.4 Use Case Scenarios](#14-use-case-scenarios)
 2.  [**SETUP & CONFIGURATION**](#2-setup--configuration)
@@ -93,7 +93,7 @@ This is cross-platform in the full sense: **Windows, macOS, Linux, Docker**, acc
     *   [3.2 Advanced Media Inspection](#32-advanced-media-inspection)
         *   [3.2.1 The Lightbox](#321-the-lightbox-media-viewer)
         *   [3.2.2 Node Summary](#322-comfyui-node-summary-)
-        *   [3.2.3 Remix Workflow](#323-remix-workflow-)
+        *   [3.2.3 Remix Workflow & The { } Nodepad (✦)](#323-remix-workflow--the---nodepad-)
         *   [3.2.4 Compare Mode](#324-compare-mode-)
         *   [3.2.5 Video Storyboard](#325-video-storyboard-)
     *   [3.3 Digital Asset Management (DAM) & Communication](#33-digital-asset-management-dam--communication)
@@ -127,12 +127,16 @@ Evolve your workflow from a simple collection of files into a structured, search
 
 ---
 
-### 1.2 What's New in v2.13
+### 1.2 What's New in v2.14
 
-- 🪄 **Remix Workflow (Experimental):** Generate new media without opening ComfyUI. Press `B` to edit prompts, seeds, and parameters directly from the gallery, then queue new generations straight to your ComfyUI server. Includes an Autofix engine for UI workflows and Companion PNG support for video files. [The Remix feature](#323-remix-workflow-)  
-- 🖥️ **UI & UX Improvements**  
-- 📱 **Mobile Enhancements**  
-> **Note:** Read the **[Full Changelog](CHANGELOG.md)** so you don't miss out all the **important updates**, quality-of-life improvements, and bug fixes!
+- 🚀 **Remix Workflow Overhaul & The { } Nodepad:** A completely rebuilt 3-tier workspace for generating media without opening ComfyUI. Break out of rigid forms and take full control of your pipelines.
+    - **📝 Auto-Form:** Instantly exposes standard parameters (prompts, seeds) for quick tweaks.
+    - **🛠️ My Panel:** Build your own custom generator dashboard by pinning fields.
+    - **{ } Nodepad:** A revolutionary raw JSON editor for power users. Features synchronous live dictionary lookups, a "Magic Injector" that writes JSON via UI dropdowns, and a "Favorite" system that turns complex nodes into quick-edit buttons on your dashboard.
+- 📂 **Template Library:** Save your custom My Panel dashboards and favorited nodes, then instantly recall them to start generating without needing a source image.
+- 🔍 **Companion PNG Recovery:** Automatically finds missing API data for video files, allowing you to remix and queue video workflows directly.
+
+> **Note:** Read the **[Full Changelog](CHANGELOG.md)** so you don't miss out on all the quality-of-life improvements and bug fixes!
 
 ---
 
@@ -154,7 +158,7 @@ Evolve your workflow from a simple collection of files into a structured, search
 <summary><strong>Workflow Intelligence (ComfyUI)</strong></summary>
 
 -   **Node Summary Dashboard:** press `N` on any image to see Seed, CFG, Steps, Sampler, Scheduler, all active Models, LoRAs with weights, and full positive/negative prompts.
--   **Remix Workflow:** press `B` to edit prompts and parameters directly from the UI, and queue new generations to ComfyUI. Includes Autofix for UI workflows and Companion PNG support for video files.
+-   **Remix 3-Tier Workflow:** press `B` to break out of the canvas. Use the *Auto-Form* for simple prompts, build a custom dashboard in *My Panel*, or edit raw backend JSON safely with the revolutionary *{ } Nodepad*. Includes Autofix and Companion PNG support.
 -   **Workflow Download and Copy:** press `W` to download the raw JSON workflow, `C` to copy it to clipboard and paste directly back into ComfyUI.
 -   **Clean Export:** press `Shift+W` to download a pixel-perfect copy stripped of all EXIF data and embedded workflows. Safe to share externally.
 -   **Compare Mode:** select two generations, open the A/B slider with synchronized zoom and pan. A parameter diff table shows only the values that changed.
@@ -305,7 +309,7 @@ There are two ways to run SmartGallery on Windows: using the ready-to-use **Port
 This version includes a fully self-contained environment. You do not need to install Python or any dependencies on your system—it is **completely plug-and-play**.
 
 **1. Download & Extract**
-* **Direct Download:** [SmartGallery-v2.13-Windows-Portable.zip](https://github.com/biagiomaf/smart-comfyui-gallery/releases/download/2.13/SmartGallery-v2.13-Windows-Portable.zip)
+* **Direct Download:** [SmartGallery-v2.14-Windows-Portable.zip](https://github.com/biagiomaf/smart-comfyui-gallery/releases/download/2.14/SmartGallery-v2.14-Windows-Portable.zip) *(Link will be updated upon release)*
 * **Releases Page:** Alternatively, view all builds on the [Releases page](https://github.com/biagiomaf/smart-comfyui-gallery/releases/latest).
 * Extract the archive into a folder of your choice.
 
@@ -978,26 +982,46 @@ Press `N` on any image (in the grid or in the Lightbox) to open the Node Summary
 
 ---
 
-### 3.2.3 Remix Workflow (✦)
+### 3.2.3 Remix Workflow & The { } Nodepad (✦)
 
-Generate new images or videos without even opening the ComfyUI canvas. SmartGallery extracts the workflow and gives you a clean UI to tweak the parameters on the fly. [**▶️ Video**](https://smartgallerydam.com/smartgallery-remix.mp4)  
+**The Philosophy: "Suffer Only Once on the Canvas"**  
+ComfyUI is incredibly powerful, but its node-based interface can be overwhelming. The philosophy behind the Remix feature is simple: *endure building your perfect node setup once*. Once you generate your media, let SmartGallery steal its "soul", extract the parameters, and save it as a clean Template. You will never have to look at the node canvas again. [**▶️ Video**](https://smartgallerydam.com/nodepad.mp4)
 
-![Remix Workflow modal](assets/remix01.png)
-*The Remix Workflow modal: edit prompts, seeds, and parameters, then Queue directly to ComfyUI.*
-- **⚠️ First, a quick reality check:** This utility does its best to detect editable parameters and assign meaningful labels, but it is not designed to understand every possible workflow structure. It is not a replacement for ComfyUI’s excellent App Mode.  
-What it does offer is speed and convenience. If it works with your workflow, you can instantly "remix" an image or video directly from your gallery. Adjust prompts, change seeds, tweak parameters, replace input images, and generate variations without leaving the gallery view.  
-On complex workflows with heavy custom-node usage, parameter detection may be incomplete or fail entirely. If that happens, consider it as a lightweight utility trying its best to adapt to many different workflow setups.  
-- **Open:** Press `B` on any image or video in the grid, or click the **✦ Remix** icon in the Lightbox toolbar (or via the Quick Menu `/`).
-- **Edit Parameters:** Modify texts, positive/negative prompts, seeds, steps, CFG, and replace input images directly from the modal.
-- **Queue directly:** Set the number of generations, optionally check "Random seed", and click **Queue in ComfyUI**. SmartGallery talks directly to the ComfyUI API to start the job.
-- **Autofix Engine:** If an image only has a UI-format workflow (which normally can't be queued via API), Remix includes an "Autofix" tool that attempts to convert and repair it automatically.
-- **Video Companion PNGs:** Video files often lack embedded API data. Remix automatically looks for a companion `.png` file in the same folder to load the full workflow.
-- **Flexible Manual Exports (Copy / Download):** Don't want to queue directly via API? Instantly Copy the modified JSON to your clipboard or Download it as a file. Pasting or importing it manually into the ComfyUI canvas will perfectly preserve all your parameter edits and input image swaps on the workspace.  
-  
-- **"Quick & Dirty" Honest Disclaimer:** Despite major technical efforts, this remains an *experimental* and *stateless helper tool* designed for rapid iterations. It is **not** a replacement for ComfyUI's full native node canvas.   
-- **Community contributions and improvements are welcome.** If you find ways to make the utility smarter, more reliable, or compatible with more workflows, any help from the community is greatly appreciated.  
+![Remix Overlay with press B activation](assets/press_b.png)
+*The Remix Engine: select an image, press B, and gain full control over the generation pipeline.*
 
- 
+Getting started is immediate: just select an image or video in your gallery and press <kbd>B</kbd>. SmartGallery dynamically adapts to your workflow's complexity, offering three distinct spaces to work in:
+
+#### 1️⃣ Simple Tweaks: 📝 Auto-Form
+This is the engine room. SmartGallery aggressively scans the embedded workflow and automatically exposes the most important editable parameters (Prompts, Seeds, Steps, Denoise, Dimensions, etc.).  
+**Best for:** Basic workflows where you just need to change the prompt and hit the **🚀 Queue** button.
+
+#### 2️⃣ Build Your Dashboard: 🛠️ My Panel
+If your Auto-Form is cluttered, build your own interface! Click the **📌 Pin icon** next to the inputs you care about in the Auto-Form. Switch to **My Panel**, and you will find a clean dashboard populated *exclusively* with your pinned fields. Use the **↕ Reorder** button to drag and drop them into a perfect sequence.  
+**Best for:** Creating a clean, distraction-free generator isolating just the key parameters needed for daily operations.
+
+![My Panel](assets/my_panel.png)
+
+#### 3️⃣ Pro Control: { } The Nodepad (The Game Changer)
+No other software on the market offers this level of control. The **Nodepad** is a revolutionary raw JSON editor designed for power users and prompt engineers. If a custom node isn't supported by the Auto-Form, edit its raw JSON directly here.
+
+*   **Live Dictionary Lookup:** As long as your ComfyUI server is online, the Nodepad directly interrogates it. Click on any node, and SmartGallery instantly downloads the official definitions and allowed options for that specific node directly from the ComfyUI backend.
+*   **The Magic Injector:** You don't have to type strict JSON manually. The Nodepad generates visual UI elements—like Comboboxes for node options, or Upload buttons for images/videos. Select a value, and watch the underlying JSON rewrite and format itself magically!
+*   **Intelligent JSON Formatting:** The Nodepad visually converts escaped characters into *physical newlines* for easy reading, then automatically sanitizes them back into valid `\n` code upon saving to prevent ComfyUI syntax errors.
+*   **The "Favorite" Node System:** If a custom node is too complex, open it in the Nodepad and click **⭐ Favorite**. That entire node will instantly become a "Quick Edit" button inside your clean **My Panel** dashboard!
+
+![Nodepad](assets/dictionary_lookup.png)
+
+#### The Workflow Library & Queueing
+Once you have pinned your fields and favorited your complex nodes inside **My Panel**, click **⭐ Save to Library**. You can recall these templates at any time from the main Tools menu without needing a source image. When ready, set your Generation Count, toggle the **Random Seed**, and click **🚀 Queue** to send the jobs to ComfyUI in the background.
+
+![Queue](assets/remix_queue.png)
+
+#### Video Companion PNGs & Autofix
+Video files (MP4/WebM) generated by ComfyUI sometimes lack the full "API Workflow" data required for direct queuing. If you see a warning, just click the blue **🔍 Find companion PNG** button. SmartGallery will automatically locate the VHS sidecar image, extract the hidden data, and restore your ability to queue the video directly!
+
+![Companion PNG Warning](assets/companion_png.png)
+
 ---
 
 ### 3.2.4 Compare Mode  

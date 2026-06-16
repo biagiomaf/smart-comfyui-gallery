@@ -1,5 +1,26 @@
 # Changelog
 
+### **[2.14] - 2026-06-16**
+
+### 🚀 Remix Workflow Overhaul & The { } Nodepad (Major Update)
+The Remix feature has been completely rebuilt from the ground up. We retired the rigid "App View" and introduced a fluid, dynamic 3-tier workspace designed to give you absolute control over your generations, whether you want a quick tweak or deep structural modifications.
+
+* **The 3-Tier Workspace Architecture:**
+  * **📝 Auto-Form (Formerly Advanced):** The engine room. We drastically improved the extraction logic. It now intelligently filters out structural text strings and strictly exposes *actual* prompts (positive/negative), seeds, and key parameters. Find what you need and click the **📌 Pin** icon.
+  * **🛠️ My Panel (Formerly Custom View):** Your personal DIY dashboard. Populated exclusively with the fields you pinned. We completely overhauled the UI, removing the aggressive yellow/red badges in favor of a sleek, elegant, and distraction-free layout. Freely arrange your fields using the **↕ Reorder** button.
+  * **{ } Nodepad (The Game Changer):** A revolutionary raw JSON editor built for power users, prompt engineers, and curious learners. Dive into the exact "JSON recipe" behind any node without leaving the gallery.
+
+* **Nodepad Killer Features:**
+  * **Live Dictionary & Magic Injector:** The Nodepad actively interrogates your online ComfyUI server. Select a node, and it instantly loads the official definitions and allowed values. Use UI dropdowns or image upload buttons to magically inject perfectly formatted syntax directly into the raw JSON code!
+  * **Intelligent JSON Formatting:** Working with nested JSON strings (like Ideogram or Wan2.1 complex prompts) is no longer a nightmare. The Nodepad visually converts escaped characters into *physical newlines* for easy reading and writing, then automatically sanitizes them back into valid `\n` code upon saving to prevent ComfyUI syntax errors.
+  * **The "Favorite" Node System:** Have a custom node too complex for standard inputs? Open it in the Nodepad and click **⭐ Favorite**. That entire node will instantly appear as a "Quick Edit" button inside your clean *My Panel* dashboard. 
+  * **Real-Time Bidirectional Sync:** Flawless data synchronization. Change a prompt in the Auto-Form, and the raw JSON in the Nodepad updates instantly. Edit the JSON in the Nodepad, and your visual sliders and text boxes update the moment you switch tabs.
+
+* **Global Accessibility & Workflow Library:**
+  * **Tools Menu Integration:** You no longer need an existing source image to start generating! Remix can now be launched directly from the global **Tools menu** on the homepage.
+  * **Standalone Library Generation:** Access your saved Remix Templates straight from the homepage Tools menu to instantly load up your custom *My Panel* dashboard and start queueing jobs from scratch. 
+  * **Smarter Template Saving:** When saving a Template to the Library, SmartGallery now proactively suggests reordering your pinned fields for a better layout, and defaults to the original node names if you leave custom labels blank.
+
 ### **[2.13] - 2026-05-21**
 
 ### 🪄 Experimental Remix Workflow (New!)
