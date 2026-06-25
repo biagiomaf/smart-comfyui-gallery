@@ -26,6 +26,8 @@ services:
       # do not change the internal port below (it is allowed in the Dockerfile), only in the `ports` section above, 
       CLI_ARGS: --port 8189 --admin-pass ${MAIN_PASS} --force-login
       # see README.md for a list of the available CLI arguments
+      # Default umask: 0022 (files readable by others); allow override using the UMASK environment variable
+#      - UMASK=0077
 
   comfy-smartgallery-exhibit:
     image: mmartial/smart-comfyui-gallery:latest
@@ -54,11 +56,13 @@ services:
       #FORCE_CHOWN: true
       #DELETE_TO: /deleteto
       # do not change the internal port below (it is allowed in the Dockerfile), only in the `ports` section above
-      CLI_ARGS: --exhibition --port 8190 --admin-pass ${EXHIBIT_PASS}
+      CLI_ARGS: --exhibition --port 8190 --admin-pass ${EXHIBITION_PASS}
       # see README.md for a list of the available CLI arguments
+      # Default umask: 0022 (files readable by others); allow override using the UMASK environment variable
+#      - UMASK=0077
 
 # Set a .env file in the same directory as this compose file and store the passwords (main and exhibition are not the same ) in it
 # Password requirement: 8+ characters
 # Example:
-# MAIN_PASS=yourpassword
-# EXHIBIT_PASS=yourpassword
+# MAIN_PASS=your_main_password
+# EXHIBIT_PASS=your_exhibition_password

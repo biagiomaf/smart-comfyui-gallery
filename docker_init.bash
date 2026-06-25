@@ -36,8 +36,8 @@ script_fullname=$0
 echo "  - script_fullname: ${script_fullname}"
 ignore_value="VALUE_TO_IGNORE"
 
-# everyone can read our files by default
-umask 0022
+# default umask: 0022 (files readable by others); allow override using the UMASK environment variable, as requested in https://github.com/biagiomaf/smart-comfyui-gallery/issues/62
+umask "${UMASK:-0022}"
 
 # Write a world-writeable file (preferably inside /tmp -- ie within the container)
 write_worldtmpfile() {

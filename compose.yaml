@@ -25,3 +25,5 @@ services:
 #      - DELETE_TO=/deleteto
       # Your ComfyUI interface is not accessible on localhost, update to reflect your host's IP
       - COMFYUI_SERVER_URL=http://192.168.100.1:8188
+      # Default umask: 0022 (files readable by others); allow override using the UMASK environment variable
+#      - UMASK=0077
