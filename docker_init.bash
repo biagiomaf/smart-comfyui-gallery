@@ -84,6 +84,8 @@ save_env() {
   tosave=$1
   echo "-- Saving environment variables to $tosave"
   env | sort > "$tosave"
+  # environment variables are saved with 777 permissions to allow the smartgallerytoo user to read them and pass them to the smartgallery user
+  chmod 777 "$tosave"
 }
 
 load_env() {
