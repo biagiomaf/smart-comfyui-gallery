@@ -35,9 +35,7 @@ echo "== Running ${script_name} in ${script_dir} as ${whoami}"
 script_fullname=$0
 echo "  - script_fullname: ${script_fullname}"
 ignore_value="VALUE_TO_IGNORE"
-
-# default umask: 0022 (files readable by others); allow override using the UMASK environment variable, as requested in https://github.com/biagiomaf/smart-comfyui-gallery/issues/62
-umask "${UMASK:-0022}"
+echo " - started with umask: $(umask)"
 
 # Write a world-writeable file (preferably inside /tmp -- ie within the container)
 write_worldtmpfile() {
@@ -165,6 +163,10 @@ if [ -f $it ]; then
   echo "-- Loading not already set environment variables from $it"
   load_env $it true
 fi
+
+# default umask: 0022 (files readable by others); allow override using the UMASK environment variable, as requested in https://github.com/biagiomaf/smart-comfyui-gallery/issues/62
+umask "${UMASK:-0022}"
+echo "== umask: $(umask)"
 
 ######## Environment variables (consume AFTER the load_env)
 
