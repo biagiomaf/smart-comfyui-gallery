@@ -12,6 +12,12 @@ services:
 #      - /etc/localtime:/etc/localtime:ro
       # To use the "Link External Folders" feature, add external locations to be mounted within the container
 #      - /path/to/your/ExternalFolder:/mnt/ExternalFolder
+      # When using ComfyUI folder structure
+#      - /comfyui-nvidia/basedir/model:/ComfyUI-models:ro
+      # When using an extra_model_paths.yaml
+#      - /StabilityMatrix/Data/Models/Lora:/mnt/loras:ro
+#      - /StabilityMatrix/Data/Models/StableDiffusion:/mnt/checkpoints:ro
+#      - /StabilityMatrix/Data/Models/DiffusionModels:/mnt/unet:ro
     restart: unless-stopped
     environment:
       - BASE_OUTPUT_PATH=/mnt/output
@@ -27,3 +33,9 @@ services:
       - COMFYUI_SERVER_URL=http://192.168.100.1:8188
       # Default umask: 0022 (files readable by others); allow override using the UMASK environment variable
 #      - UMASK=0077
+      # When using ComfyUI folder structure
+#      - BASE_MODELS_PATH=/ComfyUI-models
+      # When using an extra_model_paths.yaml
+#      - LORAS_PATH=/mnt/loras
+#      - CHECKPOINTS_PATH=/mnt/checkpoints
+#      - UNET_PATH=/mnt/unet

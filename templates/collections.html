@@ -1,0 +1,644 @@
+<!-- Version: 2.15 - July 15, 2026 -->
+<!-- TAGGING MODAL (MANAGER) -->
+<div id="tagging-overlay">
+    <div class="tag-panel">
+        <div class="tag-header">
+            <h3 id="tag-modal-title" style="margin:0; font-size:1.1rem; display:flex; align-items:center; gap:8px;">
+                🏷️ Manager <span id="tag-target-count" style="font-weight:normal; opacity:0.6; font-size:0.8rem;"></span>
+            </h3>
+            <button class="close-btn" onclick="closeTaggingModal()">×</button>
+        </div>
+        
+        <div class="tag-body">
+            <div id="section-status" class="tag-section-status" style="display:none;">
+                <div style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px; font-weight:bold;">
+                    Select a status color to apply to the file(s)
+                </div>
+                <div id="tm-status-grid" class="status-grid"></div>
+            </div>
+
+            <div id="section-collection" style="display:flex; flex-direction:column; flex:1; overflow:hidden; display:none;">
+                <div class="tag-toolbar">
+                    <input type="text" id="tm-search" class="search-input-compact" placeholder="🔍 Find collection..." style="flex:1;">
+                    <button class="sidebar-tool-btn sort-btn-mini" id="tm-sort-btn" title="Sort A-Z / Date" style="width: auto; padding: 0 8px !important;">A-Z ↑</button>
+                    <button class="sidebar-tool-btn" onclick="createNewCollection(true)" title="Create New Root Collection">+</button>
+                </div>
+                <div id="tm-list-container" class="tag-list-scroll folder-tree-container">
+                    <ul class="col-tree folder-tree" id="tm-col-tree" style="list-style:none; padding:0; margin:0;"></ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="tag-footer">
+            <div id="tm-changes-info" style="font-size:0.85rem; color:var(--text-muted);">No pending changes.</div>
+            <button id="tm-apply-btn" class="glass-btn active-blue" onclick="applyTagManagerChanges()" disabled>💾 Apply Changes</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ==========================================
+// VIRTUAL COLLECTIONS HIERARCHICAL LOGIC
+// ==========================================
+
+let colSortState = { key: 'name', dir: 'asc' }; 
+let colSearchTerm = '';
+let collectionsData = { flags: [], albums: [], tree: {} };
+let colExpandedState = new Set(JSON.parse(localStorage.getItem('galleryColExpandedState') || '[]'));
+
+function buildCollectionTreeData(albums) {
+    let tree = { '_root_': [] };
+    let albumMap = {};
+    
+    albums.forEach(a => {
+        albumMap[a.id] = a;
+        tree[a.id] = [];
+    });
+
+    albums.forEach(a => {
+        let parent = a.parent_id || '_root_';
+        if (!tree[parent]) tree[parent] = [];
+        tree[parent].push(a);
+    });
+
+    return { tree, albumMap };
+}
+
+function sortCollections(albumArray) {
+    return albumArray.sort((a, b) => {
+        let valA = colSortState.key === 'date' ? (a.created_at || 0) : a.name.toLowerCase();
+        let valB = colSortState.key === 'date' ? (b.created_at || 0) : b.name.toLowerCase();
+        if (valA < valB) return colSortState.dir === 'asc' ? -1 : 1;
+        if (valA > valB) return colSortState.dir === 'asc' ? 1 : -1;
+        return 0;
+    });
+}
+
+function loadCollections() {
+    fetch('/galleryout/api/collections')
+    .then(r => r.json())
+    .then(data => {
+        let parsedTree = buildCollectionTreeData(data.albums);
+        collectionsData = { flags: data.flags, albums: data.albums, tree: parsedTree.tree, map: parsedTree.albumMap };
+        
+        const searchInp = document.getElementById('col-search-input');
+        const sortBtn = document.getElementById('col-sort-toggle');
+        
+        if (searchInp && !searchInp.dataset.listening) {
+            searchInp.dataset.listening = "true";
+            searchInp.addEventListener('input', (e) => {
+                colSearchTerm = e.target.value.toLowerCase();
+                renderSidebarCollections();
+            });
+        }
+        
+        if (sortBtn && !sortBtn.dataset.listening) {
+            sortBtn.dataset.listening = "true";
+            sortBtn.addEventListener('click', () => {
+                if (colSortState.key === 'name' && colSortState.dir === 'asc') { colSortState = { key: 'name', dir: 'desc' }; sortBtn.innerText = 'Z-A ↓'; }
+                else if (colSortState.key === 'name' && colSortState.dir === 'desc') { colSortState = { key: 'date', dir: 'desc' }; sortBtn.innerText = '📅 New ↓'; }
+                else if (colSortState.key === 'date' && colSortState.dir === 'desc') { colSortState = { key: 'date', dir: 'asc' }; sortBtn.innerText = '📅 Old ↑'; }
+                else { colSortState = { key: 'name', dir: 'asc' }; sortBtn.innerText = 'A-Z ↑'; }
+                renderSidebarCollections();
+            });
+        }
+
+        renderSidebarCollections();
+        
+        const tagOverlay = document.getElementById('tagging-overlay');
+        if (tagOverlay && tagOverlay.classList.contains('visible') && tmState.mode === 'collection') {
+            renderTagManagerList();
+            updateChangesInfo();
+        }
+    }).catch(console.error);
+}
+
+// Global Sidebar Utilities
+async function syncSidebarState() {
+    if (document.body.classList.contains('modal-open') || document.querySelector('.folder-dropdown.show')) return;
+    try {
+        const res = await fetch('/galleryout/api/sidebar_state');
+        const data = await res.json();
+        const folderHash = Object.keys(data.folders).length + Object.keys(data.folders).join('');
+        const currentFolderHash = Object.keys(foldersData).length + Object.keys(foldersData).join('');
+        const collHash = data.collections.albums.map(a => a.id + a.name).join('');
+        const currentCollHash = collectionsData.albums.map(a => a.id + a.name).join('');
+        
+        if (folderHash !== currentFolderHash || collHash !== currentCollHash) {
+            foldersData = data.folders;
+            let parsedTree = buildCollectionTreeData(data.collections.albums);
+            collectionsData = { flags: data.collections.flags, albums: data.collections.albums, tree: parsedTree.tree, map: parsedTree.albumMap };
+            
+            if(typeof renderAllTrees === 'function') renderAllTrees();
+            renderSidebarCollections();
+            
+            if (!foldersData[currentFolderKey] && !currentFolderKey.startsWith('collection_')) {
+                showNotification("The current folder was moved or deleted by another user.", "warning");
+                setTimeout(() => window.location.href = "/galleryout/view/_root_", 3000);
+            }
+        }
+    } catch (e) { console.error("Sync Sidebar Error:", e); }
+}
+
+function switchSidebarTab(tabName) {
+    const targetPane = document.getElementById(`tab-${tabName}`);
+    const targetBtn = document.querySelector(`.sidebar-tab-btn[data-tab="${tabName}"]`);
+    if(!targetBtn) return;
+    const isAlreadyActive = targetBtn.classList.contains('active');
+    document.querySelectorAll('.sidebar-tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content-pane').forEach(pane => pane.classList.remove('active'));
+    if (isAlreadyActive && window.innerWidth <= 1024) localStorage.setItem('sidebarActiveTab', 'none');
+    else { targetBtn.classList.add('active'); if (targetPane) targetPane.classList.add('active'); localStorage.setItem('sidebarActiveTab', tabName); }
+}
+
+function restoreSidebarTab() {
+    if (window.innerWidth <= 1024) {
+        document.querySelectorAll('.tab-content-pane').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.sidebar-tab-btn').forEach(b => b.classList.remove('active'));
+        return; 
+    }
+    if (typeof GLOBAL_VIEW_IS_COLLECTION !== 'undefined' && GLOBAL_VIEW_IS_COLLECTION) {
+        if (typeof GLOBAL_VIEW_COLL_TYPE !== 'undefined' && GLOBAL_VIEW_COLL_TYPE === 'system_flag') switchSidebarTab('status');
+        else switchSidebarTab('collections');
+    } else switchSidebarTab('folders');
+}
+
+function renderSidebarTreeHTML(parentId = '_root_', isSearching = false) {
+    let children = collectionsData.tree[parentId] || [];
+    if (isSearching) {
+        if (parentId === '_root_') children = collectionsData.albums.filter(c => c.name.toLowerCase().includes(colSearchTerm));
+        else return ''; 
+    }
+    let sortedChildren = sortCollections([...children]);
+    let html = '';
+
+    sortedChildren.forEach(c => {
+        let hasChildren = !isSearching && collectionsData.tree[c.id] && collectionsData.tree[c.id].length > 0;
+        let isExpanded = colExpandedState.has(c.id) || isSearching;
+        let isCollapsedClass = !isExpanded && hasChildren ? 'collapsed' : '';
+        
+        let publicIcon = '';
+        if (typeof ENABLE_DAM_MODE !== 'undefined' && ENABLE_DAM_MODE) {
+            if (c.is_public) publicIcon = '<span class="public-eye" title="Exhibition Ready">👁️</span>';
+            else if (c.shared_users) publicIcon = '<span class="public-eye" style="color:var(--primary-color);">👥</span>';
+        }
+        
+        let isActive = (typeof currentFolderInfo !== 'undefined' && c.id == currentFolderInfo.collection_id) ? 'active' : '';
+        let jsSafeName = c.name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+        let toggleBtnText = c.is_public ? '🚫 Remove from Exhibition Ready Public' : '👁️ Set as Exhibition Ready Public';
+
+        html += `
+        <li data-col-id="${c.id}" class="${isCollapsedClass} ${!hasChildren ? 'no-children' : ''}">
+            <div class="folder-item col-item ${isActive}">
+                <span class="col-toggle-btn ${!hasChildren ? 'empty' : ''}"></span>
+                <a href="/galleryout/collection/${c.id}" class="folder-link navigation-link" style="display:flex; align-items:center; flex-grow:1;">
+                    <span class="col-icon">📚</span>
+                    <span class="col-name" title="${c.name}">${escapeHTML(c.name)}</span>
+                    ${publicIcon}
+                </a>
+                <div class="folder-menu-container">
+                    <button class="folder-menu-btn" onclick="event.preventDefault(); event.stopPropagation(); toggleFolderMenu(this)">⋮</button>
+                    <div class="folder-dropdown">
+                        <button onclick="createNewCollection(false, ${c.id})">➕ Add Sub-Collection</button>
+                        <button onclick="renameCollection(event, ${c.id}, '${jsSafeName}')">✏️ Rename</button>
+                        ${typeof ENABLE_DAM_MODE !== 'undefined' && ENABLE_DAM_MODE ? `
+                            <button onclick="toggleCollectionPublic(event, ${c.id})">${toggleBtnText}</button>
+                            <button onclick="event.preventDefault(); event.stopPropagation(); openShareModal(event, ${c.id}, '${jsSafeName}'); return false;" style="color:var(--primary-color);">👥 Share / Permissions</button>
+                        ` : ''}
+                        <button onclick="deleteCollection(event, ${c.id}, '${jsSafeName}')" style="color:#ff6b6b;">🗑️ Delete</button>
+                        <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:4px 0;">
+                        <button onclick="event.stopPropagation(); closeAllFolderMenus(event);" style="color:var(--text-muted); justify-content:center; font-weight:bold;">✕ Cancel</button>
+                    </div>
+                </div>
+            </div>
+            ${hasChildren ? `<ul style="list-style:none;">${renderSidebarTreeHTML(c.id, false)}</ul>` : ''}
+        </li>`;
+    });
+    return html;
+}
+
+function renderSidebarCollections() {
+    const statusContainer = document.getElementById('status-tags-list');
+    if (statusContainer) {
+        statusContainer.innerHTML = collectionsData.flags.map((c, index) => {
+            const shortcutBadge = (index < 5) ? `<span class="col-shortcut-hint">${index + 1}</span>` : '';
+            const isActive = (typeof currentFolderInfo !== 'undefined' && c.id == currentFolderInfo.collection_id) ? 'active' : '';
+            return `<a href="/galleryout/collection/${c.id}" class="col-item navigation-link ${isActive}">
+                        <div class="col-dot" style="background-color:${c.color}"></div>${shortcutBadge}<span class="col-name">${c.name}</span>
+                    </a>`;
+        }).join('');
+    }
+
+    const usrContainer = document.getElementById('user-collections-list');
+    if (usrContainer) {
+        const isAllActive = (typeof currentFolderInfo !== 'undefined' && currentFolderInfo.collection_id === 'all');
+        let allHeaderHtml = `
+            <div style="padding-left:0;">
+                <a href="/galleryout/collection/all" class="col-item folder-item navigation-link ${isAllActive ? 'active' : ''}" style="margin-bottom: 8px; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px;">
+                    <span class="col-icon">🌈</span><span class="col-name" style="font-weight: bold;">All Collections</span>
+                </a>
+            </div>
+            <ul class="folder-tree col-tree" id="main-col-tree" style="list-style:none; padding:0; margin:0;">
+                ${renderSidebarTreeHTML('_root_', colSearchTerm !== '')}
+            </ul>`;
+        usrContainer.innerHTML = allHeaderHtml;
+    }
+}
+
+// Isolated Capture-Phase listener to prevent event bubbling conflict with index.html
+document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('col-toggle-btn')) {
+        e.stopPropagation(); 
+        e.preventDefault();
+        const li = e.target.closest('li');
+        if (li && li.dataset.colId) {
+            const id = parseInt(li.dataset.colId);
+            const isCollapsed = li.classList.toggle('collapsed');
+            if (isCollapsed) colExpandedState.delete(id);
+            else colExpandedState.add(id);
+            localStorage.setItem('galleryColExpandedState', JSON.stringify([...colExpandedState]));
+        }
+    }
+}, true);
+
+async function createNewCollection(autoAssign = false, parentId = null) {
+    const promptMsg = parentId ? "Enter sub-collection name:" : "Enter collection name:";
+    const name = await smartPrompt("New Collection", promptMsg, "");
+    if (!name || !name.trim()) return;
+    
+    let isPublic = false;
+    if (typeof ENABLE_DAM_MODE !== 'undefined' && ENABLE_DAM_MODE) {
+        const choice = await showSmartDialog('yes_no_cancel', "🌐 Exhibition Visibility", "Make this collection visible in the Exhibition Portal? (Yes = Public, No = Private)", "", "active-blue");
+        if (choice === null) {
+            if (autoAssign) openTaggingModal('collection');
+            return;
+        }
+        isPublic = choice;
+    }
+    
+    fetch('/galleryout/api/collections/create', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ name: name.trim(), is_public: isPublic, parent_id: parentId })
+    }).then(r => r.json()).then(d => {
+        if (d.status === 'success') {
+            showNotification(`Collection "${name}" created!`, 'success');
+            if (autoAssign && d.id) tmState.pendingCollections[d.id] = 'add';
+            if (parentId) colExpandedState.add(parentId);
+            loadCollections();
+        } else { showNotification(d.message || 'Error', 'error'); }
+    }).catch(console.error);
+}
+
+async function toggleCollectionPublic(e, id) {
+    e.preventDefault(); e.stopPropagation();
+    const menu = e.target.closest('.folder-dropdown'); if (menu) menu.classList.remove('show');
+    fetch('/galleryout/api/collections/toggle_public', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: id }) })
+    .then(r => r.json()).then(d => {
+        if(d.status === 'success') { showNotification(d.new_state ? "Exhibition ready 👁️" : "Private 🔒", 'success'); loadCollections(); }
+    }).catch(console.error);
+}
+
+async function renameCollection(e, id, oldName) {
+    e.preventDefault(); e.stopPropagation();
+    const menu = e.target.closest('.folder-dropdown'); if (menu) menu.classList.remove('show');
+    const newName = await smartPrompt("✏️ Rename", "Enter new name:", oldName);
+    if (newName && newName.trim() && newName.trim() !== oldName) {
+        fetch('/galleryout/api/collections/rename', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: id, name: newName.trim() }) })
+        .then(r => r.json()).then(d => {
+            if(d.status === 'success') { showNotification('Renamed', 'success'); loadCollections(); }
+        });
+    }
+}
+
+async function deleteCollection(e, id, name) {
+    e.preventDefault(); e.stopPropagation();
+    const menu = e.target.closest('.folder-dropdown'); if (menu) menu.classList.remove('show');
+    const yes = await smartConfirm("Delete Collection?", `Delete "${name}" and all its sub-collections?\nFiles inside will NOT be deleted.`, true);
+    if(yes) {
+        fetch('/galleryout/api/collections/delete', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: id }) })
+        .then(r => r.json()).then(d => {
+            if(d.status === 'success') { showNotification('Deleted', 'success'); loadCollections(); }
+            else showNotification(d.message, 'error');
+        });
+    }
+}
+
+// TAG MANAGER (HIERARCHICAL)
+let tmState = { mode: 'collection', search: '', sort: 'name', sortDir: 'asc', pendingCollections: {}, pendingStatus: null };
+
+function openTaggingModal(mode = 'collection') {
+    if (typeof selectedFiles !== 'undefined' && selectedFiles.size === 0 && typeof currentLightboxFile !== 'undefined' && !currentLightboxFile) {
+        showNotification("No files selected.", "warning"); return;
+    }
+    tmState.mode = mode;
+    document.getElementById('tag-modal-title').innerHTML = mode === 'status' ? '🏷️ Set Status' : '📚 Manage Collections';
+    document.getElementById('section-status').style.display = mode === 'status' ? 'block' : 'none';
+    document.getElementById('section-collection').style.display = mode === 'status' ? 'none' : 'flex';
+    document.getElementById('tm-apply-btn').disabled = true;
+    tmState.pendingCollections = {}; tmState.pendingStatus = null;
+    
+    let count = (typeof currentLightboxFile !== 'undefined' && currentLightboxFile) ? 1 : selectedFiles.size;
+    const targetCountEl = document.getElementById('tag-target-count');
+    if(targetCountEl) targetCountEl.textContent = `(${count} File${count > 1 ? 's' : ''})`;
+
+    if (mode === 'collection') {
+        tmState.originalCollections = new Set();
+        if (count === 1) {
+            let targetId = currentLightboxFile ? currentLightboxFile.id : Array.from(selectedFiles)[0];
+            fetch(`/galleryout/api/file_collections/${targetId}`).then(res => res.json()).then(data => {
+                if (data.status === 'success') {
+                    let currentColls = collectionsData.albums.filter(a => data.collections.some(c => c.name === a.name && c.type === 'user_album'));
+                    tmState.originalCollections = new Set(currentColls.map(c => c.id));
+                    renderTagManagerList(); updateChangesInfo();
+                }
+            });
+        } else if (typeof GLOBAL_VIEW_IS_COLLECTION !== 'undefined' && GLOBAL_VIEW_IS_COLLECTION && GLOBAL_VIEW_COLL_ID !== 'all') {
+            const currentViewId = parseInt(GLOBAL_VIEW_COLL_ID);
+            if (!isNaN(currentViewId)) tmState.originalCollections = new Set([currentViewId]);
+        }
+    } else {
+        if (count === 1) {
+            const targetId = currentLightboxFile ? currentLightboxFile.id : Array.from(selectedFiles)[0];
+            const fileData = allFilesData.find(f => f.id === targetId);
+            if (fileData && fileData.status_color) {
+                const statusObj = collectionsData.flags.find(f => f.color === fileData.status_color);
+                if (statusObj) { tmState.pendingStatus = statusObj.id; tmState.originalStatus = statusObj.id; }
+            }
+        } else { tmState.originalStatus = null; }
+        renderTagManagerStatus(); 
+    }
+    
+    if (mode === 'collection') renderTagManagerList();
+    const infoEl = document.getElementById('tm-changes-info');
+    const applyBtn = document.getElementById('tm-apply-btn');
+    if (infoEl) { infoEl.textContent = "No pending changes."; infoEl.style.color = "var(--text-muted)"; }
+    if (applyBtn) { applyBtn.disabled = true; applyBtn.classList.remove('active-blue'); }
+
+    document.getElementById('tagging-overlay').classList.add('visible');
+    initTagManagerListeners();
+}
+
+function closeTaggingModal() { document.getElementById('tagging-overlay').classList.remove('visible'); }
+
+function renderTagManagerTreeHTML(parentId = '_root_', isSearching = false) {
+    let children = collectionsData.tree[parentId] || [];
+    if (isSearching) {
+        if (parentId === '_root_') children = collectionsData.albums.filter(c => c.name.toLowerCase().includes(tmState.search));
+        else return ''; 
+    }
+    let sortedChildren = sortCollections([...children]);
+    let html = '';
+
+    sortedChildren.forEach(c => {
+        let hasChildren = !isSearching && collectionsData.tree[c.id] && collectionsData.tree[c.id].length > 0;
+        let isExpanded = colExpandedState.has(c.id) || isSearching;
+        let isCollapsedClass = !isExpanded && hasChildren ? 'collapsed' : '';
+        
+        let pendingAction = tmState.pendingCollections[c.id];
+        let stateClass = ''; let addActive = ''; let remActive = '';
+        let isOriginal = tmState.originalCollections && tmState.originalCollections.has(c.id);
+        
+        if (pendingAction === 'add') { stateClass = 'state-add'; addActive = 'style="background:var(--success-color); color:white; border-color:white;"'; }
+        else if (pendingAction === 'remove') { stateClass = 'state-remove'; remActive = 'style="background:var(--danger-color); color:white; border-color:white;"'; }
+        else if (isOriginal) { stateClass = 'state-original-hint'; }
+
+        html += `
+        <li data-col-id="${c.id}" class="${isCollapsedClass} ${!hasChildren ? 'no-children' : ''}">
+            <div class="tag-col-item folder-item ${stateClass}" style="margin-bottom:4px; padding:8px 12px; border-radius:8px;">
+                <span class="col-toggle-btn ${!hasChildren ? 'empty' : ''}"></span>
+                <div class="tag-col-info folder-link" style="margin-left: 25px; flex-grow:1;">
+                    <span class="tag-col-name" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 150px; display:inline-block; vertical-align:middle; ${isOriginal && !pendingAction ? 'color: var(--success-color); font-weight: bold;' : ''}">
+                        ${c.is_public ? '👁️ ' : ''}${c.name}
+                    </span>
+                </div>
+                <div style="display:flex; gap:5px; z-index:10;">
+                    <button class="tag-action-btn btn-tag-add" ${addActive} onclick="setTagAction(${c.id}, 'add')" style="padding:4px 8px; font-size:0.8rem;">➕ Add</button>
+                    <button class="tag-action-btn btn-tag-remove" ${remActive} onclick="setTagAction(${c.id}, 'remove')" style="padding:4px 8px; font-size:0.8rem;">🗑️</button>
+                </div>
+            </div>
+            ${hasChildren ? `<ul style="list-style:none;">${renderTagManagerTreeHTML(c.id, false)}</ul>` : ''}
+        </li>`;
+    });
+    return html;
+}
+
+function renderTagManagerList() {
+    const container = document.getElementById('tm-col-tree');
+    if (!container) return;
+    const treeHtml = renderTagManagerTreeHTML('_root_', tmState.search !== '');
+    if (!treeHtml) {
+        container.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-muted);">No collections found.</div>`;
+    } else {
+        container.innerHTML = treeHtml;
+    }
+}
+
+function setTagAction(collId, action) {
+    if (tmState.pendingCollections[collId] === action) delete tmState.pendingCollections[collId];
+    else tmState.pendingCollections[collId] = action;
+    renderTagManagerList(); updateChangesInfo();    
+}
+
+function initTagManagerListeners() {
+    const searchInp = document.getElementById('tm-search');
+    if(searchInp && !searchInp.dataset.bound) {
+        searchInp.addEventListener('input', (e) => { tmState.search = e.target.value.toLowerCase(); renderTagManagerList(); });
+        searchInp.dataset.bound = "true";
+    }
+    const sortBtn = document.getElementById('tm-sort-btn');
+    if(sortBtn && !sortBtn.dataset.bound) {
+        sortBtn.addEventListener('click', () => {
+            if (tmState.sort === 'name' && tmState.sortDir === 'asc') { tmState.sortDir = 'desc'; sortBtn.textContent = 'Z-A ↓'; }
+            else if (tmState.sort === 'name' && tmState.sortDir === 'desc') { tmState.sort = 'date'; tmState.sortDir = 'desc'; sortBtn.textContent = '📅 New ↓'; }
+            else if (tmState.sort === 'date' && tmState.sortDir === 'desc') { tmState.sortDir = 'asc'; sortBtn.textContent = '📅 Old ↑'; }
+            else { tmState.sort = 'name'; tmState.sortDir = 'asc'; sortBtn.textContent = 'A-Z ↑'; }
+            renderTagManagerList();
+        });
+        sortBtn.dataset.bound = "true";
+    }
+}
+
+function renderTagManagerStatus() {
+    const container = document.getElementById('tm-status-grid');
+    if (!container) return;
+    const isClearSelected = (tmState.pendingStatus === 'clear');
+    let html = `<div class="status-chip ${isClearSelected ? 'selected' : ''}" onclick="stageStatusChange('clear')" style="border-style:dashed;"><span style="font-size:1.2rem;">🚫</span><span style="font-size:0.8rem; font-weight:bold;">No Status</span></div>`;
+    if (collectionsData.flags) {
+        html += collectionsData.flags.map(c => {
+            const isSelected = (tmState.pendingStatus === c.id);
+            return `<div class="status-chip ${isSelected ? 'selected' : ''}" onclick="stageStatusChange(${c.id})"><div style="width:12px; height:12px; border-radius:50%; background:${c.color}; box-shadow:0 0 5px ${c.color};"></div><span style="font-size:0.85rem; font-weight:500;">${c.name}</span></div>`;
+        }).join('');
+    }
+    container.innerHTML = html;
+}
+
+function stageStatusChange(statusId) {
+    tmState.pendingStatus = (tmState.pendingStatus === statusId) ? null : statusId;
+    renderTagManagerStatus(); updateChangesInfo();
+}
+
+function updateChangesInfo() {
+    let changesCount = 0;
+    if (tmState.mode === 'collection') {
+        const originals = tmState.originalCollections || new Set();
+        Object.entries(tmState.pendingCollections).forEach(([id, action]) => {
+            const intId = parseInt(id);
+            if (action === 'add' && !originals.has(intId)) changesCount++;
+            else if (action === 'remove' && originals.has(intId)) changesCount++;
+        });
+    } else {
+        if (tmState.pendingStatus !== (tmState.originalStatus || null)) changesCount++;
+    }
+    
+    const infoEl = document.getElementById('tm-changes-info');
+    const btn = document.getElementById('tm-apply-btn');
+    if (changesCount === 0) {
+        if(infoEl) { infoEl.textContent = "No pending changes."; infoEl.style.color = "var(--text-muted)"; }
+        if(btn) { btn.disabled = true; btn.classList.remove('active-blue'); }
+    } else {
+        if(infoEl) { infoEl.textContent = `${changesCount} change${changesCount !== 1 ? 's' : ''} pending...`; infoEl.style.color = "var(--primary-color)"; }
+        if(btn) { btn.disabled = false; btn.classList.add('active-blue'); }
+    }
+}
+
+async function applyTagManagerChanges() {
+    const btn = document.getElementById('tm-apply-btn');
+    btn.disabled = true; btn.textContent = "⏳ Processing...";
+    const targets = (typeof currentLightboxFile !== 'undefined' && currentLightboxFile) ? [currentLightboxFile.id] : [...selectedFiles];
+    const promises = [];
+    let statusResults = null; let statusCollId = null;
+
+    if (tmState.pendingStatus !== null) {
+        const action = (tmState.pendingStatus === 'clear') ? 'remove_all_status' : 'toggle';
+        statusCollId = (tmState.pendingStatus === 'clear') ? null : parseInt(tmState.pendingStatus);
+        promises.push(fetch('/galleryout/api/collections/tag_batch', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ file_ids: targets, collection_id: statusCollId, action: action })
+        }).then(r => r.json()).then(data => { if (data.status === 'success') statusResults = data.results; return data; }));
+    }
+
+    Object.entries(tmState.pendingCollections).forEach(([collId, action]) => {
+        promises.push(fetch('/galleryout/api/collections/tag_batch', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ file_ids: targets, collection_id: parseInt(collId), action: action })
+        }).then(r => r.json()));
+    });
+
+    try {
+        await Promise.all(promises);
+        if (statusResults && typeof updateColorStrips === 'function') updateColorStrips(statusResults, statusCollId);
+        showNotification("Changes applied successfully!", "success");
+        if (typeof currentFiFileId !== 'undefined' && currentFiFileId && document.getElementById('file-info-overlay').classList.contains('visible')) {
+            if(typeof loadFiCollections === 'function') loadFiCollections(currentFiFileId);
+        }
+        
+        const currentViewId = parseInt(typeof GLOBAL_VIEW_COLL_ID !== 'undefined' ? GLOBAL_VIEW_COLL_ID : -1);
+        const statusChanged = (tmState.pendingStatus !== null);
+        const collectionChanged = Object.keys(tmState.pendingCollections).some(cid => parseInt(cid) === currentViewId);
+        
+        if (collectionChanged || (statusChanged && typeof GLOBAL_VIEW_COLL_TYPE !== 'undefined' && GLOBAL_VIEW_COLL_TYPE === 'system_flag')) {
+            setTimeout(() => window.location.reload(), 500);
+        } else {
+            btn.disabled = false; btn.textContent = "💾 Apply Changes";
+            closeTaggingModal();
+            if (typeof currentLightboxFile !== 'undefined' && !currentLightboxFile && typeof deselectAll === 'function') deselectAll();
+        }
+    } catch (e) {
+        console.error(e); showNotification("Error applying changes.", "error");
+        btn.disabled = false; btn.textContent = "💾 Apply Changes";
+    }
+}
+
+async function untagCurrentCollection() {
+    if (!currentFolderInfo.is_collection) { showNotification("Untag is only for Collections.", "info"); return; }
+    if (currentFolderInfo.collection_id === 'all') { showNotification("Cannot untag from 'All Collections'.", "info"); return; }
+
+    const targets = selectedFiles.size > 0 ? [...selectedFiles] : (focusedItemIndex !== -1 ? [galleryItems[focusedItemIndex].dataset.fileId] : []);
+    if (targets.length === 0) return;
+
+    try {
+        const res = await fetch('/galleryout/api/collections/tag_batch', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ file_ids: targets, collection_id: parseInt(currentFolderInfo.collection_id), action: 'remove' })
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+            showNotification(`Removed ${targets.length} item(s).`, "success");
+            targets.forEach(fid => {
+                const item = document.querySelector(`.gallery-item[data-file-id="${fid}"]`);
+                if (item) {
+                    item.style.transition = 'all 0.3s'; item.style.opacity = '0'; item.style.transform = 'scale(0.8)';
+                    setTimeout(() => {
+                        item.remove();
+                        galleryItems = galleryItems.filter(gi => gi.dataset.fileId !== fid);
+                        allFilesData = allFilesData.filter(f => f.id !== fid);
+                        selectedFiles.delete(fid);
+                        currentItemCount--; totalFiles--; totalFolderFiles--;
+                        if(typeof updateFileCountBadge === 'function') updateFileCountBadge();
+                        if(typeof updateSelectionUI === 'function') updateSelectionUI();
+                        if (galleryItems.length === 0 && typeof showEmptyState === 'function') showEmptyState();
+                    }, 300);
+                }
+            });
+        }
+    } catch (e) { showNotification("Error removing from collection", "error"); }
+}
+
+async function showFileCollections(fileId) {
+    if (!fileId) return;
+    try {
+        const response = await fetch(`/galleryout/api/file_collections/${fileId}`);
+        const data = await response.json();
+        if (data.status === 'success') {
+            if (data.collections.length === 0) { showNotification("📌 Not assigned to any collection.", "info"); return; }
+            let message = "🏷️ Assigned to:\n";
+            data.collections.forEach(c => { const icon = (c.type === 'system_flag') ? "📍" : "📁"; message += `${icon} ${c.name}\n`; });
+            showNotification(message, "info multiline-msg", 5000);
+        }
+    } catch (err) { console.error(err); }
+}
+
+function applyTag(collId, action, explicitTargets = null) {
+    let targets = explicitTargets ? explicitTargets : ((typeof currentLightboxFile !== 'undefined' && currentLightboxFile) ? [currentLightboxFile.id] : [...selectedFiles]);
+    if (targets.length === 0) return;
+
+    fetch('/galleryout/api/collections/tag_batch', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ file_ids: targets, collection_id: collId, action: action })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if(d.status === 'success') {
+            showNotification('Status updated', 'success');
+            if(typeof updateColorStrips === 'function') updateColorStrips(d.results, collId);
+            if (typeof currentFiFileId !== 'undefined' && currentFiFileId && document.getElementById('file-info-overlay').classList.contains('visible') && targets.includes(currentFiFileId)) {
+                if(typeof loadFiCollections === 'function') loadFiCollections(currentFiFileId);
+            }
+        }
+    }).catch(console.error);
+}
+
+function updateColorStrips(results, collId) {
+    if (!results) return;
+    const flag = collectionsData.flags.find(f => f.id === collId);
+    Object.entries(results).forEach(([fid, status]) => {
+        const item = document.querySelector(`.gallery-item[data-file-id="${fid}"]`);
+        const fileData = allFilesData.find(f => f.id === fid);
+        if (status === 'added' && flag) {
+            if (item) {
+                const wrapper = item.querySelector('.thumbnail-wrapper');
+                const old = wrapper.querySelector('.status-color-strip');
+                if (old) old.remove();
+                const strip = document.createElement('div');
+                strip.className = 'status-color-strip';
+                strip.style.backgroundColor = flag.color;
+                wrapper.prepend(strip);
+            }
+            if (fileData) fileData.status_color = flag.color;
+        } else if (status === 'removed') {
+            if (item) { const strip = item.querySelector('.status-color-strip'); if (strip) strip.remove(); }
+            if (fileData) fileData.status_color = null;
+        }
+    });
+}
+</script>

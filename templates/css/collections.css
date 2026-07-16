@@ -1,0 +1,67 @@
+/* Version: 2.15 - July 15, 2026 */
+
+.collections-section { margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border-color); }
+.section-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 10px; padding-left: 5px; display: flex; justify-content: space-between; align-items: center; }
+
+.col-item:hover { background-color: var(--surface-hover); }
+.col-item.active { background-color: rgba(0, 123, 255, 0.15) !important; border: 1px solid var(--primary-color) !important; border-left: 4px solid var(--primary-color) !important; color: white !important; }
+
+.col-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 12px; flex-shrink: 0; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
+.col-icon { margin-right: 10px; font-size: 1.1rem; }
+.card-tag-strip { position: absolute; top: 0; left: 0; width: 4px; height: 100%; z-index: 5; border-radius: 4px 0 0 4px; }
+
+/* --- COLLECTION TOGGLE BUTTON (ISOLATED) --- */
+.col-toggle-btn {
+    position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+    width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;
+    color: var(--text-muted); cursor: pointer; font-size: 1.1rem; line-height: 1;
+    user-select: none; z-index: 10;
+}
+.col-toggle-btn.empty { visibility: hidden; }
+
+/* --- FIX ALLINEAMENTO ALBERO COLLEZIONI (RISOLVE IL BUG VISIVO) --- */
+.col-tree { list-style: none; padding: 0; margin: 0; }
+.col-tree li { position: relative; }
+
+/* FIX: Le collezioni root partono tutte da 0 */
+.folder-tree.col-tree > li { padding-left: 0 !important; }
+
+/* FIX: Solo le sotto-collezioni vengono indentate */
+.folder-tree.col-tree ul > li { padding-left: 20px !important; }
+
+.col-tree li.collapsed > ul { display: none; }
+.col-tree li:not(.collapsed) > div > .col-toggle-btn::before { content: '▾'; }
+.col-tree li.collapsed > div > .col-toggle-btn::before { content: '▸'; }
+.col-tree li.no-children > div > .col-toggle-btn { visibility: hidden; }
+
+/* TAGGING MODAL */
+#tagging-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 6000; display: none; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+#tagging-overlay.visible { display: flex; }
+.tag-panel { background: var(--surface-color); border: 1px solid var(--glass-border); border-radius: 16px; width: 500px; max-width: 95vw; display: flex; flex-direction: column; max-height: 85vh; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
+.tag-header { padding: 15px; border-bottom: 1px solid var(--border-color); background: var(--surface-hover); display: flex; justify-content: space-between; align-items: center; }
+.tag-body { padding: 0; display: flex; flex-direction: column; overflow: hidden; flex: 1; }
+.tag-section-status { padding: 15px; background: rgba(0, 0, 0, 0.2); border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
+.tag-toolbar { padding: 10px 15px; display: flex; gap: 8px; border-bottom: 1px solid var(--glass-border); background: var(--surface-hover); flex-shrink: 0; }
+.tag-list-scroll { padding: 10px 15px; overflow-y: auto; flex: 1; min-height: 200px; }
+.tag-footer { padding: 15px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: var(--surface-color); flex-shrink: 0; }
+
+.tag-col-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; margin-bottom: 6px; border-radius: 8px; border: 1px solid var(--glass-border); background: rgba(255, 255, 255, 0.03); cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); user-select: none; }
+.tag-col-item:hover { background: rgba(255, 255, 255, 0.08); }
+.tag-col-item.state-add { background: rgba(40, 167, 69, 0.15); border-color: var(--workflow-color); }
+.tag-col-item.state-original-hint { background: rgba(255, 255, 255, 0.05); border-left: 3px solid var(--workflow-color); }
+.tag-col-item.state-remove { background: rgba(220, 53, 69, 0.15); border-color: var(--danger-color); opacity: 0.8; }
+.tag-col-item.state-remove .tag-col-name { text-decoration: line-through; color: var(--text-muted); }
+
+.tag-col-info { display: flex; align-items: center; gap: 10px; }
+.tag-col-name { font-weight: 500; font-size: 0.95rem; }
+
+.status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.status-chip { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 6px; border: 1px solid var(--glass-border); cursor: pointer; background: rgba(0,0,0,0.3); transition: transform 0.2s; }
+.status-chip:hover { transform: translateY(-2px); background: rgba(255,255,255,0.1); }
+.status-chip.selected { background: rgba(255, 255, 255, 0.2); border-color: white; box-shadow: 0 0 8px rgba(255, 255, 255, 0.3); transform: scale(1.05); }
+
+.tag-action-btn { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); color: var(--text-color); padding: 10px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; transition: all 0.2s; font-size: 0.9rem; }
+.btn-tag-add { flex-grow: 1; justify-content: flex-start; gap: 10px; }
+.btn-tag-add:hover { background: rgba(40, 167, 69, 0.15); border-color: var(--success-color); }
+.btn-tag-remove { width: 44px; justify-content: center; color: var(--text-muted); }
+.btn-tag-remove:hover { background: rgba(220, 53, 69, 0.2); color: #ff6b6b; border-color: #ff6b6b; }

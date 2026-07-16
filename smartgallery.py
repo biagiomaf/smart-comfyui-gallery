@@ -1,7 +1,7 @@
 # SmartGallery DAM for ComfyUI
-# Author: Biagio Maffettone © 2025-2026 — MIT License (free to use and modify)
+# Author: Biagio Maffettone © 2025-2026 — Free to use/modify with credit. Provided "as is". See license on GitHub.
 #
-# Version: 2.14 - June 12, 2026
+# Version: 2.15 - July 15, 2026
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -154,6 +154,14 @@ BASE_OUTPUT_PATH = os.environ.get('BASE_OUTPUT_PATH', 'C:/ComfyUI/output')
 
 # Path to the ComfyUI 'input' folder 
 BASE_INPUT_PATH = os.environ.get('BASE_INPUT_PATH', 'C:/ComfyUI/input')
+
+# --- Granular Paths for Advanced Setups (Docker, Stability Matrix, extra_model_paths.yaml) ---
+# If not set, they fallback to the standard ComfyUI relative structure
+BASE_MODELS_PATH = os.environ.get('BASE_MODELS_PATH', os.path.join(os.path.dirname(os.path.normpath(BASE_OUTPUT_PATH)), 'models'))
+LORAS_PATH = os.environ.get('LORAS_PATH', os.path.join(BASE_MODELS_PATH, 'loras'))
+CHECKPOINTS_PATH = os.environ.get('CHECKPOINTS_PATH', os.path.join(BASE_MODELS_PATH, 'checkpoints'))
+UNET_PATH = os.environ.get('UNET_PATH', os.path.join(BASE_MODELS_PATH, 'unet'))
+
 
 # Path for service folders (database, cache, zip files). 
 # If not specified, the ComfyUI output path will be used. 
@@ -331,8 +339,8 @@ AI_MODELS_FOLDER_NAME = '.AImodels'
 ENABLE_DAM_MODE = True
 
 # --- APP INFO ---
-APP_VERSION = "2.14"
-APP_VERSION_DATE = "June 12, 2026"
+APP_VERSION = "2.15"
+APP_VERSION_DATE = "July 15, 2026"
 GITHUB_REPO_URL = "https://github.com/biagiomaf/smart-comfyui-gallery"
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/biagiomaf/smart-comfyui-gallery/main/smartgallery.py"
 
@@ -408,6 +416,66 @@ class Colors:
     BOLD = '\033[1m'
     DIM = '\033[2m'
 
+
+def get_omniquery_dictionary(reset=False):
+    omni_dir = os.path.join(BASE_SMARTGALLERY_PATH, '.omniquery')
+    dict_path = os.path.join(omni_dir, 'omniquery_template.txt')
+    
+    # --- FACTORY PROMPT BASE ---
+    # Edit this variable to permanently alter the default prompt structure in the codebase.
+    BA_OU_PA = BASE_OUTPUT_PATH.replace("\\", "/")
+    FACTORY_PROMPT_BASE = f"""You are an expert SQLite database administrator. I will give you a natural language request, and you must return a valid SQLite query.
+
+DATABASE SCHEMA:
+- files: id(TEXT), path(TEXT), mtime(REAL unix_ts), last_scanned(REAL unix_ts), name(TEXT), type(TEXT: video/image/animated_image/audio), size(INTEGER), dimensions(TEXT: are the pixels example '640x480'), is_favorite(INTEGER: 1/0), has_workflow(INTEGER: 1/0), workflow_files(TEXT), workflow_prompt(TEXT), duration(TEXT: example 03:19 minutes:seconds) 
+- collections: id(INTEGER), name(TEXT), type(TEXT:'user_album'/'system_flag'), is_public(INTEGER 1/0), shared_users(TEXT: comma-separated user_ids), parent_id(INTEGER: Unary relationship identifier for nested sub-collections using id key)
+- collection_files: collection_id(INTEGER), file_id(TEXT)
+- users: user_id(INTEGER), username(TEXT), full_name(TEXT), role(TEXT:'ADMIN','MANAGER','STAFF','USER','CUSTOMER','GUEST'), is_active(INTEGER), email(TEXT), phone_number(TEXT), start_date(DATE), expiry_date(DATE), last_login(REAL unix_ts)
+
+- file_ratings: file_id(TEXT), client_uuid(TEXT: matches user_id), rating(INTEGER 1-5)
+- file_comments: id(INTEGER), file_id(TEXT), client_uuid(TEXT: author), comment_text(TEXT), target_audience(TEXT: 'public'/'internal'/'user:{{id}}')
+
+STATUS FLAGS (SYSTEM FLAGS):
+Files can be assigned status tags. These are stored in the 'collections' table where type='system_flag'.
+To filter by a status, use a subquery or join on collection_files and collections.
+Example: SELECT f.id FROM files f JOIN collection_files cf ON f.id = cf.file_id JOIN collections c ON cf.collection_id = c.id WHERE c.name='Approved'
+
+CURRENT DATABASE STATUS FLAGS:
+- ID: 1 | Name: 'Approved' | Color: Green
+- ID: 2 | Name: 'Review' | Color: Yellow
+- ID: 3 | Name: 'To Edit' | Color: Cyan
+- ID: 4 | Name: 'Rejected' | Color: Red
+- ID: 5 | Name: 'Select' | Color: Purple
+
+RULES:
+1. You MUST return ONLY the raw SQL query. No markdown formatting (do not wrap in ```sql), no explanations.
+2. The query MUST be a SELECT statement returning ONLY the 'id' column from the 'files' table. Example: SELECT DISTINCT f.id FROM files f LEFT JOIN file_ratings r ON f.id = r.file_id WHERE r.rating = 5
+3. Use standard SQLite syntax. Do not invent columns or tables.
+4. Case sensitivity: By default, assume searches (like folder or file names) are case-insensitive and use the standard SQLite LIKE operator (with %). However, if the user explicitly specifies that the search must be case-sensitive, you MUST use the GLOB operator instead of LIKE, and use asterisks (*) as wildcards (e.g., WHERE f.path GLOB '*{BA_OU_PA}/FolderName*').
+5. Path handling: The base directory on the disk is '{BA_OU_PA}'. In the database, the 'path' column contains the full absolute path starting with this prefix. When the user queries for a relative path or treats a folder as the root '/', you must map it to '{BA_OU_PA}'. For example, if the user asks for files in '/projects', look for paths LIKE '{BA_OU_PA}/projects%'.
+6. Megapixel calculation: To filter or calculate megapixels from the 'dimensions' field (format 'WIDTHxHEIGHT'), extract the width and height by splitting or parsing the string (e.g., using CAST(SUBSTR(...) AS INT)), multiply them, and divide by 1,000,000.
+
+MY REQUEST (I will use my native language):
+"""
+    # --- END OF FACTORY PROMPT BASE ---
+    final_prompt = FACTORY_PROMPT_BASE
+    os.makedirs(omni_dir, exist_ok=True)
+    
+    if reset or not os.path.exists(dict_path):
+        try:
+            with open(dict_path, 'w', encoding='utf-8') as f:
+                f.write(final_prompt)
+        except Exception as e:
+            print(f"WARN: Could not write omniquery_template.txt: {e}")
+        return final_prompt
+    else:
+        try:
+            with open(dict_path, 'r', encoding='utf-8') as f:
+                return f.read()
+        except Exception:
+            return final_prompt.replace("MY REQUEST:", dynamic_statuses + "\nMY REQUEST:")
+    return base_text
+
 def run_integrity_check():
     """
     System Health Check with user advice and cross-platform wait.
@@ -438,7 +506,11 @@ def run_integrity_check():
         'templates/exhibition.html',
         'templates/exhibition_login.html',
         'templates/modals/user_manager_module.html',
-        'templates/modals/remix_modal.html'
+        'templates/modals/remix_modal.html',
+        'templates/modals/omniquery_modal.html',
+        'templates/css/index.css',
+        'templates/collections.html',
+        'templates/css/collections.css'
     ]
     
     mismatches = []
@@ -526,6 +598,9 @@ def print_configuration():
     print_row("Server Port", SERVER_PORT)
     print_row("Base Output Path", BASE_OUTPUT_PATH, True)
     print_row("Base Input Path", BASE_INPUT_PATH, True)
+    print_row("LoRAs Path", LORAS_PATH, True)
+    print_row("Checkpoints Path", CHECKPOINTS_PATH, True)
+    print_row("UNET Path", UNET_PATH, True)
     print_row("SmartGallery Path", BASE_SMARTGALLERY_PATH, True)
     print_row("FFprobe Path", FFPROBE_MANUAL_PATH, True)
     print_row("Delete To (Trash)", DELETE_TO if DELETE_TO else "Disabled (Permanent Delete)", DELETE_TO is not None)
@@ -575,19 +650,32 @@ def management_api_only(f):
     """
     Security Decorator: Blocks access to destructive or management APIs 
     when the server is running in Exhibition Mode.
+    Also enforces authentication and role checks if FORCE_LOGIN is enabled.
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        # Always lock down management APIs in Exhibition Mode
         if IS_EXHIBITION_MODE:
             return jsonify({
                 'status': 'error', 
                 'message': 'Security Lockdown: This API is physically disabled in Exhibition Mode.'
             }), 403
+            
+        # Enforce strict authentication and role checking in Force Login mode
+        if FORCE_LOGIN:
+            user_id = session.get('user_id')
+            if not user_id:
+                return jsonify({'status': 'error', 'message': 'Unauthorized: Authentication required.'}), 401
+                
+            user_role = session.get('role')
+            if user_role not in ['ADMIN', 'MANAGER', 'STAFF']:
+                return jsonify({'status': 'error', 'message': 'Forbidden: Insufficient privileges.'}), 403
+                
         return f(*args, **kwargs)
     return decorated_function
 
 # --- FLASK APP INITIALIZATION ---
-app = Flask(__name__)
+app = Flask(__name__, static_folder='templates', static_url_path='/static')
 app.secret_key = SECRET_KEY
 gallery_view_cache = []
 folder_config_cache = None
@@ -867,7 +955,9 @@ class ComfyMetadataParser:
         if meta["positive_prompt"]:
             cleaned = clean_prompt_text(meta["positive_prompt"])
             meta["positive_prompt_clean"] = cleaned["text"]
-            meta["loras"] = cleaned["loras"]
+            for l in cleaned.get("loras", []):
+                if not any(existing.get("name") == l["name"] for existing in meta["loras"]):
+                    meta["loras"].append(l)
             
         # Deduplicate Prompts if they are identical due to tracing overlaps
         if meta["negative_prompt"] == meta["positive_prompt"]:
@@ -1030,6 +1120,25 @@ class ComfyMetadataParser:
 
             if meta["steps"] is None and "Scheduler" in class_type:
                 if "steps" in inputs: meta["steps"] = self._get_real_value(inputs["steps"])
+
+            if "lora" in class_type.lower() and "loader" in class_type.lower():
+                lora_name = None
+                weight = 1.0
+                if "lora_name" in inputs:
+                    lora_name = self._get_real_value(inputs.get("lora_name"))
+                    weight = self._get_real_value(inputs.get("strength_model", inputs.get("strength", 1.0)))
+                elif "widgets_values" in node:
+                    widgets = node.get("widgets_values", [])
+                    if len(widgets) > 0 and isinstance(widgets[0], str):
+                        lora_name = widgets[0]
+                    if len(widgets) > 1 and isinstance(widgets[1], (int, float)):
+                        weight = widgets[1]
+                        
+                if lora_name and isinstance(lora_name, str):
+                    try: weight = float(weight)
+                    except: weight = 1.0
+                    if not any(l.get("name") == lora_name for l in meta["loras"]):
+                        meta["loras"].append({"name": lora_name, "value": weight})
 # ============================================================================
 # END OF INTEGRATED TOOLS
 # ============================================================================
@@ -1083,17 +1192,43 @@ def find_ffprobe_path():
 def _validate_and_get_workflow(json_string):
     try:
         data = json.loads(json_string)
+        
+        import math
+        def sanitize_for_json(obj):
+            if isinstance(obj, float):
+                if math.isnan(obj) or math.isinf(obj):
+                    return None
+                return obj
+            elif isinstance(obj, dict):
+                return {k: sanitize_for_json(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [sanitize_for_json(v) for v in obj]
+            return obj
+            
+        data = sanitize_for_json(data)
+        
         # Check for UI format (has 'nodes')
-        workflow_data = data.get('workflow', data.get('prompt', data))
+        workflow_data = data
+        if isinstance(data, dict):
+            workflow_data = data.get('workflow', data.get('prompt', data))
         
         if isinstance(workflow_data, dict):
             if 'nodes' in workflow_data:
                 return json.dumps(workflow_data), 'ui'
             
             # Check for API format (keys are IDs, values have class_type)
-            # Heuristic: Check if it looks like a dict of nodes
             is_api = False
             for k, v in workflow_data.items():
+                if isinstance(v, dict) and 'class_type' in v:
+                    is_api = True
+                    break
+            if is_api:
+                return json.dumps(workflow_data), 'api'
+                
+        elif isinstance(workflow_data, list):
+            # Check for Array API format
+            is_api = False
+            for v in workflow_data:
                 if isinstance(v, dict) and 'class_type' in v:
                     is_api = True
                     break
@@ -1698,6 +1833,24 @@ def init_db(conn=None):
 
         # 2. AI TABLES
         conn.execute('''
+            CREATE TABLE IF NOT EXISTS omniquery_sessions (
+                session_id TEXT PRIMARY KEY,
+                raw_sql TEXT,
+                created_at REAL
+            );
+        ''')
+        
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS omniquery_results (
+                session_id TEXT,
+                file_id TEXT,
+                FOREIGN KEY (session_id) REFERENCES omniquery_sessions(session_id) ON DELETE CASCADE
+            );
+        ''')
+        
+        conn.execute('CREATE INDEX IF NOT EXISTS idx_omniquery_results ON omniquery_results(session_id);')
+
+        conn.execute('''
             CREATE TABLE IF NOT EXISTS ai_search_queue (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 session_id TEXT NOT NULL UNIQUE,
@@ -1765,6 +1918,7 @@ def init_db(conn=None):
                 type TEXT NOT NULL, 
                 color TEXT,         
                 is_public INTEGER DEFAULT 0,
+                parent_id INTEGER DEFAULT NULL,
                 created_at REAL
             );
         ''')
@@ -1883,6 +2037,10 @@ def init_db(conn=None):
             if 'shared_users' not in col_columns:
                 print("INFO: Updating Database Schema... Adding 'shared_users' to collections")
                 conn.execute("ALTER TABLE collections ADD COLUMN shared_users TEXT DEFAULT ''")
+            if 'parent_id' not in col_columns:
+                print("INFO: Updating Database Schema... Adding 'parent_id' to collections")
+                conn.execute("ALTER TABLE collections ADD COLUMN parent_id INTEGER DEFAULT NULL")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_collections_parent ON collections(parent_id)")
         except Exception as e:
             print(f"WARNING: Could not migrate collections table: {e}")
 
@@ -2903,11 +3061,14 @@ def exhibition_login():
             # If this specific instance was launched with an admin password parameter,
             # it takes priority over the shared SQLite database.
             # This allows running two instances (Index/Exhibition) with different passwords.
+            import secrets
             if username == 'admin' and ADMIN_PASS_INPUT:
-                is_valid = (password == ADMIN_PASS_INPUT)
+                # Use constant-time comparison to prevent timing attacks
+                is_valid = secrets.compare_digest(password, ADMIN_PASS_INPUT)
             else:
                 stored_password = decrypt_password(user['password'])
-                is_valid = (password == stored_password)
+                # Ensure we don't pass None to compare_digest if decryption fails
+                is_valid = secrets.compare_digest(password, stored_password) if stored_password else False
                 
             if is_valid:
                 # Update last login timestamp
@@ -3425,6 +3586,7 @@ def ai_indexing_add_folder():
     return jsonify({'status': 'success', 'message': msg})
     
 @app.route('/galleryout/ai_indexing/watched', methods=['GET', 'DELETE'])
+@management_api_only
 def ai_watched_folders():
     if not ENABLE_AI_SEARCH: return jsonify({})
     with get_db_connection() as conn:
@@ -3532,6 +3694,7 @@ def ai_indexing_status():
     except Exception as e: return jsonify({'error': str(e)}), 500
 
 @app.route('/galleryout/ai_indexing/control', methods=['POST'])
+@management_api_only
 def ai_indexing_control():
     if not ENABLE_AI_SEARCH: return jsonify({'status':'error'})
     action = request.json.get('action')
@@ -3620,6 +3783,7 @@ def gallery_view(folder_key):
     search_scope = request.args.get('scope', 'local')
     is_global_search = (search_scope == 'global')
     ai_session_id = request.args.get('ai_session_id')
+    omniquery_id = request.args.get('omniquery_id')
     
     # Text filters
     search_term = request.args.get('search', '').strip()
@@ -3635,6 +3799,70 @@ def gallery_view(folder_key):
 
     is_ai_search = False
     ai_query_text = ""
+    is_omniquery = False
+    omniquery_sql = ""
+
+    # --- PATH OMNIQUERY RESULTS ---
+    if omniquery_id:
+        with get_db_connection() as conn:
+            try:
+                session_info = conn.execute("SELECT raw_sql FROM omniquery_sessions WHERE session_id = ?", (omniquery_id,)).fetchone()
+                if session_info:
+                    is_omniquery = True
+                    omniquery_sql = session_info['raw_sql']
+                    safe_uuid = str(session.get('user_id', '')).replace("'", "''")
+                    rows = conn.execute(f'''
+                        SELECT f.*,
+                        (SELECT c.color FROM collections c JOIN collection_files cf2 ON c.id = cf2.collection_id WHERE cf2.file_id = f.id AND c.type = 'system_flag' LIMIT 1) as status_color,
+                        (SELECT AVG(rating) FROM file_ratings WHERE file_id = f.id) as avg_rating,
+                        (SELECT COUNT(*) FROM file_ratings WHERE file_id = f.id) as vote_count,
+                        (SELECT rating FROM file_ratings WHERE file_id = f.id AND client_uuid = '{safe_uuid}') as my_rating,
+                        (SELECT COUNT(*) FROM file_comments WHERE file_id = f.id) as comment_count,
+                        (SELECT MAX(created_at) FROM file_comments WHERE file_id = f.id) as latest_comment_time
+                        FROM omniquery_results r
+                        JOIN files f ON r.file_id = f.id
+                        WHERE r.session_id = ?
+                        ORDER BY r.rowid ASC
+                    ''', (omniquery_id,)).fetchall()
+                    
+                    files_list = []
+                    for row in rows:
+                        d = dict(row)
+                        if 'ai_embedding' in d: del d['ai_embedding']
+                        files_list.append(d)
+                    
+                    # --- FIX: Apply UI Sorting ONLY if query doesn't have custom ORDER BY ---
+                    import re
+                    has_custom_order = False
+                    if omniquery_sql:
+                        has_custom_order = bool(re.search(r'\bORDER\s+BY\b', omniquery_sql, re.IGNORECASE))
+                    
+                    if not has_custom_order:
+                        omni_sort_by = request.args.get('sort_by', 'date')
+                        omni_sort_desc = request.args.get('sort_order', 'desc').lower() != 'asc'
+                        
+                        if omni_sort_by == 'name':
+                            files_list.sort(key=lambda x: (x.get('name') or '').lower(), reverse=omni_sort_desc)
+                        elif omni_sort_by == 'rating':
+                            if is_effectively_blind():
+                                files_list.sort(key=lambda x: x.get('my_rating') or 0, reverse=omni_sort_desc)
+                            else:
+                                files_list.sort(key=lambda x: x.get('avg_rating') or 0, reverse=omni_sort_desc)
+                        elif omni_sort_by == 'comments':
+                            files_list.sort(key=lambda x: x.get('comment_count') or 0, reverse=omni_sort_desc)
+                        elif omni_sort_by in ['latest_comment', 'latestcomment']:
+                            files_list.sort(key=lambda x: x.get('latest_comment_time') or 0, reverse=omni_sort_desc)
+                        elif omni_sort_by in ['date', 'mtime']:
+                            files_list.sort(key=lambda x: x.get('mtime') or 0, reverse=omni_sort_desc)
+                        else:
+                            files_list.sort(key=lambda x: x.get('mtime') or 0, reverse=True)
+                    # --------------------------------------------------
+
+                    global gallery_view_cache
+                    gallery_view_cache = files_list
+            except Exception as e:
+                print(f"OmniQuery Search Error: {e}")
+                is_omniquery = False
 
     # --- PATH A: AI SEARCH RESULTS ---
     if ENABLE_AI_SEARCH and ai_session_id:
@@ -3663,7 +3891,7 @@ def gallery_view(folder_key):
                 is_ai_search = False
 
     # --- PATH B: STANDARD VIEW / SEARCH ---
-    if not is_ai_search:
+    if not is_ai_search and not is_omniquery:
         with get_db_connection() as conn:
             conditions, params = [], []
 
@@ -3804,6 +4032,12 @@ def gallery_view(folder_key):
                 avg_sql = "IFNULL((SELECT AVG(rating) FROM file_ratings WHERE file_id = f.id), 0)"
                 for rr in selected_rating_ranges:
                     if rr == '0 stars': r_conds.append(f"{avg_sql} = 0")
+                    elif rr == '1 star': r_conds.append(f"ROUND({avg_sql}) = 1")
+                    elif rr == '2 stars': r_conds.append(f"ROUND({avg_sql}) = 2")
+                    elif rr == '3 stars': r_conds.append(f"ROUND({avg_sql}) = 3")
+                    elif rr == '4 stars': r_conds.append(f"ROUND({avg_sql}) = 4")
+                    elif rr == '5 stars': r_conds.append(f"ROUND({avg_sql}) = 5")
+                    # Legacy support for old URLs/bookmarks
                     elif rr == '1-2 stars': r_conds.append(f"({avg_sql} > 0 AND {avg_sql} <= 2)")
                     elif rr == '2-3 stars': r_conds.append(f"({avg_sql} > 2 AND {avg_sql} <= 3)")
                     elif rr == '3-4 stars': r_conds.append(f"({avg_sql} > 3 AND {avg_sql} <= 4)")
@@ -4019,7 +4253,7 @@ def gallery_view(folder_key):
                            available_raters=available_raters, selected_raters=selected_raters, selected_rating_ranges=selected_rating_ranges,
                            protected_folder_keys=list(PROTECTED_FOLDER_KEYS),
                            show_favorites=request.args.get('favorites', 'false').lower() == 'true',
-                           generate_waveforms=GENERATE_WAVEFORMS, enable_ai_search=ENABLE_AI_SEARCH, is_ai_search=False, ai_query="",
+                           generate_waveforms=GENERATE_WAVEFORMS, enable_ai_search=ENABLE_AI_SEARCH, is_ai_search=False, ai_query="", is_omniquery=is_omniquery, omniquery_sql=omniquery_sql, omniquery_dictionary=get_omniquery_dictionary(),
                            is_global_search=is_global_search, 
                            active_filters_count=active_filters_count, 
                            current_scope=search_scope,
@@ -4128,6 +4362,7 @@ def background_rescan_worker(job_id, files_to_process):
         rescan_jobs[job_id]['error'] = str(e)
         
 @app.route('/galleryout/rescan_folder', methods=['POST'])
+@management_api_only
 def rescan_folder():
     data = request.json
     folder_key = data.get('folder_key')
@@ -4371,6 +4606,7 @@ def unmount_folder():
         return jsonify({'status':'error', 'message':f"Error unmounting: {e}"}), 500
 
 @app.route('/galleryout/api/browse_filesystem', methods=['POST'])
+@management_api_only
 def browse_filesystem():
     data = request.json
     # Get path safely, handling None
@@ -4514,6 +4750,7 @@ def background_zip_task(job_id, file_ids):
         zip_jobs[job_id] = {'status': 'error', 'message': str(e)}
         
 @app.route('/galleryout/prepare_batch_zip', methods=['POST'])
+@management_api_only
 def prepare_batch_zip():
     data = request.json
     file_ids = data.get('file_ids', [])
@@ -5015,6 +5252,7 @@ def delete_batch():
         return jsonify({'status': 'error', 'message': str(e)}), 500
         
 @app.route('/galleryout/favorite_batch', methods=['POST'])
+@management_api_only
 def favorite_batch():
     data = request.json
     file_ids, status = data.get('file_ids', []), data.get('status', False)
@@ -5026,6 +5264,7 @@ def favorite_batch():
     return jsonify({'status': 'success', 'message': f"Updated favorites for {len(file_ids)} files."})
 
 @app.route('/galleryout/toggle_favorite/<string:file_id>', methods=['POST'])
+@management_api_only
 def toggle_favorite(file_id):
     with get_db_connection() as conn:
         current = conn.execute("SELECT is_favorite FROM files WHERE id = ?", (file_id,)).fetchone()
@@ -5302,10 +5541,54 @@ def get_node_summary(file_id):
             if parsed_meta.get('sampler'): tech_count += 1
             
             has_prompt = len(parsed_meta.get('positive_prompt', '')) > 5
+            has_loras = len(parsed_meta.get('loras', [])) > 0
             
-            # If data is solid, we populate meta_data for the frontend dashboard
-            if has_prompt and tech_count >= 2:
+            if (has_prompt and tech_count >= 2) or has_loras:
                 meta_data = parsed_meta
+                if meta_data.get('loras'):
+                    enriched_loras = []
+                    for l in meta_data['loras']:
+                        l_name = l.get('name', '')
+                        l_val = l.get('value', 1.0)
+                        l_dict = {"name": l_name, "value": l_val, "preview_image": None, "civitai_url": None, "civitai_id": None}
+                        try:
+                            norm_name = os.path.normpath(l_name).replace(chr(92), '/')
+                            clean_name = os.path.splitext(norm_name)[0]
+                            base_path = os.path.join(LORAS_PATH, clean_name)
+                            raw_path = os.path.join(LORAS_PATH, norm_name)
+                            
+                            img_paths = [
+                                base_path + '.preview.png', base_path + '.png', base_path + '.jpg', base_path + '.jpeg',
+                                raw_path + '.preview.png', raw_path + '.png', raw_path + '.jpg', raw_path + '.jpeg'
+                            ]
+                            for ip in img_paths:
+                                if os.path.exists(ip):
+                                    import base64
+                                    with open(ip, 'rb') as f:
+                                        encoded = base64.b64encode(f.read()).decode('utf-8')
+                                        mime = "image/png" if "png" in ip.lower() else "image/jpeg"
+                                        l_dict['preview_image'] = f"data:{mime};base64," + encoded
+                                    break
+                            
+                            json_paths = [
+                                base_path + '.civitai.info', base_path + '.metadata.json', base_path + '.info', base_path + '.json',
+                                raw_path + '.civitai.info', raw_path + '.metadata.json', raw_path + '.info', raw_path + '.json'
+                            ]
+                            for jp in json_paths:
+                                if os.path.exists(jp):
+                                    with open(jp, 'r', encoding='utf-8') as f:
+                                        jdata = json.load(f)
+                                    cid = jdata.get('modelId') or jdata.get('id')
+                                    if not cid and 'civitai' in jdata:
+                                        cid = jdata['civitai'].get('modelId') or jdata['civitai'].get('id')
+                                    if cid:
+                                        l_dict['civitai_id'] = cid
+                                        l_dict['civitai_url'] = "https://civitai.com/models/" + str(cid)
+                                        break
+                        except Exception as e:
+                            pass
+                        enriched_loras.append(l_dict)
+                    meta_data['loras'] = enriched_loras
                 # Ensure resolution is always present using DB fallback
                 if not meta_data.get('width') or not meta_data.get('height'):
                     if db_dimensions and 'x' in db_dimensions:
@@ -6074,6 +6357,7 @@ def create_collection():
     data = request.json
     name = data.get('name', '').strip()
     is_public = data.get('is_public', False)
+    parent_id = data.get('parent_id', None)
     
     if not name: return jsonify({'status': 'error', 'message': 'Name required'}), 400
     
@@ -6081,8 +6365,8 @@ def create_collection():
         with get_db_connection() as conn:
             # Execute insert and get the cursor to retrieve the lastrowid
             cursor = conn.execute(
-                "INSERT INTO collections (name, type, color, is_public, created_at) VALUES (?, 'user_album', '#ffffff', ?, ?)",
-                (name, 1 if is_public else 0, time.time())
+                "INSERT INTO collections (name, type, color, is_public, parent_id, created_at) VALUES (?, 'user_album', '#ffffff', ?, ?, ?)",
+                (name, 1 if is_public else 0, parent_id, time.time())
             )
             new_id = cursor.lastrowid # <--- Get the newly created ID
             conn.commit()
@@ -6099,12 +6383,22 @@ def delete_collection():
         row = conn.execute("SELECT type FROM collections WHERE id=?", (coll_id,)).fetchone()
         if not row or row['type'] == 'system_flag':
             return jsonify({'status': 'error', 'message': 'Cannot delete system tags'}), 403
-        conn.execute("DELETE FROM collections WHERE id=?", (coll_id,))
-        # Non serve cancellare da collection_files manualmente, ci pensa ON DELETE CASCADE
+        # Use Recursive CTE to safely delete the collection and all its nested sub-collections
+        conn.execute('''
+            WITH RECURSIVE cols_to_delete AS (
+                SELECT id FROM collections WHERE id = ?
+                UNION ALL
+                SELECT c.id FROM collections c
+                INNER JOIN cols_to_delete cd ON c.parent_id = cd.id
+            )
+            DELETE FROM collections WHERE id IN cols_to_delete;
+        ''', (coll_id,))
+        # The collection_files table relationships are handled automatically by SQLite ON DELETE CASCADE
         conn.commit()
     return jsonify({'status': 'success'})
     
 @app.route('/galleryout/api/collections/toggle_public', methods=['POST'])
+@management_api_only
 def toggle_collection_public():
     try:
         data = request.json
@@ -6568,6 +6862,12 @@ def collection_view(coll_id):
         avg_sql = "IFNULL((SELECT AVG(rating) FROM file_ratings WHERE file_id = f.id), 0)"
         for rr in selected_rating_ranges:
             if rr == '0 stars': r_conds.append(f"{avg_sql} = 0")
+            elif rr == '1 star': r_conds.append(f"ROUND({avg_sql}) = 1")
+            elif rr == '2 stars': r_conds.append(f"ROUND({avg_sql}) = 2")
+            elif rr == '3 stars': r_conds.append(f"ROUND({avg_sql}) = 3")
+            elif rr == '4 stars': r_conds.append(f"ROUND({avg_sql}) = 4")
+            elif rr == '5 stars': r_conds.append(f"ROUND({avg_sql}) = 5")
+            # Legacy support for old URLs/bookmarks
             elif rr == '1-2 stars': r_conds.append(f"({avg_sql} > 0 AND {avg_sql} <= 2)")
             elif rr == '2-3 stars': r_conds.append(f"({avg_sql} > 2 AND {avg_sql} <= 3)")
             elif rr == '3-4 stars': r_conds.append(f"({avg_sql} > 3 AND {avg_sql} <= 4)")
@@ -6797,7 +7097,7 @@ def collection_view(coll_id):
                            selected_extensions=selected_exts, selected_prefixes=selected_prefixes,
                            available_raters=available_raters, selected_raters=selected_raters, selected_rating_ranges=selected_rating_ranges, protected_folder_keys=list(PROTECTED_FOLDER_KEYS),
                            show_favorites=request.args.get('favorites', 'false').lower() == 'true',
-                           generate_waveforms=GENERATE_WAVEFORMS, enable_ai_search=ENABLE_AI_SEARCH, is_ai_search=False, ai_query="",
+                           generate_waveforms=GENERATE_WAVEFORMS, enable_ai_search=ENABLE_AI_SEARCH, is_ai_search=False, ai_query="", is_omniquery=False, omniquery_sql="", omniquery_dictionary=get_omniquery_dictionary(),
                            is_global_search=False, 
                            active_filters_count=active_filters_count, 
                            current_scope='local', is_recursive=False,
@@ -7168,6 +7468,63 @@ def exhibition_edit_comment():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+# --- OMNIQUERY API ---
+@app.route('/galleryout/api/omniquery/execute', methods=['POST'])
+@management_api_only
+def execute_omniquery():
+    data = request.json
+    raw_sql = data.get('sql', '').strip()
+    raw_sql = raw_sql.replace('\r\n', '\n').replace('\n', ' \n')
+    if not raw_sql:
+        return jsonify({'status': 'error', 'message': 'SQL query cannot be empty.'}), 400
+        
+    # Security 1: Regex Blocklist for destructive keywords
+    forbidden = r'\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|PRAGMA|ATTACH|DETACH|COMMIT|ROLLBACK|REPLACE\s+INTO)\b'
+    import re
+    if re.search(forbidden, raw_sql, re.IGNORECASE):
+        return jsonify({'status': 'error', 'message': 'Security Block: Destructive commands are not allowed.'}), 403
+
+    import uuid
+    session_id = str(uuid.uuid4())
+    result_ids = []
+    
+    # Security 2: True Read-Only Connection via URI
+    db_uri = f"file:{os.path.abspath(DATABASE_FILE)}?mode=ro"
+    try:
+        # uri=True forces SQLite to respect the mode=ro flag at the driver level
+        with sqlite3.connect(db_uri, uri=True) as ro_conn:
+            cursor = ro_conn.execute(raw_sql)
+            rows = cursor.fetchall()
+            # Try to extract the first column assuming it contains the ID
+            result_ids = [str(row[0]) for row in rows if row]
+            
+            # Remove duplicates safely
+            result_ids = list(dict.fromkeys(result_ids))
+            
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f"SQL Execution Error: {str(e)}"}), 400
+        
+    if not result_ids:
+        return jsonify({'status': 'success', 'session_id': None, 'message': 'Query executed successfully, but returned 0 results.'})
+
+    # Save results to main Read-Write connection
+    try:
+        import time
+        with get_db_connection() as rw_conn:
+            # Housekeeping: delete sessions older than 2 hours
+            rw_conn.execute("DELETE FROM omniquery_sessions WHERE created_at < ?", (time.time() - 7200,))
+            
+            rw_conn.execute("INSERT INTO omniquery_sessions (session_id, raw_sql, created_at) VALUES (?, ?, ?)", 
+                            (session_id, raw_sql, time.time()))
+                            
+            records = [(session_id, fid) for fid in result_ids]
+            rw_conn.executemany("INSERT INTO omniquery_results (session_id, file_id) VALUES (?, ?)", records)
+            rw_conn.commit()
+            
+        return jsonify({'status': 'success', 'session_id': session_id, 'count': len(result_ids)})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f"Database Error: {str(e)}"}), 500
+
 # --- ADMIN BLIND RATING OVERRIDE ---
 def is_effectively_blind():
     """Determines if blind rating should be applied for the current user session."""
@@ -7371,13 +7728,284 @@ import urllib.error
 import urllib.parse
 
 # Increase max request body size to handle large workflow JSON payloads (if users manually upload them, though we now read from disk)
-app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('COMFYUI_MAX_UPLOAD_MB', 100)) * 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('COMFYUI_MAX_UPLOAD_MB', 2000)) * 1024 * 1024
 
 
 # Experimental Remix API Module
 import json
 import os
 
+
+import re
+
+def clean_workflow_paths(data):
+    '''
+    Recursively cleans multiple forward slashes (//) and backslashes (\\) 
+    from string values in the workflow data, reducing them to a single slash,
+    without normalizing all slashes to a single type.
+    Preserves UNC paths (\\server or //server) and skips URLs (://).
+    '''
+    if isinstance(data, dict):
+        for k, v in data.items():
+            if isinstance(v, str):
+                if '://' not in v:
+                    is_unc_slash = v.startswith('//')
+                    is_unc_back = v.startswith(r'\\')
+                    
+                    cleaned = re.sub(r'/+', '/', v)
+                    cleaned = re.sub(r'\\+', lambda m: '\\', cleaned)
+                    
+                    if is_unc_slash and not cleaned.startswith('//'):
+                        cleaned = '/' + cleaned
+                    if is_unc_back and not cleaned.startswith(r'\\'):
+                        cleaned = '\\' + cleaned
+                        
+                    data[k] = cleaned
+            else:
+                clean_workflow_paths(v)
+    elif isinstance(data, list):
+        for i in range(len(data)):
+            if isinstance(data[i], str):
+                if '://' not in data[i]:
+                    is_unc_slash = data[i].startswith('//')
+                    is_unc_back = data[i].startswith(r'\\')
+                    
+                    cleaned = re.sub(r'/+', '/', data[i])
+                    cleaned = re.sub(r'\\+', lambda m: '\\', cleaned)
+                    
+                    if is_unc_slash and not cleaned.startswith('//'):
+                        cleaned = '/' + cleaned
+                    if is_unc_back and not cleaned.startswith(r'\\'):
+                        cleaned = '\\' + cleaned
+                        
+                    data[i] = cleaned
+            else:
+                clean_workflow_paths(data[i])
+    return data
+
+
+# --- OMNIQUERY EXTENDED APIs ---
+@app.route('/galleryout/api/omniquery/prompts/factory', methods=['GET'])
+@management_api_only
+def get_factory_omniquery_prompt():
+    try:
+        new_text = get_omniquery_dictionary(reset=True)
+        return jsonify({'status': 'success', 'template': new_text})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/galleryout/api/omniquery/prompts/list', methods=['GET'])
+@management_api_only
+def list_omniquery_prompts():
+    try:
+        p_dir = os.path.join(BASE_SMARTGALLERY_PATH, '.omniquery', 'saved_prompts')
+        os.makedirs(p_dir, exist_ok=True)
+        prompts = []
+        for f in os.listdir(p_dir):
+            if f.lower().endswith('.txt'):
+                path = os.path.join(p_dir, f)
+                mtime = os.path.getmtime(path)
+                desc = ""
+                try:
+                    with open(path, 'r', encoding='utf-8') as pf:
+                        first_line = pf.readline().strip()
+                        if first_line.startswith('-- Description:'):
+                            desc = first_line.replace('-- Description:', '', 1).strip()
+                except Exception: pass
+                prompts.append({'name': f, 'mtime': mtime, 'description': desc})
+        return jsonify({'status': 'success', 'prompts': prompts})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/galleryout/api/omniquery/prompts/save', methods=['POST'])
+@management_api_only
+def save_omniquery_prompt():
+    data = request.json
+    name = data.get('name', '').strip()
+    text = data.get('text', '').strip()
+    
+    if not name or not text: return jsonify({'status': 'error', 'message': 'Name and Prompt text required.'}), 400
+    if not name.lower().endswith('.txt'): name += '.txt'
+    safe_name = secure_filename(name)
+    
+    try:
+        p_dir = os.path.join(BASE_SMARTGALLERY_PATH, '.omniquery', 'saved_prompts')
+        os.makedirs(p_dir, exist_ok=True)
+        with open(os.path.join(p_dir, safe_name), 'w', encoding='utf-8') as f:
+            f.write(text)
+        return jsonify({'status': 'success', 'message': 'Prompt saved.'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/galleryout/api/omniquery/prompts/load', methods=['POST'])
+@management_api_only
+def load_omniquery_prompt():
+    name = request.json.get('name')
+    safe_name = secure_filename(name)
+    try:
+        p_dir = os.path.join(BASE_SMARTGALLERY_PATH, '.omniquery', 'saved_prompts')
+        with open(os.path.join(p_dir, safe_name), 'r', encoding='utf-8') as f:
+            text = f.read()
+        return jsonify({'status': 'success', 'text': text})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/galleryout/api/omniquery/prompts/delete', methods=['POST'])
+@management_api_only
+def delete_omniquery_prompt():
+    name = request.json.get('name')
+    safe_name = secure_filename(name)
+    try:
+        p_dir = os.path.join(BASE_SMARTGALLERY_PATH, '.omniquery', 'saved_prompts')
+        path = os.path.join(p_dir, safe_name)
+        if os.path.exists(path):
+            os.remove(path)
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/galleryout/api/omniquery/prompts/rename', methods=['POST'])
+@management_api_only
+def rename_omniquery_prompt():
+    data = request.json
+    old_name = secure_filename(data.get('old_name', ''))
+    new_name = data.get('new_name', '').strip()
+    if not new_name.lower().endswith('.txt'): new_name += '.txt'
+    safe_new = secure_filename(new_name)
+    try:
+        p_dir = os.path.join(BASE_SMARTGALLERY_PATH, '.omniquery', 'saved_prompts')
+        old_path = os.path.join(p_dir, old_name)
+        new_path = os.path.join(p_dir, safe_new)
+        if os.path.exists(old_path) and not os.path.exists(new_path):
+            os.rename(old_path, new_path)
+            return jsonify({'status': 'success'})
+        return jsonify({'status': 'error', 'message': 'File not found or destination exists.'}), 400
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/galleryout/api/omniquery/queries/list', methods=['GET'])
+@management_api_only
+def list_omniquery_queries():
+    try:
+        q_dir = os.path.join(BASE_SMARTGALLERY_PATH, '.omniquery', 'saved_queries')
+        os.makedirs(q_dir, exist_ok=True)
+        queries = []
+        for f in os.listdir(q_dir):
+            if f.lower().endswith('.txt'):
+                path = os.path.join(q_dir, f)
+                mtime = os.path.getmtime(path)
+                desc = ""
+                # Read description and prompt from SQL comment
+                try:
+                    with open(path, 'r', encoding='utf-8') as qf:
+                        file_content = qf.read()
+                        import re
+                        desc_match = re.search(r'^--\s*Description:\s*(.*)', file_content, re.IGNORECASE | re.MULTILINE)
+                        desc = desc_match.group(1).strip() if desc_match else ""
+                        
+                        prompt_match = re.search(r'/\*\s*Prompt Request:\s*(.*?)\s*\*/', file_content, re.IGNORECASE | re.DOTALL)
+                        if prompt_match:
+                            prompt_text = prompt_match.group(1).strip()
+                            if prompt_text:
+                                desc = desc + f" 💡 {prompt_text}" if desc else f"💡 {prompt_text}"
+                except Exception: pass
+                queries.append({'name': f, 'mtime': mtime, 'description': desc})
+        return jsonify({'status': 'success', 'queries': queries})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/galleryout/api/omniquery/queries/save', methods=['POST'])
+@management_api_only
+def save_omniquery_query():
+    data = request.json
+    name = data.get('name', '').strip()
+    desc = data.get('description', '').strip()
+    sql = data.get('sql', '').strip()
+    
+    if not name or not sql: return jsonify({'status': 'error', 'message': 'Name and SQL required.'}), 400
+    if not name.lower().endswith('.txt'): name += '.txt'
+    safe_name = secure_filename(name)
+    
+    # The frontend now sends the fully formatted SQL
+    final_sql = sql
+    
+    try:
+        q_dir = os.path.join(BASE_SMARTGALLERY_PATH, '.omniquery', 'saved_queries')
+        os.makedirs(q_dir, exist_ok=True)
+        with open(os.path.join(q_dir, safe_name), 'w', encoding='utf-8') as f:
+            f.write(final_sql)
+        return jsonify({'status': 'success', 'message': 'Query saved.'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/galleryout/api/omniquery/queries/load', methods=['POST'])
+@management_api_only
+def load_omniquery_query():
+    name = request.json.get('name')
+    safe_name = secure_filename(name)
+    try:
+        q_dir = os.path.join(BASE_SMARTGALLERY_PATH, '.omniquery', 'saved_queries')
+        with open(os.path.join(q_dir, safe_name), 'r', encoding='utf-8') as f:
+            sql = f.read()
+        return jsonify({'status': 'success', 'sql': sql})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/galleryout/api/omniquery/queries/delete', methods=['POST'])
+@management_api_only
+def delete_omniquery_query():
+    name = request.json.get('name')
+    safe_name = secure_filename(name)
+    try:
+        q_dir = os.path.join(BASE_SMARTGALLERY_PATH, '.omniquery', 'saved_queries')
+        path = os.path.join(q_dir, safe_name)
+        if os.path.exists(path):
+            os.remove(path)
+        return jsonify({'status': 'success'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/galleryout/api/omniquery/queries/rename', methods=['POST'])
+@management_api_only
+def rename_omniquery_query():
+    data = request.json
+    old_name = secure_filename(data.get('old_name', ''))
+    new_name = data.get('new_name', '').strip()
+    if not new_name.lower().endswith('.txt'): new_name += '.txt'
+    safe_new = secure_filename(new_name)
+    try:
+        q_dir = os.path.join(BASE_SMARTGALLERY_PATH, '.omniquery', 'saved_queries')
+        old_path = os.path.join(q_dir, old_name)
+        new_path = os.path.join(q_dir, safe_new)
+        if os.path.exists(old_path) and not os.path.exists(new_path):
+            os.rename(old_path, new_path)
+            return jsonify({'status': 'success'})
+        return jsonify({'status': 'error', 'message': 'File not found or destination exists.'}), 400
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/galleryout/api/omniquery/preview', methods=['POST'])
+@management_api_only
+def preview_omniquery_query():
+    data = request.json
+    raw_sql = data.get('sql', '').strip()
+    if not raw_sql: return jsonify({'status': 'error', 'message': 'Empty query.'}), 400
+    
+    import re
+    forbidden = r'\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|PRAGMA|ATTACH|DETACH|COMMIT|ROLLBACK|REPLACE\s+INTO)\b'
+    if re.search(forbidden, raw_sql, re.IGNORECASE):
+        return jsonify({'status': 'error', 'message': 'Destructive commands not allowed.'}), 403
+
+    db_uri = f"file:{os.path.abspath(DATABASE_FILE)}?mode=ro"
+    try:
+        with sqlite3.connect(db_uri, uri=True) as ro_conn:
+            cursor = ro_conn.execute(raw_sql)
+            rows = cursor.fetchall()
+            cols = [description[0] for description in cursor.description] if cursor.description else []
+            result = [dict(zip(cols, row)) for row in rows]
+            return jsonify({'status': 'success', 'columns': cols, 'rows': result, 'count': len(result)})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 400
 
 def _register_remix_routes_inline():
     
@@ -7727,9 +8355,15 @@ def _register_remix_routes_inline():
                         except Exception as e: print(f"Save UI mod error: {e}")
             # --- END MODIFICATIONS ---
                 
+            api_data_to_save = json.loads(raw_api)
+            ui_data_to_save = json.loads(raw_ui)
+            
+            clean_workflow_paths(api_data_to_save)
+            clean_workflow_paths(ui_data_to_save)
+            
             template_data = {
-                'api': json.loads(raw_api),
-                'ui': json.loads(raw_ui),
+                'api': api_data_to_save,
+                'ui': ui_data_to_save,
                 'sg_meta': {'source_file_id': source_file_id, 'custom_app': custom_app, 'favorite_nodes': favorite_nodes}
             }
             
@@ -7923,6 +8557,289 @@ def _register_remix_routes_inline():
             return jsonify({'status': 'success', 'data': extract})
         except Exception as e: return jsonify({'status': 'error', 'message': str(e)}), 500
 
+    
+    import struct
+
+    def _read_safetensors_metadata(filepath):
+        try:
+            with open(filepath, 'rb') as f:
+                header_size_bytes = f.read(8)
+                if len(header_size_bytes) < 8: return {}
+                header_size = struct.unpack('<Q', header_size_bytes)[0]
+                if header_size > 10000000: return {} 
+                header_json = f.read(header_size).decode('utf-8', errors='ignore')
+                header = json.loads(header_json)
+                return header.get('__metadata__', {})
+        except Exception:
+            return {}
+
+    def _guess_architecture(filename, metadata):
+        arch = 'unknown'
+        if metadata:
+            ss_base = metadata.get('ss_base_model_version', '').lower()
+            modelspec = metadata.get('modelspec.architecture', '').lower()
+            if 'sdxl' in ss_base or 'sdxl' in modelspec: arch = 'sdxl'
+            elif 'flux' in ss_base or 'flux' in modelspec: arch = 'flux'
+            elif 'sd_1_5' in ss_base or 'sd15' in modelspec or 'sd1.5' in ss_base: arch = 'sd1.5'
+            elif 'sd3' in ss_base or 'sd3' in modelspec: arch = 'sd3'
+            elif 'hunyuan' in ss_base or 'hunyuan' in modelspec: arch = 'hunyuan'
+            elif 'wan' in ss_base or 'wan' in modelspec: arch = 'wan'
+
+        if arch == 'unknown' and filename:
+            name_lower = filename.lower()
+            if 'flux' in name_lower: arch = 'flux'
+            elif 'sdxl' in name_lower or '/xl/' in name_lower or 'xl_' in name_lower or '_xl' in name_lower: arch = 'sdxl'
+            elif 'sd3' in name_lower: arch = 'sd3'
+            elif '1.5' in name_lower or '15' in name_lower or 'v1-5' in name_lower: arch = 'sd1.5'
+        return arch
+
+    @app.route('/galleryout/api/remix/job_status/<string:job_id>', methods=['POST'])
+    @management_api_only
+    def api_remix_job_status(job_id):
+        target_url = request.json.get('target_url', COMFYUI_SERVER_URL).strip()
+        try:
+            # 1. Check History
+            try:
+                req = urllib.request.Request(f"{target_url.rstrip('/')}/history/{job_id}", headers={'Content-Type': 'application/json'})
+                with urllib.request.urlopen(req, timeout=3) as response:
+                    data = json.loads(response.read().decode('utf-8'))
+                    if job_id in data:
+                        status_obj = data[job_id].get('status', {})
+                        if status_obj.get('status_str') == 'error':
+                            msgs = status_obj.get('messages', [])
+                            err_detail = "Execution Error"
+                            for m in msgs:
+                                if m[0] == 'execution_error':
+                                    err_detail = f"[Node {m[1].get('node_id')}] {m[1].get('exception_type')}: {m[1].get('exception_message')}"
+                            return jsonify({'status': 'error', 'message': err_detail})
+                        elif status_obj.get('completed'):
+                            return jsonify({'status': 'completed'})
+            except Exception:
+                pass 
+                
+            # 2. Check Queue (Using item[1] to match prompt_id correctly)
+            req_queue = urllib.request.Request(f"{target_url.rstrip('/')}/queue", headers={'Content-Type': 'application/json'})
+            with urllib.request.urlopen(req_queue, timeout=3) as response:
+                q_data = json.loads(response.read().decode('utf-8'))
+                
+                for item in q_data.get('queue_running', []):
+                    if len(item) > 1 and str(item[1]) == str(job_id):
+                        return jsonify({'status': 'running'})
+                        
+                for idx, item in enumerate(q_data.get('queue_pending', [])):
+                    if len(item) > 1 and str(item[1]) == str(job_id):
+                        return jsonify({'status': 'pending', 'position': idx + 1})
+                        
+            return jsonify({'status': 'vanished'})
+        except Exception as e:
+            return jsonify({'status': 'connection_error'})
+
+    @app.route('/galleryout/api/remix/comfy_console_peek', methods=['POST'])
+    @management_api_only
+    def api_remix_console_peek():
+        target_url = request.json.get('target_url', COMFYUI_SERVER_URL).strip()
+        try:
+            req = urllib.request.Request(f"{target_url.rstrip('/')}/history", headers={'Content-Type': 'application/json'})
+            with urllib.request.urlopen(req, timeout=3) as response:
+                history_data = json.loads(response.read().decode('utf-8'))
+                
+            if not history_data:
+                return jsonify({'status': 'empty', 'message': 'ComfyUI history is empty.'})
+                
+            last_job_id = list(history_data.keys())[-1]
+            last_job = history_data[last_job_id]
+            status_obj = last_job.get('status', {})
+            
+            if status_obj.get('status_str') == 'error':
+                msgs = status_obj.get('messages', [])
+                err_detail = "Unknown execution error."
+                for m in msgs:
+                    if m[0] == 'execution_error':
+                        err_detail = f"[Node {m[1].get('node_id')}] {m[1].get('exception_type')}: {m[1].get('exception_message')}"
+                return jsonify({'status': 'found_error', 'message': err_detail})
+            
+            return jsonify({'status': 'clean'})
+        except Exception as e:
+            return jsonify({'status': 'error'})
+
+    @app.route('/galleryout/api/remix/lora_intelligence', methods=['POST'])
+    @management_api_only
+    def api_remix_lora_intelligence():
+        try:
+            data = request.json or {}
+            action = data.get('action')
+            
+            if not action:
+                if 'lora' in data: action = 'triggers'
+                else: action = 'matchmaker'
+            
+            # --- ACTION 1: TRIGGER MINING & CIVITAI METADATA ---
+            if action == 'triggers':
+                lora_name = data.get('lora')
+                res = {'db_triggers': [], 'civitai_triggers': [], 'preview_image': None, 'civitai_url': None}
+                if lora_name:
+                    try:
+                        if os.path.exists(LORAS_PATH):
+                            # Normalize path to handle subfolders perfectly
+                            lora_norm = os.path.normpath(lora_name)
+                            clean_lora_name = os.path.splitext(lora_norm)[0]
+                            
+                            full_base_path = os.path.join(LORAS_PATH, clean_lora_name)
+                            full_raw_path = os.path.join(LORAS_PATH, lora_norm)
+                            
+                            json_paths = [
+                                full_base_path + '.civitai.info', full_base_path + '.metadata.json', 
+                                full_base_path + '.info', full_base_path + '.json',
+                                full_raw_path + '.civitai.info', full_raw_path + '.metadata.json', 
+                                full_raw_path + '.info', full_raw_path + '.json'
+                            ]
+                            
+                            civitai_id = None
+                            for jp in json_paths:
+                                if os.path.exists(jp):
+                                    try:
+                                        with open(jp, 'r', encoding='utf-8') as f:
+                                            meta = json.load(f)
+                                        if isinstance(meta, dict):
+                                            def _get_all_tw(d):
+                                                found = []
+                                                if isinstance(d, dict):
+                                                    tw = d.get('trainedWords') or d.get('trained_words') or d.get('activation_text')
+                                                    if tw:
+                                                        if isinstance(tw, list): found.extend(tw)
+                                                        elif isinstance(tw, str): found.append(tw)
+                                                    if 'modelVersions' in d and isinstance(d['modelVersions'], list):
+                                                        for mv in d['modelVersions']:
+                                                            found.extend(_get_all_tw(mv))
+                                                    if 'civitai' in d and isinstance(d['civitai'], dict):
+                                                        found.extend(_get_all_tw(d['civitai']))
+                                                return found
+                                            
+                                            if not res['civitai_triggers']:
+                                                raw_tw = _get_all_tw(meta)
+                                                for t in raw_tw:
+                                                    if isinstance(t, str):
+                                                        res['civitai_triggers'].extend([x.strip() for x in t.split(',') if x.strip()])
+                                                res['civitai_triggers'] = list(dict.fromkeys(res['civitai_triggers'])) # deduplicate
+                                            
+                                            if not civitai_id:
+                                                civitai_id = meta.get('modelId') or meta.get('id')
+                                                if not civitai_id and 'civitai' in meta and isinstance(meta['civitai'], dict):
+                                                    civitai_id = meta['civitai'].get('modelId') or meta['civitai'].get('id')
+                                    except Exception: pass
+                                
+                                if res['civitai_triggers'] and civitai_id:
+                                    break
+                                    
+                            if not civitai_id:
+                                st_path = os.path.join(LORAS_PATH, lora_norm)
+                                if os.path.exists(st_path):
+                                    st_meta = _read_safetensors_metadata(st_path)
+                                    if st_meta:
+                                        civitai_id = st_meta.get('modelspec.civitai_model_id') or st_meta.get('ss_civitai_model_id')
+
+                            if civitai_id:
+                                res['civitai_url'] = f"https://civitai.com/models/{civitai_id}"
+                                    
+                            img_paths = [
+                                full_base_path + '.preview.png', full_base_path + '.png', full_base_path + '.jpg', full_base_path + '.jpeg',
+                                full_raw_path + '.preview.png', full_raw_path + '.png', full_raw_path + '.jpg', full_raw_path + '.jpeg'
+                            ]
+                            for ip in img_paths:
+                                if os.path.exists(ip):
+                                    import base64
+                                    with open(ip, 'rb') as f:
+                                        encoded = base64.b64encode(f.read()).decode('utf-8')
+                                        mime = "image/png" if "png" in ip.lower() else "image/jpeg"
+                                        res['preview_image'] = f"data:{mime};base64,{encoded}"
+                                    break
+                    except Exception as e:
+                        print(f"LoRA Synergy Error (Passive): {e}")
+
+                    with get_db_connection() as conn:
+                        norm_lora_query = lora_name.lower().replace('\\', '/')
+                        rows = conn.execute("SELECT workflow_prompt FROM files WHERE workflow_files LIKE ?", (f"%{norm_lora_query}%",)).fetchall()
+                        word_counts = {}
+                        ignore_words = {'masterpiece', 'best', 'quality', 'highres', 'high', 'resolution', 'intricate', 'details', '1girl', 'solo', 'text', 'watermark'}
+                        import re
+                        for r in rows:
+                            prompt = r['workflow_prompt']
+                            if prompt:
+                                tags = [t.strip().lower() for t in prompt.split(',')]
+                                for t in tags:
+                                    clean_t = re.sub(r'[()\[\]:]|[0-9.]+', '', t).strip()
+                                    if len(clean_t) > 3 and clean_t not in ignore_words and len(clean_t.split()) <= 3:
+                                        word_counts[clean_t] = word_counts.get(clean_t, 0) + 1
+                        
+                        civitai_lower = [t.lower() for t in res['civitai_triggers']]
+                        sorted_triggers = sorted(word_counts.items(), key=lambda item: item[1], reverse=True)
+                        res['db_triggers'] = [k for k, v in sorted_triggers[:15] if k.lower() not in civitai_lower]
+
+                return jsonify({'status': 'success', 'data': res})
+
+            # --- ACTION 2: MATCHMAKER ---
+            elif action == 'matchmaker':
+                ckpt_name = data.get('checkpoint')
+                all_loras = data.get('all_loras', [])
+                
+                res = {
+                    'perfect_match': [],
+                    'proven_match': [],
+                    'possible_match': [],
+                    'incompatible': []
+                }
+                
+                ckpt_arch = 'unknown'
+                if ckpt_name and ckpt_name != "Unknown":
+                    ckpt_paths = [os.path.join(CHECKPOINTS_PATH, ckpt_name), os.path.join(UNET_PATH, ckpt_name)]
+                    for cp in ckpt_paths:
+                        if os.path.exists(cp) and cp.endswith('.safetensors'):
+                            meta = _read_safetensors_metadata(cp)
+                            ckpt_arch = _guess_architecture(ckpt_name, meta)
+                            break
+                    if ckpt_arch == 'unknown':
+                        ckpt_arch = _guess_architecture(ckpt_name, {})
+
+                proven_loras_norm = set()
+                with get_db_connection() as conn:
+                    if ckpt_name and ckpt_name != "Unknown":
+                        norm_ckpt = ckpt_name.lower().replace('\\', '/')
+                        rows = conn.execute("SELECT workflow_files FROM files WHERE workflow_files LIKE ?", (f"%{norm_ckpt}%",)).fetchall()
+                        for r in rows:
+                            wf_files = r['workflow_files'].split(' ||| ')
+                            for f in wf_files:
+                                if f != norm_ckpt and f.endswith(('.safetensors', '.pt', '.ckpt')) and ('lora' in f or '/' in f):
+                                    proven_loras_norm.add(f.replace('\\', '/'))
+
+                for lora in all_loras:
+                    norm_lora = lora.lower().replace('\\', '/')
+                    if norm_lora in proven_loras_norm:
+                        res['proven_match'].append(lora)
+                        continue
+                        
+                    lora_path = os.path.join(LORAS_PATH, norm_lora)
+                    lora_arch = 'unknown'
+                    
+                    if os.path.exists(lora_path) and norm_lora.endswith('.safetensors'):
+                        meta = _read_safetensors_metadata(lora_path)
+                        lora_arch = _guess_architecture(norm_lora, meta)
+                    else:
+                        lora_arch = _guess_architecture(norm_lora, {})
+
+                    if ckpt_arch != 'unknown' and lora_arch == ckpt_arch:
+                        res['perfect_match'].append(lora)
+                    elif lora_arch != 'unknown' and ckpt_arch != 'unknown' and lora_arch != ckpt_arch:
+                        res['incompatible'].append(lora)
+                    else:
+                        res['possible_match'].append(lora)
+
+                return jsonify({'status': 'success', 'data': res, 'detected_arch': ckpt_arch.upper()})
+
+            return jsonify({'status': 'error', 'message': 'Unknown action.'}), 400
+
+        except Exception as e:
+            return jsonify({'status': 'error', 'message': str(e)}), 500
+
     @app.route('/galleryout/api/remix/submit', methods=['POST'])
     @management_api_only
     def api_remix_submit():
@@ -8012,6 +8929,9 @@ def _register_remix_routes_inline():
                                 idx = modifications.get('image_widget_index')
                                 if idx is not None and 0 <= idx < len(target_node['widgets_values']): target_node['widgets_values'][idx] = filename
 
+            # Clean multiple slashes from all string values before queuing
+            clean_workflow_paths(wf_data)
+
             if action_req in ['copy', 'download']:
                 modified_json_string = json.dumps(wf_data, indent=2)
                 headers = {'X-Workflow-Type': wf_type}
@@ -8038,9 +8958,40 @@ def _register_remix_routes_inline():
                 try:
                     with urllib.request.urlopen(req, timeout=5) as response:
                         resp_data = json.loads(response.read().decode('utf-8'))
+                        
+                        node_errors = resp_data.get('node_errors')
+                        error_obj = resp_data.get('error')
+                        
+                        if (node_errors and isinstance(node_errors, dict) and len(node_errors) > 0) or error_obj:
+                            err_msg = "<strong>ComfyUI Validation Error (Partial Execution Blocked):</strong>"
+                            if node_errors and isinstance(node_errors, dict):
+                                for nid, ndata in node_errors.items():
+                                    ctype = ndata.get('class_type', 'Unknown Node')
+                                    errs = ndata.get('errors', [{}])
+                                    for err in errs:
+                                        err_msg += f"<br>• [{ctype} {nid}]: <span style='color:#ffaaaa;'>{err.get('message', '')}</span>"
+                            elif error_obj:
+                                err_msg += f" {error_obj.get('message', 'Unknown Error')}" if isinstance(error_obj, dict) else f" {str(error_obj)}"
+                            return jsonify({'status': 'error', 'message': err_msg}), 400
+
                         job_id = resp_data.get('prompt_id', 'Unknown')
-                        return jsonify({'status': 'success', 'action': 'queued', 'message': f'Job queued! ID: {job_id}'})
-                except urllib.error.HTTPError as e: return jsonify({'status': 'error', 'message': f'ComfyUI rejected the workflow: HTTP {e.code}'}), 400
+                        return jsonify({'status': 'success', 'action': 'queued', 'job_id': job_id, 'message': f'Job queued! ID: {job_id}'})
+                except urllib.error.HTTPError as e:
+                    err_msg = f'ComfyUI rejected the workflow: HTTP {e.code}'
+                    try:
+                        raw_body = e.read().decode('utf-8')
+                        err_body = json.loads(raw_body)
+                        if 'error' in err_body or 'node_errors' in err_body:
+                            err_msg = f"<strong>ComfyUI Validation Error:</strong> {err_body.get('error', {}).get('message', '')}"
+                            node_errors = err_body.get('node_errors') or err_body.get('error', {}).get('node_errors', {})
+                            if node_errors and isinstance(node_errors, dict):
+                                for nid, ndata in node_errors.items():
+                                    ctype = ndata.get('class_type', 'Unknown Node')
+                                    errs = ndata.get('errors', [{}])
+                                    for err in errs:
+                                        err_msg += f"<br>• [{ctype} {nid}]: <span style='color:#ffaaaa;'>{err.get('message', '')}</span>"
+                    except Exception: pass
+                    return jsonify({'status': 'error', 'message': err_msg}), 400
                 except urllib.error.URLError as e: return jsonify({'status': 'error', 'message': 'Failed to connect to ComfyUI.'}), 502
 
         except Exception as e: return jsonify({'status': 'error', 'message': str(e)}), 500
@@ -8139,6 +9090,7 @@ def _register_remix_routes_inline():
                 nodes = ui_data.get('nodes', []) if isinstance(ui_data, dict) else []
                 if not nodes: return jsonify({'status': 'error', 'message': 'UI workflow contains no nodes.'}), 400
                 api_wf = _convert_ui_to_api(ui_data, object_info)
+            clean_workflow_paths(api_wf)
             if request.form.get('debug') == '1': return jsonify({'status': 'debug', 'converted': api_wf, 'object_info_keys': list(object_info.keys())})
             payload = json.dumps({"prompt": api_wf}).encode('utf-8')
             req = urllib.request.Request(f"{target_comfy_url.rstrip('/')}/prompt", data=payload, headers={'Content-Type': 'application/json'})
@@ -8177,14 +9129,46 @@ def _register_remix_routes_inline():
                 if n_id in api_wf:
                     api_wf[n_id]['inputs'][inp_name] = chosen
                     applied.append(f"[Node {n_id} ({c.get('node_title','')})] '{inp_name}' -> {repr(chosen)}")
+            
+            clean_workflow_paths(api_wf)
             payload = json.dumps({"prompt": api_wf}).encode('utf-8')
             req = urllib.request.Request(f"{target_comfy_url.rstrip('/')}/prompt", data=payload, headers={'Content-Type': 'application/json'})
             try:
                 with urllib.request.urlopen(req, timeout=5) as response:
                     resp_data = json.loads(response.read().decode('utf-8'))
+                    node_errors = resp_data.get('node_errors')
+                    error_obj = resp_data.get('error')
+                    
+                    if (node_errors and isinstance(node_errors, dict) and len(node_errors) > 0) or error_obj:
+                        err_msg = "<strong>ComfyUI Validation Error:</strong>"
+                        if node_errors and isinstance(node_errors, dict):
+                            for nid, ndata in node_errors.items():
+                                ctype = ndata.get('class_type', 'Unknown Node')
+                                errs = ndata.get('errors', [{}])
+                                for err in errs:
+                                    err_msg += f"<br>• [{ctype} {nid}]: <span style='color:#ffaaaa;'>{err.get('message', '')}</span>"
+                        elif error_obj:
+                            err_msg += f" {error_obj.get('message', 'Unknown Error')}" if isinstance(error_obj, dict) else f" {str(error_obj)}"
+                        return jsonify({'status': 'error', 'message': err_msg}), 400
+
                     job_id = resp_data.get('prompt_id', 'Unknown')
-                    return jsonify({'status': 'success', 'message': f'Queued successfully! Job ID: {job_id}<br><small>Applied: {" | ".join(applied)}</small>'})
-            except urllib.error.HTTPError as e: return jsonify({'status': 'error', 'message': f'ComfyUI rejected even after corrections: HTTP {e.code}'}), 400
+                    return jsonify({'status': 'success', 'job_id': job_id, 'message': f'Queued successfully! Job ID: {job_id}<br><small>Applied: {" | ".join(applied)}</small>'})
+            except urllib.error.HTTPError as e:
+                err_msg = f'ComfyUI rejected even after corrections: HTTP {e.code}'
+                try:
+                    raw_body = e.read().decode('utf-8')
+                    err_body = json.loads(raw_body)
+                    if 'error' in err_body or 'node_errors' in err_body:
+                        err_msg = f"<strong>ComfyUI Validation Error:</strong> {err_body.get('error', {}).get('message', '')}"
+                        node_errors = err_body.get('node_errors') or err_body.get('error', {}).get('node_errors', {})
+                        if node_errors and isinstance(node_errors, dict):
+                            for nid, ndata in node_errors.items():
+                                ctype = ndata.get('class_type', 'Unknown Node')
+                                errs = ndata.get('errors', [{}])
+                                for err in errs:
+                                    err_msg += f"<br>• [{ctype} {nid}]: <span style='color:#ffaaaa;'>{err.get('message', '')}</span>"
+                except Exception: pass
+                return jsonify({'status': 'error', 'message': err_msg}), 400
             except urllib.error.URLError as e: return jsonify({'status': 'error', 'message': f'Cannot reach ComfyUI.'}), 502
         except Exception as e: return jsonify({'status': 'error', 'message': str(e)}), 500
 
@@ -8377,7 +9361,7 @@ if __name__ == '__main__':
         # threads=8 allows handling multiple concurrent requests (images/video thumbnails)
         # channel_timeout avoids drops during heavy video streaming
         print(f"{Colors.GREEN}INFO: Starting Production WSGI Server (Waitress)...{Colors.RESET}")
-        serve(app, host='0.0.0.0', port=SERVER_PORT, threads=8, connection_limit=150, channel_timeout=120, asyncore_use_poll=True, _quiet=True)
+        serve(app, host='0.0.0.0', port=SERVER_PORT, threads=8, connection_limit=150, channel_timeout=120, asyncore_use_poll=True, max_request_body_size=2147483648, _quiet=True)
     else:
         # DEVELOPMENT MODE: Falling back to Flask built-in server
         print(f"{Colors.YELLOW}WARNING: 'waitress' not found. Using Flask development server.{Colors.RESET}")

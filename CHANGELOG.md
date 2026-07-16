@@ -1,5 +1,25 @@
 # Changelog
 
+### **[2.15] - 2026-07-16**
+
+### 🧠 OmniQuery (AI-Powered SQL Explorer)
+Go beyond the standard filter UI. OmniQuery allows power users to interrogate their entire media database using natural language, assisted by AI (ChatGPT, Claude, etc.).
+* **Smart Prompting:** OmniQuery dynamically generates a prompt containing your database schema and rules. Paste it to your LLM to get the perfect SQL query for highly specific, multi-table requests.
+* **Safe Execution:** The engine strictly enforces read-only `SELECT` statements. Your database is completely secure.
+* **Query Management:** Save, name, and reload your favorite SQL snippets directly from the UI for future use.
+
+### 🔌 LoRA Synergy™
+A zero-API, fully offline LoRA matchmaker and injector integrated directly into the Remix Nodepad. Stop guessing which LoRA works with your checkpoint.
+* **Offline Architecture Scanning:** Reads your local `.safetensors` headers to determine their true base architecture (SD1.5, SDXL, Flux) and instantly buckets them into compatibility groups against your loaded checkpoint.
+* **Smart Trigger Memory:** Automatically surfaces official CivitAI trigger words and recalls historical triggers you've successfully used in the past via a floating clipboard widget.
+* **Auto-Wiring:** Seamlessly injects `LoraLoader` nodes and instantly rewires all downstream `MODEL` and `CLIP` connections without manual rerouting. 
+* **Seamless Integration:** Native synergy with `ComfyUI-Lora-Manager` to unlock rich preview thumbnails and CivitAI deep-links directly in the panel.
+
+### 🌳 Nested Virtual Collections (Tree Structure)
+* **Hierarchical Organization:** Virtual Collections are no longer restricted to a flat list. You can now create sub-collections arranged in a folder-like tree structure, allowing for vastly superior organization of complex projects and client deliverables.
+
+---
+
 ### **[2.14] - 2026-06-16**
 
 ### 🚀 Remix Workflow Overhaul & The { } Nodepad (Major Update)
@@ -20,6 +40,8 @@ The Remix feature has been completely rebuilt from the ground up. We retired the
   * **Tools Menu Integration:** You no longer need an existing source image to start generating! Remix can now be launched directly from the global **Tools menu** on the homepage.
   * **Standalone Library Generation:** Access your saved Remix Templates straight from the homepage Tools menu to instantly load up your custom *My Panel* dashboard and start queueing jobs from scratch. 
   * **Smarter Template Saving:** When saving a Template to the Library, SmartGallery now proactively suggests reordering your pinned fields for a better layout, and defaults to the original node names if you leave custom labels blank.
+
+---
 
 ### **[2.13] - 2026-05-21**
 

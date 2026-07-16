@@ -1,5 +1,5 @@
 <!-- REMIX OVERLAY MODULE -->
-<!-- Version: 2.14 - June 12, 2026 -->
+<!-- Version: 2.15 - July 15, 2026 -->
 <style>
     /* ── Raw Node Editor ─────────────────────────────────────────────── */
     .remix-node-item {
@@ -126,6 +126,50 @@
     }
 
     
+    
+    @media (max-width: 480px) { .desktop-only-hint { display: none !important; } }
+    
+    #trigger-memory-popup {
+        position: fixed; bottom: 30px; right: 30px; width: 340px;
+        background: rgba(10, 15, 25, 0.85); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+        border: 1px solid rgba(82, 161, 255, 0.4); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 15px rgba(82,161,255,0.2);
+        z-index: 10800; display: none; flex-direction: column; overflow: hidden;
+        opacity: 0; pointer-events: none; transition: opacity 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    #trigger-memory-popup.visible { opacity: 1; pointer-events: auto; }
+    #trigger-memory-popup.collapsed .trigger-list { display: none; }
+    
+    #trigger-memory-popup .trigger-header {
+        background: linear-gradient(90deg, rgba(82,161,255,0.2) 0%, rgba(142,68,173,0.2) 100%);
+        padding: 12px 15px; font-size: 0.85rem; font-weight: bold; color: #fff;
+        display: flex; justify-content: space-between; align-items: center;
+        border-bottom: 1px solid rgba(82,161,255,0.3); text-transform: uppercase; cursor: grab; user-select: none;
+    }
+    #trigger-memory-popup .trigger-header:active { cursor: grabbing; }
+    
+    #trigger-memory-popup .trigger-controls { display: flex; gap: 8px; align-items: center; }
+    #trigger-memory-popup .trigger-btn-small {
+        background: rgba(220,53,69,0.2); border: 1px solid rgba(220,53,69,0.4); color: #ffcccc;
+        font-size: 0.65rem; cursor: pointer; padding: 3px 8px; border-radius: 4px; transition: all 0.2s;
+    }
+    #trigger-memory-popup .trigger-btn-small:hover { background: rgba(220,53,69,0.5); color: white; }
+    #trigger-memory-popup .trigger-btn-small.blue-btn { background: rgba(82,161,255,0.2); border-color: rgba(82,161,255,0.4); color: #cce0ff; }
+    #trigger-memory-popup .trigger-btn-small.blue-btn:hover { background: rgba(82,161,255,0.5); color: white; }
+
+    #trigger-memory-popup .trigger-list { max-height: 250px; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+    #trigger-memory-popup .trigger-item {
+        background: rgba(255,255,255,0.05); border: 1px solid #333; border-radius: 6px;
+        padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s;
+    }
+    #trigger-memory-popup .trigger-item:hover { border-color: #52a1ff; background: rgba(82,161,255,0.05); }
+    #trigger-memory-popup .trigger-text { font-size: 0.8rem; color: #e0e0e0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 190px; font-family: monospace; }
+    #trigger-memory-popup .trigger-actions { display: flex; gap: 6px; }
+    #trigger-memory-popup .trigger-actions button {
+        background: rgba(255,255,255,0.1); border: 1px solid transparent; border-radius: 4px; color: white;
+        cursor: pointer; padding: 4px 6px; font-size: 0.75rem; transition: all 0.2s;
+    }
+    #trigger-memory-popup .trigger-actions button:hover { border-color: #52a1ff; background: rgba(82,161,255,0.2); }
+
     /* --- SG CUSTOM DIALOG STYLES --- */
     #sg-dialog-overlay {
         position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
@@ -301,7 +345,7 @@
                 </div>
                 <div style="background: rgba(220, 53, 69, 0.08); border-top: 4px solid #dc3545; padding: 18px; border-radius: 6px;">
                     <h4 style="color:#dc3545; margin: 0 0 10px 0;">3️⃣ Pro Control (Nodepad)</h4>
-                    <p style="font-size:0.85rem; color:#ccc; margin:0;">For complex setups (like Ideogram nested JSONs), open the <strong>{ } Nodepad</strong>. Select the core nodes and click <strong>⭐ Favorite</strong>. They will appear in 'My Panel' as quick-edit buttons!</p>
+                    <p style="font-size:0.85rem; color:#ccc; margin:0;">Open the <strong>{ } Nodepad</strong> to edit raw JSONs, <strong>🚫 Bypass</strong> nodes directly, or use the powerful <strong>🔌 LoRA Synergy</strong> tool to inject new models on the fly! Mark nodes as <strong>⭐ Favorite</strong> to access them quickly in 'My Panel'.</p>
                 </div>
             </div>
             <h4 style="color:white; border-bottom: 1px solid #333; padding-bottom: 5px; margin-top: 30px; margin-bottom: 15px;">Understanding the 3 Views</h4>
@@ -316,7 +360,7 @@
                 </div>
                 <div style="background: rgba(255,255,255,0.03); border: 1px solid #333; padding: 15px; border-radius: 8px;">
                     <strong style="color:white; display:flex; align-items:center; gap:8px;">{ } Nodepad</strong>
-                    <p style="margin: 8px 0 0 0; color:#bbb; font-size:0.9rem;">A raw JSON editor for power users. If a custom node isn't supported, edit its raw JSON directly here. Mark nodes as Favorite to access them quickly.</p>
+                    <p style="margin: 8px 0 0 0; color:#bbb; font-size:0.9rem;">A raw JSON editor for power users. Edit unsupported nodes, <strong>Bypass</strong> them with `Ctrl+B`, or use the <strong>🔌 LoRA Synergy</strong> button (in the toolbar) for an advanced offline matchmaker that injects and wires LoRAs perfectly. Mark nodes as Favorite for quick access.</p>
                 </div>
             </div>
             <h4 style="color:white; border-bottom: 1px solid #333; padding-bottom: 5px; margin-top: 30px;">Server Configuration</h4>
@@ -364,6 +408,102 @@
     </div>
 </div>
 
+
+
+<!-- SUB-MODAL: LORA INJECTOR -->
+<div id="remix-lora-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); z-index: 10650; display: none; justify-content: center; align-items: center;">
+    <div class="remix-panel" style="width: 900px; max-width: 95vw; background: #111;">
+        <div class="remix-header">
+            <h3 style="margin:0; color:white; display:flex; align-items:center; gap:8px;">
+                <span style="font-size:1.2rem;">🔌</span> LoRA Synergy™
+                <button class="glass-btn" onclick="window.showLoraSynergyHelp()" style="padding: 2px 8px; font-size: 0.75rem; height: auto; min-height: 0; border-color:#8e44ad; color:#d2b4de;" title="Configuration Help">❓ Help</button>
+            </h3>
+            <button class="close-btn" onclick="document.getElementById('remix-lora-overlay').style.display='none'">×</button>
+        </div>
+        <div class="remix-body" style="padding: 20px; gap: 15px;">
+            
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <label style="font-size:0.8rem; color:#aaa; font-weight:bold;">1. Injection Target (Model Source)</label>
+                <span id="lora-arch-badge" style="font-size:0.7rem; background:#333; padding:2px 6px; border-radius:4px; display:none;"></span>
+            </div>
+            
+            <select id="lora-target-select" class="remix-input" style="margin-bottom: 5px; border-color:#8e44ad;" onchange="window.updateLoraActions()">
+                <option value="">Scanning graph...</option>
+            </select>
+
+            <div id="lora-action-radios" style="display:none; gap:15px; margin-bottom: 10px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 6px;">
+                <label style="color:#ddd; font-size:0.85rem; cursor:pointer;"><input type="radio" name="lora_action" value="chain" checked> 🔗 Add After (Chain)</label>
+                <label style="color:#ddd; font-size:0.85rem; cursor:pointer;"><input type="radio" name="lora_action" value="replace"> 🔄 Replace Existing</label>
+            </div>
+
+            <div style="display:flex; gap:20px; margin-top:10px;">
+                <div style="display:flex; flex-direction:column; gap:10px; width:240px; flex-shrink:0;">
+                    <div id="lora-preview-container" style="width:100%; height:240px; background:#050505; border:1px solid #333; border-radius:8px; display:none; align-items:center; justify-content:center; overflow:hidden;">
+                        <img id="lora-preview-img" src="" style="width:100%; height:100%; object-fit:cover;">
+                    </div>
+                    <div id="lora-civitai-link-container" style="display:none; text-align:center; width:100%; flex-direction:column; gap:6px;">
+                        <a id="lora-civitai-link" href="#" target="_blank" style="color:#2ecc71; font-size:0.75rem; text-decoration:none; font-weight:bold; background:rgba(46,204,113,0.1); padding:6px 0; border-radius:4px; border:1px solid #2ecc71; display:block; width:100%; box-sizing:border-box;">🌍 CivitAI Info</a>
+                        <a id="lora-manager-link" href="#" target="_blank" style="color:#52a1ff; font-size:0.75rem; text-decoration:none; font-weight:bold; background:rgba(82,161,255,0.1); padding:6px 0; border-radius:4px; border:1px solid #52a1ff; display:block; width:100%; box-sizing:border-box;">🧩 LoRA Manager</a>
+                    </div>
+                    <div id="lora-triggers-container" class="custom-scroll" style="display:none; padding: 12px; background: #0a0a0a; border: 1px solid #333; border-radius: 6px; max-height: 250px; overflow-y: auto;">
+                        <div id="lora-civitai-box" style="display:none; margin-bottom:10px;">
+                            <div style="font-size:0.7rem; color:#2ecc71; margin-bottom:6px; font-weight:bold; text-transform:uppercase;">🟢 Official Triggers</div>
+                            <div id="lora-civitai-list" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+                        </div>
+                        <div id="lora-db-box" style="display:none;">
+                            <div style="font-size:0.7rem; color:#f39c12; margin-bottom:6px; font-weight:bold; text-transform:uppercase;">💡 Historical Triggers</div>
+                            <div id="lora-db-list" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+                        </div>
+                        <div id="lora-no-triggers" style="display:none; color:#888; font-size:0.8rem;">No triggers found.</div>
+                    </div>
+                </div>
+                
+                <div style="flex:1; display:flex; flex-direction:column; gap:5px;">
+                    <label style="font-size:0.8rem; color:#aaa; font-weight:bold;">2. Select LoRA (Searchable - Type 'flux' or folder name)</label>
+                    <input type="hidden" id="lora-injector-select">
+                    
+                    <!-- Search with X ALWAYS VISIBLE outside the input -->
+                    <div style="display:flex; align-items:stretch; margin-bottom: 5px; gap: 5px;">
+                        <input type="text" id="lora-search-input" class="remix-input" placeholder="🔍 Search LoRA by name or folder..." oninput="window.filterLoraList();" style="border-color:#52a1ff; flex:1; margin-bottom:0;">
+                        <button id="lora-search-clear" class="glass-btn" onclick="document.getElementById('lora-search-input').value=''; document.getElementById('lora-injector-select').value=''; window.filterLoraList(); document.querySelectorAll('.lora-option').forEach(el => { el.style.color = '#ddd'; el.style.fontWeight = 'normal'; }); document.getElementById('lora-triggers-container').style.display='none'; document.getElementById('lora-preview-container').style.display='none'; document.getElementById('lora-civitai-link-container').style.display='none';" style="padding:0 15px; border-color:#dc3545; color:#ffcccc; background:rgba(220,53,69,0.15); font-weight:bold; font-size:1.1rem; display:flex; align-items:center; justify-content:center; transition:0.2s;" title="Clear selection and reset search">✕</button>
+                    </div>
+                    
+                    <div id="lora-options-list" class="custom-scroll" style="flex:1; min-height: 350px; max-height: 500px; overflow-y: auto; background: #000; border: 1px solid #333; border-radius: 4px; display: flex; flex-direction: column;">
+                        <div style="padding:10px; color:#888; font-size:0.8rem; text-align:center;">Reading safetensors headers...</div>
+                    </div>
+                    
+                    <div style="display:flex; gap: 15px; margin-top: 10px;">
+                        <div style="flex:1;">
+                            <label style="font-size:0.75rem; color:#aaa;">Strength Model</label>
+                            <input type="text" id="lora-str-model" class="remix-input" value="1.0" style="padding:4px 8px;">
+                        </div>
+                        <div id="lora-clip-container" style="flex:1;">
+                            <label style="font-size:0.75rem; color:#aaa;">Strength CLIP</label>
+                            <input type="text" id="lora-str-clip" class="remix-input" value="1.0" style="padding:4px 8px;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="lora-triggers-container" style="display:none; padding: 12px; background: #0a0a0a; border: 1px solid #333; border-radius: 6px; margin-top: 5px;">
+                <div id="lora-civitai-box" style="display:none; margin-bottom:10px;">
+                    <div style="font-size:0.7rem; color:#2ecc71; margin-bottom:6px; font-weight:bold; text-transform:uppercase;">🟢 CivitAI Official Triggers</div>
+                    <div id="lora-civitai-list" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+                </div>
+                <div id="lora-db-box" style="display:none;">
+                    <div style="font-size:0.7rem; color:#f39c12; margin-bottom:6px; font-weight:bold; text-transform:uppercase;">💡 Historical Triggers (Your DB)</div>
+                    <div id="lora-db-list" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+                </div>
+                <div id="lora-no-triggers" style="display:none; color:#888; font-size:0.8rem;">No triggers found for this LoRA.</div>
+            </div>
+
+        </div>
+        <div class="remix-footer" style="display:flex; justify-content:flex-end; gap:10px;">
+            <button class="glass-btn" onclick="document.getElementById('remix-lora-overlay').style.display='none'">Cancel</button>
+            <button class="glass-btn active-blue" onclick="window.executeLoraInjection()" style="background:#8e44ad; border-color:#8e44ad;">🔌 Execute Synergy</button>
+        </div>
+    </div>
+</div>
 
 <!-- SUB-MODAL: CUSTOM DIALOG -->
 <div id="sg-dialog-overlay">
@@ -479,7 +619,110 @@
                 }
             });
             
-            window._customAppConfig = [];
+            
+    // --- SCI-FI TRIGGER MEMORY SYSTEM & COMFYUI LAUNCHER ---
+    
+    window.askToOpenComfyUI = async function() {
+        const urlInput = document.getElementById('remix-comfy-url');
+        const targetUrl = urlInput ? urlInput.value.trim() : (window._remixServerDefaultUrl || 'http://127.0.0.1:8188');
+        const wantOpen = await window.sgDialog({
+            type: 'confirm',
+            title: 'Launch ComfyUI',
+            msg: `The UI-ready workflow is now in your clipboard/downloads.<br><br>Do you want to launch ComfyUI in a new tab to use it immediately?<br><small style="color:#aaa; font-family:monospace;">${escapeHTML(targetUrl)}</small>`,
+            okText: '🚀 Launch',
+            cancelText: 'Stay Here'
+        });
+        if(wantOpen) {
+            window.open(targetUrl, '_blank');
+        }
+    };
+
+    window._savedTriggers = new Set();
+    window._triggerPopupState = { collapsed: false };
+    
+    window.renderTriggerMemory = function() {
+        let container = document.getElementById('trigger-memory-popup');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'trigger-memory-popup';
+            document.body.appendChild(container);
+            
+            let isDragging = false;
+            let currentX, currentY, initialX, initialY;
+            let xOffset = 0, yOffset = 0;
+            const dragStart = (e) => {
+                if(e.target.closest('.trigger-controls')) return;
+                if(e.type === "touchstart") {
+                    initialX = e.touches[0].clientX - xOffset;
+                    initialY = e.touches[0].clientY - yOffset;
+                } else {
+                    initialX = e.clientX - xOffset;
+                    initialY = e.clientY - yOffset;
+                }
+                if (e.target.closest('.trigger-header')) isDragging = true;
+            };
+            const dragEnd = () => { initialX = currentX; initialY = currentY; isDragging = false; };
+            const drag = (e) => {
+                if (isDragging) {
+                    e.preventDefault();
+                    if(e.type === "touchmove") {
+                        currentX = e.touches[0].clientX - initialX;
+                        currentY = e.touches[0].clientY - initialY;
+                    } else {
+                        currentX = e.clientX - initialX;
+                        currentY = e.clientY - initialY;
+                    }
+                    xOffset = currentX; yOffset = currentY;
+                    container.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+                }
+            };
+            document.addEventListener("touchstart", dragStart, {passive: false});
+            document.addEventListener("touchend", dragEnd, {passive: false});
+            document.addEventListener("touchmove", drag, {passive: false});
+            document.addEventListener("mousedown", dragStart);
+            document.addEventListener("mouseup", dragEnd);
+            document.addEventListener("mousemove", drag);
+        }
+        
+        if (window._savedTriggers.size === 0) {
+            container.classList.remove('visible');
+            return;
+        }
+        
+        container.style.display = 'flex';
+        setTimeout(() => container.classList.add('visible'), 10);
+        
+        if (window._triggerPopupState.collapsed) container.classList.add('collapsed');
+        else container.classList.remove('collapsed');
+        let toggleIcon = window._triggerPopupState.collapsed ? '🔼' : '🔽';
+
+        let html = `
+            <div class="trigger-header">
+                <span style="display:flex; align-items:center; gap:6px;">🚀 Memory Triggers</span>
+                <div class="trigger-controls">
+                    <button class="trigger-btn-small blue-btn" onclick="window._triggerPopupState.collapsed = !window._triggerPopupState.collapsed; window.renderTriggerMemory();" title="Collapse/Expand">${toggleIcon}</button>
+                    <button class="trigger-btn-small" onclick="window._savedTriggers.clear(); window.renderTriggerMemory();">Clear</button>
+                </div>
+            </div>
+            <div class="trigger-list custom-scroll">
+        `;
+        window._savedTriggers.forEach(word => {
+            let safeWord = escapeHTML(word).replace(/'/g, "\\'");
+            html += `
+                <div class="trigger-item">
+                    <span class="trigger-text" title="${escapeHTML(word)}">${escapeHTML(word)}</span>
+                    <div class="trigger-actions">
+                        <button onclick="(function(btn){ window._copyToClipboardCrossPlatform('${safeWord}').then(()=>{ btn.innerText='✅'; setTimeout(()=>btn.innerText='📋', 1500); }); })(this)" title="Copy to clipboard">📋</button>
+                        <button onclick="window._savedTriggers.delete('${safeWord}'); window.renderTriggerMemory();" title="Remove from memory">❌</button>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+    };
+
+    window._customAppConfig = [];
             Array.from(wrapper.querySelectorAll('.is-custom-field')).forEach((n, idx) => {
                 n.dataset.customSortIdx = String(idx);
                 const inp = n.querySelector('[data-node-id]');
@@ -499,6 +742,109 @@
 
 <script>
     
+    
+    // --- SCI-FI TRIGGER MEMORY SYSTEM & COMFYUI LAUNCHER ---
+    
+    window.askToOpenComfyUI = async function() {
+        const urlInput = document.getElementById('remix-comfy-url');
+        const targetUrl = urlInput ? urlInput.value.trim() : (window._remixServerDefaultUrl || 'http://127.0.0.1:8188');
+        const wantOpen = await window.sgDialog({
+            type: 'confirm',
+            title: 'Launch ComfyUI',
+            msg: `The UI-ready workflow is now in your clipboard/downloads.<br><br>Do you want to launch ComfyUI in a new tab to use it immediately?<br><small style="color:#aaa; font-family:monospace;">${escapeHTML(targetUrl)}</small>`,
+            okText: '🚀 Launch',
+            cancelText: 'Stay Here'
+        });
+        if(wantOpen) {
+            window.open(targetUrl, '_blank');
+        }
+    };
+
+    window._savedTriggers = new Set();
+    window._triggerPopupState = { collapsed: false };
+    
+    window.renderTriggerMemory = function() {
+        let container = document.getElementById('trigger-memory-popup');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'trigger-memory-popup';
+            document.body.appendChild(container);
+            
+            let isDragging = false;
+            let currentX, currentY, initialX, initialY;
+            let xOffset = 0, yOffset = 0;
+            const dragStart = (e) => {
+                if(e.target.closest('.trigger-controls')) return;
+                if(e.type === "touchstart") {
+                    initialX = e.touches[0].clientX - xOffset;
+                    initialY = e.touches[0].clientY - yOffset;
+                } else {
+                    initialX = e.clientX - xOffset;
+                    initialY = e.clientY - yOffset;
+                }
+                if (e.target.closest('.trigger-header')) isDragging = true;
+            };
+            const dragEnd = () => { initialX = currentX; initialY = currentY; isDragging = false; };
+            const drag = (e) => {
+                if (isDragging) {
+                    e.preventDefault();
+                    if(e.type === "touchmove") {
+                        currentX = e.touches[0].clientX - initialX;
+                        currentY = e.touches[0].clientY - initialY;
+                    } else {
+                        currentX = e.clientX - initialX;
+                        currentY = e.clientY - initialY;
+                    }
+                    xOffset = currentX; yOffset = currentY;
+                    container.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+                }
+            };
+            document.addEventListener("touchstart", dragStart, {passive: false});
+            document.addEventListener("touchend", dragEnd, {passive: false});
+            document.addEventListener("touchmove", drag, {passive: false});
+            document.addEventListener("mousedown", dragStart);
+            document.addEventListener("mouseup", dragEnd);
+            document.addEventListener("mousemove", drag);
+        }
+        
+        if (window._savedTriggers.size === 0) {
+            container.classList.remove('visible');
+            return;
+        }
+        
+        container.style.display = 'flex';
+        setTimeout(() => container.classList.add('visible'), 10);
+        
+        if (window._triggerPopupState.collapsed) container.classList.add('collapsed');
+        else container.classList.remove('collapsed');
+        let toggleIcon = window._triggerPopupState.collapsed ? '🔼' : '🔽';
+
+        let html = `
+            <div class="trigger-header">
+                <span style="display:flex; align-items:center; gap:6px;">🚀 Memory Triggers</span>
+                <div class="trigger-controls">
+                    <button class="trigger-btn-small blue-btn" onclick="window._triggerPopupState.collapsed = !window._triggerPopupState.collapsed; window.renderTriggerMemory();" title="Collapse/Expand">${toggleIcon}</button>
+                    <button class="trigger-btn-small" onclick="window._savedTriggers.clear(); window.renderTriggerMemory();">Clear</button>
+                </div>
+            </div>
+            <div class="trigger-list custom-scroll">
+        `;
+        window._savedTriggers.forEach(word => {
+            let safeWord = escapeHTML(word).replace(/'/g, "\\'");
+            html += `
+                <div class="trigger-item">
+                    <span class="trigger-text" title="${escapeHTML(word)}">${escapeHTML(word)}</span>
+                    <div class="trigger-actions">
+                        <button onclick="(function(btn){ window._copyToClipboardCrossPlatform('${safeWord}').then(()=>{ btn.innerText='✅'; setTimeout(()=>btn.innerText='📋', 1500); }); })(this)" title="Copy to clipboard">📋</button>
+                        <button onclick="window._savedTriggers.delete('${safeWord}'); window.renderTriggerMemory();" title="Remove from memory">❌</button>
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+    };
+
     window._customAppConfig = [];
     
         window.toggleCustomPin = async function(btn, nodeId, key, widgetIdx, defaultLabel) {
@@ -706,7 +1052,7 @@
                 advBanner = document.createElement('div');
                 advBanner.id = 'adv-view-banner';
                 advBanner.style.cssText = 'background: rgba(230, 126, 34, 0.1); border: 1px solid rgba(230, 126, 34, 0.3); border-left: 4px solid #e67e22; padding: 10px 15px; border-radius: 6px; margin-bottom: 15px; color: #ddd; font-size: 0.85rem; line-height: 1.4;';
-                advBanner.innerHTML = '<strong>💡 Hint:</strong> Pin (📌) the fields you use most to build your own interface in <strong>My Panel</strong>. For complex settings (like Ideogram prompts), switch to the <strong>{ } Nodepad</strong> and mark the node as Favorite (⭐).';
+                advBanner.innerHTML = '<strong>💡 Hint:</strong> Pin (📌) the fields you use most to build your own interface in <strong>My Panel</strong>. <span class="desktop-only-hint">For complex settings (like Ideogram prompts), switch to the <strong>{ } Nodepad</strong> and mark the node as Favorite (⭐).</span>';
                 contentContainer.insertBefore(advBanner, contentContainer.firstChild);
             }
             advBanner.style.display = 'block';
@@ -822,31 +1168,69 @@
     }
     
     // --- CLIPBOARD LOGIC (Fallback) ---
-    function remixCopyToClipboard(text, returnedType) {
+    async function remixCopyToClipboard(text, returnedType) {
         let msg = returnedType === 'api' 
-            ? 'API Workflow copied! Use this JSON for developer API calls (not the canvas).' 
-            : 'UI Workflow copied! Paste it into the ComfyUI canvas.';
-            
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(text).then(() => {
-                showRemixStatus(msg, true);
-            }).catch(err => { fallbackCopy(text, msg); });
-        } else { fallbackCopy(text, msg); }
-    }
-    
-    function fallbackCopy(text, msg) {
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        textArea.style.position = "fixed"; textArea.style.left = "-9999px"; textArea.style.top = "0";
-        document.body.appendChild(textArea);
-        textArea.focus(); textArea.select();
-        try {
-            document.execCommand('copy');
-            showRemixStatus(msg, true);
-        } catch (err) {
-            showRemixStatus('Clipboard API not supported by your browser.', false);
+            ? '✅ <strong>API Workflow copied!</strong> Use this JSON for developer API calls.' 
+            : '✅ <strong>UI Workflow copied!</strong> Paste it into the ComfyUI canvas.';
+
+        // If a "convert to UI" click pre-armed an async clipboard write (see
+        // window._armAsyncClipboardCopy), finish that instead of starting a
+        // fresh navigator.clipboard call. This preserves the browser's
+        // user-activation window across the network/conversion delay that
+        // would otherwise cause an automatic copy to silently fail.
+        let ok;
+        if (window._pendingClipboardResolve) {
+            const resolveFn = window._pendingClipboardResolve;
+            const writePromise = window._pendingClipboardWritePromise;
+            window._pendingClipboardResolve = null;
+            window._pendingClipboardWritePromise = null;
+            resolveFn(text);
+            try {
+                await writePromise;
+                ok = true;
+            } catch (e) {
+                console.warn('Deferred clipboard write failed, falling back:', e);
+                ok = await window._copyToClipboardCrossPlatform(text);
+            }
+        } else {
+            ok = await window._copyToClipboardCrossPlatform(text);
         }
-        document.body.removeChild(textArea);
+        
+        if (ok) {
+            showRemixStatus(msg, true, true);
+        } else {
+            // Provide a manual fallback dialog if the browser drops the user gesture token
+            showRemixStatus('❌ Clipboard copy blocked by browser. Using manual copy window.', false);
+            const safeText = escapeHTML(text);
+            const html = `
+                <div style="display:flex; flex-direction:column; gap:12px; margin-top:10px;">
+                    <textarea id="fallback-copy-textarea" readonly style="width:100%; height:180px; background:#000; color:#eee; font-family:monospace; font-size:0.8rem; border:1px solid #444; padding:10px; border-radius:6px; resize:none;" onclick="this.select()">${safeText}</textarea>
+                    <button class="glass-btn active-blue" style="padding:10px; font-weight:bold;" onclick="
+                        const ta = document.getElementById('fallback-copy-textarea');
+                        ta.select();
+                        try {
+                            document.execCommand('copy');
+                            this.innerHTML = '✅ Copied to Clipboard!';
+                            this.style.background = 'rgba(40,167,69,0.2)';
+                            this.style.borderColor = '#28a745';
+                            setTimeout(() => {
+                                const cancelBtn = document.getElementById('sg-dialog-btn-cancel');
+                                if(cancelBtn) cancelBtn.click();
+                            }, 1000);
+                        } catch(err) {
+                            this.innerHTML = '❌ Press Ctrl+C / Cmd+C to copy';
+                        }
+                    ">📋 Click Here to Copy</button>
+                </div>
+            `;
+            await window.sgDialog({
+                type: 'custom',
+                title: 'Manual Copy Required',
+                msg: 'Your browser prevented automatic copying (common in HTTP/Docker or after async tasks). Please click the button below to copy the workflow.',
+                customHtml: html,
+                cancelText: 'Close'
+            });
+        }
     }
 
     function openRemixModal(targetFileId = null, companionPath = null, customWorkflowFilename = null) {
@@ -1245,6 +1629,10 @@
                                     onclick="window.nodepad_magic_fix()"
                                     style="padding:4px 8px; height:30px; min-height:0; font-size:0.75rem; color:#52a1ff; border-color:#52a1ff;"
                                     title="Auto-fix missing quotes and format JSON">🪄 Magic Fix</button>
+                            <span style="color:#444; margin:0 4px;">|</span>
+                            <button class="glass-btn" onclick="window.exportUiWorkflow(this)" style="padding:4px 8px; height:30px; min-height:0; font-size:0.75rem; color:#17a2b8; border-color:#17a2b8;" title="Convert the current workflow to ComfyUI UI format. Choose to copy to clipboard or download the file. Drag the file into ComfyUI canvas to visually inspect all nodes and connections.">📥 To ComfyUI</button>
+                            <span style="color:#444; margin:0 4px;">|</span>
+                            <button class="glass-btn" onclick="window.openLoraInjector(this)" style="padding:4px 8px; height:30px; min-height:0; font-size:0.75rem; color:#8e44ad; border-color:#8e44ad; background:rgba(142, 68, 173, 0.1);" title="LoRA Synergy™: Zero-API Local Matchmaker">🔌 LoRA Synergy™</button>
                         </div>
                     </div>
 
@@ -1270,7 +1658,7 @@
                                     </div>
                                     <div style="position:relative; display:flex; align-items:center;">
                                         <input type="text" id="remix-node-search" class="remix-input"
-                                            placeholder="🔍 Filter nodes..."
+                                            placeholder="🔍 Search name, ID or content..."
                                             style="padding:4px 24px 4px 8px; font-size:0.75rem; height:26px; border-color:#444; background:#000; width:100%;"
                                             oninput="window.rawNodeEditor_renderList(); document.getElementById('remix-search-clear').style.display = this.value ? 'block' : 'none';">
                                         <span id="remix-search-clear"
@@ -1313,7 +1701,7 @@
                             <!-- Hidden Storage for files to be uploaded on Queue -->
                             <div id="nodepad-hidden-uploads" style="display:none;"></div>
                             
-                            <textarea id="raw-node-textarea" onkeydown="if(event.key==='Tab'){event.preventDefault();const t=this,s=t.selectionStart,e=t.selectionEnd;t.value=t.value.substring(0,s)+'    '+t.value.substring(e);t.selectionStart=t.selectionEnd=s+4;if(window.rawNodeEditor_onInput)window.rawNodeEditor_onInput();}" class="node-editor-textarea custom-scroll"
+                            <textarea id="raw-node-textarea" onkeydown="if(event.key==='b' && (event.ctrlKey || event.metaKey)){event.preventDefault(); window.toggleBypassNode(window._rawCurrentId); return;} if(event.key==='Tab'){event.preventDefault();const t=this,s=t.selectionStart,e=t.selectionEnd;t.value=t.value.substring(0,s)+'    '+t.value.substring(e);t.selectionStart=t.selectionEnd=s+4;if(window.rawNodeEditor_onInput)window.rawNodeEditor_onInput();}" class="node-editor-textarea custom-scroll"
                                       placeholder="Select a node on the left to edit its JSON..."
                                       oninput="window.rawNodeEditor_onInput(); window.nodepad_update_coords();"
                                       onclick="window.nodepad_update_coords()"
@@ -1418,7 +1806,8 @@
                 window.nodepad_format_for_view = function(str) {
                     if (!str) return str;
                     return str.replace(/"(?:[^"\\]|\\.)*"/g, function(m) {
-                        return m.replace(/\\n/g, '\n');
+                        // Negative lookbehind ensures we only convert literal newlines, avoiding path corruption
+                        return m.replace(/(?<!\\)\\n/g, '\n');
                     });
                 };
 
@@ -1584,9 +1973,22 @@
                     const type = document.getElementById('remix-raw-type') ? document.getElementById('remix-raw-type').value : 'api';
                     const raw = type === 'api' ? window._remixRawApi : window._remixRawUi;
                     let wf = {};
-                    try { wf = JSON.parse(raw || '{}'); } catch(e) {}
+                    try { 
+                        let safeRaw = raw || '{}';
+                        safeRaw = safeRaw.replace(/(:\s*|,\s*|\[\s*)(NaN|-?Infinity)(\s*(?:,|\]|}))/g, '$1null$3');
+                        wf = JSON.parse(safeRaw); 
+                    } catch(e) {}
 
                     if (type === 'api') {
+                        let iterObj = wf;
+                        if (wf.prompt && typeof wf.prompt === 'object' && !wf.class_type) iterObj = wf.prompt;
+                        else if (wf.workflow && typeof wf.workflow === 'object' && !wf.class_type) iterObj = wf.workflow;
+                        if (Array.isArray(iterObj)) {
+                            let dictObj = {};
+                            iterObj.forEach((n, i) => { dictObj[String(i)] = n; });
+                            iterObj = dictObj;
+                        }
+                        wf = iterObj;
                         for (let id in wf) {
                             if (!deps[id]) continue;
                             let inputs = wf[id].inputs || {};
@@ -1711,6 +2113,119 @@
                     }
                 };
 
+
+                window.toggleBypassNode = async function(id) {
+                    if (!id) return;
+                    if (window.rawNodeEditor_commitCurrent) window.rawNodeEditor_commitCurrent(true);
+                    let wf = {};
+                    const type = document.getElementById('remix-raw-type') ? document.getElementById('remix-raw-type').value : 'api';
+                    try { 
+                        let raw = type === 'api' ? window._remixRawApi : window._remixRawUi;
+                        let safeRaw = raw || '{}';
+                        safeRaw = safeRaw.replace(/(:\s*|,\s*|\[\s*)(NaN|-?Infinity)(\s*(?:,|\]|}))/g, '$1null$3');
+                        wf = JSON.parse(safeRaw); 
+                    } catch(e) { return; }
+
+                    if (type === 'ui') {
+                        let nodes = wf.nodes || (Array.isArray(wf) ? wf : []);
+                        let node = nodes.find(n => String(n.id) === String(id));
+                        if (node) {
+                            if (node.mode === 4 || node.mode === 2) node.mode = 0;
+                            else node.mode = 4;
+                        }
+                        if (wf.nodes) wf.nodes = nodes; else wf = nodes;
+                        window._remixRawUi = JSON.stringify(wf, null, 2);
+                    } else {
+                        let iterObj = wf;
+                        if (wf.prompt && typeof wf.prompt === 'object' && !wf.class_type) iterObj = wf.prompt;
+                        else if (wf.workflow && typeof wf.workflow === 'object' && !wf.class_type) iterObj = wf.workflow;
+                        if (Array.isArray(iterObj)) {
+                            let dictObj = {};
+                            iterObj.forEach((n, i) => { dictObj[String(i)] = n; });
+                            iterObj = dictObj;
+                        }
+                        
+                        let node = iterObj[id];
+                        if (!node) return;
+
+                        if (!node._meta) node._meta = {};
+                        
+                        if (node._meta.is_bypassed) {
+                            let down = node._meta.bypassed_downstream || [];
+                            for (let d of down) {
+                                if (iterObj[d.node_id] && iterObj[d.node_id].inputs) {
+                                    iterObj[d.node_id].inputs[d.input_key] = [id, d.slot_index];
+                                }
+                            }
+                            node._meta.is_bypassed = false;
+                        } else {
+                            let nType = (node.class_type || '').toLowerCase();
+                            let inputs = node.inputs || {};
+                            
+                            let downstream = [];
+                            for (let d_id in iterObj) {
+                                if (d_id === String(id)) continue;
+                                let d_node = iterObj[d_id];
+                                if (!d_node.inputs) continue;
+                                for (let dk in d_node.inputs) {
+                                    let val = d_node.inputs[dk];
+                                    if (Array.isArray(val) && val.length >= 2 && String(val[0]) === String(id)) {
+                                        downstream.push({ node_id: d_id, input_key: dk, slot_index: val[1] });
+                                    }
+                                }
+                            }
+                            
+                            if (downstream.length > 0) {
+                                let bridge = {};
+                                if (nType.includes('loraloader')) {
+                                    bridge[0] = inputs['model'];
+                                    bridge[1] = inputs['clip'];
+                                } else if (nType.includes('controlnetapplyadvanced')) {
+                                    bridge[0] = inputs['positive'];
+                                    bridge[1] = inputs['negative'];
+                                } else if (nType.includes('controlnetapply')) {
+                                    bridge[0] = inputs['conditioning'];
+                                } else {
+                                    let input_links = [];
+                                    for (let k in inputs) {
+                                        if (Array.isArray(inputs[k]) && inputs[k].length === 2) {
+                                            input_links.push(inputs[k]);
+                                        }
+                                    }
+                                    if (input_links.length === 1) {
+                                        for (let d of downstream) bridge[d.slot_index] = input_links[0];
+                                    } else {
+                                        await window.sgDialog({title: 'Bypass Not Supported', msg: 'Cannot safely bypass this node type in API format automatically. Too many or zero input links to bridge.'});
+                                        return;
+                                    }
+                                }
+                                
+                                for (let d of downstream) {
+                                    let up = bridge[d.slot_index];
+                                    if (up) iterObj[d.node_id].inputs[d.input_key] = JSON.parse(JSON.stringify(up));
+                                }
+                            }
+                            node._meta.is_bypassed = true;
+                            node._meta.bypassed_downstream = downstream;
+                        }
+
+                        if (wf.prompt === iterObj) wf.prompt = iterObj;
+                        else if (wf.workflow === iterObj) wf.workflow = iterObj;
+                        else wf = iterObj;
+
+                        window._remixRawApi = JSON.stringify(wf, null, 2);
+                    }
+                    
+                    window._rawCurrentId = null;
+                    window.rawNodeEditor_init();
+                    window.rawNodeEditor_render();
+                    setTimeout(() => {
+                        window.rawNodeEditor_selectNode(id);
+                        const activeEl = document.querySelector('.remix-node-item.active');
+                        if(activeEl) activeEl.scrollIntoView({behavior: 'smooth', block: 'center'});
+                    }, 50);
+                };
+
                 window._rawNodes        = {};   
                 window._rawCurrentId    = null;
                 window._rawSkipCommit   = false;
@@ -1725,10 +2240,23 @@
                     const junkTypes = ['Note', 'NotePrimitive', 'Reroute', 'PrimitiveNode'];
 
                     try {
-                        const wf = JSON.parse(raw || '{}');
+                        let safeRaw = raw || '{}';
+                        safeRaw = safeRaw.replace(/(:\s*|,\s*|\[\s*)(NaN|-?Infinity)(\s*(?:,|\]|}))/g, '$1null$3');
+                        let wf = JSON.parse(safeRaw);
                         if (type === 'api') {
-                            for (const key in wf) {
-                                const n = wf[key];
+                            // Unwrap common API wrappers if present
+                            let iterObj = wf;
+                            if (wf.prompt && typeof wf.prompt === 'object' && !wf.class_type) iterObj = wf.prompt;
+                            else if (wf.workflow && typeof wf.workflow === 'object' && !wf.class_type) iterObj = wf.workflow;
+                            
+                            if (Array.isArray(iterObj)) {
+                                let dictObj = {};
+                                iterObj.forEach((n, i) => { dictObj[String(i)] = n; });
+                                iterObj = dictObj;
+                            }
+                            
+                            for (const key in iterObj) {
+                                const n = iterObj[key];
                                 if (n && n.class_type && !junkTypes.includes(n.class_type)) {
                                     window._rawNodes[key] = {
                                         original:  JSON.parse(JSON.stringify(n)),
@@ -1744,7 +2272,7 @@
                                 if (n && n.id !== undefined) {
                                     const t = n.type || n.class_type || 'Unknown';
                                     if (junkTypes.includes(t)) continue;
-                                    if (n.mode !== undefined && n.mode !== 0) continue; 
+                                    // if (n.mode !== undefined && n.mode !== 0) continue; // Kept to allow toggling bypass 
                                     
                                     window._rawNodes[String(n.id)] = {
                                         original:  JSON.parse(JSON.stringify(n)),
@@ -1772,10 +2300,26 @@
                     const type = document.getElementById('remix-raw-type') && document.getElementById('remix-raw-type').value;
                     const raw  = type === 'api' ? window._remixRawApi : window._remixRawUi;
                     try {
-                        let wf = JSON.parse(raw || '{}');
+                        let safeRaw = raw || '{}';
+                        safeRaw = safeRaw.replace(/(:\s*|,\s*|\[\s*)(NaN|-?Infinity)(\s*(?:,|\]|}))/g, '$1null$3');
+                        let wf = JSON.parse(safeRaw);
                         if (type === 'api') {
-                            for (const id in window._rawNodes) {
-                                wf[id] = window.rawNodeEditor_nodeData(id);
+                            let wfTarget = wf;
+                            if (wf.prompt && typeof wf.prompt === 'object' && !wf.class_type) wfTarget = wf.prompt;
+                            else if (wf.workflow && typeof wf.workflow === 'object' && !wf.class_type) wfTarget = wf.workflow;
+                            
+                            if (Array.isArray(wfTarget)) {
+                                const updatedArr = [];
+                                for (let i = 0; i < wfTarget.length; i++) {
+                                    updatedArr.push(window.rawNodeEditor_nodeData(String(i)) || wfTarget[i]);
+                                }
+                                if (wfTarget === wf) wf = updatedArr;
+                                else if (wf.prompt === wfTarget) wf.prompt = updatedArr;
+                                else if (wf.workflow === wfTarget) wf.workflow = updatedArr;
+                            } else {
+                                for (const id in window._rawNodes) {
+                                    wfTarget[id] = window.rawNodeEditor_nodeData(id);
+                                }
                             }
                         } else {
                             const arr = wf.nodes || (Array.isArray(wf) ? wf : []);
@@ -1820,24 +2364,53 @@
 
                     sorted.forEach(id => {
                         const n = window._rawNodes[id];
-                        const label = String(n.title);
-                        if (fl && !String(id).includes(fl) && !label.toLowerCase().includes(fl) && !n.classType.toLowerCase().includes(fl)) return;
+                        let label = String(n.title);
+                        
+                        let matchTitle = false;
+                        let matchContent = false;
+
+                        if (!fl) {
+                            matchTitle = true;
+                        } else {
+                            if (String(id).includes(fl) || label.toLowerCase().includes(fl) || n.classType.toLowerCase().includes(fl)) {
+                                matchTitle = true;
+                            } else {
+                                // Deep search inside the node's JSON body
+                                const nodeData = window.rawNodeEditor_nodeData(id);
+                                if (nodeData && JSON.stringify(nodeData).toLowerCase().includes(fl)) {
+                                    matchContent = true;
+                                }
+                            }
+                        }
+
+                        if (!matchTitle && !matchContent) return;
 
                         shown++;
                         const el = document.createElement('div');
                         const isActive = id === window._rawCurrentId;
                         const isDirty  = n.edited !== null;
+                        
+                        const nodeData = window.rawNodeEditor_nodeData(id);
+                        const isBypassed = (document.getElementById('remix-raw-type').value === 'ui' && nodeData.mode !== 0 && nodeData.mode !== undefined) || (nodeData._meta && nodeData._meta.is_bypassed);
+                        
+                        if (isBypassed) {
+                            el.style.opacity = '0.5';
+                            label = '🚫 ' + label;
+                        }
 
                         el.className = 'remix-node-item' + (isActive ? ' active' : '');
                         const isFav = window._favoriteNodes && window._favoriteNodes[id] !== undefined;
                         const favComment = isFav ? window._favoriteNodes[id] : '';
                         
+                        // Beautiful UI badge if matched via JSON content instead of title
+                        let contentBadge = matchContent ? '<span style="font-size:0.65rem; background:rgba(82, 161, 255, 0.15); color:#52a1ff; padding:2px 6px; border-radius:4px; margin-top:4px; display:inline-block; border:1px solid rgba(82, 161, 255, 0.3); font-weight:bold; width:max-content;">🔍 Found in content</span>' : '';
+
                         let textBlock = '<div style="display:flex; flex-direction:column; overflow:hidden; flex-grow:1;">' +
                                         '<span style="color:' + (isDirty ? '#f39c12' : '#ddd') + '; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + label.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</span>';
                         if (isFav) {
                             textBlock += '<span style="font-size:0.7rem; color:#ffd700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">⭐ ' + escapeHTML(favComment) + '</span>';
                         }
-                        textBlock += '</div>';
+                        textBlock += contentBadge + '</div>';
 
                         el.innerHTML =
                             '<span class="remix-node-badge' + (isDirty ? ' modified' : '') + '" style="' + (isFav ? 'background:#d4af37; color:#000;' : '') + '">' + id + '</span>' +
@@ -1907,7 +2480,11 @@
                         const isFav = window._favoriteNodes && window._favoriteNodes[id] !== undefined;
                     const favBtn = '<button class="glass-btn" onclick="window.rawNodeEditor_toggleFavorite(\'' + id + '\')" style="padding:2px 8px; font-size:0.7rem; border-color:' + (isFav ? '#ffd700' : '#444') + '; color:' + (isFav ? '#ffd700' : '#888') + '; height:22px; min-height:0; margin-left:8px;" title="Favorited nodes float to the top of the list for quick access.">' + (isFav ? '⭐ Unfavorite' : '<span style="color:#ffd700;">☆</span> Favorite') + '</button>';
                     
-                    hdr.innerHTML =
+                    
+                    const nodeData = window.rawNodeEditor_nodeData(id);
+                    const isBypassed = (document.getElementById('remix-raw-type').value === 'ui' && nodeData.mode !== 0 && nodeData.mode !== undefined) || (nodeData._meta && nodeData._meta.is_bypassed);
+                    let bypassBtn = '<button class="glass-btn" onclick="window.toggleBypassNode(\'' + id + '\')" style="padding:2px 8px; font-size:0.7rem; border-color:#f39c12; color:#f39c12; background:rgba(243, 156, 18, 0.2); height:22px; min-height:0; margin-left:15px;" title="Toggle Bypass (Ctrl+B)">' + (isBypassed ? '🟢 Enable Node' : '🚫 Bypass Node') + '</button>';
+                    hdr.innerHTML = bypassBtn + 
                             '<span class="remix-node-badge" style="font-size:0.75rem;">' + id + '</span>' +
                             '<strong style="color:#7eb8f7;">' + n.title.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</strong>' +
                             '<span style="color:#555; font-size:0.75rem; margin-left:4px;">[' + n.classType.replace(/</g,'&lt;').replace(/>/g,'&gt;') + ']</span>' +
@@ -2082,6 +2659,21 @@
                         let trimmed = newValue.trim();
                         if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
                             try { newValue = JSON.parse(trimmed); } catch(e) {}
+                        } else {
+                            // Clean multiple slashes to prevent ComfyUI validation errors
+                            if (trimmed.indexOf('://') === -1) {
+                                let is_unc_slash = trimmed.startsWith('//');
+                                let is_unc_back = trimmed.startsWith('\\\\');
+                                trimmed = trimmed.replace(/\/+/g, '/');
+                                trimmed = trimmed.replace(/\\+/g, '\\');
+                                if (is_unc_slash && !trimmed.startsWith('//')) {
+                                    trimmed = '/' + trimmed;
+                                }
+                                if (is_unc_back && !trimmed.startsWith('\\\\')) {
+                                    trimmed = '\\' + trimmed;
+                                }
+                                newValue = trimmed;
+                            }
                         }
                     }
 
@@ -2196,18 +2788,68 @@
                             }
                             
                             let typeHtml = '';
+                            let currentValue = undefined;
+                            let hasMissing = false;
+                            try {
+                                const taVal = document.getElementById('raw-node-textarea').value;
+                                if (taVal) {
+                                    const data = JSON.parse(window.nodepad_sanitize_json(taVal));
+                                    if (data.inputs !== undefined) {
+                                        currentValue = data.inputs[key];
+                                    } else if (data.widgets_values && Array.isArray(data.widgets_values)) {
+                                        let wIndex = 0; let foundIndex = -1;
+                                        const scanGrp = (group) => {
+                                            if(!group) return;
+                                            for(let k in group) {
+                                                const tDef = group[k];
+                                                const isConnection = (typeof tDef[0] === 'string' && tDef[0] === tDef[0].toUpperCase() && !['INT', 'FLOAT', 'STRING', 'BOOLEAN'].includes(tDef[0]));
+                                                if (!isConnection) {
+                                                    if (k === key) foundIndex = wIndex;
+                                                    wIndex++;
+                                                }
+                                            }
+                                        };
+                                        if (schema && schema.input) {
+                                            scanGrp(schema.input.required); scanGrp(schema.input.optional);
+                                        }
+                                        if (foundIndex !== -1 && foundIndex < data.widgets_values.length) {
+                                            currentValue = data.widgets_values[foundIndex];
+                                        }
+                                    }
+                                }
+                            } catch(e) {}
                             
                             if (optionsArray) {
+                                let missingWarning = '';
+                                if (currentValue !== undefined && typeof currentValue === 'string' && currentValue.trim() !== '') {
+                                    let isMissing = !optionsArray.some(opt => String(opt) === String(currentValue));
+                                    let isModelKey = key.includes('name') || key.includes('model') || key.includes('lora') || key.includes('ckpt');
+                                    if (isMissing && isModelKey) {
+                                        hasMissing = true;
+                                        window._nodepadHasMissingFiles = true;
+                                        missingWarning = `<div style="margin-top: 6px; padding: 6px 8px; background: rgba(220,53,69,0.15); border: 1px dashed #dc3545; border-radius: 4px; color: #ffcccc; font-size: 0.75rem; display: flex; align-items: flex-start; gap: 8px;">
+                                            <span style="font-size: 1.1rem; line-height: 1;">⚠️</span>
+                                            <div style="line-height: 1.3; overflow: hidden;">
+                                                <strong style="color: #ff6b6b; text-transform: uppercase; font-size: 0.7rem;">Missing Local File</strong><br>
+                                                <span style="font-family: monospace; color: #eee; word-break: break-all;">${escapeHTML(currentValue)}</span>
+                                            </div>
+                                        </div>`;
+                                    }
+                                }
+                                
                                 let opts = optionsArray.map(opt => {
                                     let displayVal = typeof opt === 'object' ? JSON.stringify(opt) : String(opt);
                                     let safeVal = displayVal.replace(/"/g, '&quot;');
                                     return `<option value="${safeVal}">${escapeHTML(displayVal)}</option>`;
                                 }).join('');
+                                const listId = 'datalist_' + key.replace(/[^a-zA-Z0-9]/g, '_') + '_' + Math.floor(Math.random()*1000);
+                                let safeKey = key.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                                 typeHtml = `<div style="margin-top:4px;">
-                                    <select class="remix-input" style="padding:2px 6px; height:26px; font-size:0.75rem; background:#1a1a1a; color:#e0c070; width:100%; border:1px solid var(--primary-color); cursor:pointer;" onchange="window.injectDictionaryValue('${key}', this.value); this.selectedIndex=0;">
-                                        <option value="" disabled selected>👉 Select to inject into JSON...</option>
+                                    <input list="${listId}" class="remix-input" placeholder="🔍 Search or select to inject..." style="padding:2px 6px; height:26px; font-size:0.75rem; background:#1a1a1a; color:#e0c070; width:100%; border:1px solid var(--primary-color); cursor:text;" onchange="if(this.value){ window.injectDictionaryValue('${safeKey}', this.value); this.value=''; }">
+                                    <datalist id="${listId}">
                                         ${opts}
-                                    </select>
+                                    </datalist>
+                                    ${missingWarning}
                                 </div>`;
                             } 
                             // 2. BOOLEAN COMBO (Menu Vero/Falso)
@@ -2239,16 +2881,28 @@
                                 }
                             }
 
-                            html += `<div style="margin-bottom:8px; background: rgba(0,0,0,0.4); padding: 6px 8px; border-left: 3px solid #52a1ff; border-radius: 0 4px 4px 0; overflow-x: auto;">
-                                <strong style="color:#52a1ff; font-size:0.8rem;">"${key}"</strong>${typeHtml}
+                            let rowBg = hasMissing ? "rgba(220, 53, 69, 0.2)" : "rgba(0,0,0,0.4)";
+                            let rowBorder = hasMissing ? "#dc3545" : "#52a1ff";
+                            let rowLabel = hasMissing ? `"${key}" <span style="color:#ff6b6b; font-size:0.7rem; font-weight:bold; margin-left:5px;">[ERROR: MISSING]</span>` : `"${key}"`;
+
+                            html += `<div style="margin-bottom:8px; background: ${rowBg}; padding: 6px 8px; border-left: 3px solid ${rowBorder}; border-radius: 0 4px 4px 0; overflow-x: auto;">
+                                <strong style="color:${rowBorder}; font-size:0.8rem;">${rowLabel}</strong>${typeHtml}
                                 ${configHtml}
                             </div>`;
                         }
                     };
                     
                     if(schema.input) {
+                        window._nodepadHasMissingFiles = false;
                         processInputs(schema.input.required, "Required");
                         processInputs(schema.input.optional, "Optional");
+                        if (window._nodepadHasMissingFiles) {
+                            const st = document.getElementById('raw-node-status');
+                            if (st) {
+                                st.className = 'node-editor-status error';
+                                st.innerHTML = '⚠️ ERROR: Missing local file detected in this node! Check the dictionary on the left.';
+                            }
+                        }
                     } else {
                         html += `<div style="color:#888;">No inputs defined.</div>`;
                     }
@@ -2335,7 +2989,7 @@ function closeRemixModal() {
         }
     }
     
-    function submitRemix(actionType) {
+    async function submitRemix(actionType) {
         let btn;
         if (actionType === 'api') btn = document.getElementById('remix-submit-btn');
         else if (actionType === 'copy') btn = document.getElementById('remix-copy-btn');
@@ -2462,10 +3116,58 @@ function closeRemixModal() {
         else if ((actionType === 'copy' || actionType === 'download') && currentRemixData.has_api) chosenWfType = 'api';
         else chosenWfType = 'api';
 
-        const formData = buildFormData(actionType, false);
+        let convertToUi = false;
+        if ((actionType === 'copy' || actionType === 'download') && chosenWfType === 'api') {
+            const choice = await new Promise(resolve => {
+                const html = `
+                    <div style="display:flex; flex-direction:column; gap:10px; margin-top:15px;">
+                        <button class="glass-btn active-blue" onclick="document.getElementById('sg-dialog-btn-cancel').click(); window._remixFormatChoice='convert';${actionType === 'copy' ? ' window._armAsyncClipboardCopy();' : ''}">✨ Yes, convert to UI Format</button>
+                        <button class="glass-btn" onclick="document.getElementById('sg-dialog-btn-cancel').click(); window._remixFormatChoice='keep';">📄 No, keep API Format</button>
+                    </div>
+                `;
+                window._remixFormatChoice = 'cancel';
+                window.sgDialog({
+                    type: 'custom', title: 'Format Conversion',
+                    msg: 'This workflow is currently in API format.<br>Do you want to convert it to a visual ComfyUI workspace format (UI Format) so you can drag and drop it into the canvas?',
+                    customHtml: html, cancelText: 'Cancel'
+                }).then(() => resolve(window._remixFormatChoice));
+                const btnOk = document.getElementById('sg-dialog-btn-ok');
+                if(btnOk) btnOk.style.display = 'none';
+            });
+            const btnOk = document.getElementById('sg-dialog-btn-ok');
+            if(btnOk) btnOk.style.display = '';
+            if (choice === 'cancel') {
+                btn.innerHTML = origHtml;
+                document.getElementById('remix-submit-btn').disabled = false;
+                document.getElementById('remix-copy-btn').disabled = false;
+                document.getElementById('remix-dl-btn').disabled = false;
+                return;
+            }
+            convertToUi = (choice === 'convert');
+        }
 
-        // --- MEMORY EFFICIENT FETCH FOR COPY & DOWNLOAD ---
+        const backendAction = convertToUi ? 'copy' : actionType;
+        const formData = buildFormData(backendAction, false);
+
+        // Central Loading Overlay System
+        const toggleCentralLoader = (show, msg='') => {
+            let el = document.getElementById('remix-central-loader');
+            if (!el) {
+                const p = document.querySelector('.remix-panel');
+                if(!p) return;
+                el = document.createElement('div');
+                el.id = 'remix-central-loader';
+                el.style.cssText = 'position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); backdrop-filter:blur(5px); z-index:11000; display:none; flex-direction:column; justify-content:center; align-items:center; border-radius:16px; transition:opacity 0.2s;';
+                el.innerHTML = '<div class="loader" style="margin-bottom:20px; width:60px; height:60px;"></div><div id="remix-central-loader-text" style="color:white; font-weight:bold; font-size:1.1rem; text-align:center;"></div>';
+                p.appendChild(el);
+            }
+            if(show) { document.getElementById('remix-central-loader-text').innerHTML = msg; el.style.display='flex'; }
+            else { el.style.display='none'; }
+        };
+
         if (actionType === 'copy' || actionType === 'download') {
+            if(convertToUi) toggleCentralLoader(true, '⏳ Preparing request...');
+
             fetch('/galleryout/api/remix/submit', { method: 'POST', body: formData })
             .then(async res => {
                 if (!res.ok) {
@@ -2477,37 +3179,67 @@ function closeRemixModal() {
                     throw new Error(errMsg);
                 }
 
-                const returnedType = res.headers.get('X-Workflow-Type') || chosenWfType;
-
-                if (actionType === 'download') {
-                    // Fetch as binary Blob to bypass JavaScript string memory limits
-                    const blob = await res.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    
-                    let filename = `remixed_${remixTargetFile.name}.json`;
-                    const disp = res.headers.get('Content-Disposition');
-                    if (disp && disp.includes('filename=')) {
-                        filename = disp.split('filename=')[1].replace(/"/g, '');
+                let returnedType = res.headers.get('X-Workflow-Type') || chosenWfType;
+                if (convertToUi) {
+                    let jsonText = await res.text();
+                    if (!window._remixObjectInfo || Object.keys(window._remixObjectInfo).length === 0) {
+                        showRemixStatus('⏳ Loading ComfyUI Dictionary...', null);
+                        toggleCentralLoader(true, '⏳ Downloading Dictionary...<br><span style="font-size:0.85rem; color:var(--primary-color); font-weight:normal;">Interrogating ComfyUI Server</span>');
+                        const ok = await window.fetchNodeDictionary();
+                        if (!ok || !window._remixObjectInfo || Object.keys(window._remixObjectInfo).length === 0) throw new Error("Dictionary load failed.");
                     }
+                    showRemixStatus('⏳ Converting API workflow to UI format...', null);
+                    toggleCentralLoader(true, '⚙️ Converting workflow...<br><span style="font-size:0.85rem; color:var(--primary-color); font-weight:normal;">Rebuilding visual nodes</span>');
                     
-                    a.download = filename;
-                    document.body.appendChild(a); 
-                    a.click(); 
-                    document.body.removeChild(a);
-                    window.URL.revokeObjectURL(url);
-                    showRemixStatus("JSON file generated and downloaded!", true);
+                    // Allow UI to repaint
+                    await new Promise(r => setTimeout(r, 50));
+
+                    try {
+                        const apiData = JSON.parse(jsonText);
+                        const uiWorkflow = window.apiToUiWorkflow(apiData, window._remixObjectInfo);
+                        jsonText = JSON.stringify(uiWorkflow, null, 2);
+                        returnedType = 'ui';
+                    } catch(e) { throw new Error("Conversion failed: " + e.message); }
+
+                    toggleCentralLoader(false);
+
+                    if (actionType === 'download') {
+                        let filename = `remixed_${remixTargetFile.name.replace(/\.[^.]+$/, '')}.json`;
+                        window._downloadWorkflowJson(jsonText, filename);
+                        showRemixStatus("✅ UI Workflow converted and downloaded!", true, true);
+                        setTimeout(() => { if(window.askToOpenComfyUI) window.askToOpenComfyUI(); }, 400);
+                    } else { 
+                        await remixCopyToClipboard(jsonText, returnedType); 
+                        setTimeout(() => { if(window.askToOpenComfyUI) window.askToOpenComfyUI(); }, 400);
+                    }
                 } else {
-                    // Copy action (Extract text directly)
-                    const jsonText = await res.text();
-                    remixCopyToClipboard(jsonText, returnedType);
+                    toggleCentralLoader(false);
+                    if (actionType === 'download') {
+                        const blob = await res.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        let filename = `remixed_${remixTargetFile.name}.json`;
+                        const disp = res.headers.get('Content-Disposition');
+                        if (disp && disp.includes('filename=')) filename = disp.split('filename=')[1].replace(/"/g, '');
+                        a.download = filename;
+                        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                        showRemixStatus("✅ JSON file generated and downloaded!", true);
+                        setTimeout(() => { if(window.askToOpenComfyUI) window.askToOpenComfyUI(); }, 400);
+                    } else {
+                        const jsonText = await res.text();
+                        await remixCopyToClipboard(jsonText, returnedType);
+                        setTimeout(() => { if(window.askToOpenComfyUI) window.askToOpenComfyUI(); }, 400);
+                    }
                 }
             })
             .catch(err => {
+                toggleCentralLoader(false);
                 showRemixStatus(err.message || "Network Error: Failed to communicate with the Gallery Server.", false);
             })
             .finally(() => {
+                toggleCentralLoader(false);
                 btn.innerHTML = origHtml;
                 document.getElementById('remix-submit-btn').disabled = false;
                 document.getElementById('remix-copy-btn').disabled = false;
@@ -2538,6 +3270,10 @@ function closeRemixModal() {
                                     successMsg += `<br><small style="color:#aaa;">📁 Output will be saved in <code>${folder}</code> with prefix <code>${prefix}</code></small>`;
                                 }
                                 showRemixStatus(successMsg, true, true);
+                            }
+                            if (data.job_id && data.job_id !== 'Unknown') {
+                                const targetUrl = document.getElementById('remix-comfy-url') ? document.getElementById('remix-comfy-url').value.trim() : window._remixServerDefaultUrl;
+                                window.monitorComfyJob(data.job_id, targetUrl);
                             }
                         } else {
                             let stopMsg = genCount > 1 && i > 0
@@ -2628,6 +3364,10 @@ function closeRemixModal() {
             const data = await res.json();
             if (data.status === 'success') {
                 showRemixStatus(data.message, true, true);
+                if (data.job_id && data.job_id !== 'Unknown') {
+                    const targetUrl = document.getElementById('remix-comfy-url') ? document.getElementById('remix-comfy-url').value.trim() : window._remixServerDefaultUrl;
+                    window.monitorComfyJob(data.job_id, targetUrl);
+                }
             } else {
                 showRemixStatus('Apply failed: ' + data.message, false);
             }
@@ -2989,5 +3729,1356 @@ function closeRemixModal() {
         let passId = window._isToolsSession ? 'tools' : (remixTargetFile ? remixTargetFile.id : null);
         openRemixModal(passId, window._remixCompanionPath, filename);
     }
+
+
+    // --- LORA SYNERGY™, HEALING & JOB MONITORING SYSTEM ---
+
+    window.showLoraSynergyHelp = function() {
+        const helpHtml = `
+        <div style="font-size:0.9rem; color:#ddd; line-height:1.5;">
+            <p><strong>LoRA Synergy™</strong> needs to read your local model files to extract metadata, preview images, and determine architecture compatibility offline.</p>
+            
+            <div style="background:rgba(142, 68, 173, 0.1); border-left:3px solid #8e44ad; padding:10px; margin-bottom:15px; border-radius:4px;">
+                <strong style="color:#d2b4de;">💡 Highly Recommended: ComfyUI-Lora-Manager</strong><br>
+                <span style="font-size:0.85rem; color:#bbb;">While LoRA Synergy works on its own, it achieves its full potential when paired with the <strong>ComfyUI-Lora-Manager</strong> custom node by <em>willmiao</em>. If installed, Synergy will automatically read its metadata to display beautiful thumbnails, fetch CivitAI trigger words, and provide direct links to the model pages!</span><br>
+                <a href="https://github.com/willmiao/ComfyUI-Lora-Manager" target="_blank" style="color:#52a1ff; font-size:0.8rem; text-decoration:none; font-weight:bold; margin-top:5px; display:inline-block;">🔗 View on GitHub</a>
+            </div>
+
+            <div style="background:rgba(46, 204, 113, 0.1); border-left:3px solid #2ecc71; padding:10px; margin-bottom:15px; border-radius:4px;">
+                <strong style="color:#2ecc71;">Standard Setup (No action required)</strong><br>
+                By default, SmartGallery automatically finds your models by looking into your ComfyUI <code>models/</code> folder. If you see preview images and architecture matches, everything is working perfectly!
+            </div>
+            <div style="background:rgba(243, 156, 18, 0.1); border-left:3px solid #f39c12; padding:10px; border-radius:4px;">
+                <strong style="color:#f39c12;">Advanced / Docker / Stability Matrix</strong><br>
+                If you use isolated Docker containers, network drives, or <code>extra_model_paths.yaml</code>, SmartGallery might not find your files automatically. To fix this, set the following Environment Variables before starting the SmartGallery server:<br><br>
+                <ul style="margin:5px 0; padding-left:20px; color:#aaa; font-family:monospace; line-height:1.6;">
+                    <li><strong style="color:#fff;">BASE_MODELS_PATH</strong> <span style="font-family:sans-serif;font-size:0.8rem;">(Use if you moved the entire models folder)</span></li>
+                    <li><strong style="color:#fff;">LORAS_PATH</strong> <span style="font-family:sans-serif;font-size:0.8rem;">(Granular control for LoRAs)</span></li>
+                    <li><strong style="color:#fff;">CHECKPOINTS_PATH</strong> <span style="font-family:sans-serif;font-size:0.8rem;">(Granular control for Checkpoints)</span></li>
+                    <li><strong style="color:#fff;">UNET_PATH</strong> <span style="font-family:sans-serif;font-size:0.8rem;">(Granular control for FLUX/SD3 UNETs)</span></li>
+                </ul>
+            </div>
+        </div>`;
+        window.sgDialog({title: 'LoRA Synergy™ Configuration', customHtml: helpHtml, okText: 'Got it!'});
+    };
+
+    window.monitorComfyJob = function(jobId, targetUrl) {
+        let attempts = 0;
+        const maxAttempts = 300; 
+        let isDone = false;
+        let lastProgress = null;
+
+        let ws = null;
+        try {
+            const wsProtocol = targetUrl.startsWith('https') ? 'wss://' : 'ws://';
+            const cleanUrl = targetUrl.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+            const clientId = Math.random().toString(36).substring(2, 15);
+            ws = new WebSocket(`${wsProtocol}${cleanUrl}/ws?clientId=${clientId}`);
+            
+            ws.onmessage = function(event) {
+                if (isDone) return;
+                if (typeof event.data === 'string') {
+                    try {
+                        const msg = JSON.parse(event.data);
+                        if (msg.type === 'progress') {
+                            if (!msg.data.prompt_id || msg.data.prompt_id === jobId) {
+                                const val = msg.data.value;
+                                const max = msg.data.max;
+                                if (max > 0) {
+                                    const pct = Math.round((val / max) * 100);
+                                    lastProgress = pct;
+                                    showRemixStatus(`⏳ <strong>Generation in progress... <span style="color:var(--primary-color);">${pct}%</span></strong><br><small>Job ${jobId} is executing.</small>`, null, true);
+                                }
+                            }
+                        } else if (msg.type === 'executing' && msg.data.node !== null) {
+                            if (!msg.data.prompt_id || msg.data.prompt_id === jobId) {
+                                if (lastProgress === null) {
+                                    showRemixStatus(`⏳ <strong>Generation in progress...</strong><br><small>Processing Node: ${msg.data.node}</small>`, null, true);
+                                }
+                            }
+                        }
+                    } catch(e) {}
+                }
+            };
+        } catch(e) {}
+
+        const interval = setInterval(async () => {
+            if (isDone) {
+                clearInterval(interval);
+                if (ws) ws.close();
+                return;
+            }
+            attempts++;
+            try {
+                const res = await fetch('/galleryout/api/remix/job_status/' + jobId, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({target_url: targetUrl})
+                });
+                const data = await res.json();
+                
+                if (data.status === 'error') {
+                    isDone = true;
+                    showRemixStatus(`❌ <strong>Execution Crashed:</strong><br><span style="color:#ffaaaa;">${data.message}</span>`, false, true);
+                } else if (data.status === 'completed') {
+                    isDone = true;
+                    showRemixStatus(`✅ <strong>Generation Completed!</strong><br><small>Job ${jobId} finished successfully.</small>`, true, true);
+                } else if (data.status === 'running') {
+                    if (lastProgress === null) {
+                        showRemixStatus(`⏳ <strong>Generation in progress...</strong><br><small>Job ${jobId} is currently executing in ComfyUI.</small>`, null, true);
+                    }
+                } else if (data.status === 'pending') {
+                    showRemixStatus(`⏳ <strong>Job Queued</strong><br><small>Waiting in line... (Position: ${data.position})</small>`, null, true);
+                } else if (data.status === 'vanished') {
+                    if (attempts > 3) {
+                        isDone = true;
+                        showRemixStatus(`⚠️ <strong>Job Vanished:</strong><br><span style="color:#ffaaaa;">Job ${jobId} is no longer in the queue or history. It may have been cleared.</span>`, false, true);
+                    }
+                }
+                
+                if (attempts >= maxAttempts && !isDone) {
+                    isDone = true;
+                    showRemixStatus(`⚠️ <strong>Monitoring Timeout:</strong><br><span style="color:#f39c12;">Taking a very long time. Please check ComfyUI directly.</span>`, false, true);
+                }
+            } catch(e) {
+                if (attempts >= maxAttempts) {
+                    isDone = true;
+                    if (ws) ws.close();
+                }
+            }
+        }, 2000);
+    };
+
+    window.updateLoraActions = function() {
+        const targetSel = document.getElementById('lora-target-select');
+        const actionBox = document.getElementById('lora-action-radios');
+        const selectedOpt = targetSel.options[targetSel.selectedIndex];
+        const clipStrContainer = document.getElementById('lora-clip-container');
+        
+        if (selectedOpt && selectedOpt.dataset.type && selectedOpt.dataset.type.includes('LoraLoader')) {
+            actionBox.style.display = 'flex';
+        } else {
+            actionBox.style.display = 'none';
+            document.querySelector('input[name="lora_action"][value="chain"]').checked = true;
+        }
+
+        if (selectedOpt && (selectedOpt.dataset.type === 'UNETLoader' || selectedOpt.dataset.type === 'LoraLoaderModelOnly')) {
+            if(clipStrContainer) clipStrContainer.style.display = 'none';
+        } else {
+            if(clipStrContainer) clipStrContainer.style.display = 'block';
+        }
+    };
+
+    window.selectLoraOption = function(val) {
+        document.getElementById('lora-injector-select').value = val;
+        document.getElementById('lora-search-input').value = val;
+        
+        document.querySelectorAll('.lora-option').forEach(el => {
+            if(el.dataset.value === val) {
+                el.style.color = '#f39c12';
+                el.style.fontWeight = 'bold';
+            } else {
+                el.style.color = '#ddd';
+                el.style.fontWeight = 'normal';
+            }
+        });
+        window.fetchLoraTriggers(val);
+    };
+
+    window.filterLoraList = function() {
+        const term = document.getElementById('lora-search-input').value.toLowerCase();
+        const options = document.querySelectorAll('.lora-option');
+        options.forEach(opt => {
+            if (opt.dataset.value.toLowerCase().includes(term)) {
+                opt.style.display = 'block';
+            } else {
+                opt.style.display = 'none';
+            }
+        });
+        
+        document.querySelectorAll('.lora-optgroup').forEach(group => {
+            let hasVisible = false;
+            let next = group.nextElementSibling;
+            while(next && next.classList.contains('lora-option')) {
+                if (next.style.display !== 'none') { hasVisible = true; break; }
+                next = next.nextElementSibling;
+            }
+            group.style.display = hasVisible ? 'block' : 'none';
+        });
+    };
+
+    window.buildGroupHtml = function(label, items, color) {
+        if (!items || items.length === 0) return '';
+        let countLabel = `${label} (${items.length})`;
+        
+        let g = '';
+        let isCollapsible = label.toUpperCase().includes('INCOMPATIBLE');
+        
+        if (isCollapsible) {
+            g += `<details class="lora-optgroup" style="background: #151515; border-bottom: 1px solid #333;"><summary style="padding: 6px 10px; font-size: 0.7rem; color: ${color}; font-weight: bold; cursor: pointer; text-transform: uppercase; outline: none;">${countLabel}</summary><div>`;
+        } else {
+            g += `<div class="lora-optgroup" style="padding: 6px 10px; font-size: 0.7rem; color: ${color}; background: #151515; font-weight: bold; position: sticky; top: 0; border-bottom: 1px solid #333; text-transform: uppercase; z-index: 10;">${countLabel}</div>`;
+        }
+        
+        items.forEach(l => {
+            let jsSafe = l.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            g += `<div class="lora-option" data-value="${escapeHTML(l)}" onclick="window.selectLoraOption('${jsSafe}')" onmouseover="this.style.background='#222'" onmouseout="this.style.background='transparent'" style="padding: 8px 12px; cursor: pointer; font-size: 0.85rem; color: #ddd; word-break: break-all; border-bottom: 1px solid #1a1a1a;">${escapeHTML(l)}</div>`;
+        });
+        
+        if (isCollapsible) g += `</div></details>`;
+        return g;
+    };
+
+    window.openLoraInjector = async function(btnNode) {
+        if (btnNode) {
+            btnNode.dataset.origText = btnNode.innerHTML;
+            btnNode.innerHTML = '⏳ Scanning...';
+            btnNode.disabled = true;
+        }
+
+        const wfType = document.getElementById('remix-raw-type') ? document.getElementById('remix-raw-type').value : 'api';
+        if (wfType !== 'api') {
+            if(btnNode) { btnNode.innerHTML = btnNode.dataset.origText; btnNode.disabled = false; }
+            await window.sgDialog({title: 'Format Required', msg: 'LoRA Synergy™ is only supported in API Format.<br>Please switch to API Format in the toolbar above.'});
+            return;
+        }
+
+        if (window.rawNodeEditor_commitCurrent) window.rawNodeEditor_commitCurrent(true);
+        
+        let wf = {};
+        try {
+            const stitched = window.rawNodeEditor_stitch();
+            if(!stitched) throw new Error();
+            wf = JSON.parse(stitched);
+        } catch(e) {
+            if(btnNode) { btnNode.innerHTML = btnNode.dataset.origText; btnNode.disabled = false; }
+            await window.sgDialog({title: 'Syntax Error', msg: 'Fix JSON syntax errors in the Nodepad before proceeding.'});
+            return;
+        }
+
+        if (!window._remixObjectInfo || Object.keys(window._remixObjectInfo).length === 0) {
+            await window.fetchNodeDictionary();
+            if (!window._remixObjectInfo || Object.keys(window._remixObjectInfo).length === 0) {
+                if(btnNode) { btnNode.innerHTML = btnNode.dataset.origText; btnNode.disabled = false; }
+                await window.sgDialog({title: 'Connection Error', msg: 'Cannot reach ComfyUI.<br><br>LoRA Synergy requires ComfyUI to be running in order to scan your installed models. Please check your ComfyUI Server URL at the top of the page.'});
+                return;
+            }
+        }
+
+        let targetsHTML = '';
+        let detectedCkptName = null;
+        let targetCount = 0;
+
+        let sortedIds = [];
+        try { sortedIds = window.nodepad_get_sequence_order(); } catch(e) {}
+        let finalSortedIds = [];
+        for (let i of sortedIds) { if (wf[i]) finalSortedIds.push(i); }
+        for (let id in wf) { if (!finalSortedIds.includes(id)) finalSortedIds.push(id); }
+
+        for (let id of finalSortedIds) {
+            let node = wf[id];
+            let nType = node.class_type || '';
+            let title = (node._meta && node._meta.title) ? node._meta.title : nType;
+            
+            let nTypeLower = nType.toLowerCase();
+            let isModelLoader = nTypeLower.includes('checkpoint') || nTypeLower.includes('unet') || nTypeLower.includes('diffusion') || nTypeLower.includes('modelloader') || nTypeLower.includes('gguf');
+            
+            let modelName = 'Unknown Model';
+            
+            // SMART HEURISTIC: Check for model file extensions in inputs (safetensors, ckpt, pt, gguf)
+            if (node.inputs) {
+                for (let k in node.inputs) {
+                    let val = node.inputs[k];
+                    if (typeof val === 'string') {
+                        let vLower = val.toLowerCase();
+                        if (vLower.endsWith('.safetensors') || vLower.endsWith('.ckpt') || vLower.endsWith('.pt') || vLower.endsWith('.gguf')) {
+                            // Exclude LoRA loaders from being flagged as base model loaders
+                            if (!nTypeLower.includes('lora')) {
+                                isModelLoader = true;
+                                modelName = val;
+                                detectedCkptName = val;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (isModelLoader) {
+                // If we didn't find the name via heuristic, try the standard keys
+                if (modelName === 'Unknown Model' && node.inputs) {
+                    if (node.inputs.ckpt_name) {
+                        detectedCkptName = String(node.inputs.ckpt_name);
+                        modelName = detectedCkptName;
+                    } else if (node.inputs.unet_name) {
+                        detectedCkptName = String(node.inputs.unet_name);
+                        modelName = detectedCkptName;
+                    } else if (node.inputs.model_name) {
+                        detectedCkptName = String(node.inputs.model_name);
+                        modelName = detectedCkptName;
+                    }
+                }
+                targetsHTML += `<option value="${id}" data-type="${nType}">[Node ${id}] ${escapeHTML(title)} ➡️ ${escapeHTML(String(modelName))}</option>`;
+                targetCount++;
+            } else if (nTypeLower.includes('loraloader') || nTypeLower.includes('lora loader') || nTypeLower.includes('lora_loader')) {
+                let lName = node.inputs && node.inputs.lora_name ? String(node.inputs.lora_name) : 'Unknown';
+                targetsHTML += `<option value="${id}" data-type="${nType}">[Node ${id}] ${escapeHTML(title)} ➡️ ${escapeHTML(lName)}</option>`;
+                targetCount++;
+            }
+        }
+
+        if (targetCount === 0) {
+            if(btnNode) { btnNode.innerHTML = btnNode.dataset.origText; btnNode.disabled = false; }
+            await window.sgDialog({title: 'No Target Found', msg: 'No Checkpoint or LoRA nodes found in this graph.<br><br>Synergy requires a model source node to attach to.'});
+            return;
+        }
+
+        document.getElementById('lora-target-select').innerHTML = targetsHTML;
+        window.updateLoraActions();
+
+        document.getElementById('lora-injector-select').value = '';
+        document.getElementById('lora-search-input').value = '';
+        document.getElementById('lora-options-list').innerHTML = '<div style="padding:10px; color:#888; font-size:0.8rem; text-align:center;">Reading safetensors headers...</div>';
+        document.getElementById('lora-triggers-container').style.display = 'none';
+        document.getElementById('lora-preview-container').style.display = 'none';
+        document.getElementById('lora-civitai-link-container').style.display = 'none';
+        document.getElementById('lora-arch-badge').style.display = 'none';
+        
+        if(btnNode) { btnNode.innerHTML = btnNode.dataset.origText; btnNode.disabled = false; }
+        document.getElementById('remix-lora-overlay').style.display = 'flex';
+
+        let allLoras = [];
+        if (window._remixObjectInfo && window._remixObjectInfo['LoraLoader']) {
+            const inputs = window._remixObjectInfo['LoraLoader'].input.required;
+            if (inputs && inputs.lora_name && Array.isArray(inputs.lora_name[0])) {
+                allLoras = inputs.lora_name[0];
+            }
+        }
+
+        try {
+            const res = await fetch('/galleryout/api/remix/lora_intelligence', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ action: 'matchmaker', checkpoint: detectedCkptName || 'Unknown', all_loras: allLoras })
+            });
+            const data = await res.json();
+            
+            let html = '';
+            const cleanPaths = (arr) => arr ? arr.map(l => String(l).replace(/\\/g, '/')) : [];
+
+            if (data.status === 'success') {
+                const matchData = data.data;
+                const arch = data.detected_arch;
+                
+                if (arch && arch !== 'UNKNOWN') {
+                    const badge = document.getElementById('lora-arch-badge');
+                    badge.innerText = `Arch: ${arch}`;
+                    badge.style.display = 'inline-block';
+                    badge.style.color = '#2ecc71';
+                }
+
+                html += window.buildGroupHtml('🟢 Perfect Match (Safetensors Header)', matchData.perfect_match, '#2ecc71');
+                html += window.buildGroupHtml('🌟 Proven Match (Your DB History)', matchData.proven_match, '#f39c12');
+                html += window.buildGroupHtml('🔶 Possible Match (Name/Folder Inference)', matchData.possible_match, '#e67e22');
+                html += window.buildGroupHtml('⛔ Incompatible (Different Architecture)', matchData.incompatible, '#e74c3c');
+                
+            } else {
+                html += window.buildGroupHtml('📂 All Installed LoRAs', allLoras, '#52a1ff');
+            }
+            
+            document.getElementById('lora-options-list').innerHTML = html;
+        } catch(e) {
+            document.getElementById('lora-options-list').innerHTML = window.buildGroupHtml('📂 All Installed LoRAs', allLoras, '#52a1ff');
+        }
+    };
+
+    window.fetchLoraTriggers = async function(loraName) {
+        if (!loraName) return;
+        const container = document.getElementById('lora-triggers-container');
+        const civitaiBox = document.getElementById('lora-civitai-box');
+        const civitaiList = document.getElementById('lora-civitai-list');
+        const dbBox = document.getElementById('lora-db-box');
+        const dbList = document.getElementById('lora-db-list');
+        const noTrig = document.getElementById('lora-no-triggers');
+        const prevCont = document.getElementById('lora-preview-container');
+        const prevImg = document.getElementById('lora-preview-img');
+        const civitaiLinkCont = document.getElementById('lora-civitai-link-container');
+        const civitaiLinkBtn = document.getElementById('lora-civitai-link');
+        const loraManagerLinkBtn = document.getElementById('lora-manager-link');
+
+        civitaiBox.style.display = 'none';
+        dbBox.style.display = 'none';
+        noTrig.style.display = 'none';
+        prevCont.style.display = 'none';
+        civitaiLinkCont.style.display = 'none';
+        container.style.display = 'block';
+        noTrig.innerHTML = 'Scanning CivitAI metadata and DB history...';
+        noTrig.style.display = 'block';
+
+        window.copyTriggerWord = async function(btn, text, isDb) {
+            if (!window._savedTriggers) window._savedTriggers = new Set();
+            window._savedTriggers.add(text);
+            if (window.renderTriggerMemory) window.renderTriggerMemory();
+
+            await window._copyToClipboardCrossPlatform(text);
+            
+            const old = btn.dataset.origText || btn.innerText;
+            btn.dataset.origText = old; btn.innerText = '✅';
+            btn.style.background = isDb ? '#f39c12' : '#2ecc71'; btn.style.color = '#fff';
+            setTimeout(() => { btn.innerText = old; btn.style.background = isDb ? 'rgba(243, 156, 18, 0.15)' : 'rgba(46, 204, 113, 0.15)'; btn.style.color = '#eee'; }, 1000);
+        };
+
+        try {
+            const res = await fetch('/galleryout/api/remix/lora_intelligence', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ action: 'triggers', lora: loraName })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                noTrig.style.display = 'none';
+                let hasTriggers = false;
+
+                if (data.data.preview_image) {
+                    prevImg.src = data.data.preview_image;
+                    prevCont.style.display = 'flex';
+                }
+                
+                if (data.data.civitai_url) {
+                    civitaiLinkBtn.href = data.data.civitai_url;
+                    civitaiLinkBtn.style.display = 'block';
+                } else {
+                    civitaiLinkBtn.style.display = 'none';
+                }
+
+                const comfyUrl = document.getElementById('remix-comfy-url') ? document.getElementById('remix-comfy-url').value.trim() : window._remixServerDefaultUrl;
+                loraManagerLinkBtn.href = comfyUrl.replace(/\/$/, "") + "/loras";
+                
+                if (data.data.preview_image || data.data.civitai_url) {
+                    civitaiLinkCont.style.display = 'flex';
+                }
+
+                if (data.data.civitai_triggers && data.data.civitai_triggers.length > 0) {
+                    hasTriggers = true;
+                    let chips = '';
+                    data.data.civitai_triggers.forEach(t => {
+                        if(t.includes('{') || t.includes('}')) return;
+                        let safeT = escapeHTML(t).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                        chips += `<button type="button" onclick="window.copyTriggerWord(this, '${safeT}', false)" style="background:rgba(46, 204, 113, 0.15); border:1px solid #2ecc71; color:#eee; border-radius:12px; padding:4px 10px; font-size:0.75rem; cursor:pointer; transition:all 0.2s;" title="Copy official trigger">${escapeHTML(t)}</button>`;
+                    });
+                    civitaiList.innerHTML = chips;
+                    civitaiBox.style.display = 'block';
+                }
+
+                if (data.data.db_triggers && data.data.db_triggers.length > 0) {
+                    hasTriggers = true;
+                    let chips = '';
+                    data.data.db_triggers.forEach(t => {
+                        if(t.includes('{') || t.includes('}')) return;
+                        let safeT = escapeHTML(t).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+                        chips += `<button type="button" onclick="window.copyTriggerWord(this, '${safeT}', true)" style="background:rgba(243, 156, 18, 0.15); border:1px solid #f39c12; color:#eee; border-radius:12px; padding:4px 10px; font-size:0.75rem; cursor:pointer; transition:all 0.2s;" title="Copy historical trigger">${escapeHTML(t)}</button>`;
+                    });
+                    dbList.innerHTML = chips;
+                    dbBox.style.display = 'block';
+                }
+
+                if (!hasTriggers) {
+                    noTrig.innerHTML = 'No triggers found in CivitAI metadata or DB history.';
+                    noTrig.style.display = 'block';
+                }
+            }
+        } catch(e) {
+            noTrig.innerHTML = '<span style="color:#dc3545;">Error fetching synergy data.</span>';
+        }
+    };
+
+    window.executeLoraInjection = async function() {
+        let loraName = document.getElementById('lora-injector-select').value;
+        if (typeof loraName === 'string' && loraName.indexOf('://') === -1) {
+            let is_unc_slash = loraName.startsWith('//');
+            let is_unc_back = loraName.startsWith('\\\\');
+            loraName = loraName.replace(/\/+/g, '/');
+            loraName = loraName.replace(/\\+/g, '\\');
+            if (is_unc_slash && !loraName.startsWith('//')) {
+                loraName = '/' + loraName;
+            }
+            if (is_unc_back && !loraName.startsWith('\\\\')) {
+                loraName = '\\' + loraName;
+            }
+        }
+        const strModelRaw = document.getElementById('lora-str-model').value.replace(',', '.');
+        const strClipRaw = document.getElementById('lora-str-clip').value.replace(',', '.');
+        
+        const strModel = parseFloat(strModelRaw);
+        const strClip = parseFloat(strClipRaw);
+        
+        const targetId = document.getElementById('lora-target-select').value;
+        const actionRadio = document.querySelector('input[name="lora_action"]:checked');
+        const action = actionRadio ? actionRadio.value : 'chain';
+
+        if (!loraName) { await window.sgDialog({title: 'Action Required', msg: 'Please select a LoRA from the list.'}); return; }
+        if (!targetId) { await window.sgDialog({title: 'Error', msg: 'Invalid Injection Target.'}); return; }
+
+        let wf = {};
+        try { wf = JSON.parse(window.rawNodeEditor_stitch()); } catch(e) { return; }
+
+        let targetType = wf[targetId].class_type || '';
+        let isModelOnly = targetType === 'UNETLoader' || targetType === 'LoraLoaderModelOnly';
+
+        if (action === 'replace') {
+            if (wf[targetId] && wf[targetId].inputs) {
+                wf[targetId].inputs.lora_name = loraName;
+                wf[targetId].inputs.strength_model = strModel;
+                if (!isModelOnly) wf[targetId].inputs.strength_clip = strClip;
+                
+                let cleanTitle = loraName.split('/').pop().split('\\\\').pop().replace('.safetensors', '');
+                wf[targetId]._meta = { "title": "Injected LoRA (" + cleanTitle + ")" };
+                
+                window._remixRawApi = JSON.stringify(wf, null, 2);
+                document.getElementById('remix-lora-overlay').style.display = 'none';
+                window.rawNodeEditor_init();
+                
+                setTimeout(() => {
+                    const sortSel = document.getElementById('nodepad-sort-select');
+                    if(sortSel) { sortSel.value = 'flow'; window.rawNodeEditor_renderList(); }
+                    window.rawNodeEditor_selectNode(targetId);
+                    const activeEl = document.querySelector('.remix-node-item.active');
+                    if(activeEl) activeEl.scrollIntoView({behavior: 'smooth', block: 'center'});
+                    showRemixStatus(`⚡ LoRA Replaced Successfully!<br><small style="color:#aaa;">💡 Tip: Use <strong>📥 To ComfyUI</strong> to export a visual UI workflow for inspection.</small><br><span style="color:#52a1ff; font-weight:bold; font-size:0.85rem;">📝 Remember to find your Prompt node and add the trigger words of your selected LoRA!</span>`, true, true);
+                }, 100);
+            }
+            return;
+        }
+
+        let maxId = 0;
+        for (let id in wf) {
+            let numId = parseInt(id);
+            if (!isNaN(numId) && numId > maxId) maxId = numId;
+        }
+        let newIdStr = String(maxId + 10);
+        while (wf[newIdStr]) newIdStr = String(parseInt(newIdStr) + 1);
+
+        let newClassType = isModelOnly ? "LoraLoaderModelOnly" : "LoraLoader";
+        let newInputs = {
+            "lora_name": loraName,
+            "strength_model": strModel,
+            "model": [targetId, 0]
+        };
+        
+        if (!isModelOnly) {
+            newInputs["strength_clip"] = strClip;
+            newInputs["clip"] = [targetId, 1];
+        }
+
+        let cleanTitle = loraName.split('/').pop().split('\\\\').pop().replace('.safetensors', '');
+        wf[newIdStr] = {
+            "class_type": newClassType,
+            "_meta": { "title": "Injected LoRA (" + cleanTitle + ")" },
+            "inputs": newInputs
+        };
+
+        let wiredCount = 0;
+        for (let id in wf) {
+            if (id === newIdStr) continue;
+            let inputs = wf[id].inputs;
+            if (!inputs) continue;
+            for (let key in inputs) {
+                let val = inputs[key];
+                if (Array.isArray(val) && val.length >= 2) {
+                    if (String(val[0]) === String(targetId) && String(val[1]) === "0") {
+                        wf[id].inputs[key] = [newIdStr, 0]; wiredCount++;
+                    }
+                    if (!isModelOnly && String(val[0]) === String(targetId) && String(val[1]) === "1") {
+                        wf[id].inputs[key] = [newIdStr, 1]; wiredCount++;
+                    }
+                }
+            }
+        }
+
+        window._remixRawApi = JSON.stringify(wf, null, 2);
+        document.getElementById('remix-lora-overlay').style.display = 'none';
+        window.rawNodeEditor_init();
+        
+        setTimeout(() => {
+            const sortSel = document.getElementById('nodepad-sort-select');
+            if(sortSel) { sortSel.value = 'flow'; window.rawNodeEditor_renderList(); }
+            window.rawNodeEditor_selectNode(newIdStr);
+            const activeEl = document.querySelector('.remix-node-item.active');
+            if(activeEl) activeEl.scrollIntoView({behavior: 'smooth', block: 'center'});
+            showRemixStatus(`⚡ LoRA Synergy Attached! Rewired ${wiredCount} connections.<br><small style="color:#aaa;">💡 Tip: Use <strong>📥 To ComfyUI</strong> to export a visual UI workflow for inspection.</small><br><span style="color:#52a1ff; font-weight:bold; font-size:0.85rem;">📝 Remember to find your Prompt node and add the trigger words of your selected LoRA!</span>`, true, true);
+        }, 100);
+    };
+
+    window.bypassAndHealNode = async function(nodeIdToDelete) {
+        const confirmed = await window.sgDialog({
+            type: 'confirm', title: 'Remove & Heal Graph',
+            msg: `Are you sure you want to delete Node ${nodeIdToDelete} and reconnect its wires automatically?`,
+            okText: 'Yes, Delete & Heal'
+        });
+        if (!confirmed) return;
+
+        if (window.rawNodeEditor_commitCurrent) window.rawNodeEditor_commitCurrent(true);
+        let wf = {};
+        try { wf = JSON.parse(window.rawNodeEditor_stitch()); } catch(e) { return; }
+
+        let targetNode = wf[nodeIdToDelete];
+        if (!targetNode || !targetNode.inputs) return;
+
+        let isModelOnly = targetNode.class_type === 'LoraLoaderModelOnly';
+        let upstreamModel = targetNode.inputs.model; 
+        let upstreamClip = targetNode.inputs.clip;
+
+        let healedCount = 0;
+        for (let id in wf) {
+            if (id === nodeIdToDelete) continue;
+            let inputs = wf[id].inputs;
+            if (!inputs) continue;
+            for (let key in inputs) {
+                let val = inputs[key];
+                if (Array.isArray(val) && val.length >= 2 && String(val[0]) === String(nodeIdToDelete)) {
+                    if (String(val[1]) === "0" && upstreamModel) { 
+                        wf[id].inputs[key] = JSON.parse(JSON.stringify(upstreamModel));
+                        healedCount++;
+                    }
+                    if (!isModelOnly && String(val[1]) === "1" && upstreamClip) { 
+                        wf[id].inputs[key] = JSON.parse(JSON.stringify(upstreamClip));
+                        healedCount++;
+                    }
+                }
+            }
+        }
+
+        delete wf[nodeIdToDelete];
+
+        window._remixRawApi = JSON.stringify(wf, null, 2);
+        window._rawCurrentId = null; 
+        window.rawNodeEditor_init();
+        window.rawNodeEditor_render();
+        
+        // FIX GHOSTING
+        const hdr = document.getElementById('raw-node-header');
+        if (hdr) hdr.innerHTML = '<span style="color:#444; font-style:italic;">← Select a node from the list</span>';
+        const ta = document.getElementById('raw-node-textarea');
+        if (ta) ta.value = '';
+        const st = document.getElementById('raw-node-status');
+        if (st) st.innerHTML = 'Select a node to begin editing.';
+        const coords = document.getElementById('nodepad-coords');
+        if (coords) coords.style.display = 'none';
+        
+        showRemixStatus(`🗑️ Node ${nodeIdToDelete} deleted. Graph healed (${healedCount} connections fixed).`, true);
+    };
+
+    // ============================================================
+    // API → UI WORKFLOW CONVERTER
+    // ============================================================
+
+    // Converts an API-format workflow dictionary into a ComfyUI
+    // UI-format workflow object with auto-generated node positions
+    // and reconstructed links.
+    //
+    // Key design decisions:
+    //
+    // 1. NODE ID MAPPING:
+    //    API node IDs can be compound strings like "98:9".
+    //    We assign sequential integers and maintain idMap.
+    //
+    // 2. CONNECTION vs WIDGET DETECTION:
+    //    Array value = connection. Scalar value = widget.
+    //
+    // 3. DEFAULT VALUE INSERTION:
+    //    API format omits widgets using defaults. We insert
+    //    schema defaults to maintain widgets_values alignment.
+    //
+    // 4. EXTRA INPUTS (not in schema):
+    //    Some custom nodes define inputs dynamically at runtime
+    //    (e.g., CustomCombo with option1-4). These are NOT in the
+    //    object_info schema but ARE present in the API JSON.
+    //    For scalar extra inputs, we create PrimitiveNode instances
+    //    and connect them to the target node's input slots. This is
+    //    exactly what ComfyUI does when loading an API JSON directly.
+    //    The PrimitiveNode output type MUST match the guessed type
+    //    (STRING, INT, FLOAT, BOOLEAN) — using '*' causes ComfyUI
+    //    to silently ignore the connection.
+    //
+    // 5. control_after_generate:
+    //    ComfyUI auto-adds this combo widget after seed inputs.
+    //    We insert a "fixed" placeholder.
+    window.apiToUiWorkflow = function(apiData, objectInfo) {
+        const nodes = [];
+        const links = [];
+        let linkId = 1;
+
+        const inputSlotMapByNode = {};
+        const nodeIds = Object.keys(apiData);
+
+        // STEP 0: Assign unique sequential integer IDs.
+        const idMap = {};
+        let nextNodeId = 1;
+
+        nodeIds.forEach(id => {
+            idMap[id] = nextNodeId++;
+        });
+
+        // STEP 1: Topological sort for auto-layout.
+        const sorted = [];
+        const visited = new Set();
+        const visiting = new Set();
+
+        function visit(id) {
+            if (visited.has(id)) return;
+            if (visiting.has(id)) return;
+            visiting.add(id);
+
+            const node = apiData[id];
+            if (node && node.inputs) {
+                for (let key in node.inputs) {
+                    const val = node.inputs[key];
+                    if (Array.isArray(val) && val.length >= 2) {
+                        const sourceId = String(val[0]);
+                        if (apiData[sourceId]) visit(sourceId);
+                    }
+                }
+            }
+
+            visiting.delete(id);
+            visited.add(id);
+            sorted.push(id);
+        }
+        nodeIds.forEach(id => visit(id));
+
+        // Layout constants
+        const COL_SPACING = 340;
+        const ROW_SPACING = 200;
+        const MAX_COLS = 5;
+
+        // Helper: checks if an input name is a seed-type widget.
+        function isSeedWidget(name, typeDef) {
+            if (typeDef !== 'INT') return false;
+            return name === 'seed' || name === 'noise_seed';
+        }
+
+        // Helper: determines if a schema type represents a connection.
+        function isSchemaConnectionType(typeDef) {
+            if (typeof typeDef !== 'string') return false;
+            if (typeDef !== typeDef.toUpperCase()) return false;
+            var primitives = ['INT', 'FLOAT', 'STRING', 'BOOLEAN'];
+            if (primitives.indexOf(typeDef) !== -1) return false;
+            var pseudoTypes = ['COMBO'];
+            if (pseudoTypes.indexOf(typeDef) !== -1) return false;
+            return true;
+        }
+
+        // Helper: extracts the default value for a widget from schema.
+        function getSchemaDefault(inputDef) {
+            if (!Array.isArray(inputDef) || inputDef.length === 0) {
+                return '';
+            }
+            var typeDef = inputDef[0];
+            var opts = inputDef.length > 1 ? inputDef[1] : {};
+            if (typeof typeDef === 'string' && inputDef.length === 1) {
+                return typeDef;
+            }
+            if (Array.isArray(typeDef)) {
+                return typeDef.length > 0 ? typeDef[0] : '';
+            }
+            if (opts && typeof opts === 'object' && 'default' in opts) {
+                return opts.default;
+            }
+            if (typeDef === 'INT' || typeDef === 'FLOAT') return 0;
+            if (typeDef === 'STRING') return '';
+            if (typeDef === 'BOOLEAN') return false;
+            return '';
+        }
+
+        // Helper: guesses a ComfyUI type from a JavaScript value.
+        // Used for extra inputs not in the schema.
+        // CRITICAL: the returned type must match exactly what
+        // ComfyUI expects for the PrimitiveNode output, otherwise
+        // the connection is silently ignored.
+        function guessType(val) {
+            if (typeof val === 'number') {
+                return Number.isInteger(val) ? 'INT' : 'FLOAT';
+            }
+            if (typeof val === 'boolean') {
+                return 'BOOLEAN';
+            }
+            return 'STRING';
+        }
+
+        // STEP 2: Create nodes with auto-layout (Phase 1)
+        const nodeMap = {};
+
+        sorted.forEach((nodeId, index) => {
+            const node = apiData[nodeId];
+            if (!node) return;
+
+            const classType = node.class_type || 'Unknown';
+            const title = (node._meta && node._meta.title) ? node._meta.title : classType;
+
+            const col = index % MAX_COLS;
+            const row = Math.floor(index / MAX_COLS);
+            const x = 100 + col * COL_SPACING;
+            const y = 100 + row * ROW_SPACING;
+
+            const schema = objectInfo && objectInfo[classType];
+
+            // Assign numeric ID early (needed for PrimitiveNode links)
+            const numericId = idMap[nodeId];
+
+            const uiInputs = [];
+            const widgetValues = [];
+            const inputSlotIdx = {};
+            var processedInputs = {};
+
+            if (schema && schema.input) {
+                const required = schema.input.required || {};
+                const optional = schema.input.optional || {};
+                const hidden = schema.input.hidden || {};
+
+                const allInputs = {};
+                for (let k in required) allInputs[k] = required[k];
+                for (let k in optional) allInputs[k] = optional[k];
+
+                for (let inputName in allInputs) {
+                    const inputDef = allInputs[inputName];
+                    const typeDef = Array.isArray(inputDef) ? inputDef[0] : inputDef;
+                    const val = node.inputs ? node.inputs[inputName] : undefined;
+
+                    processedInputs[inputName] = true;
+
+                    var isConnection = false;
+                    if (Array.isArray(val)) {
+                        isConnection = true;
+                    } else if (val === undefined) {
+                        isConnection = isSchemaConnectionType(typeDef);
+                    } else {
+                        isConnection = false;
+                    }
+
+                    if (isConnection) {
+                        inputSlotIdx[inputName] = uiInputs.length;
+                        var slotType = typeDef;
+                        if (!isSchemaConnectionType(typeDef) && typeof typeDef === 'string') {
+                            slotType = typeDef;
+                        } else if (typeof typeDef !== 'string') {
+                            slotType = '*';
+                        }
+                        uiInputs.push({
+                            name: inputName,
+                            type: slotType,
+                            link: null
+                        });
+                    }
+
+                    var opts = (Array.isArray(inputDef) && inputDef.length > 1) ? inputDef[1] : {};
+                    var hasWidget = !isSchemaConnectionType(typeDef) && !(opts && opts.forceInput);
+
+                    if (hasWidget) {
+                        var widgetVal = val;
+                        if (Array.isArray(val) || val === undefined) {
+                            widgetVal = getSchemaDefault(inputDef);
+                        }
+                        widgetValues.push(widgetVal);
+
+                        if (isSeedWidget(inputName, typeDef)) {
+                            widgetValues.push('fixed');
+                        }
+                    }
+                }
+
+                for (let hName in hidden) {
+                    if (!(hName in allInputs)) {
+                        processedInputs[hName] = true;
+                        inputSlotIdx[hName] = uiInputs.length;
+                        uiInputs.push({
+                            name: hName,
+                            type: '*',
+                            link: null
+                        });
+                    }
+                }
+            }
+
+            // ------------------------------------------------
+            // EXTRA INPUTS: process API JSON inputs that are NOT
+            // in the schema. Some custom nodes (e.g., CustomCombo)
+            // define inputs dynamically at runtime.
+            //
+            // For scalar values: create a PrimitiveNode and connect
+            // it to the target node's input slot. The PrimitiveNode
+            // output type MUST be the guessed type (STRING, INT,
+            // FLOAT, BOOLEAN), NOT '*'. Using '*' causes ComfyUI
+            // to silently ignore the connection, leaving the input
+            // without a value and causing downstream errors like
+            // "Cannot convert empty string to number".
+            //
+            // For array values: add an input slot (link created in
+            // Phase 2).
+            // ------------------------------------------------
+            if (node.inputs) {
+                for (let inputName in node.inputs) {
+                    if (processedInputs[inputName]) continue;
+
+                    var val = node.inputs[inputName];
+                    processedInputs[inputName] = true;
+
+                    if (Array.isArray(val)) {
+                        // Extra connection not in schema
+                        inputSlotIdx[inputName] = uiInputs.length;
+                        uiInputs.push({
+                            name: inputName,
+                            type: '*',
+                            link: null
+                        });
+                    } else {
+                        // Extra scalar input: append to widgets_values.
+                        // This safely restores dynamic parameters (like CustomCombo options)
+                        // without crashing the UI graph with unwanted PrimitiveNodes.
+                        widgetValues.push(val);
+                    }
+                }
+            }
+
+            inputSlotMapByNode[nodeId] = inputSlotIdx;
+
+            // Build outputs from schema
+            const uiOutputs = [];
+            if (schema && schema.output) {
+                const outputs = Array.isArray(schema.output) ? schema.output : [schema.output];
+                const outputNames = schema.output_name ?
+                    (Array.isArray(schema.output_name) ? schema.output_name : [schema.output_name]) :
+                    outputs;
+
+                outputs.forEach((outType, idx) => {
+                    uiOutputs.push({
+                        name: outputNames[idx] || outType,
+                        type: outType,
+                        links: [],
+                        slot_index: idx
+                    });
+                });
+            }
+
+            const uiNode = {
+                id: numericId,
+                type: classType,
+                pos: [x, y],
+                size: [300, 100],
+                flags: {},
+                order: index,
+                mode: 0,
+                inputs: uiInputs,
+                outputs: uiOutputs,
+                properties: {'Node name for S&R': classType},
+                widgets_values: widgetValues,
+                title: title
+            };
+
+            nodes.push(uiNode);
+            nodeMap[nodeId] = uiNode;
+        });
+
+        // STEP 3: Reconstruct links from API input references
+        nodeIds.forEach(nodeId => {
+            const node = apiData[nodeId];
+            if (!node || !node.inputs) return;
+
+            const inputSlotIdx = inputSlotMapByNode[nodeId] || {};
+            const targetNode = nodeMap[nodeId];
+
+            if (!targetNode) return;
+
+            for (let inputName in node.inputs) {
+                const val = node.inputs[inputName];
+                if (!Array.isArray(val) || val.length < 2) continue;
+
+                const sourceId = String(val[0]);
+                const sourceSlot = parseInt(val[1]);
+                if (isNaN(sourceSlot)) continue;
+
+                const sourceNode = nodeMap[sourceId];
+                if (!sourceNode) continue;
+
+                let tIdx = inputSlotIdx[inputName];
+                if (tIdx === undefined) {
+                    targetNode.inputs.push({
+                        name: inputName,
+                        type: '*',
+                        link: null
+                    });
+                    tIdx = targetNode.inputs.length - 1;
+                }
+
+                let linkType = '*';
+                if (sourceNode.outputs && sourceNode.outputs[sourceSlot]) {
+                    linkType = sourceNode.outputs[sourceSlot].type;
+                } else {
+                    if (!sourceNode.outputs) sourceNode.outputs = [];
+                    while (sourceNode.outputs.length <= sourceSlot) {
+                        sourceNode.outputs.push({
+                            name: 'OUTPUT',
+                            type: '*',
+                            links: []
+                        });
+                    }
+                }
+
+                const currentLinkId = linkId++;
+
+                targetNode.inputs[tIdx].link = currentLinkId;
+                sourceNode.outputs[sourceSlot].links.push(currentLinkId);
+
+                links.push([
+                    currentLinkId,
+                    sourceNode.id,
+                    sourceSlot,
+                    targetNode.id,
+                    tIdx,
+                    linkType
+                ]);
+            }
+        });
+
+        return {
+            nodes: nodes,
+            links: links,
+            groups: [],
+            config: {},
+            extra: {},
+            version: 0.4
+        };
+    };
+
+    // Helper: downloads a JSON string as a file.
+    window._downloadWorkflowJson = function(jsonStr, filename) {
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
+    // Pre-arms an async clipboard write at the moment of a genuine user click
+    // (e.g. clicking "Yes, convert to UI Format"), so the browser's
+    // user-activation window stays open while the JSON conversion - which
+    // involves several `await`s (fetching the ComfyUI dictionary, running the
+    // conversion) - completes in the background. Supporting browsers
+    // (Chrome/Edge, recent Firefox) accept a ClipboardItem whose value is a
+    // pending Promise and will wait for it to resolve before finalizing the
+    // clipboard write.
+    window._pendingClipboardResolve = null;
+    window._pendingClipboardWritePromise = null;
+    window._armAsyncClipboardCopy = function() {
+        window._pendingClipboardResolve = null;
+        window._pendingClipboardWritePromise = null;
+        if (navigator.clipboard && window.ClipboardItem) {
+            try {
+                const textPromise = new Promise((resolve) => { window._pendingClipboardResolve = resolve; });
+                const item = new ClipboardItem({
+                    'text/plain': textPromise.then((text) => new Blob([text], { type: 'text/plain' }))
+                });
+                window._pendingClipboardWritePromise = navigator.clipboard.write([item]);
+            } catch (e) {
+                console.warn('Cannot pre-arm async clipboard write, will fall back later:', e);
+                window._pendingClipboardResolve = null;
+                window._pendingClipboardWritePromise = null;
+            }
+        }
+    };
+
+    // Cross-platform clipboard copy.
+    window._copyToClipboardCrossPlatform = async function(text) {
+        // 1) Modern async Clipboard API - works in secure contexts (HTTPS/localhost).
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            try {
+                await navigator.clipboard.writeText(text);
+                return true;
+            } catch (e) {
+                console.warn('Clipboard API unavailable, falling back to execCommand:', e);
+            }
+        }
+
+        // 2) Legacy execCommand('copy') fallback - works over HTTP/Docker and in
+        // older browsers, and does not require a secure context. The element
+        // MUST be genuinely focused before execCommand('copy') has a
+        // selection to copy from - this focus()/select() call was missing
+        // before and is the reason automatic copying silently failed.
+        try {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.setAttribute('readonly', '');
+            textarea.style.position = 'fixed';
+            textarea.style.top = '0';
+            textarea.style.left = '0';
+            textarea.style.width = '2em';
+            textarea.style.height = '2em';
+            textarea.style.padding = '0';
+            textarea.style.border = 'none';
+            textarea.style.outline = 'none';
+            textarea.style.boxShadow = 'none';
+            textarea.style.background = 'transparent';
+            document.body.appendChild(textarea);
+
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+            if (isIOS) {
+                // iOS Safari ignores .select() on non-editable textareas, so we
+                // make it editable and select its contents via a Range instead.
+                textarea.contentEditable = 'true';
+                textarea.readOnly = false;
+                const range = document.createRange();
+                range.selectNodeContents(textarea);
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+                textarea.setSelectionRange(0, text.length);
+            } else {
+                // Windows / Linux / macOS desktop browsers (incl. Docker over HTTP).
+                textarea.focus();
+                textarea.select();
+                textarea.setSelectionRange(0, text.length);
+            }
+
+            const ok = document.execCommand('copy');
+            document.body.removeChild(textarea);
+
+            if (!ok) {
+                console.warn('execCommand("copy") returned false');
+                return false;
+            }
+            return true;
+        } catch (e) {
+            console.error('Clipboard copy failed entirely:', e);
+            return false;
+        }
+    };
+
+    // Toggles a loading state on a button element.
+    window._setButtonLoading = function(btn, isLoading) {
+        if (!btn) return;
+
+        if (isLoading) {
+            if (!btn.dataset.originalHtml) {
+                btn.dataset.originalHtml = btn.innerHTML;
+            }
+            btn.disabled = true;
+            btn.style.opacity = '0.6';
+            btn.style.cursor = 'wait';
+            btn.style.pointerEvents = 'none';
+            btn.innerHTML = '⏳ Working...';
+        } else {
+            btn.disabled = false;
+            btn.style.opacity = '';
+            btn.style.cursor = '';
+            btn.style.pointerEvents = '';
+            if (btn.dataset.originalHtml) {
+                btn.innerHTML = btn.dataset.originalHtml;
+                delete btn.dataset.originalHtml;
+            }
+        }
+    };
+
+    // Shows a styled modal dialog for copy/download choice.
+    window._showExportChoiceDialog = function(jsonStr, filename) {
+        const existing = document.getElementById('remix-export-choice-overlay');
+        if (existing) existing.remove();
+
+        function closeDialog() {
+            overlay.remove();
+            showRemixStatus('', null);
+        }
+
+        const overlay = document.createElement('div');
+        overlay.id = 'remix-export-choice-overlay';
+        overlay.style.cssText = (
+            'position:fixed; top:0; left:0; width:100%; height:100%; ' +
+            'background:rgba(0,0,0,0.65); z-index:100000; ' +
+            'display:flex; align-items:center; justify-content:center; ' +
+            'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;'
+        );
+
+        const box = document.createElement('div');
+        box.style.cssText = (
+            'background:linear-gradient(135deg,#1e2a3a 0%,#2a3a4e 100%); ' +
+            'border:1px solid #17a2b8; border-radius:12px; ' +
+            'padding:28px 32px; max-width:460px; width:90%; ' +
+            'box-shadow:0 8px 32px rgba(0,0,0,0.5); ' +
+            'color:#e0e0e0; text-align:center;'
+        );
+
+        const title = document.createElement('div');
+        title.style.cssText = 'font-size:1.15rem; font-weight:600; margin-bottom:6px; color:#17a2b8;';
+        title.textContent = 'Export ComfyUI Workflow';
+        box.appendChild(title);
+
+        const subtitle = document.createElement('div');
+        subtitle.style.cssText = 'font-size:0.85rem; color:#aaa; margin-bottom:24px;';
+        subtitle.textContent = 'Choose how you want to export the UI workflow JSON:';
+        box.appendChild(subtitle);
+
+        const btnContainer = document.createElement('div');
+        btnContainer.style.cssText = 'display:flex; gap:14px; justify-content:center;';
+
+        const copyBtn = document.createElement('button');
+        copyBtn.style.cssText = (
+            'flex:1; padding:16px 10px; border:1px solid #28a745; ' +
+            'border-radius:8px; background:rgba(40,167,69,0.12); ' +
+            'color:#5cd672; font-size:0.9rem; font-weight:600; cursor:pointer; ' +
+            'transition:background 0.2s,border-color 0.2s; ' +
+            'display:flex; flex-direction:column; align-items:center; gap:6px;'
+        );
+        copyBtn.innerHTML = (
+            '<span style="font-size:1.6rem;">📋</span>' +
+            '<span>Copy to Clipboard</span>' +
+            '<span style="font-size:0.7rem; font-weight:400; color:#888;">Paste anywhere</span>'
+        );
+        copyBtn.addEventListener('mouseenter', function() {
+            copyBtn.style.background = 'rgba(40,167,69,0.25)';
+            copyBtn.style.borderColor = '#5cd672';
+        });
+        copyBtn.addEventListener('mouseleave', function() {
+            copyBtn.style.background = 'rgba(40,167,69,0.12)';
+            copyBtn.style.borderColor = '#28a745';
+        });
+        copyBtn.addEventListener('click', async function() {
+            overlay.remove();
+            const ok = await window._copyToClipboardCrossPlatform(jsonStr);
+            if (ok) {
+                showRemixStatus(
+                    '✅ <strong>Workflow copied to clipboard!</strong><br>' +
+                    '<small>Paste it into a text editor, or save as .json and drag into ' +
+                    'your ComfyUI canvas to visually inspect all nodes and connections.</small>',
+                    true, true
+                );
+                setTimeout(() => { if(window.askToOpenComfyUI) window.askToOpenComfyUI(); }, 400);
+            } else {
+                showRemixStatus(
+                    '❌ Clipboard copy failed. Try the Download option instead.',
+                    false
+                );
+            }
+        });
+        btnContainer.appendChild(copyBtn);
+
+        const dlBtn = document.createElement('button');
+        dlBtn.style.cssText = (
+            'flex:1; padding:16px 10px; border:1px solid #17a2b8; ' +
+            'border-radius:8px; background:rgba(23,162,184,0.12); ' +
+            'color:#17a2b8; font-size:0.9rem; font-weight:600; cursor:pointer; ' +
+            'transition:background 0.2s,border-color 0.2s; ' +
+            'display:flex; flex-direction:column; align-items:center; gap:6px;'
+        );
+        dlBtn.innerHTML = (
+            '<span style="font-size:1.6rem;">📥</span>' +
+            '<span>Download File</span>' +
+            '<span style="font-size:0.7rem; font-weight:400; color:#888;">Save as .json</span>'
+        );
+        dlBtn.addEventListener('mouseenter', function() {
+            dlBtn.style.background = 'rgba(23,162,184,0.25)';
+            dlBtn.style.borderColor = '#48d4e8';
+        });
+        dlBtn.addEventListener('mouseleave', function() {
+            dlBtn.style.background = 'rgba(23,162,184,0.12)';
+            dlBtn.style.borderColor = '#17a2b8';
+        });
+        dlBtn.addEventListener('click', function() {
+            overlay.remove();
+            window._downloadWorkflowJson(jsonStr, filename);
+            showRemixStatus(
+                '✅ <strong>UI Workflow downloaded!</strong><br>' +
+                '<small>Drag this JSON file into your ComfyUI canvas to visually inspect the complete workflow ' +
+                'with all nodes, connections, and LoRA injections.</small>',
+                true, true
+            );
+            setTimeout(() => { if(window.askToOpenComfyUI) window.askToOpenComfyUI(); }, 400);
+        });
+        btnContainer.appendChild(dlBtn);
+
+        box.appendChild(btnContainer);
+
+        const cancel = document.createElement('div');
+        cancel.style.cssText = (
+            'margin-top:18px; font-size:0.8rem; color:#666; ' +
+            'cursor:pointer; text-decoration:underline; user-select:none;'
+        );
+        cancel.textContent = 'Cancel';
+        cancel.addEventListener('click', closeDialog);
+        box.appendChild(cancel);
+
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay) closeDialog();
+        });
+
+        overlay.setAttribute('tabindex', '-1');
+        overlay.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeDialog();
+        });
+
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+        overlay.focus();
+    };
+
+    // Exports the current workflow as a ComfyUI UI-format JSON.
+    window.exportUiWorkflow = async function(btn) {
+        const typeSel = document.getElementById('remix-raw-type');
+        const wfType = typeSel ? typeSel.value : 'api';
+
+        if (window.rawNodeEditor_commitCurrent) window.rawNodeEditor_commitCurrent(true);
+
+        let filename = 'comfyui_workflow.json';
+        if (typeof remixTargetFile !== 'undefined' && remixTargetFile && remixTargetFile.name) {
+            filename = 'ui_' + remixTargetFile.name.replace(/\.[^.]+$/, '') + '.json';
+        }
+
+        let jsonStr = null;
+
+        if (wfType === 'ui') {
+            jsonStr = window.rawNodeEditor_stitch();
+            if (!jsonStr) {
+                showRemixStatus('Cannot export: fix JSON errors first.', false);
+                return;
+            }
+        } else {
+            window._setButtonLoading(btn, true);
+
+            const apiJsonStr = window.rawNodeEditor_stitch();
+            if (!apiJsonStr) {
+                window._setButtonLoading(btn, false);
+                showRemixStatus('Cannot export: fix JSON errors in the Nodepad first.', false);
+                return;
+            }
+
+            if (!window._remixObjectInfo || Object.keys(window._remixObjectInfo).length === 0) {
+                showRemixStatus('⏳ Loading ComfyUI Dictionary for conversion...', null);
+                const ok = await window.fetchNodeDictionary();
+                if (!ok || !window._remixObjectInfo || Object.keys(window._remixObjectInfo).length === 0) {
+                    window._setButtonLoading(btn, false);
+                    showRemixStatus(
+                        '❌ Cannot reach ComfyUI. The dictionary is required for API→UI conversion. ' +
+                        'Please ensure ComfyUI is running and the Server URL is correct.',
+                        false
+                    );
+                    return;
+                }
+            }
+
+            showRemixStatus('⏳ Converting API workflow to UI format...', null);
+
+            try {
+                const apiData = JSON.parse(apiJsonStr);
+                const uiWorkflow = window.apiToUiWorkflow(apiData, window._remixObjectInfo);
+                jsonStr = JSON.stringify(uiWorkflow, null, 2);
+            } catch (e) {
+                window._setButtonLoading(btn, false);
+                showRemixStatus('❌ Export failed: ' + e.message, false);
+                return;
+            }
+
+            window._setButtonLoading(btn, false);
+        }
+
+        window._showExportChoiceDialog(jsonStr, filename);
+    };
 
 </script>

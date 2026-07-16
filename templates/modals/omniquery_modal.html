@@ -1,0 +1,1230 @@
+<!-- Version: 2.15 - July 15, 2026 -->
+
+<!-- OMNIQUERY CSS STYLES -->
+<style>
+    .omni-body-container { display: flex; flex-direction: row; flex: 1; min-height: 0; overflow: hidden; }
+    .omni-left-panel { flex: 1; min-width: 300px; display: flex; flex-direction: column; overflow-y: auto; padding: 20px; border-right: 1px solid var(--border-color); background: rgba(0,0,0,0.2); }
+    .omni-right-panel { flex: 1.2; min-width: 350px; display: flex; flex-direction: column; padding: 20px; min-height: 0; }
+    
+    @media (max-width: 800px) {
+        .omni-body-container { flex-direction: column; overflow-y: auto; }
+        .omni-left-panel { border-right: none; border-bottom: 1px solid var(--border-color); overflow-y: visible; }
+        .omni-right-panel { overflow-y: visible; min-height: 400px; }
+    }
+
+    /* OmniQuery Extended CSS */
+    .omni-queries-list { list-style: none; padding: 0; margin: 0; max-height: 350px; overflow-y: auto; }
+    .omni-query-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #333; background: #1a1a1a; margin-bottom: 5px; border-radius: 6px; }
+    .omni-query-item:hover { background: #2a2a2a; }
+    .omni-query-name { color: #e0b0ff; font-weight: bold; cursor: pointer; word-break: break-all; margin:0; }
+    .omni-query-date { color: #888; font-size: 0.75rem; margin-right: 15px; }
+    .omni-query-actions { display: flex; gap: 5px; }
+    
+    .omni-search-wrapper { display: flex; gap:10px; margin-bottom: 15px; }
+    .omni-search-input { flex: 1; padding: 8px 12px; border-radius: 6px; border: 1px solid #444; background: #111; color: white; }
+    .omni-search-input::-webkit-search-cancel-button { cursor: pointer; filter: invert(1); }
+    
+    .omni-preview-table-container { max-height: 50vh; overflow: auto; border: 1px solid #444; border-radius: 8px; margin-top: 15px; background: #111; }
+    .omni-preview-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; color: #ccc; }
+    .omni-preview-table th { background: #222; color: #fff; position: sticky; top: 0; padding: 8px; border-bottom: 1px solid #555; text-align: left; }
+    .omni-preview-table td { padding: 6px 8px; border-bottom: 1px solid #333; word-break: break-all; max-width: 250px; }
+    .omni-preview-table tr:hover { background: #1a1a1a; }
+
+    /* --- Mobile & Responsive OmniQuery Fixes --- */
+    .omni-header-container { padding:15px 20px; background:var(--surface-hover); border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; flex-shrink:0; }
+    .omni-btn-group { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; margin-bottom: 15px; }
+    .omni-btn-group > button { flex: 1 1 70px; justify-content: center; padding: 8px 4px; font-size: 0.85rem; white-space: nowrap; }
+    
+    /* Zen Mode / Fullscreen Editor */
+    .omni-maximized {
+        position: fixed !important;
+        top: 5vh !important;
+        left: 5vw !important;
+        width: 90vw !important;
+        height: 90vh !important;
+        z-index: 10600 !important;
+        box-shadow: 0 20px 80px rgba(0,0,0,0.95) !important;
+        border: 2px solid #9b59b6 !important;
+        font-size: 1.1rem !important;
+        transition: all 0.2s ease-in-out;
+        resize: none !important;
+    }
+    
+    @media (max-width: 650px) {
+        .omni-help-text { display: none; }
+        .omni-help-btn { padding: 6px 12px !important; }
+        .omni-header-container h3 { font-size: 1.1rem !important; }
+        .omni-maximized { top: 2vh !important; left: 2vw !important; width: 96vw !important; height: 96vh !important; }
+    }
+</style>
+
+<!-- OMNIQUERY MODAL -->
+<div id="omniquery-overlay" style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); backdrop-filter:blur(8px); z-index:10500; display:none; justify-content:center; align-items:center; opacity:0; transition:opacity 0.2s;">
+    <div style="background:var(--surface-color); border:1px solid #9b59b6; border-radius:16px; width:1100px; max-width:95vw; height:85vh; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,0.9); overflow:hidden;">
+        
+        <!-- Header -->
+        <div class="omni-header-container">
+            <h3 style="margin:0; font-size:1.3rem; color:white; display:flex; align-items:center; gap:10px;">⚡ OmniQuery <span style="font-size:0.8rem; background:#9b59b6; color:#fff; padding:2px 6px; border-radius:4px;">AI-SQL</span></h3>
+            <div style="display:flex; gap:10px; align-items:center;">
+            <button onclick="document.getElementById('omni-help-modal').style.display='flex';" class="glass-btn omni-help-btn" style="border-radius:20px; padding:6px 16px; display:flex; justify-content:center; align-items:center; font-weight:bold; background:rgba(52,219,152,0.15); color:#34db98; border:1px solid #34db98; font-size:0.9rem; text-transform:uppercase;" title="How to use OmniQuery">✨ <span class="omni-help-text" style="margin-left:5px;">Readme first! Understand OmniQuery</span></button>
+            <button onclick="closeOmniQueryModal()" style="background:none; border:none; color:var(--text-muted); font-size:1.5rem; cursor:pointer;">&times;</button>
+        </div>
+        </div>
+        
+        <!-- Body -->
+        <div class="omni-body-container">
+            
+            
+        <!-- OMNIQUERY NESTED MODALS -->
+        <!-- Custom Dialog -->
+        <div id="omni-custom-dialog" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:100; justify-content:center; align-items:center;">
+            <div style="background:#1a1a1a; border:1px solid #444; border-radius:12px; padding:25px; width:400px; max-width:90%; text-align:center; box-shadow: 0 10px 30px rgba(0,0,0,0.8);">
+                <h4 id="omni-dialog-title" style="color:white; margin-top:0; font-size:1.2rem;"></h4>
+                <p id="omni-dialog-message" style="color:#ccc; font-size:0.95rem; margin-bottom:20px; word-wrap: break-word;"></p>
+                <input type="text" id="omni-dialog-input" style="display:none; width:100%; box-sizing:border-box; padding:10px; margin-bottom:20px; border-radius:6px; border:1px solid #555; background:#111; color:white;">
+                <textarea id="omni-dialog-desc" style="display:none; width:100%; box-sizing:border-box; padding:10px; margin-bottom:20px; border-radius:6px; border:1px solid #555; background:#111; color:white; resize:vertical; min-height:80px;" placeholder="Query description (optional)..."></textarea>
+                <div style="display:flex; justify-content:center; gap:10px;">
+                    <button id="omni-dialog-cancel" class="glass-btn">Cancel</button>
+                    <button id="omni-dialog-confirm" class="glass-btn">Confirm</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- LLM Links Modal -->
+        <div id="omni-llm-modal" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:100; justify-content:center; align-items:center;">
+            <div style="background:#1a1a1a; border:1px solid #9b59b6; border-radius:12px; padding:25px; width:450px; max-width:90%; text-align:center; box-shadow: 0 10px 40px rgba(155, 89, 182, 0.2);">
+                <h3 style="color:#e0b0ff; margin-top:0; font-size:1.4rem;">📋 Prompt Copied!</h3>
+                <p style="color:#ccc; font-size:0.95rem; margin-bottom:25px; line-height:1.5;">
+                    The prompt is now in your clipboard.<br>Open one of these AI assistants, paste the prompt, and let it generate the SQL query. Then return here and paste it in the right panel.
+                </p>
+                <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:25px;">
+                    <button onclick="openLLM('about:blank')" class="glass-btn" style="justify-content:center; padding:12px; border-color:#ccc; color:#fff; font-weight:bold;">📄 Open new empty tab</button>
+                    <button onclick="openLLM('https://chatgpt.com')" class="glass-btn" style="justify-content:center; padding:12px; border-color:#10a37f; color:#10a37f; font-weight:bold;">🟩 Open ChatGPT</button>
+                    <button onclick="openLLM('https://gemini.google.com')" class="glass-btn" style="justify-content:center; padding:12px; border-color:#4285f4; color:#4285f4; font-weight:bold;">🟦 Open Google Gemini</button>
+                    <button onclick="openLLM('https://claude.ai')" class="glass-btn" style="justify-content:center; padding:12px; border-color:#d97757; color:#d97757; font-weight:bold;">🟧 Open Claude</button>
+                    <button onclick="openLLM('https://chat.deepseek.com')" class="glass-btn" style="justify-content:center; padding:12px; border-color:#4d6bfe; color:#4d6bfe; font-weight:bold;">🟦 Open DeepSeek</button>
+                </div>
+                <button onclick="document.getElementById('omni-llm-modal').style.display='none';" class="glass-btn" style="padding:8px 20px;">Close</button>
+            </div>
+        </div>
+
+        <!-- Saved Queries Modal -->
+        <div id="omni-queries-modal" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10; display:none; flex-direction:column; padding:30px; box-sizing:border-box;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+                <h3 style="color:white; margin:0;">📂 Saved Queries</h3>
+                <button onclick="closeQueriesModal()" class="glass-btn" style="padding:4px 10px;">Close</button>
+            </div>
+            <div class="omni-search-wrapper">
+                <input type="search" id="omni-query-search" class="omni-search-input" placeholder="Search name or description..." oninput="filterOmniQueries()">
+                <select id="omni-query-sort" class="glass-btn" style="background:#111; color:white;" onchange="renderOmniQueries()">
+                    <option value="name_asc">Name (A-Z)</option>
+                    <option value="name_desc">Name (Z-A)</option>
+                    <option value="date_desc" selected>Newest First</option>
+                    <option value="date_asc">Oldest First</option>
+                </select>
+            </div>
+            <ul id="omni-queries-list" class="omni-queries-list"></ul>
+        </div>
+
+        
+        <!-- OmniQuery Help Modal -->
+        <div id="omni-help-modal" onclick="if(event.target===this) this.style.display='none';" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:200; justify-content:center; align-items:center; padding:20px; box-sizing:border-box; backdrop-filter:blur(4px);">
+            <div style="background:#1a1a1a; border:1px solid #34db98; border-radius:12px; padding:30px; width:600px; max-width:100%; max-height:100%; overflow-y:auto; box-shadow: 0 10px 40px rgba(52, 219, 152, 0.2);">
+                <h3 style="color:#34db98; margin-top:0; font-size:1.5rem; display:flex; align-items:center; gap:10px;">🌌 OmniQuery AI-SQL Guide</h3>
+                <div style="color:#ccc; font-size:0.95rem; line-height:1.6;">
+                    <p><b>OmniQuery does NOT replace the standard "Filters" panel.</b></p>
+                    <p>The standard <i>Filters</i> panel is incredibly powerful and easy to use as a form. However, if you have highly specific needs, are a power user, or want to save unique search criteria, OmniQuery is the brilliant, original solution.</p>
+                    <h4 style="color:#e0b0ff; margin-bottom:5px; margin-top:20px;">🗣️ Natural Language Search</h4>
+                    <p style="margin-top:0;">OmniQuery exposes all database tables so you can cross-reference your data using natural language. It acts as an expert Prompt Engineer, preparing a tailored prompt that you can submit to your favorite LLM. The LLM will return the "magic" SQL query to run here.</p>
+                    <h4 style="color:#e0b0ff; margin-bottom:5px; margin-top:20px;">🛡️ Bulletproof Security</h4>
+                    <p style="margin-top:0;">Your data is completely safe. The SmartGallery DAM backend strictly allows only <code>SELECT</code> (read-only) queries. Updates or destructive commands are physically blocked.</p>
+                    <h4 style="color:#e0b0ff; margin-bottom:5px; margin-top:20px;">💻 For SQL Veterans</h4>
+                    <p style="margin-top:0;">If you know SQL, you can compose the query yourself! In the first part of the prompt panel, you will find the full database structure and rules to cross-reference data.</p>
+                </div>
+                <div style="display:flex; justify-content:flex-end; margin-top:30px;">
+                    <button onclick="document.getElementById('omni-help-modal').style.display='none';" class="glass-btn" style="padding:10px 30px; font-weight:bold; background:#34db98; color:#000;">OHHH WOW! Got it.</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Saved Prompts Modal -->
+        <div id="omni-prompts-modal" onclick="if(event.target===this) this.style.display='none';" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10; display:none; flex-direction:column; padding:30px; box-sizing:border-box;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+                <h3 style="color:#e0b0ff; margin:0;">📂 Saved Prompts</h3>
+                <button onclick="closePromptsModal()" class="glass-btn" style="padding:4px 10px;">Close</button>
+            </div>
+            <div class="omni-search-wrapper">
+                <input type="search" id="omni-prompt-search" class="omni-search-input" placeholder="Search name or description..." oninput="filterOmniPrompts()">
+                <select id="omni-prompt-sort" class="glass-btn" style="background:#111; color:white;" onchange="renderOmniPrompts()">
+                    <option value="name_asc">Name (A-Z)</option>
+                    <option value="name_desc">Name (Z-A)</option>
+                    <option value="date_desc" selected>Newest First</option>
+                    <option value="date_asc">Oldest First</option>
+                </select>
+            </div>
+            <ul id="omni-prompts-list" class="omni-queries-list"></ul>
+        </div>
+        
+        <!-- Preview Modal -->
+        <div id="omni-preview-modal" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:20; display:none; flex-direction:column; padding:30px; box-sizing:border-box;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h3 style="color:#3498db; margin:0;">🔍 Query Preview (<span id="omni-preview-count">0</span> records)</h3>
+                <button onclick="closePreviewModal()" class="glass-btn" style="padding:4px 10px;">Close</button>
+            </div>
+            <div id="omni-preview-content" class="omni-preview-table-container"></div>
+        </div>
+
+            <!-- Left Panel: Prompt Editor & Schema -->
+            <div class="omni-left-panel">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-shrink:0;">
+                    <h4 style="margin:0; color:#e0b0ff;">1. Prepare AI Prompt</h4>
+                    <button onclick="toggleOmniFullscreen('omniquery-prompt-text', this)" class="glass-btn" style="padding:4px 8px; font-size:0.8rem; background:rgba(155,89,182,0.2); border-color:#9b59b6; color:#e0b0ff;" title="Zen Mode / Maximize">⛶</button>
+                </div>
+                <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px; flex-shrink:0;">Review or edit this prompt, then copy it to your favorite LLM to generate the query.</p>
+                
+                <!-- Active Prompt Context -->
+                <div id="omni-active-prompt-bar" style="display:none; background:rgba(155, 89, 182, 0.15); border:1px solid #9b59b6; color:#e0b0ff; padding:8px 12px; border-radius:6px; margin-bottom:10px; font-size:0.85rem; align-items:center; justify-content:space-between; flex-shrink:0;">
+                    <span><i style="margin-right:5px; font-style:normal;">📝</i> Editing: <b id="omni-active-prompt-name"></b></span>
+                </div>
+
+                <textarea id="omniquery-default-dictionary" style="display:none;">{{ omniquery_dictionary }}</textarea>
+                <textarea id="omniquery-prompt-text" style="flex:2; width:100%; min-height:300px; background:#111; border:1px solid #444; border-radius:8px; color:#aaa; font-family:monospace; padding:10px; font-size:0.85rem; resize:vertical; margin-bottom:15px; box-sizing:border-box;" oninput="localStorage.setItem('sg_omniquery_prompt', this.value);"></textarea>
+
+                <div class="omni-btn-group">
+                    <button onclick="promptSavePrompt()" class="glass-btn" title="Save this Prompt">💾 Save</button>
+                    <button onclick="openPromptsModal()" class="glass-btn" title="Load saved Prompt">📂 Load</button>
+                    <button onclick="clearActiveOmniPrompt()" class="glass-btn" title="Clear panel">Clear</button>
+                    <button onclick="loadFactoryPrompt()" id="omni-reset-tmpl-btn" class="glass-btn" title="Load Factory Default">🔄 Factory</button>
+                    <button onclick="copyOmniPrompt()" class="glass-btn active-blue" id="omni-copy-btn">📋 Copy</button>
+                </div>
+                
+                <div id="schema-ref-header" style="flex-shrink:0; margin-bottom:10px;">
+
+                
+                    <button onclick="document.getElementById('schema-ref-content').style.display='block'; this.parentElement.style.display='none';" class="glass-btn" style="font-size:0.85rem; color:#e0b0ff; background:rgba(224,176,255,0.1); border-color:#9b59b6;">📊 View Schema Reference</button>
+
+                
+                </div>
+
+                
+                <div id="schema-ref-content" style="display:none; max-height:200px; overflow-y:auto; flex-shrink:0; margin-bottom:10px;">
+
+                
+                    <pre style="font-size:0.75rem; color:#888; background:#111; padding:15px; border-radius:8px; overflow-x:auto; margin:0; white-space:pre-wrap;"><b>files</b>
+id (TEXT) - Primary Key
+path (TEXT)
+mtime (REAL) - Unix timestamp
+last_scanned - Unix timestamp
+name (TEXT)
+type (TEXT) - 'image', 'video', etc.
+size (INTEGER) - bytes
+dimensions(TEXT: pixels ex. '640x480')
+duration(TEXT: ex. 03:19 min:secs) 
+is_favorite (INTEGER)
+has_workflow (INTEGER)
+workflow_files (TEXT)
+workflow_prompt (TEXT)
+avg_rating (REAL)
+
+<b>collections</b>
+id (INTEGER)
+name (TEXT)
+type (TEXT) - 'user_album', 'system_flag'
+is_public (INTEGER) - 1 or 0
+shared_users (TEXT) - "1,2,4"
+parent_id(INTEGER: for nested collections)
+
+<b>collection_files</b>
+collection_id (INTEGER)
+file_id (TEXT)
+
+<b>users</b>
+user_id (INTEGER)
+username (TEXT)
+full_name (TEXT)
+role (TEXT)
+is_active (INTEGER)
+email
+phone_number
+start_date (DATE)
+expiry_date (DATE)
+last_login - Unix timestamp
+
+<b>file_ratings</b>
+file_id (TEXT)
+client_uuid (TEXT) -> user_id
+rating (INTEGER) 1-5
+
+<b>file_comments</b>
+id (INTEGER)
+file_id (TEXT)
+client_uuid (TEXT) -> user_id
+comment_text (TEXT)
+target_audience (TEXT)</pre>
+
+                
+                    <button onclick="this.parentElement.style.display='none'; document.getElementById('schema-ref-header').style.display='block';" class="glass-btn" style="margin-top:5px;">Close</button>
+
+                
+                </div>
+            </div>
+            
+            <!-- Right Panel: SQL Input & Execute -->
+            <div class="omni-right-panel">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-shrink:0;">
+                    <h4 style="margin:0; color:#3498db;">2. Execute Query</h4>
+                    <button onclick="toggleOmniFullscreen('omniquery-input', this)" class="glass-btn" style="padding:4px 8px; font-size:0.8rem; background:rgba(52,152,219,0.2); border-color:#3498db; color:#52a1ff;" title="Zen Mode / Maximize">⛶</button>
+                </div>
+                <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:15px; flex-shrink:0;">Paste the SQL returned by the AI here. Only SELECT queries are permitted (Read-Only).</p>
+                
+                <!-- Feedback Box for 0 results or errors -->
+                <div id="omni-feedback-box" style="display:none; padding:12px; border-radius:8px; margin-bottom:15px; font-size:0.9rem; font-weight:bold; flex-shrink:0;"></div>
+                
+                <!-- Active Query Context -->
+                <div id="omni-active-query-bar" style="display:none; background:rgba(52, 152, 219, 0.15); border:1px solid #3498db; color:#52a1ff; padding:8px 12px; border-radius:6px; margin-bottom:10px; font-size:0.85rem; align-items:center; justify-content:space-between; flex-shrink:0;">
+                    <span><i style="margin-right:5px; font-style:normal;">📝</i> Editing: <b id="omni-active-query-name"></b></span>
+                </div>
+                
+                <textarea id="omniquery-input" style="flex:1; width:100%; min-height:120px; background:#111; border:1px solid #444; border-radius:8px; color:#52a1ff; font-family:monospace; padding:15px; font-size:0.95rem; resize:vertical; box-sizing:border-box; margin-bottom:15px;" placeholder="SELECT f.id FROM files f..." oninput="localStorage.setItem('sg_omniquery_sql', this.value);"></textarea>
+                
+                <div class="omni-btn-group">
+                    <button onclick="promptSaveQuery()" class="glass-btn" title="Save this SQL">💾 Save</button>
+                    <button onclick="openQueriesModal()" class="glass-btn" title="Load saved SQL">📂 Load</button>
+                    <button onclick="clearActiveOmniQuery()" class="glass-btn">Clear</button>
+                    <button onclick="pasteOmniQuery()" class="glass-btn" title="Paste from Clipboard" style="background:rgba(52, 152, 219, 0.2); border-color:#3498db; color:#52a1ff;">📋 Paste</button>
+
+                    <button onclick="previewOmniQuery()" id="omni-preview-btn" class="glass-btn" style="background:#2980b9; color:white; border-color:#2980b9;">🔍 Preview</button>
+                    <button onclick="executeOmniQuery()" id="omni-exec-btn" class="glass-btn" style="flex: 1 1 100px; background:#9b59b6; border-color:#8e44ad; color:white; font-weight:bold;">🚀 Run Query</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    function openOmniQueryModal() {
+        const overlay = document.getElementById('omniquery-overlay');
+        overlay.style.display = 'flex';
+        setTimeout(() => overlay.style.opacity = '1', 10);
+        document.body.classList.add('modal-open');
+        
+        const savedSql = localStorage.getItem('sg_omniquery_sql');
+        if (savedSql) { document.getElementById('omniquery-input').value = savedSql; }
+
+        const promptArea = document.getElementById('omniquery-prompt-text');
+        const savedPrompt = localStorage.getItem('sg_omniquery_prompt');
+        const defaultDict = document.getElementById('omniquery-default-dictionary');
+        
+        if (savedPrompt && savedPrompt.trim() !== '') {
+            promptArea.value = savedPrompt;
+        } else if (defaultDict) {
+            promptArea.value = defaultDict.value;
+            localStorage.setItem('sg_omniquery_prompt', defaultDict.value);
+        }
+
+        document.getElementById('omni-feedback-box').style.display = 'none';
+        
+        setTimeout(() => {
+            if (promptArea) {
+                promptArea.focus();
+                promptArea.selectionStart = promptArea.value.length;
+                promptArea.selectionEnd = promptArea.value.length;
+                promptArea.scrollTop = promptArea.scrollHeight;
+            }
+        }, 50);
+    }
+
+    function closeOmniQueryModal() {
+        const overlay = document.getElementById('omniquery-overlay');
+        overlay.style.opacity = '0';
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            document.body.classList.remove('modal-open');
+        }, 200);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const omniOverlay = document.getElementById('omniquery-overlay');
+        if (omniOverlay) {
+            omniOverlay.addEventListener('click', (e) => {
+                if (e.target.id === 'omniquery-overlay') closeOmniQueryModal();
+            });
+            
+            // BLOCCO SICUREZZA: Logica ESC intelligente
+            omniOverlay.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    // 1. Close Maximize Editors
+                    const maximized = document.querySelector('.omni-maximized');
+                    if (maximized) {
+                        maximized.classList.remove('omni-maximized');
+                        document.querySelectorAll('button[onclick^="toggleOmniFullscreen"]').forEach(b => {
+                            b.innerHTML = '⛶'; b.classList.remove('active-blue');
+                        });
+                        return;
+                    }
+                    // 2. Close Child Modals
+                    if (document.getElementById('omni-custom-dialog').style.display !== 'none') {
+                        document.getElementById('omni-dialog-cancel').click();
+                    } else if (document.getElementById('omni-help-modal').style.display !== 'none') {
+                        document.getElementById('omni-help-modal').style.display = 'none';
+                    } else if (document.getElementById('omni-llm-modal').style.display !== 'none') {
+                        document.getElementById('omni-llm-modal').style.display = 'none';
+                    } else if (document.getElementById('omni-prompts-modal').style.display !== 'none') {
+                        closePromptsModal();
+                    } else if (document.getElementById('omni-queries-modal').style.display !== 'none') {
+                        closeQueriesModal();
+                    } else if (document.getElementById('omni-preview-modal').style.display !== 'none') {
+                        closePreviewModal();
+                    } else {
+                        // 3. Close Main
+                        closeOmniQueryModal();
+                    }
+                } else {
+                    e.stopPropagation(); 
+                }
+            });
+            omniOverlay.addEventListener('keyup', (e) => { e.stopPropagation(); });
+            omniOverlay.addEventListener('keypress', (e) => { e.stopPropagation(); });
+        }
+        
+        // INTERCETTAZIONE PASTE: Evita che l'SQL copiato dall'LLM perda spazi e si incolli distruggendo la sintassi
+        const sqlInput = document.getElementById('omniquery-input');
+        if (sqlInput) {
+            sqlInput.addEventListener('paste', (e) => {
+                const text = (e.originalEvent || e).clipboardData.getData('text/plain');
+                if (text) {
+                    e.preventDefault();
+                    const safeText = text.replace(/\r\n/g, '\n').replace(/\n/g, ' \n');
+                    const start = sqlInput.selectionStart;
+                    const end = sqlInput.selectionEnd;
+                    sqlInput.value = sqlInput.value.substring(0, start) + safeText + sqlInput.value.substring(end);
+                    sqlInput.selectionStart = sqlInput.selectionEnd = start + safeText.length;
+                }
+            });
+        }
+    });
+
+    function showOmniFeedback(msg, isError) {
+        const fb = document.getElementById('omni-feedback-box');
+        fb.style.display = 'block';
+        if (isError) {
+            fb.style.background = 'rgba(231, 76, 60, 0.15)';
+            fb.style.color = '#ff6b6b';
+            fb.style.border = '1px solid #e74c3c';
+            fb.innerHTML = '⚠️ ' + msg;
+        } else {
+            fb.style.background = 'rgba(241, 196, 15, 0.15)';
+            fb.style.color = '#f1c40f';
+            fb.style.border = '1px solid #f1c40f';
+            fb.innerHTML = 'ℹ️ ' + msg;
+        }
+    }
+
+    async function executeOmniQuery() {
+        const sqlInput = document.getElementById('omniquery-input').value.trim();
+        const fb = document.getElementById('omni-feedback-box');
+        fb.style.display = 'none';
+
+        if (!sqlInput) {
+            showOmniFeedback("Please enter a SQL query.", true);
+            return;
+        }
+
+        const btn = document.getElementById('omni-exec-btn');
+        btn.innerHTML = '⏳ Running...';
+        btn.disabled = true;
+
+        try {
+            const res = await fetch('/galleryout/api/omniquery/execute', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ sql: sqlInput })
+            });
+            
+            const data = await res.json();
+            
+            if (data.status === 'success') {
+                localStorage.setItem('sg_omniquery_sql', sqlInput);
+                const promptText = document.getElementById('omniquery-prompt-text').value;
+                localStorage.setItem('sg_omniquery_prompt', promptText);
+                
+                if (data.session_id) {
+                    if(typeof showNotification === 'function') showNotification(`Query successful! Found ${data.count || 0} results.`, "success");
+                    
+                    // --- ALERT FOR "ORDER BY" ---
+                    if (/ORDER\s+BY/i.test(sqlInput)) {
+                        await omniCustomDialog({
+                            type: 'alert',
+                            title: 'Custom Sort Detected ⚖️',
+                            message: 'Your query contains an "ORDER BY" clause. Standard UI sorting buttons will be disabled for these results to respect your custom order.',
+                            confirmText: 'Understood'
+                        });
+                    }
+
+                    window.location.href = `{{ url_for('gallery_view', folder_key=current_folder_key) }}?omniquery_id=${data.session_id}`;
+                } else {
+                    showOmniFeedback("Query executed successfully, but returned 0 records. Try adjusting your SQL.", false);
+                }
+            } else {
+                showOmniFeedback("SQL Error: " + data.message, true);
+            }
+        } catch (e) {
+            showOmniFeedback("Network error occurred.", true);
+        } finally {
+            btn.innerHTML = '🚀 Run Query';
+            btn.disabled = false;
+        }
+    }
+
+    // --- OMNIQUERY EXTENDED JS ---
+    let cachedOmniQueries = [];
+    let currentLoadedQueryName = null;
+    let currentLoadedQueryDesc = null;
+
+    let cachedOmniPrompts = [];
+    let currentLoadedPromptName = null;
+    let currentLoadedPromptDesc = null;
+
+    // Fullscreen Editor Toggle
+    function toggleOmniFullscreen(textareaId, btnElement) {
+        const el = document.getElementById(textareaId);
+        if (el.classList.contains('omni-maximized')) {
+            el.classList.remove('omni-maximized');
+            btnElement.innerHTML = '⛶';
+            btnElement.classList.remove('active-blue');
+        } else {
+            el.classList.add('omni-maximized');
+            btnElement.innerHTML = '✖ Close';
+            btnElement.classList.add('active-blue');
+            setTimeout(() => el.focus(), 100);
+        }
+    }
+
+    async function fetchOmniQueriesSilently() {
+        try {
+            const res = await fetch('/galleryout/api/omniquery/queries/list');
+            const data = await res.json();
+            if(data.status === 'success') { cachedOmniQueries = data.queries; }
+        } catch(e) {}
+    }
+
+    async function fetchOmniPromptsSilently() {
+        try {
+            const res = await fetch('/galleryout/api/omniquery/prompts/list');
+            const data = await res.json();
+            if(data.status === 'success') { cachedOmniPrompts = data.prompts; }
+        } catch(e) {}
+    }
+    
+    function clearActiveOmniQuery() {
+        currentLoadedQueryName = null;
+        currentLoadedQueryDesc = null;
+        document.getElementById('omni-active-query-bar').style.display = 'none';
+        document.getElementById('omniquery-input').value = '';
+        localStorage.setItem('sg_omniquery_sql', '');
+        document.getElementById('omni-feedback-box').style.display = 'none';
+    }
+
+    function clearActiveOmniPrompt() {
+        currentLoadedPromptName = null;
+        currentLoadedPromptDesc = null;
+        document.getElementById('omni-active-prompt-bar').style.display = 'none';
+        document.getElementById('omniquery-prompt-text').value = '';
+        localStorage.setItem('sg_omniquery_prompt', '');
+    }
+
+    function omniCustomDialog(options) {
+        return new Promise((resolve) => {
+            const dialog = document.getElementById('omni-custom-dialog');
+            document.getElementById('omni-dialog-title').innerText = options.title || 'Attention';
+            document.getElementById('omni-dialog-message').innerHTML = options.message || '';
+            const input = document.getElementById('omni-dialog-input');
+            const desc = document.getElementById('omni-dialog-desc');
+            const btnCancel = document.getElementById('omni-dialog-cancel');
+            const btnConfirm = document.getElementById('omni-dialog-confirm');
+            
+            input.value = '';
+            desc.value = '';
+
+            // Handle Types
+            if (options.type === 'alert') {
+                input.style.display = 'none';
+                desc.style.display = 'none';
+                btnCancel.style.display = 'none';
+            } else if (options.type === 'prompt') {
+                input.style.display = 'block';
+                input.value = options.defaultValue || '';
+                desc.style.display = 'none';
+                btnCancel.style.display = 'block';
+            } else if (options.type === 'save_query') {
+                input.style.display = 'block';
+                input.placeholder = 'Filename (e.g., cool_name)';
+                input.value = options.defaultValue || '';
+                desc.style.display = 'block';
+                desc.placeholder = 'Description (optional)...';
+                desc.value = options.defaultDesc || '';
+                btnCancel.style.display = 'block';
+            } else {
+                input.style.display = 'none';
+                desc.style.display = 'none';
+                btnCancel.style.display = 'block';
+            }
+
+            btnConfirm.innerText = options.confirmText || 'Confirm';
+            
+            if(options.danger) {
+                btnConfirm.style.background = '#e74c3c';
+                btnConfirm.style.borderColor = '#c0392b';
+                btnConfirm.style.color = '#fff';
+            } else {
+                btnConfirm.style.background = '';
+                btnConfirm.style.borderColor = '';
+                btnConfirm.style.color = '';
+                btnConfirm.classList.add('active-blue');
+            }
+
+            const cleanup = () => {
+                dialog.style.display = 'none';
+                btnCancel.onclick = null;
+                btnConfirm.onclick = null;
+                btnConfirm.classList.remove('active-blue');
+            };
+
+            btnCancel.onclick = () => { cleanup(); resolve(null); };
+            btnConfirm.onclick = () => {
+                let val;
+                if(options.type === 'prompt') val = input.value.trim();
+                else if(options.type === 'save_query') val = { name: input.value.trim(), description: desc.value.trim() };
+                else val = true;
+                
+                cleanup();
+                resolve(val);
+            };
+
+            dialog.style.display = 'flex';
+            if(options.type === 'prompt' || options.type === 'save_query') input.focus();
+        });
+    }
+
+    function copyOmniPrompt() {
+        const promptText = document.getElementById('omniquery-prompt-text').value;
+        
+        function successCb() {
+            document.getElementById('omni-llm-modal').style.display = 'flex';
+        }
+
+        function fallbackCopy() {
+            const textArea = document.createElement("textarea");
+            textArea.value = promptText;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                successCb();
+            } catch (err) {
+                if(typeof showNotification === 'function') showNotification('Clipboard API not supported.', 'error');
+            }
+            document.body.removeChild(textArea);
+        }
+        
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(promptText).then(successCb).catch(fallbackCopy);
+        } else {
+            fallbackCopy();
+        }
+    }
+    
+    function openLLM(url) {
+        window.open(url, '_blank');
+        document.getElementById('omni-llm-modal').style.display = 'none';
+    }
+
+    // --- PROMPTS LOGIC ---
+    async function loadFactoryPrompt() {
+        const confirmReset = await omniCustomDialog({
+            type: 'confirm',
+            title: 'Load Factory Prompt',
+            message: 'Are you sure you want to load the factory default template? This will replace your current prompt text.',
+            confirmText: 'Load Factory',
+            danger: true
+        });
+        if(!confirmReset) return;
+
+        const btn = document.getElementById('omni-reset-tmpl-btn');
+        btn.innerHTML = '⏳...';
+        try {
+            const res = await fetch('/galleryout/api/omniquery/prompts/factory');
+            const data = await res.json();
+            if (data.status === 'success') {
+                const promptArea = document.getElementById('omniquery-prompt-text');
+                promptArea.value = data.template;
+                localStorage.setItem('sg_omniquery_prompt', data.template);
+                
+                clearActiveOmniPrompt();
+                promptArea.value = data.template; 
+
+                if(typeof showNotification === 'function') showNotification('Factory prompt loaded.', 'info');
+                
+                setTimeout(() => {
+                    promptArea.focus();
+                    promptArea.selectionStart = promptArea.value.length;
+                    promptArea.selectionEnd = promptArea.value.length;
+                    promptArea.scrollTop = promptArea.scrollHeight;
+                }, 50);
+            } else {
+                showOmniFeedback(data.message, true);
+            }
+        } catch(e) {}
+        btn.innerHTML = '🔄 Factory';
+    }
+
+    async function promptSavePrompt(retryName = null, retryDesc = null) {
+        const promptArea = document.getElementById('omniquery-prompt-text');
+        let promptText = promptArea.value.trim();
+        if(!promptText) return showOmniFeedback("No prompt text to save.", true);
+        
+        if(cachedOmniPrompts.length === 0) {
+            await fetchOmniPromptsSilently(); 
+        }
+
+        let extractedDesc = null;
+        const descMatch = promptText.match(/^--\s*Description:\s*(.*?)(?:\r\n|\n)/i);
+        if (descMatch && descMatch[1]) {
+            extractedDesc = descMatch[1].trim();
+        }
+
+        let defName = retryName !== null ? retryName : (currentLoadedPromptName ? currentLoadedPromptName.replace('.txt', '') : '');
+        let defDesc = retryDesc !== null ? retryDesc : (extractedDesc !== null ? extractedDesc : (currentLoadedPromptDesc || ''));
+
+        const result = await omniCustomDialog({
+            type: 'save_query',
+            title: 'Save Prompt',
+            message: 'Enter a name and an optional description for this prompt:',
+            defaultValue: defName,
+            defaultDesc: defDesc,
+            confirmText: 'Save'
+        });
+        
+        if(!result || !result.name) return;
+        
+        let promptFileName = result.name;
+        if(!promptFileName.toLowerCase().endsWith('.txt')) promptFileName += '.txt';
+
+        let exists = cachedOmniPrompts.find(p => p.name.toLowerCase() === promptFileName.toLowerCase());
+        let isCurrentFile = currentLoadedPromptName && (currentLoadedPromptName.toLowerCase() === promptFileName.toLowerCase());
+        
+        if(exists) {
+            let msg = isCurrentFile ? `Update the currently loaded prompt '${result.name}'?` : `A prompt named '${result.name}' already exists. Do you want to overwrite it?`;
+            const confirmOverwrite = await omniCustomDialog({
+                type: 'confirm',
+                title: isCurrentFile ? 'Update Prompt' : 'Overwrite Prompt',
+                message: msg,
+                confirmText: isCurrentFile ? 'Update' : 'Overwrite',
+                danger: !isCurrentFile
+            });
+            if(!confirmOverwrite) {
+                return promptSavePrompt(result.name, result.description);
+            }
+        }
+        
+        let cleanText = promptText.replace(/^--\s*Description:.*?(?:\r\n|\n)/i, '').trim();
+        let finalTextToSave = result.description ? `-- Description: ${result.description}\n${cleanText}` : cleanText;
+
+        try {
+            const res = await fetch('/galleryout/api/omniquery/prompts/save', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({name: result.name, description: result.description, text: finalTextToSave})
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                if(typeof showNotification === 'function') showNotification('Prompt saved.', 'success');
+                currentLoadedPromptName = promptFileName;
+                currentLoadedPromptDesc = result.description;
+                document.getElementById('omni-active-prompt-name').innerText = result.name;
+                document.getElementById('omni-active-prompt-bar').style.display = 'flex';
+                promptArea.value = finalTextToSave;
+                localStorage.setItem('sg_omniquery_prompt', finalTextToSave);
+                fetchOmniPromptsSilently();
+            } else showOmniFeedback(data.message, true);
+        } catch(e) {}
+    }
+
+    async function openPromptsModal() {
+        document.getElementById('omni-prompts-modal').style.display = 'flex';
+        await fetchOmniPromptsSilently();
+        renderOmniPrompts();
+    }
+    
+    function closePromptsModal() {
+        document.getElementById('omni-prompts-modal').style.display = 'none';
+    }
+
+    function filterOmniPrompts() { renderOmniPrompts(); }
+
+    function renderOmniPrompts() {
+        const list = document.getElementById('omni-prompts-list');
+        const term = document.getElementById('omni-prompt-search').value.toLowerCase();
+        const sort = document.getElementById('omni-prompt-sort').value;
+        
+        let filtered = cachedOmniPrompts.filter(p => {
+            const matchName = p.name.toLowerCase().includes(term);
+            const matchDesc = p.description && p.description.toLowerCase().includes(term);
+            return matchName || matchDesc;
+        });
+        
+        filtered.sort((a, b) => {
+            if(sort === 'name_asc') return a.name.localeCompare(b.name);
+            if(sort === 'name_desc') return b.name.localeCompare(a.name);
+            if(sort === 'date_asc') return a.mtime - b.mtime;
+            if(sort === 'date_desc') return b.mtime - a.mtime;
+        });
+
+        list.innerHTML = '';
+        filtered.forEach(p => {
+            const dateStr = new Date(p.mtime * 1000).toLocaleString();
+            const descHtml = p.description ? `<div style="font-size:0.8rem; color:#aaa; margin-top:4px;"><i>${p.description}</i></div>` : '';
+            
+            const li = document.createElement('li');
+            li.className = 'omni-query-item';
+            li.innerHTML = `
+                <div style="flex:1; margin-right:10px; cursor:pointer;" onclick="loadOmniPrompt('${p.name}')" title="Click to load">
+                    <div class="omni-query-name" style="margin:0; color:#e0b0ff;">${p.name}</div>
+                    ${descHtml}
+                </div>
+                <div class="omni-query-date">${dateStr}</div>
+                <div class="omni-query-actions">
+                    <button onclick="renameOmniPrompt('${p.name}')" class="glass-btn" style="padding:2px 8px; font-size:0.75rem;">Rename</button>
+                    <button onclick="deleteOmniPrompt('${p.name}')" class="glass-btn" style="padding:2px 8px; font-size:0.75rem; color:#ff4757; border-color:#ff4757;">Delete</button>
+                </div>
+            `;
+            list.appendChild(li);
+        });
+    }
+
+    async function loadOmniPrompt(name) {
+        try {
+            const res = await fetch('/galleryout/api/omniquery/prompts/load', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({name: name})
+            });
+            const data = await res.json();
+            if(data.status === 'success') {
+                document.getElementById('omniquery-prompt-text').value = data.text;
+                localStorage.setItem('sg_omniquery_prompt', data.text);
+                
+                currentLoadedPromptName = name;
+                let foundPrompt = cachedOmniPrompts.find(p => p.name === name);
+                currentLoadedPromptDesc = foundPrompt ? foundPrompt.description : '';
+                
+                document.getElementById('omni-active-prompt-name').innerText = name.replace('.txt', '');
+                document.getElementById('omni-active-prompt-bar').style.display = 'flex';
+
+                closePromptsModal();
+                if(typeof showNotification === 'function') showNotification('Prompt loaded.', 'success');
+            } else showOmniFeedback(data.message, true);
+        } catch(e) {}
+    }
+
+    async function deleteOmniPrompt(name) {
+        const confirmDel = await omniCustomDialog({
+            type: 'confirm',
+            title: 'Delete Prompt',
+            message: `Are you sure you want to delete '${name}'?`,
+            confirmText: 'Delete',
+            danger: true
+        });
+        if(!confirmDel) return;
+        try {
+            const res = await fetch('/galleryout/api/omniquery/prompts/delete', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({name: name})
+            });
+            const data = await res.json();
+            if(data.status === 'success') {
+                await fetchOmniPromptsSilently();
+                renderOmniPrompts();
+            }
+        } catch(e) {}
+    }
+
+    async function renameOmniPrompt(oldName) {
+        const newName = await omniCustomDialog({
+            type: 'prompt',
+            title: 'Rename Prompt',
+            message: `Enter new filename for '${oldName}':`,
+            defaultValue: oldName,
+            confirmText: 'Rename'
+        });
+        if(!newName || newName === oldName) return;
+        try {
+            const res = await fetch('/galleryout/api/omniquery/prompts/rename', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({old_name: oldName, new_name: newName})
+            });
+            const data = await res.json();
+            if(data.status === 'success') {
+                await fetchOmniPromptsSilently();
+                renderOmniPrompts();
+            } else showOmniFeedback(data.message, true);
+        } catch(e) {}
+    }
+
+    // --- QUERIES LOGIC ---
+    async function promptSaveQuery(retryName = null, retryDesc = null) {
+        const sqlArea = document.getElementById('omniquery-input');
+        let sql = sqlArea.value.trim();
+        if(!sql) return showOmniFeedback("Nothing to save.", true);
+        
+        if(cachedOmniQueries.length === 0) {
+            await fetchOmniQueriesSilently(); 
+        }
+
+        let extractedDesc = null;
+        const descMatch = sql.match(/^--\s*Description:\s*(.*?)(?:\r\n|\n)/i);
+        if (descMatch && descMatch[1]) {
+            extractedDesc = descMatch[1].trim();
+        }
+
+        let extractedPrompt = "";
+        const existingPromptMatch = sql.match(/\/\*\s*Prompt Request:\s*([\s\S]*?)\s*\*\//i);
+        if (existingPromptMatch && existingPromptMatch[1]) {
+            extractedPrompt = existingPromptMatch[1].trim();
+        } else {
+            const promptArea = document.getElementById('omniquery-prompt-text');
+            if (promptArea) {
+                const reqMatch = promptArea.value.match(/MY REQUEST.*?:([\s\S]*)/i);
+                if (reqMatch && reqMatch[1]) {
+                    let reqText = reqMatch[1].trim();
+                    if (reqText && !reqText.includes('[Write your request here]')) {
+                        extractedPrompt = reqText;
+                    }
+                }
+            }
+        }
+
+        let defName = retryName !== null ? retryName : (currentLoadedQueryName ? currentLoadedQueryName.replace('.txt', '') : '');
+        let defDesc = retryDesc !== null ? retryDesc : (extractedDesc !== null ? extractedDesc : (currentLoadedQueryDesc || ''));
+
+        const result = await omniCustomDialog({
+            type: 'save_query',
+            title: 'Save Query',
+            message: 'Enter a name and an optional description for this query:',
+            defaultValue: defName,
+            defaultDesc: defDesc,
+            confirmText: 'Save'
+        });
+        
+        if(!result || !result.name) return;
+        
+        let queryFileName = result.name;
+        if(!queryFileName.toLowerCase().endsWith('.txt')) queryFileName += '.txt';
+
+        let exists = cachedOmniQueries.find(q => q.name.toLowerCase() === queryFileName.toLowerCase());
+        let isCurrentFile = currentLoadedQueryName && (currentLoadedQueryName.toLowerCase() === queryFileName.toLowerCase());
+        
+        if(exists) {
+            let msg = isCurrentFile ? `Update the currently loaded query '${result.name}'?` : `A query named '${result.name}' already exists. Do you want to overwrite it?`;
+            const confirmOverwrite = await omniCustomDialog({
+                type: 'confirm',
+                title: isCurrentFile ? 'Update Query' : 'Overwrite Query',
+                message: msg,
+                confirmText: isCurrentFile ? 'Update' : 'Overwrite',
+                danger: !isCurrentFile
+            });
+            if(!confirmOverwrite) {
+                return promptSaveQuery(result.name, result.description);
+            }
+        }
+        
+        let cleanSql = sql.replace(/^--\s*Description:.*?(?:\r\n|\n)/i, '').trim();
+        cleanSql = cleanSql.replace(/\/\*\s*Prompt Request:\s*[\s\S]*?\s*\*\/\s*/i, '').trim();
+        
+        let finalSqlToSave = cleanSql;
+        if (extractedPrompt) {
+            finalSqlToSave = `/* Prompt Request:\n${extractedPrompt}\n*/\n${finalSqlToSave}`;
+        }
+        if (result.description) {
+            finalSqlToSave = `-- Description: ${result.description}\n${finalSqlToSave}`;
+        }
+
+        try {
+            const res = await fetch('/galleryout/api/omniquery/queries/save', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({name: result.name, description: result.description, sql: finalSqlToSave})
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                if(typeof showNotification === 'function') showNotification('Query saved.', 'success');
+                currentLoadedQueryName = queryFileName;
+                currentLoadedQueryDesc = result.description;
+                document.getElementById('omni-active-query-name').innerText = result.name;
+                document.getElementById('omni-active-query-bar').style.display = 'flex';
+                sqlArea.value = finalSqlToSave;
+                localStorage.setItem('sg_omniquery_sql', finalSqlToSave);
+                fetchOmniQueriesSilently();
+            } else showOmniFeedback(data.message, true);
+        } catch(e) {}
+    }
+
+    async function openQueriesModal() {
+        document.getElementById('omni-queries-modal').style.display = 'flex';
+        await fetchOmniQueriesSilently();
+        renderOmniQueries();
+    }
+    
+    function closeQueriesModal() {
+        document.getElementById('omni-queries-modal').style.display = 'none';
+    }
+
+    function filterOmniQueries() { renderOmniQueries(); }
+
+    function renderOmniQueries() {
+        const list = document.getElementById('omni-queries-list');
+        const term = document.getElementById('omni-query-search').value.toLowerCase();
+        const sort = document.getElementById('omni-query-sort').value;
+        
+        let filtered = cachedOmniQueries.filter(q => {
+            const matchName = q.name.toLowerCase().includes(term);
+            const matchDesc = q.description && q.description.toLowerCase().includes(term);
+            return matchName || matchDesc;
+        });
+        
+        filtered.sort((a, b) => {
+            if(sort === 'name_asc') return a.name.localeCompare(b.name);
+            if(sort === 'name_desc') return b.name.localeCompare(a.name);
+            if(sort === 'date_asc') return a.mtime - b.mtime;
+            if(sort === 'date_desc') return b.mtime - a.mtime;
+        });
+
+        list.innerHTML = '';
+        filtered.forEach(q => {
+            const dateStr = new Date(q.mtime * 1000).toLocaleString();
+            const descHtml = q.description ? `<div style="font-size:0.8rem; color:#aaa; margin-top:4px;"><i>${q.description}</i></div>` : '';
+            
+            const li = document.createElement('li');
+            li.className = 'omni-query-item';
+            li.innerHTML = `
+                <div style="flex:1; margin-right:10px; cursor:pointer;" onclick="loadOmniQuery('${q.name}')" title="Click to load">
+                    <div class="omni-query-name" style="margin:0;">${q.name}</div>
+                    ${descHtml}
+                </div>
+                <div class="omni-query-date">${dateStr}</div>
+                <div class="omni-query-actions">
+                    <button onclick="renameOmniQuery('${q.name}')" class="glass-btn" style="padding:2px 8px; font-size:0.75rem;">Rename</button>
+                    <button onclick="deleteOmniQuery('${q.name}')" class="glass-btn" style="padding:2px 8px; font-size:0.75rem; color:#ff4757; border-color:#ff4757;">Delete</button>
+                </div>
+            `;
+            list.appendChild(li);
+        });
+    }
+
+    async function loadOmniQuery(name) {
+        try {
+            const res = await fetch('/galleryout/api/omniquery/queries/load', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({name: name})
+            });
+            const data = await res.json();
+            if(data.status === 'success') {
+                document.getElementById('omniquery-input').value = data.sql;
+                localStorage.setItem('sg_omniquery_sql', data.sql);
+                
+                currentLoadedQueryName = name;
+                let foundQuery = cachedOmniQueries.find(q => q.name === name);
+                currentLoadedQueryDesc = foundQuery ? foundQuery.description : '';
+                
+                document.getElementById('omni-active-query-name').innerText = name.replace('.txt', '');
+                document.getElementById('omni-active-query-bar').style.display = 'flex';
+
+                closeQueriesModal();
+                if(typeof showNotification === 'function') showNotification('Query loaded.', 'success');
+            } else showOmniFeedback(data.message, true);
+        } catch(e) {}
+    }
+
+    async function deleteOmniQuery(name) {
+        const confirmDel = await omniCustomDialog({
+            type: 'confirm',
+            title: 'Delete Query',
+            message: `Are you sure you want to delete '${name}'?`,
+            confirmText: 'Delete',
+            danger: true
+        });
+        if(!confirmDel) return;
+        try {
+            const res = await fetch('/galleryout/api/omniquery/queries/delete', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({name: name})
+            });
+            const data = await res.json();
+            if(data.status === 'success') {
+                await fetchOmniQueriesSilently();
+                renderOmniQueries();
+            }
+        } catch(e) {}
+    }
+
+    async function renameOmniQuery(oldName) {
+        const newName = await omniCustomDialog({
+            type: 'prompt',
+            title: 'Rename Query',
+            message: `Enter new filename for '${oldName}':`,
+            defaultValue: oldName,
+            confirmText: 'Rename'
+        });
+        if(!newName || newName === oldName) return;
+        try {
+            const res = await fetch('/galleryout/api/omniquery/queries/rename', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({old_name: oldName, new_name: newName})
+            });
+            const data = await res.json();
+            if(data.status === 'success') {
+                await fetchOmniQueriesSilently();
+                renderOmniQueries();
+            } else showOmniFeedback(data.message, true);
+        } catch(e) {}
+    }
+
+
+    function closePreviewModal() {
+        document.getElementById('omni-preview-modal').style.display = 'none';
+    }
+
+    async function previewOmniQuery() {
+        const sqlInput = document.getElementById('omniquery-input').value.trim();
+        if (!sqlInput) return showOmniFeedback("Please enter a SQL query to preview.", true);
+        
+        const btn = document.getElementById('omni-preview-btn');
+        btn.innerHTML = '⏳...';
+        
+        try {
+            const res = await fetch('/galleryout/api/omniquery/preview', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ sql: sqlInput })
+            });
+            const data = await res.json();
+            
+            if (data.status === 'success') {
+                document.getElementById('omni-preview-count').innerText = data.count;
+                const container = document.getElementById('omni-preview-content');
+                
+                if (data.count === 0) {
+                    container.innerHTML = '<div style="padding:20px; color:#aaa;">0 records found.</div>';
+                } else {
+                    let html = '<table class="omni-preview-table"><thead><tr>';
+                    data.columns.forEach(col => html += `<th>${col}</th>`);
+                    html += '</tr></thead><tbody>';
+                    
+                    data.rows.forEach(row => {
+                        html += '<tr>';
+                        data.columns.forEach(col => {
+                            let val = row[col];
+                            if(val === null) val = '<i>NULL</i>';
+                            else val = String(val).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                            html += `<td>${val}</td>`;
+                        });
+                        html += '</tr>';
+                    });
+                    html += '</tbody></table>';
+                    container.innerHTML = html;
+                }
+                
+                document.getElementById('omni-preview-modal').style.display = 'flex';
+            } else {
+                showOmniFeedback("Preview SQL Error: " + data.message, true);
+            }
+        } catch(e) {
+            showOmniFeedback("Network error.", true);
+        }
+        btn.innerHTML = '🔍 Preview';
+    }
+
+    // --- END OMNIQUERY EXTENDED JS ---
+
+    // --- PASTE FROM CLIPBOARD (cross‑platform) ---
+    async function pasteOmniQuery() {
+        const sqlInput = document.getElementById('omniquery-input');
+        // Try the modern Clipboard API (requires secure context)
+        try {
+            const text = await navigator.clipboard.readText();
+            sqlInput.value = text;
+            localStorage.setItem('sg_omniquery_sql', text);
+            if (typeof showNotification === 'function') {
+                showNotification('Pasted from clipboard.', 'success');
+            }
+            return;
+        } catch (err) {
+            // Fallback for non‑secure contexts or missing API
+        }
+
+        // Fallback: manual paste dialog
+        showPasteFallback();
+    }
+
+    function showPasteFallback() {
+        // Remove any existing fallback overlay
+        const existing = document.getElementById('omni-paste-fallback');
+        if (existing) existing.remove();
+
+        // Create overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'omni-paste-fallback';
+        overlay.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.8); z-index:10700; display:flex; justify-content:center; align-items:center;';
+
+        const box = document.createElement('div');
+        box.style.cssText = 'background:#1a1a1a; border:1px solid #3498db; border-radius:12px; padding:25px; width:450px; max-width:90vw; text-align:center; color:#ccc; box-shadow:0 10px 40px rgba(52,152,219,0.2);';
+
+        box.innerHTML = `
+            <h4 style="color:#3498db; margin-top:0;">📋 Paste from Clipboard</h4>
+            <p style="margin-bottom:15px;">
+                Press <b>Ctrl+V</b> (or <b>Cmd+V</b> on Mac) to paste your SQL query below.
+            </p>
+            <textarea id="omni-paste-area" style="width:100%; height:120px; background:#111; color:white; border:1px solid #555; border-radius:8px; padding:10px; margin-bottom:15px; font-family:monospace; resize:vertical;" autofocus></textarea>
+            <div style="display:flex; justify-content:center; gap:10px;">
+                <button id="omni-paste-confirm" class="glass-btn" style="padding:8px 20px; background:#3498db; color:white; border:none;">Confirm</button>
+                <button id="omni-paste-cancel" class="glass-btn" style="padding:8px 20px;">Cancel</button>
+            </div>
+        `;
+
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+
+        const pasteArea = document.getElementById('omni-paste-area');
+        const sqlInput = document.getElementById('omniquery-input');
+
+        // Auto‑paste listener: capture Ctrl+V / Cmd+V inside the textarea
+        pasteArea.addEventListener('paste', (e) => {
+            e.preventDefault();
+            const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+            pasteArea.value = text;
+        });
+
+        document.getElementById('omni-paste-cancel').onclick = () => overlay.remove();
+        document.getElementById('omni-paste-confirm').onclick = () => {
+            const text = pasteArea.value.trim();
+            if (text) {
+                sqlInput.value = text;
+                localStorage.setItem('sg_omniquery_sql', text);
+                if (typeof showNotification === 'function') {
+                    showNotification('Pasted from clipboard.', 'success');
+                }
+            }
+            overlay.remove();
+        };
+
+        // Close on clicking overlay background
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) overlay.remove();
+        });
+
+        // Focus the paste area automatically
+        setTimeout(() => pasteArea.focus(), 100);
+    }
+    // --- END PASTE ---
+
+</script>

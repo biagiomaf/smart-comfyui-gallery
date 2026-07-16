@@ -19,8 +19,10 @@
 </div>
 
 * Search 50,000 generations by prompt, model, LoRA, or comments in milliseconds.  
-* Organize your gallery seamlessly across physical folders and virtual collections.  
-* **(NEW) [Remix workflows with The Nodepad](#323-remix-workflow--the---nodepad-)**: Generate directly from your gallery without opening ComfyUI. Build custom dashboards, edit raw JSON with live server dictionary lookups, and queue jobs in the background. [▶️](https://smartgallerydam.com/nodepad.mp4)
+* Organize your gallery seamlessly across physical folders and nested virtual collections.  
+* **(NEW) [OmniQuery](#314-omniquery--ai-powered-sql-explorer)**: Ask complex questions to your database in plain English using AI.
+* **(NEW) [LoRA Synergy™](#324-lora-synergy)**: Stop guessing compatibility. Let the system scan your safetensors and auto-wire your graph locally.
+* **[Remix workflows with The Nodepad](#323-remix-workflow--the---nodepad-)**: Generate directly from your gallery without opening ComfyUI. Build custom dashboards, edit raw JSON with live server dictionary lookups, and queue jobs in the background. [▶️](https://smartgallerydam.com/nodepad.mp4)
 * Share curated work with clients without exposing a single node, and let them rate and comment on your creations.  
 * Compare two generations side-by-side with an automatic parameter diff.  
 * Cull batches from your laptop or also from your phone while ComfyUI is still generating.
@@ -60,19 +62,20 @@ This is cross-platform in the full sense: **Windows, macOS, Linux, Docker**, acc
 ## Why SmartGallery?
 | | |
 |---|---|
-| 🪄 **The Remix Engine (new)** | Generate without opening ComfyUI. A 3-tier workspace to extract workflows, build custom dashboards, edit raw JSON with live dictionary lookups, and queue directly. | 
+| 🧠 **OmniQuery (new)** | Chat with your DAM. Let AI write complex SQL queries to find hyper-specific cross-referenced media in your database without writing code. |
+| 🔌 **LoRA Synergy (new)** | Fully offline matchmaker. Scans Safetensors to guarantee checkpoint compatibility (SD1.5, SDXL, Flux), surfaces trigger words, and auto-wires the workflow. |
+| 🪄 **The Remix Engine** | Generate without opening ComfyUI. A 3-tier workspace to extract workflows, build custom dashboards, edit raw JSON with live dictionary lookups, and queue directly. | 
 | 🔍 **Find anything instantly** | Search by prompt keyword, checkpoint, LoRA, date or comment across tens of thousands of files | 
 | 🗂️ **Powerful file manager** | Rename, move, copy, delete files and create folders directly from the browser |
 | 🔗 **Works on any folder** | Point it at any ComfyUI output, photo archive, NAS volume or network path. Mix and match as many folders as you want |
 | 📤 **Magic Upload** | Drag & drop or upload files from your PC or smartphone directly into any folder. ComfyUI workflows are automatically extracted and indexed on the fly |
 | 👥 **Built for teams too** | Role-based access, per-image comments with visibility control, 1 to 5 star ratings |
-| 🗃️ **Virtual collections** | Group files from different folders into albums without moving anything on disk. Mark as private or share exclusively with specific users |
+| 🗃️ **Nested Collections** | Organize virtual albums in a folder-like tree structure without duplicating a single byte on disk. |
 | 🏷️ **Color-coded status tags** | Mark files as Approved, Review, To Edit, Rejected or Select. Browse any status across your entire library at once, standard DAM pipeline workflow |
 | 🛡 **Share without exposing your process** | Clients access a dedicated Exhibition portal you launch only when needed. They see curated collections only. Workflows, prompts and models are always hidden |
 | ⚖️ **Compare generations** | A/B slider with synchronized zoom and an automatic parameter diff table | 
 | 🎬 **Full video & audio support** | Thumbnails, storyboard preview, dynamic audio waveforms, and on-the-fly transcoding via FFmpeg. Handles ProRes and other professional formats |
 | 🌐 **Truly cross-platform** | Windows, macOS, Linux, Docker. Same interface, same features, every OS and device | 
-| 📱 **Best-in-class mobile UI** | Full DAM features on your phone. Rate, tag, cull and comment from any device on your network |  
 | ⚡ **Simple installation** | Zero-config Portable App for Windows (just unzip and run) and official Docker image for Linux/Unraid |  
 
 ---
@@ -81,7 +84,7 @@ This is cross-platform in the full sense: **Windows, macOS, Linux, Docker**, acc
 
 1.  [**OVERVIEW & CONCEPTS**](#1-overview--concepts)
     *   [1.1 What is SmartGallery DAM?](#11-what-is-smartgallery-dam)
-    *   [1.2 What's New in v2.14](#12-whats-new-in-v214)
+    *   [1.2 What's New in v2.15](#12-whats-new-in-v215)
     *   [1.3 Core Features](#13-core-features)
     *   [1.4 Use Case Scenarios](#14-use-case-scenarios)
 2.  [**SETUP & CONFIGURATION**](#2-setup--configuration)
@@ -90,13 +93,23 @@ This is cross-platform in the full sense: **Windows, macOS, Linux, Docker**, acc
     *   [2.3 FFmpeg Integration](#23-ffmpeg-integration)
 3.  [**INTERFACE WALKTHROUGH**](#3-interface-walkthrough)
     *   [3.1 The Main Workspace (Creator Hub)](#31-the-main-workspace-creator-hub)
+        *   [3.1.1 Sidebar Navigation](#311-sidebar-navigation)
+        *   [3.1.2 Top Toolbar & Global Actions](#312-top-toolbar--global-actions)
+        *   [3.1.3 Search & Filters](#313-search--filters)
+        *   [3.1.4 OmniQuery – AI-Powered SQL Explorer (NEW)](#314-omniquery--ai-powered-sql-explorer)
+        *   [3.1.5 Gallery Grid & Focus Mode](#315-gallery-grid--focus-mode)
+        *   [3.1.6 Batch Selection Bar](#316-batch-selection-bar)
     *   [3.2 Advanced Media Inspection](#32-advanced-media-inspection)
-        *   [3.2.1 The Lightbox](#321-the-lightbox-media-viewer)
-        *   [3.2.2 Node Summary](#322-comfyui-node-summary-)
+        *   [3.2.1 The Lightbox (Media Viewer)](#321-the-lightbox-media-viewer)
+        *   [3.2.2 ComfyUI Node Summary (📝)](#322-comfyui-node-summary-)
         *   [3.2.3 Remix Workflow & The { } Nodepad (✦)](#323-remix-workflow--the---nodepad-)
-        *   [3.2.4 Compare Mode](#324-compare-mode-)
-        *   [3.2.5 Video Storyboard](#325-video-storyboard-)
+        *   [3.2.4 LoRA Synergy™ (NEW)](#324-lora-synergy)
+        *   [3.2.5 Compare Mode](#325-compare-mode-)
+        *   [3.2.6 Video Storyboard](#326-video-storyboard-)
     *   [3.3 Digital Asset Management (DAM) & Communication](#33-digital-asset-management-dam--communication)
+        *   [3.3.1 Virtual Collections & Sharing](#331-virtual-collections--sharing)
+        *   [3.3.2 Pipeline Status Tags](#332-pipeline-status-tags)
+        *   [3.3.3 Ratings & Comments](#333-ratings--comments-)
     *   [3.4 User Management & Access Control](#34-user-management--access-control)
     *   [3.5 The Exhibition Portal (Client Hub)](#35-the-exhibition-portal-client-hub)
 4.  [**ADVANCED TOPICS & REFERENCE**](#4-advanced-topics--reference)
@@ -127,14 +140,11 @@ Evolve your workflow from a simple collection of files into a structured, search
 
 ---
 
-### 1.2 What's New in v2.14
+### 1.2 What's New in v2.15
 
-- 🚀 **Remix Workflow Overhaul & The { } Nodepad:** A completely rebuilt 3-tier workspace for generating media without opening ComfyUI. Break out of rigid forms and take full control of your pipelines.
-    - **📝 Auto-Form:** Instantly exposes standard parameters (prompts, seeds) for quick tweaks.
-    - **🛠️ My Panel:** Build your own custom generator dashboard by pinning fields.
-    - **{ } Nodepad:** A revolutionary raw JSON editor for power users. Features synchronous live dictionary lookups, a "Magic Injector" that writes JSON via UI dropdowns, and a "Favorite" system that turns complex nodes into quick-edit buttons on your dashboard.
-- 📂 **Template Library:** Save your custom My Panel dashboards and favorited nodes, then instantly recall them to start generating without needing a source image.
-- 🔍 **Companion PNG Recovery:** Automatically finds missing API data for video files, allowing you to remix and queue video workflows directly.
+- 🧠 **OmniQuery (AI-Powered SQL Explorer):** Ask complex questions to your DAM. Use natural language via an LLM (ChatGPT, Claude, etc.) to query your database with cross-table logic that goes way beyond simple UI filters. 
+- 🔌 **LoRA Synergy™:** A fully offline LoRA matchmaker built into the Nodepad. It reads your LoRAs' safetensors headers to guarantee checkpoint compatibility, suggests trigger words based on your history, and auto-wires the ComfyUI nodes perfectly.
+- 🌳 **Nested Collections:** Virtual albums just got a major upgrade. You can now arrange your virtual Collections in a nested tree structure (parent/child relationship), keeping complex projects beautifully organized.
 
 > **Note:** Read the **[Full Changelog](CHANGELOG.md)** so you don't miss out on all the quality-of-life improvements and bug fixes!
 
@@ -157,6 +167,7 @@ Evolve your workflow from a simple collection of files into a structured, search
 <details>
 <summary><strong>Workflow Intelligence (ComfyUI)</strong></summary>
 
+-   **LoRA Synergy:** Zero-API offline matching that prevents architecture mismatch errors by reading safetensors and automatically wires your graph.
 -   **Node Summary Dashboard:** press `N` on any image to see Seed, CFG, Steps, Sampler, Scheduler, all active Models, LoRAs with weights, and full positive/negative prompts.
 -   **Remix 3-Tier Workflow:** press `B` to break out of the canvas. Use the *Auto-Form* for simple prompts, build a custom dashboard in *My Panel*, or edit raw backend JSON safely with the revolutionary *{ } Nodepad*. Includes Autofix and Companion PNG support.
 -   **Workflow Download and Copy:** press `W` to download the raw JSON workflow, `C` to copy it to clipboard and paste directly back into ComfyUI.
@@ -166,43 +177,25 @@ Evolve your workflow from a simple collection of files into a structured, search
 </details>
 
 <details>
-<summary><strong>Organization (DAM)</strong></summary>
+<summary><strong>Organization (DAM) & Search</strong></summary>
 
--   **Virtual Collections:** group files from different physical folders into albums without duplicating a byte on disk.
+-   **OmniQuery (AI SQL Explorer):** Query the database using AI to answer complex questions safely (read-only).
+-   **Virtual Nested Collections:** group files from different physical folders into a hierarchical tree of albums without duplicating a byte on disk.
 -   **Collection Sharing:** Keep collections private, mark them as Exhibition Ready for all guests, or share them *exclusively* with specific users.
 -   **Status Tags:** keyboard shortcuts `1` to `5` apply color-coded team statuses: Approved, Review, To Edit, Rejected, Select.
 -   **Favorites:** press `F` to toggle a Favorite flag on any file.
+-   **Search by anything:** Prompt keywords, checkpoint name, LoRA name, comment text, date range, file extension, or star rating ranges.
 
 </details>
 
 <details>
-<summary><strong>Search and Filtering</strong></summary>
-
--   Search by **prompt keywords**, **checkpoint name**, **LoRA name**, **comment text**, date range, file extension.
--   Scope to the current folder or search the **global database** instantly.  
--   Filter by multiple keywords at once using AND, OR and exclusion operators.
--   Filter by **Star Rating Ranges** (e.g., 4-5 stars) and by **Specific Users** to quickly find how a certain client evaluated your work.
--   Sort by date, name, rating, or comment count. Use the sub-menus on the Sort buttons to quickly isolate items that are **"Not Rated"** or **"Uncommented"**.
-
-</details>
-
-<details>
-<summary><strong>Media Tools</strong></summary>
-
--   **Dynamic Audio Waveforms:** Real-time amplitude scaling (🌊) without media regeneration.
--   **Video Storyboard:** press `E` in the Lightbox to generate a grid of 11 evenly-spaced frames from start to last frame.
--   **Video Transcoding:** ProRes, MKV, AVI, MOV are auto-transcoded via FFmpeg for smooth browser playback.
--   **Enhanced Player:** Spacebar Play/Pause, Arrow seeking, integrated volume controls.
-
-</details>
-
-<details>
-<summary><strong>Exhibition Mode and Collaboration</strong></summary>
+<summary><strong>Media Tools & Exhibition Mode</strong></summary>
 
 -   **Exhibition Mode:** a separate, secure portal for clients or collaborators. Launch it only when you need it. Physical folder browsing is disabled.
 -   **Blind Rating System:** A unique enterprise-grade feature. Force users to rate blindly without seeing global averages to prevent group bias.
--   **1-5 Star Ratings & Comments:** per-image, per-user rating transparency. Comment threads support Public, Internal (Staff), or Direct Message visibility.
--   **Multi-User ACL:** Admin, MANAGER, STAFF, FRIEND, USER, CUSTOMER, GUEST roles.
+-   **Video Storyboard:** press `E` in the Lightbox to generate a grid of 11 evenly-spaced frames from start to last frame.
+-   **Dynamic Audio Waveforms:** Real-time amplitude scaling (🌊) without media regeneration.
+-   **Video Transcoding:** ProRes, MKV, AVI, MOV are auto-transcoded via FFmpeg for smooth browser playback.
 
 </details>
 
@@ -309,7 +302,7 @@ There are two ways to run SmartGallery on Windows: using the ready-to-use **Port
 This version includes a fully self-contained environment. You do not need to install Python or any dependencies on your system—it is **completely plug-and-play**.
 
 **1. Download & Extract**
-* **Direct Download:** [SmartGallery-v2.14-Windows-Portable.zip](https://github.com/biagiomaf/smart-comfyui-gallery/releases/download/2.14/SmartGallery-v2.14-Windows-Portable.zip) *(Link will be updated upon release)*
+* **Direct Download:** [SmartGallery-v2.15-Windows-Portable.zip](https://github.com/biagiomaf/smart-comfyui-gallery/releases/download/2.15/SmartGallery-v2.15-Windows-Portable.zip) *(Link will be updated upon release)*
 * **Releases Page:** Alternatively, view all builds on the [Releases page](https://github.com/biagiomaf/smart-comfyui-gallery/releases/latest).
 * Extract the archive into a folder of your choice.
 
@@ -872,7 +865,22 @@ Sorting criteria for Ratings and Comments have been upgraded with **Sub-menus**.
 
 ---
 
-### 3.1.4 Gallery Grid & Focus Mode
+### 3.1.4 OmniQuery – AI-Powered SQL Explorer
+
+**If you can describe it, you can find it.**  
+The built-in filter panel is great for everyday searches, but sometimes you need to ask complex, cross-table questions like: *"Show me all videos longer than 2 minutes that have at least 3 comments mentioning 'review' and belong to a specific collection."*
+
+Click the **⚡ OmniQuery** icon in the gallery toolbar to open the AI-Assisted SQL Explorer. 
+
+- **Natural Language Translation:** OmniQuery generates a perfect schema prompt. Copy it, paste it into ChatGPT, Claude, or DeepSeek, and they will write the perfect SQL logic for you.
+- **Read-Only Security:** You can safely let AI generate queries. OmniQuery strictly enforces `SELECT` statements, meaning your database can never be accidentally modified or deleted.
+- **Save & Reuse:** Save your favorite complex queries directly on the server to run them again with one click.
+
+👉 **[Read the full OmniQuery Guide](docs/OmniQuery.md)** for detailed instructions and examples.
+
+---
+
+### 3.1.5 Gallery Grid & Focus Mode
 
 **Persistent Metadata Hover Bar:** 
 Hovering over any image now reveals a sleek status bar at the bottom of the screen. It provides instant, real-time access to crucial file details including exact dimensions, calculated megapixels, file size, and current rating status without needing to open the Lightbox.
@@ -893,7 +901,7 @@ Hovering over any image now reveals a sleek status bar at the bottom of the scre
 
 ---
 
-### 3.1.5 Batch Selection Bar
+### 3.1.6 Batch Selection Bar
 
 Click the checkmark `✓` on any image (or `Space`/`X` in Focus Mode) to select it. The floating **Selection Bar** appears at the bottom.
 
@@ -1024,7 +1032,22 @@ Video files (MP4/WebM) generated by ComfyUI sometimes lack the full "API Workflo
 
 ---
 
-### 3.2.4 Compare Mode  
+### 3.2.4 LoRA Synergy™
+
+**Stop guessing which LoRA goes with which checkpoint. Let SmartGallery tell you.**
+
+LoRA Synergy is a zero-API, fully offline LoRA matchmaker and injector built directly into SmartGallery's **Remix Workflow → Nodepad**. 
+
+- **Intelligent Architecture Matchmaker:** It scans the actual `.safetensors` files on your disk, reads their metadata, and cross-references their base architecture (SD1.5, SDXL, Flux) against the checkpoint currently loaded in your workflow. Your LoRAs are instantly bucketed into 🟢 *Perfect Matches* or ⛔ *Incompatible*.
+- **Memory Triggers:** Forgetting trigger words ruins generations. Synergy surfaces official CivitAI triggers and pulls historical ones you've used in the past, saving them to a floating "Memory Widget" ready to be pasted.
+- **Auto-Wiring:** Click *Execute Synergy* and the system will instantly chain the `LoraLoader` node and automatically rewire every downstream `MODEL` and `CLIP` connection for you. Zero spaghetti routing.
+- **ComfyUI-Lora-Manager Integration:** Automatically detects if you use *willmiao*'s LoRA Manager, unlocking rich thumbnails and direct CivitAI deep-links inside the panel.
+
+👉 **[Read the full LoRA Synergy Guide](docs/LORA_SYNERGY.md)** for detailed instructions and Docker/custom-path configurations.
+
+---
+
+### 3.2.5 Compare Mode  
 
 Select exactly **2 files**, click `⋮` in the Selection Bar → **Compare Selected**.
 
@@ -1037,7 +1060,7 @@ Select exactly **2 files**, click `⋮` in the Selection Bar → **Compare Selec
 
 ---
 
-### 3.2.5 Video Storyboard (🎞)
+### 3.2.6 Video Storyboard (🎞)
 
 Press `E` in the Lightbox on any video file.
 
@@ -1055,11 +1078,14 @@ SmartGallery uses FFmpeg to extract **11 perfectly spaced frames** and display t
 
 Collections are **virtual albums** — group files from different physical folders without moving them on disk.
 
+**NEW in v2.15: Nested Collections (Trees) 🌳**
+Your collections no longer have to be a flat list. You can now create sub-collections arranged in a hierarchical folder-like structure. Perfect for managing complex client projects with multiple revisions or separate thematic drops.
+
  ![Collections sidebar tab with context menu open, and Manage Collections modal on the right](assets/collections.jpg)
 
 *Left: Collections sidebar tab with the context menu (Rename, Set as Exhibition Ready, Delete). Right: Manage Collections modal — add or remove the selected file from any collection, with pending changes shown.*
 
--   **Create:** Collections tab in the sidebar → `+` → name it → choose Public, Private, or select specific users.
+-   **Create:** Collections tab in the sidebar → `+` → name it → choose Public, Private, or select specific users. You can also drag and drop collections into one another to build a tree hierarchy.
 -   **Add files:** Select files → click 📚 in the Selection Bar or press `A`.
 -   **Untag (`U`):** Remove files from the current collection without deleting them from disk.
 
