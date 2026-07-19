@@ -2736,7 +2736,7 @@ def check_exhibition_requirements():
     """
     Strict Pre-Flight Check for Exhibition Mode.
     Ensures that the Main gallery has been run before, the database exists, 
-    and at least one public collection is configured.
+    and at least one public or user-shared collection is configured.
     Exits the application if requirements are not met to prevent ghost databases.
     """
     if not IS_EXHIBITION_MODE:
@@ -2771,19 +2771,23 @@ def check_exhibition_requirements():
                 print(f"   {Colors.YELLOW}python smartgallery.py{Colors.RESET}\n")
                 sys.exit(1)
 
-            # Check if there is at least one PUBLIC user album
-            public_colls = conn.execute("SELECT COUNT(*) FROM collections WHERE type='user_album' AND is_public=1").fetchone()[0]
-            
-            if public_colls == 0:
-                print(f"\n{Colors.RED}{Colors.BOLD}❌ CRITICAL ERROR: No Exhibition Ready Collections Found{Colors.RESET}")
-                print(f"{Colors.RED}Exhibition Mode is a showcase. It only displays collections marked as 'Exhibition Ready'.{Colors.RESET}")
-                print(f"{Colors.RED}Currently, your database has 0 Exhibition Ready collections, so the Exhibition would be completely empty.{Colors.RESET}")
+            # Check if at least one user album is public or shared with a user.
+            accessible_colls = conn.execute("""
+                SELECT COUNT(*)
+                FROM collections
+                WHERE type = 'user_album'
+                  AND (is_public = 1 OR TRIM(COALESCE(shared_users, '')) != '')
+            """).fetchone()[0]
+
+            if accessible_colls == 0:
+                print(f"\n{Colors.RED}{Colors.BOLD}❌ CRITICAL ERROR: No Exhibition Collections Found{Colors.RESET}")
+                print(f"{Colors.RED}Exhibition Mode displays collections that are public or shared with at least one user.{Colors.RESET}")
+                print(f"{Colors.RED}Currently, your database has no accessible Exhibition collections, so the Exhibition would be completely empty.{Colors.RESET}")
                 print(f"\n{Colors.CYAN}{Colors.BOLD}💡 HOW TO FIX IT:{Colors.RESET}")
                 print(f"1. Start the standard gallery: {Colors.YELLOW}python smartgallery.py{Colors.RESET}")
                 print(f"2. Log in, select some files, and click the 📚️ Add/Remove from collection button.")
-                print(f"3. Create a new Collection and answer 'Yes' when asked if it should be set as Exhibition Ready.")
-                print(f"   (Or edit an existing one from the sidebar menu: ⋮ -> 👁️ Set as Exhibition Ready).")
-                print(f"4. Once you have at least one public collection, restart with --exhibition.\n")
+                print(f"3. Mark a collection as Exhibition Ready or share it with at least one user.")
+                print(f"4. Restart with --exhibition.\n")
                 sys.exit(1)
                 
     except sqlite3.DatabaseError as e:
