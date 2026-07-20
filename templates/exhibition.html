@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SmartGallery Exhibition Mode</title>
     <link rel="icon" type="image/png" href="{{ app_logo_b64 }}">
- 
+
     <style>
     :root {
         --bg-color: #0a0a0a;
@@ -116,12 +116,13 @@
         border-bottom: 1px solid var(--border-color); position: relative; 
         flex-shrink: 0; 
     }
+    .sidebar-search-wrap { position: relative; display: flex; flex: 1; min-width: 0; }
     .search-input {
-        flex-grow: 1; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border);
+        width: 100%; min-width: 0; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border);
         border-radius: 6px; color: white; padding: 0 32px 0 10px; height: 34px; font-size: 0.85rem; outline: none;
     }
     .search-clear-btn {
-        position: absolute; right: 90px; /* Adjusted closer to sort buttons */ top: 50%;
+        position: absolute; right: 6px; top: 50%;
         transform: translateY(-50%); background: none; border: none; color: var(--text-muted);
         cursor: pointer; padding: 4px 6px; font-size: 1.2rem; line-height: 1; display: none;
         transition: color 0.2s; z-index: 10;
@@ -136,6 +137,7 @@
         white-space: nowrap;
     }
     .tool-btn:hover { background: var(--surface-hover); border-color: var(--primary-color); }
+    .tool-btn.filter-active { background: rgba(0, 123, 255, 0.2); border-color: var(--primary-color); color: #a8dcff; }
 
     /* Nav List (Scrollable Area) */
     .nav-list { 
@@ -194,6 +196,27 @@
         overflow: hidden;
         text-overflow: ellipsis;
         display: block;
+    }
+
+    .collection-count {
+        flex-shrink: 0;
+        min-width: 1.5rem;
+        padding: 1px 6px;
+        border-radius: 999px;
+        background: rgba(0, 123, 255, 0.18);
+        border: 1px solid rgba(137, 207, 240, 0.25);
+        color: #a8dcff;
+        font-size: 0.72rem;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        line-height: 1.35;
+        text-align: center;
+    }
+
+    .collection-count-descendant {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.18);
+        color: var(--text-muted);
     }
 
     /* Dots button (Hidden by default) */
@@ -716,11 +739,6 @@
             min-width: 38px;
         }
 
-        /* Adjust search clear button position for narrower mobile sidebar */
-        .search-clear-btn {
-            right: 96px !important; 
-        }
-        
         #theater-overlay { flex-direction: column; height: 100dvh; }
         
         /* MOBILE LIGHTBOX: Full-width image with overlaid arrows */
@@ -1533,10 +1551,13 @@
             </div>
         </a>
         <div class="sidebar-toolbar">
-            <input type="text" id="category-search" class="search-input" placeholder="🔍 Search Collections...">
-            <button class="search-clear-btn" id="search-clear-btn" onclick="clearSearch()" title="Clear search">×</button>
+            <div class="sidebar-search-wrap">
+                <input type="text" id="category-search" class="search-input" placeholder="🔍 Search Collections...">
+                <button class="search-clear-btn" id="search-clear-btn" onclick="clearSearch()" title="Clear search">×</button>
+            </div>
             <button class="tool-btn" id="cat-sort-type" onclick="cycleCatSortType()" title="Toggle sort by name/date">A-Z</button>
             <button class="tool-btn" id="cat-sort-dir" onclick="toggleCatSortDir()" title="Toggle sort direction">↓</button>
+            <button class="tool-btn" id="cat-nonempty-toggle" onclick="toggleCatNonEmpty()" title="Show only non-empty collections" aria-label="Show only non-empty collections" aria-pressed="false">&gt;0</button>
         </div>
         
         <ul class="nav-list" id="collection-list"></ul>
@@ -2483,7 +2504,8 @@
     let theaterPollingInterval = null;
     let displayedCount = 0, focusedGridIndex = -1;
     const CHUNK_SIZE = {{ page_size_from_backend | default(100) }};
-    let allCollections = [], categorySearchTerm = '';
+    let allCollections = [], allCollectionsCount = 0, categorySearchTerm = '';
+    let catNonEmptyOnly = localStorage.getItem('sg_exh_cat_nonempty_only') === 'true';
 
     // Technical configuration from backend
     const ffmpegAvailable = {{ ffmpeg_available | tojson }};
@@ -2904,6 +2926,7 @@
                 renderCategoryList();
             });
         }
+        updateCatNonEmptyUI();
         
         // --- INFINITE SCROLL OBSERVER SETUP ---
         const grid = document.getElementById('gallery-grid');
@@ -2997,28 +3020,46 @@
 
     // Polls the server for changes in public collections without refreshing the page
     // --- ROBUST COLLECTION SYNC FOR EXHIBITION ---
+    let collectionSyncRequestId = 0;
+
     async function loadCollections(isPolling = false) {
+        const requestId = ++collectionSyncRequestId;
         try {
             const res = await fetch('/galleryout/api/collections');
             const data = await res.json();
-            const newPublicAlbums = data.albums.filter(a => a.is_public || a.is_shared_access);
+            if (requestId !== collectionSyncRequestId) return;
+
+            // Allow restricted ancestors to pass through to build the tree
+            const newPublicAlbums = data.albums.filter(a => a.is_public || a.is_shared_access || a.restricted_access);
+            const previousActiveCount = currentCollectionId === 'all'
+                ? allCollectionsCount
+                : allCollections.find(c => c.id == currentCollectionId)?.file_count;
+            const nextActiveCount = currentCollectionId === 'all'
+                ? data.all_count
+                : newPublicAlbums.find(c => c.id == currentCollectionId)?.file_count;
+            const activeCountChanged = isPolling && currentCollectionId !== null && previousActiveCount !== nextActiveCount;
             
             // Generate a unique fingerprint of the public albums list
-            const newHash = newPublicAlbums.map(c => `${c.id}:${c.name}`).join('|');
-            const currentHash = allCollections.map(c => `${c.id}:${c.name}`).join('|');
+            const newHash = newPublicAlbums.map(c => `${c.id}:${c.name}:${c.file_count}:${c.descendant_file_count}`).join('|') + `|all:${data.all_count}`;
+            const currentHash = allCollections.map(c => `${c.id}:${c.name}:${c.file_count}:${c.descendant_file_count}`).join('|') + `|all:${allCollectionsCount}`;
 
             if (currentHash !== newHash) {
                 console.log("Sync: Public collections updated.");
                 allCollections = newPublicAlbums;
+                allCollectionsCount = data.all_count || 0;
                 renderCategoryList();
 
                 // Safety: if the current collection was deleted or set to private by Admin
                 if (currentCollectionId !== 'all' && currentCollectionId !== null) {
-                    const stillExists = allCollections.some(c => c.id == currentCollectionId);
+                    const stillExists = allCollections.some(c => c.id == currentCollectionId && !c.restricted_access);
                     if (!stillExists) {
-                        showNotification("This collection is no longer public.", "warning");
+                        showNotification("This collection is no longer accessible.", "warning");
                         loadGallery('all', 'All Collections');
+                    } else if (activeCountChanged) {
+                        loadGallery(currentCollectionId, document.getElementById('page-title').textContent);
                     }
+                } else if (currentCollectionId === 'all' && activeCountChanged) {
+                    loadGallery('all', 'All Collections');
                 }
             }
             
@@ -4158,13 +4199,13 @@
                 e.preventDefault(); 
                 submitRatingShortcut(parseInt(key)); 
                 closeExhMenu(); 
-                return; 
+                return;
             }
 
             e.stopPropagation(); // Block other keys while menu is open
             return;
         }
-        
+
         if (isTh && e.key === '/') { e.preventDefault(); openExhMenu(); return; }
 
         // --- GLOBAL ACTIONS (Rating) ---
@@ -4258,6 +4299,46 @@
         }
     }
 
+    let exhColExpandedState = new Set(JSON.parse(localStorage.getItem('exhColExpandedState') || '[]'));
+
+    function buildExhCollectionTreeData(albums) {
+        let tree = { '_root_': [] };
+        albums.forEach(a => tree[a.id] = []);
+        albums.forEach(a => {
+            let parent = a.parent_id || '_root_';
+            if (!tree[parent]) tree[parent] = [];
+            tree[parent].push(a);
+        });
+        return tree;
+    }
+
+    function getExhNonEmptyCollectionIds() {
+        if (!catNonEmptyOnly) return null;
+
+        const albumMap = new Map(allCollections.map(album => [album.id, album]));
+        const visibleIds = new Set();
+        allCollections.filter(album => Number(album.file_count) > 0).forEach(album => {
+            let current = album;
+            while (current && !visibleIds.has(current.id)) {
+                visibleIds.add(current.id);
+                current = current.parent_id ? albumMap.get(current.parent_id) : null;
+            }
+        });
+        return visibleIds;
+    }
+
+    function expandExhNonEmptyCollectionPaths() {
+        const visibleIds = getExhNonEmptyCollectionIds();
+        if (!visibleIds) return;
+
+        const tree = buildExhCollectionTreeData(allCollections);
+        allCollections.forEach(album => {
+            const hasVisibleChild = (tree[album.id] || []).some(child => visibleIds.has(child.id));
+            if (visibleIds.has(album.id) && hasVisibleChild) exhColExpandedState.add(album.id);
+        });
+        localStorage.setItem('exhColExpandedState', JSON.stringify([...exhColExpandedState]));
+    }
+
     function renderCategoryList() {
         const list = document.getElementById('collection-list'); 
         list.innerHTML = '';
@@ -4270,6 +4351,7 @@
         allLi.innerHTML = `
             <span style="flex-shrink:0;">🌈</span> 
             <span class="nav-text-wrapper" style="font-weight: bold;">All Collections</span>
+            ${Number(allCollectionsCount) > 0 ? `<span class="collection-count" title="${allCollectionsCount} unique files">${allCollectionsCount}</span>` : ''}
         `;
         allLi.onclick = () => { 
             activeSortCriteria = 'date';
@@ -4281,36 +4363,111 @@
         };
         list.appendChild(allLi);
 
-        // Standard filtering and sorting for other collections
-        let filtered = allCollections.filter(c => c.name.toLowerCase().includes(categorySearchTerm));
-        filtered.sort((a, b) => {
-            let result = (catSortType === 'date') ? (a.created_at - b.created_at) : a.name.localeCompare(b.name);
-            return (catSortDir === 'asc') ? result : -result;
-        });
-        
-        filtered.forEach(col => {
-            const li = document.createElement('li'); 
-            li.className = `nav-item ${currentCollectionId == col.id ? 'active' : ''}`;
-            li.dataset.id = col.id;
-            const safeName = escapeHtml(col.name).replace(/'/g, "\\'");
-            let iconStr = col.is_shared_access ? "👥" : "📚";
-            let textStyle = col.is_shared_access ? "color: var(--favorite-color);" : "";
-            li.innerHTML = `
-                <span style="flex-shrink:0; font-size:1.05rem;">${iconStr}</span> 
-                <span class="nav-text-wrapper" style="${textStyle}">${escapeHtml(col.name)}</span>
-                <button class="nav-expand-btn" title="Show full name" onclick="showFullName(event, '${safeName}')">•••</button>
-            `;
-            li.onclick = (e) => { 
-                if(e.target.closest('.nav-expand-btn')) return;
-                activeSortCriteria = 'date';
-                activeSortOrder = 'desc';
-                updateSortUI();
-                if (document.getElementById('sort-select')) document.getElementById('sort-select').value = 'date_desc';
-                loadGallery(col.id, col.name, li); 
-                if(window.innerWidth <= 1024) toggleMenu(); 
-            };
-            list.appendChild(li);
-        });
+        let tree = buildExhCollectionTreeData(allCollections);
+        let isSearching = categorySearchTerm !== '';
+        const visibleIds = getExhNonEmptyCollectionIds();
+
+        function renderNodes(parentId, parentElement, depth) {
+            let children = tree[parentId] || [];
+
+            if (isSearching && parentId === '_root_') {
+                children = allCollections.filter(c => c.name.toLowerCase().includes(categorySearchTerm));
+            } else if (isSearching) {
+                return;
+            }
+            if (visibleIds) {
+                children = isSearching
+                    ? children.filter(c => Number(c.file_count) > 0)
+                    : children.filter(c => visibleIds.has(c.id));
+            }
+
+            children.sort((a, b) => {
+                let result = (catSortType === 'date') ? (a.created_at - b.created_at) : a.name.localeCompare(b.name);
+                return (catSortDir === 'asc') ? result : -result;
+            });
+
+            children.forEach(col => {
+                let childCollections = tree[col.id] || [];
+                if (visibleIds) childCollections = childCollections.filter(child => visibleIds.has(child.id));
+                let hasChildren = !isSearching && childCollections.length > 0;
+                let isExpanded = exhColExpandedState.has(col.id) || isSearching;
+
+                const safeName = escapeHtml(col.name).replace(/'/g, "\\\'").replace(/"/g, "&quot;");
+
+                let iconStr = col.restricted_access ? "🔒" : (col.is_shared_access ? "👥" : "📚");
+                let textStyle = col.is_shared_access ? "color: var(--favorite-color);" : (col.restricted_access ? "color: var(--text-muted); opacity: 0.6;" : "");
+
+                let toggleIcon = '';
+                if (hasChildren && !isSearching) {
+                    toggleIcon = isExpanded ? '▾' : '▸';
+                }
+
+                const li = document.createElement('li');
+                li.style.listStyle = 'none';
+
+                const indent = depth * 20;
+
+                const itemDiv = document.createElement('div');
+                itemDiv.className = `nav-item ${currentCollectionId == col.id ? 'active' : ''}`;
+                itemDiv.dataset.id = col.id;
+
+                itemDiv.style.paddingLeft = `${12 + indent}px`;
+
+                itemDiv.innerHTML = `
+                    <span class="exh-col-toggle" style="cursor:pointer; font-weight:bold; width:15px; display:inline-block; flex-shrink:0; text-align:center; color:var(--text-muted); margin-right:5px;">${toggleIcon}</span>
+                    <span style="flex-shrink:0; font-size:1.05rem; margin-right:8px;">${iconStr}</span>
+                    <span class="nav-text-wrapper" style="${textStyle} ${col.restricted_access ? 'cursor:pointer;' : ''}">${escapeHtml(col.name)}</span>
+                    ${!col.restricted_access && Number(col.file_count) > 0 ? `<span class="collection-count" title="${col.file_count} directly tagged files">${col.file_count}</span>` : ''}
+                    ${hasChildren && !isExpanded && Number(col.descendant_file_count) > 0 ? `<span class="collection-count collection-count-descendant" title="${col.descendant_file_count} unique files in sub-collections">+${col.descendant_file_count}</span>` : ''}
+                    ${!col.restricted_access ? `<button class="nav-expand-btn" title="Show full name" onclick="showFullName(event, '${safeName}')">•••</button>` : ''}
+                `;
+
+                li.appendChild(itemDiv);
+
+                const toggleBtn = itemDiv.querySelector('.exh-col-toggle');
+                toggleBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (hasChildren && !isSearching) {
+                        if (isExpanded) exhColExpandedState.delete(col.id);
+                        else exhColExpandedState.add(col.id);
+                        localStorage.setItem('exhColExpandedState', JSON.stringify([...exhColExpandedState]));
+                        renderCategoryList();
+                    }
+                };
+
+                itemDiv.onclick = (e) => {
+                    if(e.target.closest('.nav-expand-btn') || e.target.closest('.exh-col-toggle')) return;
+
+                    if (col.restricted_access) {
+                        if (hasChildren && !isSearching) toggleBtn.click();
+                        return;
+                    }
+
+                    activeSortCriteria = 'date';
+                    activeSortOrder = 'desc';
+                    updateSortUI();
+                    if (document.getElementById('sort-select')) document.getElementById('sort-select').value = 'date_desc';
+                    loadGallery(col.id, col.name, itemDiv);
+                    if(window.innerWidth <= 1024) toggleMenu();
+                };
+
+                parentElement.appendChild(li);
+
+                if (hasChildren && isExpanded && !isSearching) {
+                    const ul = document.createElement('ul');
+                    ul.style.padding = '0';
+                    ul.style.margin = '0';
+                    renderNodes(col.id, ul, depth + 1);
+                    li.appendChild(ul);
+                }
+            });
+        }
+
+        const ulWrapper = document.createElement('ul');
+        ulWrapper.style.padding = '0';
+        ulWrapper.style.margin = '0';
+        renderNodes('_root_', ulWrapper, 0);
+        list.appendChild(ulWrapper);
 
         requestAnimationFrame(() => { requestAnimationFrame(() => { checkSidebarOverflows(); }); });
     }
@@ -4425,6 +4582,23 @@
     function updateCatSortUI() { 
         document.getElementById('cat-sort-type').textContent = (catSortType === 'name') ? 'A-Z' : '📅'; 
         document.getElementById('cat-sort-dir').textContent = (catSortDir === 'asc') ? '↑' : '↓'; 
+    }
+
+    function toggleCatNonEmpty() {
+        catNonEmptyOnly = !catNonEmptyOnly;
+        localStorage.setItem('sg_exh_cat_nonempty_only', String(catNonEmptyOnly));
+        if (catNonEmptyOnly) expandExhNonEmptyCollectionPaths();
+        updateCatNonEmptyUI();
+        renderCategoryList();
+    }
+
+    function updateCatNonEmptyUI() {
+        const button = document.getElementById('cat-nonempty-toggle');
+        if (!button) return;
+        button.classList.toggle('filter-active', catNonEmptyOnly);
+        button.setAttribute('aria-pressed', String(catNonEmptyOnly));
+        button.title = catNonEmptyOnly ? 'Show all collections' : 'Show only non-empty collections';
+        button.setAttribute('aria-label', button.title);
     }
     
     async function changeNickname() { 
@@ -4560,7 +4734,10 @@
     /**
      * Refactored load logic to accept parameters directly
      */
+    let galleryRequestId = 0;
+
     async function loadGalleryInternal(collId, name, el = null) {
+        const requestId = ++galleryRequestId;
         currentCollectionId = collId; 
         document.getElementById('page-title').textContent = name;
         
@@ -4573,6 +4750,8 @@
                 headers: { 'Accept': 'application/json' } 
             });
             const data = await res.json(); 
+            if (requestId !== galleryRequestId || currentCollectionId != collId) return;
+
             currentFiles = data.files; 
             
             const countBadge = document.getElementById('file-count-total');

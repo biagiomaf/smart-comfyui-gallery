@@ -43,8 +43,10 @@
 
 let colSortState = { key: 'name', dir: 'asc' }; 
 let colSearchTerm = '';
-let collectionsData = { flags: [], albums: [], tree: {} };
+let colNonEmptyOnly = localStorage.getItem('galleryColNonEmptyOnly') === 'true';
+let collectionsData = { flags: [], albums: [], tree: {}, all_count: 0 };
 let colExpandedState = new Set(JSON.parse(localStorage.getItem('galleryColExpandedState') || '[]'));
+let collectionsRequestId = 0;
 
 function buildCollectionTreeData(albums) {
     let tree = { '_root_': [] };
@@ -74,15 +76,45 @@ function sortCollections(albumArray) {
     });
 }
 
+function getNonEmptyCollectionIds(albums) {
+    if (!colNonEmptyOnly) return null;
+
+    const albumMap = new Map(albums.map(album => [album.id, album]));
+    const visibleIds = new Set();
+    albums.filter(album => Number(album.file_count) > 0).forEach(album => {
+        let current = album;
+        while (current && !visibleIds.has(current.id)) {
+            visibleIds.add(current.id);
+            current = current.parent_id ? albumMap.get(current.parent_id) : null;
+        }
+    });
+    return visibleIds;
+}
+
+function expandNonEmptyCollectionPaths() {
+    const visibleIds = getNonEmptyCollectionIds(collectionsData.albums);
+    if (!visibleIds) return;
+
+    collectionsData.albums.forEach(album => {
+        const hasVisibleChild = (collectionsData.tree[album.id] || []).some(child => visibleIds.has(child.id));
+        if (visibleIds.has(album.id) && hasVisibleChild) colExpandedState.add(album.id);
+    });
+    localStorage.setItem('galleryColExpandedState', JSON.stringify([...colExpandedState]));
+}
+
 function loadCollections() {
-    fetch('/galleryout/api/collections')
+    const requestId = ++collectionsRequestId;
+    return fetch('/galleryout/api/collections')
     .then(r => r.json())
     .then(data => {
+        if (requestId !== collectionsRequestId) return;
+
         let parsedTree = buildCollectionTreeData(data.albums);
-        collectionsData = { flags: data.flags, albums: data.albums, tree: parsedTree.tree, map: parsedTree.albumMap };
+        collectionsData = { flags: data.flags, albums: data.albums, tree: parsedTree.tree, map: parsedTree.albumMap, all_count: data.all_count || 0 };
         
         const searchInp = document.getElementById('col-search-input');
         const sortBtn = document.getElementById('col-sort-toggle');
+        const nonEmptyBtn = document.getElementById('col-nonempty-toggle');
         
         if (searchInp && !searchInp.dataset.listening) {
             searchInp.dataset.listening = "true";
@@ -103,6 +135,26 @@ function loadCollections() {
             });
         }
 
+        if (nonEmptyBtn) {
+            nonEmptyBtn.classList.toggle('filter-active', colNonEmptyOnly);
+            nonEmptyBtn.setAttribute('aria-pressed', String(colNonEmptyOnly));
+            nonEmptyBtn.title = colNonEmptyOnly ? 'Show all collections' : 'Show only non-empty collections';
+            nonEmptyBtn.setAttribute('aria-label', nonEmptyBtn.title);
+            if (!nonEmptyBtn.dataset.listening) {
+                nonEmptyBtn.dataset.listening = "true";
+                nonEmptyBtn.addEventListener('click', () => {
+                    colNonEmptyOnly = !colNonEmptyOnly;
+                    localStorage.setItem('galleryColNonEmptyOnly', String(colNonEmptyOnly));
+                    if (colNonEmptyOnly) expandNonEmptyCollectionPaths();
+                    nonEmptyBtn.classList.toggle('filter-active', colNonEmptyOnly);
+                    nonEmptyBtn.setAttribute('aria-pressed', String(colNonEmptyOnly));
+                    nonEmptyBtn.title = colNonEmptyOnly ? 'Show all collections' : 'Show only non-empty collections';
+                    nonEmptyBtn.setAttribute('aria-label', nonEmptyBtn.title);
+                    renderSidebarCollections();
+                });
+            }
+        }
+
         renderSidebarCollections();
         
         const tagOverlay = document.getElementById('tagging-overlay');
@@ -116,18 +168,21 @@ function loadCollections() {
 // Global Sidebar Utilities
 async function syncSidebarState() {
     if (document.body.classList.contains('modal-open') || document.querySelector('.folder-dropdown.show')) return;
+    const requestId = ++collectionsRequestId;
     try {
         const res = await fetch('/galleryout/api/sidebar_state');
         const data = await res.json();
+        if (requestId !== collectionsRequestId) return;
+
         const folderHash = Object.keys(data.folders).length + Object.keys(data.folders).join('');
         const currentFolderHash = Object.keys(foldersData).length + Object.keys(foldersData).join('');
-        const collHash = data.collections.albums.map(a => a.id + a.name).join('');
-        const currentCollHash = collectionsData.albums.map(a => a.id + a.name).join('');
+        const collHash = data.collections.albums.map(a => `${a.id}:${a.name}:${a.file_count}:${a.descendant_file_count}`).join('|') + `|all:${data.collections.all_count}`;
+        const currentCollHash = collectionsData.albums.map(a => `${a.id}:${a.name}:${a.file_count}:${a.descendant_file_count}`).join('|') + `|all:${collectionsData.all_count}`;
         
         if (folderHash !== currentFolderHash || collHash !== currentCollHash) {
             foldersData = data.folders;
             let parsedTree = buildCollectionTreeData(data.collections.albums);
-            collectionsData = { flags: data.collections.flags, albums: data.collections.albums, tree: parsedTree.tree, map: parsedTree.albumMap };
+            collectionsData = { flags: data.collections.flags, albums: data.collections.albums, tree: parsedTree.tree, map: parsedTree.albumMap, all_count: data.collections.all_count || 0 };
             
             if(typeof renderAllTrees === 'function') renderAllTrees();
             renderSidebarCollections();
@@ -163,17 +218,24 @@ function restoreSidebarTab() {
     } else switchSidebarTab('folders');
 }
 
-function renderSidebarTreeHTML(parentId = '_root_', isSearching = false) {
+function renderSidebarTreeHTML(parentId = '_root_', isSearching = false, visibleIds = null) {
     let children = collectionsData.tree[parentId] || [];
     if (isSearching) {
         if (parentId === '_root_') children = collectionsData.albums.filter(c => c.name.toLowerCase().includes(colSearchTerm));
         else return ''; 
     }
+    if (visibleIds) {
+        children = isSearching
+            ? children.filter(c => Number(c.file_count) > 0)
+            : children.filter(c => visibleIds.has(c.id));
+    }
     let sortedChildren = sortCollections([...children]);
     let html = '';
 
     sortedChildren.forEach(c => {
-        let hasChildren = !isSearching && collectionsData.tree[c.id] && collectionsData.tree[c.id].length > 0;
+        let childCollections = collectionsData.tree[c.id] || [];
+        if (visibleIds) childCollections = childCollections.filter(child => visibleIds.has(child.id));
+        let hasChildren = !isSearching && childCollections.length > 0;
         let isExpanded = colExpandedState.has(c.id) || isSearching;
         let isCollapsedClass = !isExpanded && hasChildren ? 'collapsed' : '';
         
@@ -194,6 +256,8 @@ function renderSidebarTreeHTML(parentId = '_root_', isSearching = false) {
                 <a href="/galleryout/collection/${c.id}" class="folder-link navigation-link" style="display:flex; align-items:center; flex-grow:1;">
                     <span class="col-icon">📚</span>
                     <span class="col-name" title="${c.name}">${escapeHTML(c.name)}</span>
+                    ${Number(c.file_count) > 0 ? `<span class="collection-count" title="${c.file_count} directly tagged files">${c.file_count}</span>` : ''}
+                    ${hasChildren && !isExpanded && Number(c.descendant_file_count) > 0 ? `<span class="collection-count collection-count-descendant" title="${c.descendant_file_count} unique files in sub-collections">+${c.descendant_file_count}</span>` : ''}
                     ${publicIcon}
                 </a>
                 <div class="folder-menu-container">
@@ -211,7 +275,7 @@ function renderSidebarTreeHTML(parentId = '_root_', isSearching = false) {
                     </div>
                 </div>
             </div>
-            ${hasChildren ? `<ul style="list-style:none;">${renderSidebarTreeHTML(c.id, false)}</ul>` : ''}
+            ${hasChildren ? `<ul style="list-style:none;">${renderSidebarTreeHTML(c.id, false, visibleIds)}</ul>` : ''}
         </li>`;
     });
     return html;
@@ -232,14 +296,16 @@ function renderSidebarCollections() {
     const usrContainer = document.getElementById('user-collections-list');
     if (usrContainer) {
         const isAllActive = (typeof currentFolderInfo !== 'undefined' && currentFolderInfo.collection_id === 'all');
+        const visibleIds = getNonEmptyCollectionIds(collectionsData.albums);
         let allHeaderHtml = `
             <div style="padding-left:0;">
                 <a href="/galleryout/collection/all" class="col-item folder-item navigation-link ${isAllActive ? 'active' : ''}" style="margin-bottom: 8px; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px;">
                     <span class="col-icon">🌈</span><span class="col-name" style="font-weight: bold;">All Collections</span>
+                    ${Number(collectionsData.all_count) > 0 ? `<span class="collection-count" title="${collectionsData.all_count} unique files">${collectionsData.all_count}</span>` : ''}
                 </a>
             </div>
             <ul class="folder-tree col-tree" id="main-col-tree" style="list-style:none; padding:0; margin:0;">
-                ${renderSidebarTreeHTML('_root_', colSearchTerm !== '')}
+                ${renderSidebarTreeHTML('_root_', colSearchTerm !== '', visibleIds)}
             </ul>`;
         usrContainer.innerHTML = allHeaderHtml;
     }
@@ -257,6 +323,9 @@ document.addEventListener('click', (e) => {
             if (isCollapsed) colExpandedState.delete(id);
             else colExpandedState.add(id);
             localStorage.setItem('galleryColExpandedState', JSON.stringify([...colExpandedState]));
+            renderSidebarCollections();
+            const tagOverlay = document.getElementById('tagging-overlay');
+            if (tagOverlay && tagOverlay.classList.contains('visible') && tmState.mode === 'collection') renderTagManagerList();
         }
     }
 }, true);
@@ -410,6 +479,8 @@ function renderTagManagerTreeHTML(parentId = '_root_', isSearching = false) {
                     <span class="tag-col-name" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 150px; display:inline-block; vertical-align:middle; ${isOriginal && !pendingAction ? 'color: var(--success-color); font-weight: bold;' : ''}">
                         ${c.is_public ? '👁️ ' : ''}${c.name}
                     </span>
+                    ${Number(c.file_count) > 0 ? `<span class="collection-count" title="${c.file_count} directly tagged files">${c.file_count}</span>` : ''}
+                    ${hasChildren && !isExpanded && Number(c.descendant_file_count) > 0 ? `<span class="collection-count collection-count-descendant" title="${c.descendant_file_count} unique files in sub-collections">+${c.descendant_file_count}</span>` : ''}
                 </div>
                 <div style="display:flex; gap:5px; z-index:10;">
                     <button class="tag-action-btn btn-tag-add" ${addActive} onclick="setTagAction(${c.id}, 'add')" style="padding:4px 8px; font-size:0.8rem;">➕ Add</button>
@@ -541,6 +612,7 @@ async function applyTagManagerChanges() {
         } else {
             btn.disabled = false; btn.textContent = "💾 Apply Changes";
             closeTaggingModal();
+            loadCollections();
             if (typeof currentLightboxFile !== 'undefined' && !currentLightboxFile && typeof deselectAll === 'function') deselectAll();
         }
     } catch (e) {
@@ -564,6 +636,7 @@ async function untagCurrentCollection() {
         const data = await res.json();
         if (data.status === 'success') {
             showNotification(`Removed ${targets.length} item(s).`, "success");
+            loadCollections();
             targets.forEach(fid => {
                 const item = document.querySelector(`.gallery-item[data-file-id="${fid}"]`);
                 if (item) {
