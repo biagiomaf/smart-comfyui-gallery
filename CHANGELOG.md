@@ -1,5 +1,29 @@
 # Changelog
 
+### **[2.16] - 2026-07-24**
+
+### 📑 The New List View Experience
+Sometimes a grid of thumbnails isn't enough when you need to analyze hard data. We are introducing a highly requested, fully responsive **List View** alternative to the standard Grid layout.
+* **Instant Activation:** Seamlessly toggle between Grid and List layouts at any time directly from the **⚙️ Options** menu. 
+* **High Data Density:** The fluid, squishy-column architecture displays everything at a glance: Index, Thumbnail Preview, Name, Rating, Comments, Size, Resolution (MP), Duration, Type, and Date. It scales perfectly without breaking, even if you zoom your browser up to 200%.
+* **Sticky Sortable Header (Desktop):** The column header stays pinned at the top of the gallery as you scroll. Simply click on any column name to instantly sort your files by that specific metric.
+* **Smart Mobile Sorting:** On smaller screens where the wide header cannot fit, it elegantly transforms into a compact dropdown menu, giving mobile users the exact same powerful sorting capabilities without sacrificing screen space.
+
+### 📚 Virtual Collections Evolution
+We took the hierarchical tree structure introduced in the last patch and supercharged it with smarter navigation, better filtering, and advanced permission management.
+* **Fully Navigable Nested Trees:** Seamlessly browse, expand, and collapse deep hierarchies of sub-collections directly from the sidebar. 
+* **Smart Permission Inheritance (🧬):** When creating a new nested sub-collection, you no longer need to manually re-configure its visibility. You can now choose to have it instantly inherit the exact Exhibition permissions (Public, Private, or Shared) from its direct **parent collection**.
+* **Shared Users Tooltip:** Wondering who has access? In both the main workspace and the Exhibition portal (for administrators), simply hover over the purple "Shared" icon (👥) next to a collection name to reveal a tooltip listing exactly which users have permission to view it.
+* **The `>0` Non-Empty Filter:** A new toggle in the collections toolbar allows you to instantly hide empty collections and cut through the noise. It features smart path preservation: parent folders with zero direct files will still remain visible if they contain populated sub-collections.
+* **Smarter Badges:** Enhanced visual counters clearly distinguish between *Direct Counts* (files specifically tagged in that collection) and *Descendant Counts* (`+N`, showing unique files hidden inside collapsed child collections).
+* **Audio File Support:** Audio files are now fully supported inside Virtual Collections. You can organize them and expose them to your clients via the Exhibition portal just like images and videos.
+
+### 🛠️ Security & Quality of Life Fixes
+* **Mobile Waveform Control:** You can now easily cycle through and manage audio/video waveform amplitudes directly from mobile devices.
+* **Security Hardening:** General backend fixes to strengthen data isolation, user permission checks, and overall system security.
+
+---
+
 ### **[2.15] - 2026-07-16**
 
 ### 🧠 OmniQuery (AI-Powered SQL Explorer)

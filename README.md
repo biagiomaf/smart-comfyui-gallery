@@ -14,24 +14,36 @@
   </tr>
 </table>
 
-**The local-first Digital Asset Manager that works with ComfyUI, and survives without it.**  
-**Bridging the gap between your creative workflow and professional client approval.**
+**The open source gallery and Digital Asset Manager built for ComfyUI.**  
+**Start with a better gallery. Grow into a professional AI production library.**
 </div>
 
-* Search 50,000 generations by prompt, model, LoRA, or comments in milliseconds.  
-* Organize your gallery seamlessly across physical folders and nested virtual collections.  
-* **(NEW) [OmniQuery](#314-omniquery--ai-powered-sql-explorer)**: Ask complex questions to your database in plain English using AI.
-* **(NEW) [LoRA Synergy™](#324-lora-synergy)**: Stop guessing compatibility. Let the system scan your safetensors and auto-wire your graph locally.
-* **[Remix workflows with The Nodepad](#323-remix-workflow--the---nodepad-)**: Generate directly from your gallery without opening ComfyUI. Build custom dashboards, edit raw JSON with live server dictionary lookups, and queue jobs in the background. [▶️](https://smartgallerydam.com/nodepad.mp4)
-* Share curated work with clients without exposing a single node, and let them rate and comment on your creations.  
-* Compare two generations side-by-side with an automatic parameter diff.  
-* Cull batches from your laptop or also from your phone while ComfyUI is still generating.
+## Who is SmartGallery DAM for?
 
-[**🌐 smartgallerydam.com**](https://smartgallerydam.com) · full documentation, wiki and feature reference · [**▶️ Presentation Video**](https://smartgallerydam.com/smartgallerydam-2.13.mp4)
+✅ You just installed ComfyUI and want a better gallery.  
+✅ You have 50,000 generations and can't find anything anymore.  
+✅ You work with clients and need reviews and approvals.  
 
+**One Tool. Different Users.**  
+![SmartGallery DAM — comic strip](assets/smartgallery_dam_comic_strip.png)  
+Whether you're generating for fun, building a portfolio, or running a production studio, SmartGallery grows with your workflow.  
+ 
+ 
+![SmartGallery DAM — main workspace](assets/infographic.png)
 ---
 
-![SmartGallery DAM — main workspace](assets/infographic.png)
+> 📱 **Mobile First**
+> We are not aware of any other self-hosted media manager with a mobile experience this complete.
+> Browse, search, rate, review, organize, remix and now even use the new List View directly from your phone.
+
+* 🖼 Browse AI generations with one of the fastest gallery interfaces available.
+* 📂 Organize anything from hundreds to hundreds of thousands of images, videos and audio files.
+* 🔎 Find any asset instantly using prompts, models, LoRAs, comments, ratings or AI-powered SQL.
+* 🎨 Remix existing generations without reopening your ComfyUI workflow.
+* 📑 NEW: Switch instantly between immersive Grid View and the new high-density List View.
+* 👥 Share curated galleries with clients while keeping prompts and workflows private.
+
+[**🌐 smartgallerydam.com**](https://smartgallerydam.com) · full documentation, wiki and feature reference · [**▶️ Presentation Video**](https://smartgallerydam.com/smartgallerydam-2.13.mp4)
 
 ---
 
@@ -49,34 +61,27 @@ SmartGallery DAM is *ComfyUI-aware* (it reads workflows, extracts prompts, under
 
 ---
 
-## The Best Mobile Experience in Its Class
+## Why SmartGallery DAM?
 
-> **We are not aware of any other self-hosted media manager with a mobile interface this good.**
 
-SmartGallery DAM was built responsive from day one, not as an afterthought. 
-
-This is cross-platform in the full sense: **Windows, macOS, Linux, Docker**, accessible from any browser on any device on your network, including tablets and smartphones.
-
----
-
-## Why SmartGallery?
-| | |
-|---|---|
-| 🧠 **OmniQuery (new)** | Chat with your DAM. Let AI write complex SQL queries to find hyper-specific cross-referenced media in your database without writing code. |
-| 🔌 **LoRA Synergy (new)** | Fully offline matchmaker. Scans Safetensors to guarantee checkpoint compatibility (SD1.5, SDXL, Flux), surfaces trigger words, and auto-wires the workflow. |
-| 🪄 **The Remix Engine** | Generate without opening ComfyUI. A 3-tier workspace to extract workflows, build custom dashboards, edit raw JSON with live dictionary lookups, and queue directly. | 
-| 🔍 **Find anything instantly** | Search by prompt keyword, checkpoint, LoRA, date or comment across tens of thousands of files | 
-| 🗂️ **Powerful file manager** | Rename, move, copy, delete files and create folders directly from the browser |
-| 🔗 **Works on any folder** | Point it at any ComfyUI output, photo archive, NAS volume or network path. Mix and match as many folders as you want |
-| 📤 **Magic Upload** | Drag & drop or upload files from your PC or smartphone directly into any folder. ComfyUI workflows are automatically extracted and indexed on the fly |
-| 👥 **Built for teams too** | Role-based access, per-image comments with visibility control, 1 to 5 star ratings |
-| 🗃️ **Nested Collections** | Organize virtual albums in a folder-like tree structure without duplicating a single byte on disk. |
-| 🏷️ **Color-coded status tags** | Mark files as Approved, Review, To Edit, Rejected or Select. Browse any status across your entire library at once, standard DAM pipeline workflow |
-| 🛡 **Share without exposing your process** | Clients access a dedicated Exhibition portal you launch only when needed. They see curated collections only. Workflows, prompts and models are always hidden |
-| ⚖️ **Compare generations** | A/B slider with synchronized zoom and an automatic parameter diff table | 
-| 🎬 **Full video & audio support** | Thumbnails, storyboard preview, dynamic audio waveforms, and on-the-fly transcoding via FFmpeg. Handles ProRes and other professional formats |
-| 🌐 **Truly cross-platform** | Windows, macOS, Linux, Docker. Same interface, same features, every OS and device | 
-| ⚡ **Simple installation** | Zero-config Portable App for Windows (just unzip and run) and official Docker image for Linux/Unraid |  
+| Feature                          | Why it matters                                      |
+| --------------------------------- | ---------------------------------------------------- |
+| 🗂️ File Manager                  | Rename, move, copy, delete, create folders in-browser |
+| 🔍 Instant Search                 | Find by prompt, checkpoint, LoRA, date or comment     |
+| 🔗 Any Folder                     | Point at any ComfyUI output, NAS or network path      |
+| 📤 Magic Upload                   | Drag & drop from your PC or smartphone, auto-extract & index workflows           |
+| 📑 Grid & List Views              | Browse the way you prefer                             |
+| 🪄 Remix Engine                   | Generate without opening ComfyUI. A 3-tier workspace to extract workflows, build custom dashboards, edit raw JSON with live dictionary lookups, and queue directly |
+| 🔌 LoRA Synergy                   | Fully offline matchmaker. Scans Safetensors to guarantee checkpoint compatibility (SD1.5, SDXL, Flux), surfaces trigger words, and auto-wires the workflow |
+| 🧠 OmniQuery                      | Search your gallery in plain English, any criteria. Let AI write complex SQL queries to find hyper-specific cross-referenced media in your database without writing code |
+| ⚖️ Compare Generations            | A/B slider with automatic parameter diff              |
+| 👥 Team Ready                     | Roles, per-image comments, star ratings               |
+| 🗃️ Nested Collections            | Virtual albums, zero duplication on disk              |
+| 🏷️ Status Tags                   | Track approval status across the whole library        |
+| 🛡 Client Portal                  | Share curated collections, process always hidden      |
+| 🎬 Video & Audio                  | Multimedia, transcoding included. Thumbnails, storyboard preview, dynamic audio waveforms, and on-the-fly transcoding via FFmpeg. Handles ProRes and other professional formats |
+| 🌐 Cross Platform                 | Windows, macOS, Linux, Docker: everywhere            |
+| ⚡ Simple Installation            | Zero-config Portable App for Windows (just unzip and run) and official Docker image for Linux/Unraid |
 
 ---
 
@@ -84,7 +89,7 @@ This is cross-platform in the full sense: **Windows, macOS, Linux, Docker**, acc
 
 1.  [**OVERVIEW & CONCEPTS**](#1-overview--concepts)
     *   [1.1 What is SmartGallery DAM?](#11-what-is-smartgallery-dam)
-    *   [1.2 What's New in v2.15](#12-whats-new-in-v215)
+    *   [1.2 What's New in v2.16](#12-whats-new-in-v216)
     *   [1.3 Core Features](#13-core-features)
     *   [1.4 Use Case Scenarios](#14-use-case-scenarios)
 2.  [**SETUP & CONFIGURATION**](#2-setup--configuration)
@@ -140,10 +145,16 @@ Evolve your workflow from a simple collection of files into a structured, search
 
 ---
 
-### 1.2 What's New in v2.15
+### 1.2 What's New in v2.16
 
-- 🧠 **OmniQuery (AI-Powered SQL Explorer):** Ask complex questions to your DAM. Use natural language via an LLM (ChatGPT, Claude, etc.) to query your database with cross-table logic that goes way beyond simple UI filters. 
-- 🔌 **LoRA Synergy™:** A fully offline LoRA matchmaker built into the Nodepad. It reads your LoRAs' safetensors headers to guarantee checkpoint compatibility, suggests trigger words based on your history, and auto-wires the ComfyUI nodes perfectly.
+- 📑 **List View:** A brand new high-density browsing mode with sticky sortable columns on desktop and responsive sorting on mobile.
+- 🌳 **Smarter Virtual Collections:** Nested trees now support inherited permissions, shared-user tooltips, smarter counters and non-empty filtering.
+- 🎵 **Audio Collections:** Audio files are now first-class citizens inside Virtual Collections and the Exhibition portal.
+- 🔒 **Security & UX Improvements:** Stronger permission checks, backend hardening and multiple mobile quality-of-life improvements.  
+
+> the other new features from  v2.15
+- 🧠 **OmniQuery (AI-Powered SQL Explorer):** Ask complex questions to your DAM. Use natural language via an LLM (ChatGPT, Claude, etc.) to query your database with cross-table logic that goes way beyond simple UI filters. 👉 For more detailed information, READ the **[OmniQuery MANUAL](docs/OmniQuery.md)**. 
+- 🔌 **LoRA Synergy™:** A fully offline LoRA matchmaker built into the Nodepad. It reads your LoRAs' safetensors headers to guarantee checkpoint compatibility, suggests trigger words based on your history, and auto-wires the ComfyUI nodes perfectly. 👉 For more detailed information, READ the **[LoRA Synergy MANUAL](docs/LORA_SYNERGY.md)**.
 - 🌳 **Nested Collections:** Virtual albums just got a major upgrade. You can now arrange your virtual Collections in a nested tree structure (parent/child relationship), keeping complex projects beautifully organized.
 
 > **Note:** Read the **[Full Changelog](CHANGELOG.md)** so you don't miss out on all the quality-of-life improvements and bug fixes!
@@ -302,7 +313,7 @@ There are two ways to run SmartGallery on Windows: using the ready-to-use **Port
 This version includes a fully self-contained environment. You do not need to install Python or any dependencies on your system—it is **completely plug-and-play**.
 
 **1. Download & Extract**
-* **Direct Download:** [SmartGallery-v2.15-Windows-Portable.zip](https://github.com/biagiomaf/smart-comfyui-gallery/releases/download/2.15/SmartGallery-v2.15-Windows-Portable.zip) *(Link will be updated upon release)*
+* **Direct Download:** [SmartGallery-v2.16-Windows-Portable.zip](https://github.com/biagiomaf/smart-comfyui-gallery/releases/download/2.16/SmartGallery-v2.16-Windows-Portable.zip) *(Link will be updated upon release)*
 * **Releases Page:** Alternatively, view all builds on the [Releases page](https://github.com/biagiomaf/smart-comfyui-gallery/releases/latest).
 * Extract the archive into a folder of your choice.
 

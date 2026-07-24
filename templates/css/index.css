@@ -1,4 +1,4 @@
-/* Version: 2.15 - July 15, 2026 */
+/* Version: 2.16 - July 24, 2026 */
 :root {
     --bg-color: #0a0a0a;
     --surface-color: #1a1a1a;
@@ -6597,6 +6597,12 @@ body.dam-mode-active .gallery-item:has(.status-color-strip) .workflow-badge {
     transform: translateY(-1px);
 }
 
+.sidebar-tool-btn.filter-active {
+    background: rgba(0, 123, 255, 0.2);
+    border-color: var(--primary-color);
+    color: #a8dcff;
+}
+
 /* Adjustments for Sort Buttons to be icons too */
 .sort-btn-mini {
     font-size: 0.7rem;
@@ -6701,6 +6707,27 @@ text-align: left;
 white-space: nowrap;
 overflow: hidden;
 text-overflow: ellipsis;
+}
+
+.collection-count {
+flex-shrink: 0;
+min-width: 1.5rem;
+padding: 1px 6px;
+border-radius: 999px;
+background: rgba(0, 123, 255, 0.18);
+border: 1px solid rgba(137, 207, 240, 0.25);
+color: #a8dcff;
+font-size: 0.72rem;
+font-weight: 600;
+font-variant-numeric: tabular-nums;
+line-height: 1.35;
+text-align: center;
+}
+
+.collection-count-descendant {
+background: rgba(255, 255, 255, 0.06);
+border-color: rgba(255, 255, 255, 0.18);
+color: var(--text-muted);
 }
 
 /* DAM Mode Visibility */
@@ -7398,4 +7425,3 @@ body.sidebar-minimized .sidebar-user-row {
 }
     50% { outline: 6px solid #007bff !important; outline-offset: 4px !important; box-shadow: 0 0 25px rgba(0, 123, 255, 0.8) !important; }
 }
-

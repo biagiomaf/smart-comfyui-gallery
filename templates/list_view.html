@@ -1,0 +1,300 @@
+<!-- templates/list_view.html -->
+<!-- Version: 2.16 - July 24, 2026 -->
+<style>
+    :root {
+        /* ARTIST'S TOUCH: Fluid/Squishy Columns! Allows zooming up to 200% without breaking layout */
+        /* Columns: Index|Thumb|Name|Rating|Comments|Size|Dims(MP)|Duration|Type|Date|Actions */
+        --list-view-cols: 40px 70px minmax(120px, 4fr) minmax(60px, 1fr) minmax(70px, 1fr) minmax(60px, 0.8fr) minmax(80px, 1.2fr) minmax(60px, 0.8fr) minmax(70px, 1fr) minmax(110px, 1.5fr) 130px;
+    }
+    
+    /* Magic CSS trick to allow grid cells to shrink below their content size and use ellipsis */
+    body.list-view-active .gallery-item > div, body.list-view-active .list-view-header > div {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Base hidden states for elements that only belong to the list view */
+    .list-view-only-cols, .list-view-header { display: none; }
+    .list-show-mob { display: none; }
+
+    /* --- LIST VIEW ACTIVE STATE OVERRIDES --- */
+    body.list-view-active .grid-view-only,
+    body.list-view-active .desktop-compact-meta,
+    body.list-view-active .selection-checkmark,
+    body.list-view-active .mobile-info-icon,
+    body.list-view-active .workflow-badge,
+    body.list-view-active .duration-overlay,
+    body.list-view-active .ai-badge,
+    body.list-view-active .status-color-strip { 
+        display: none !important; 
+    }
+    
+    body.list-view-active .gallery-container {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        counter-reset: gallery-row-num; 
+        padding: 10px 2rem; /* Sync padding with header margin */
+    }
+
+    /* Header Row (Static, sticky at the top) */
+    body.list-view-active .list-view-header {
+        display: grid;
+        grid-template-columns: var(--list-view-cols);
+        gap: 15px;
+        padding: 12px 15px;
+        background: var(--surface-color);
+        border: 1px solid var(--border-color);
+        border-bottom: 2px solid var(--primary-color);
+        border-radius: 8px;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        font-weight: bold;
+        position: sticky;
+        top: 10px;
+        z-index: 100;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        box-sizing: border-box;
+        align-items: center;
+        /* Align perfectly with the items inside gallery-container */
+        margin: 10px 2rem 5px 2rem; 
+    }
+
+    /* SORTABLE HEADER UI */
+    .sortable-hdr {
+        cursor: pointer;
+        user-select: none;
+        transition: color 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .sortable-hdr:hover { color: white; }
+    .sort-arrow { color: var(--primary-color); font-weight: 900; font-size: 0.85rem; }
+    
+    .list-hdr-name-col { display: flex; align-items: center; width: 100%; }
+
+    body.list-view-active .gallery-item {
+        display: grid;
+        grid-template-columns: var(--list-view-cols);
+        gap: 15px;
+        align-items: center;
+        height: auto;
+        min-height: 56px;
+        padding: 8px 15px;
+        background: var(--glass-bg);
+        border: 1px solid transparent;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        border-radius: 6px;
+        box-shadow: none;
+        transition: background 0.2s, border 0.2s;
+        width: 100%;
+        box-sizing: border-box;
+        cursor: pointer;
+        counter-increment: gallery-row-num; 
+    }
+
+    body.list-view-active .gallery-item:hover { background: var(--surface-hover); transform: none; box-shadow: none; }
+    body.list-view-active .gallery-item.selected { background: rgba(0, 123, 255, 0.15); border: 1px solid var(--primary-color); box-shadow: none; }
+
+    /* Flatten DOM tree (with !important to completely bypass Focus Mode hiding rules) */
+    body.list-view-active .item-info { display: contents !important; }
+    body.list-view-active .list-view-only-cols { display: contents !important; }
+
+    /* --- SUPPRESS FOCUS MODE VISUALS IN LIST VIEW --- */
+    body.list-view-active.focus-mode .gallery-item {
+        border-radius: 6px !important;
+        border: 1px solid transparent !important;
+        outline: none !important;
+    }
+    body.list-view-active.focus-mode .gallery-item.selected {
+        background: rgba(0, 123, 255, 0.15) !important;
+        border: 1px solid var(--primary-color) !important;
+        box-shadow: none !important;
+        z-index: auto !important;
+    }
+    body.list-view-active.focus-mode .gallery-item:has(.favorite-btn.favorited) .thumbnail-wrapper::after,
+    body.list-view-active.focus-mode .selection-checkmark {
+        display: none !important;
+    }
+
+    /* Assign explicit Grid Orders */
+    body.list-view-active .list-col-index { order: 1; }
+    body.list-view-active .thumbnail-link { order: 2; }
+    body.list-view-active .list-col-name { order: 3; }
+    body.list-view-active .list-col-rating { order: 4; text-align: center; }
+    body.list-view-active .list-col-comments { order: 5; text-align: center; }
+    body.list-view-active .list-col-size { order: 6; text-align: right; }
+    body.list-view-active .list-col-dims { order: 7; text-align: center; }
+    body.list-view-active .list-col-dur { order: 8; text-align: center; }
+    body.list-view-active .list-col-type { order: 9; text-align: center; }
+    body.list-view-active .list-col-date { order: 10; text-align: right; }
+    body.list-view-active .item-actions { order: 11; }
+
+    /* Counter */
+    .list-col-index::before {
+        content: counter(gallery-row-num);
+        font-family: monospace; font-size: 0.95rem; color: var(--text-muted);
+        text-align: center; font-weight: bold; display: block; width: 100%;
+    }
+
+    /* --- LIGHTBOX FIX FOR LIST VIEW --- */
+    /* Prevents the video overlay from blocking the click, opening lightbox instantly */
+    body.list-view-active .thumbnail-link * { pointer-events: none !important; }
+
+    /* Thumbnail adjustments */
+    body.list-view-active .thumbnail-link { width: 70px; height: 40px; border-radius: 4px; overflow: hidden; margin: 0; display: block; }
+    body.list-view-active .thumbnail-wrapper { height: 100%; width: 100%; border: none; }
+    body.list-view-active .thumbnail-wrapper img, body.list-view-active .thumbnail-wrapper video { width: 100%; height: 100%; object-fit: cover; }
+    body.list-view-active .video-play-overlay { top: 50% !important; left: 50% !important; bottom: auto !important; transform: translate(-50%, -50%) !important; width: 24px !important; height: 24px !important; font-size: 0.7rem !important; }
+
+    /* Typography */
+    .list-col-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.95rem; color: var(--text-color); }
+    .list-col-dur, .list-col-type, .list-col-date, .list-col-size, .list-col-dims { font-size: 0.85rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .list-col-rating { color: var(--favorite-color); font-weight: bold; font-size: 0.9rem; }
+    .list-col-comments { color: #89CFF0; font-weight: bold; font-size: 0.9rem; }
+
+    /* Actions */
+    body.list-view-active .item-actions { display: flex !important; flex-wrap: nowrap !important; justify-content: flex-end; gap: 6px !important; background: transparent !important; border: none !important; padding: 0 !important; }
+    body.list-view-active .item-actions a, body.list-view-active .item-actions button { width: 32px !important; height: 32px !important; padding: 0 !important; background: rgba(255,255,255,0.05) !important; border: 1px solid rgba(255,255,255,0.1) !important; font-size: 0.95rem !important; }
+    body.list-view-active .item-actions a:hover, body.list-view-active .item-actions button:hover { background: var(--surface-color) !important; border-color: var(--primary-color) !important; color: white !important; }
+
+    /* --- MOBILE RESPONSIVENESS --- */
+    .mobile-list-sort {
+        background: rgba(0, 0, 0, 0.4); color: white; border: 1px solid var(--glass-border);
+        padding: 4px 4px; border-radius: 6px; font-size: 0.75rem; outline: none;
+        width: 100%; max-width: 100%; font-weight: 600; cursor: pointer;
+        text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
+    }
+    .mobile-list-sort option { background: var(--surface-color); color: white; }
+
+    @media (max-width: 1024px) {
+        :root { --list-view-cols: 20px 75px 1fr 108px; /* FIX: Widened thumb col to prevent text overlap */ }
+        body.list-view-active .gallery-container { padding: 8px 0.5rem; }
+        body.list-view-active .list-view-header { margin: 8px 0.5rem 5px 0.5rem; padding: 8px; gap: 6px; }
+        body.list-view-active .gallery-item { padding: 8px; gap: 6px; }
+        body.list-view-active .list-hide-mob { display: none !important; }
+        body.list-view-active .list-show-mob { display: inline-block !important; }
+        body.list-view-active .item-actions { gap: 2px !important; }
+        body.list-view-active .item-actions a, body.list-view-active .item-actions button { width: 25px !important; height: 25px !important; font-size: 0.85rem !important; }
+    }
+    /* Hide the Focus Status Bar in List View */
+    body.list-view-active #focus-status-bar {
+        display: none !important;
+    }
+</style>
+
+<script>
+    let isListView = localStorage.getItem('sg_layout_mode') === 'list';
+
+    function initListSortUI() {
+        const params = new URLSearchParams(window.location.search);
+        const sortBy = params.get('sort_by') || 'date';
+        const sortOrder = params.get('sort_order') || 'desc';
+        const arrow = sortOrder === 'asc' ? '↑' : '↓';
+        
+        // Sync Desktop Headers
+        document.querySelectorAll('.list-view-header .sortable-hdr').forEach(hdr => {
+            if (hdr.dataset.sort === sortBy) {
+                hdr.innerHTML += `<span class="sort-arrow">${arrow}</span>`;
+                hdr.style.color = "white";
+            }
+        });
+        
+        // Sync Mobile Dropdown
+        const mobSelect = document.querySelector('.list-view-header .mobile-list-sort');
+        if (mobSelect) {
+            if (!mobSelect.dataset.rebuilt) {
+                const baseOptions = [];
+                Array.from(mobSelect.options).forEach(opt => {
+                    const parts = opt.value.split('|');
+                    if (parts.length > 0) {
+                        const sortKey = parts[0];
+                        if (!baseOptions.find(b => b.key === sortKey)) {
+                            baseOptions.push({ key: sortKey });
+                        }
+                    }
+                });
+
+                mobSelect.innerHTML = ''; 
+                
+                baseOptions.forEach(b => {
+                    const optDesc = document.createElement('option');
+                    optDesc.value = b.key + '|desc';
+                    
+                    const optAsc = document.createElement('option');
+                    optAsc.value = b.key + '|asc';
+                    
+                    if (b.key === 'name') {
+                        optDesc.text = 'Name: Z-A ↓';
+                        optAsc.text = 'Name: A-Z ↑';
+                    } else if (b.key === 'date' || b.key === 'mtime') {
+                        optDesc.text = 'Date: Newest ↓';
+                        optAsc.text = 'Date: Oldest ↑';
+                    } else if (b.key === 'rating') {
+                        optDesc.text = 'Rating: Highest ↓';
+                        optAsc.text = 'Rating: Lowest ↑';
+                    } else if (b.key === 'size') {
+                        optDesc.text = 'Size: Largest ↓';
+                        optAsc.text = 'Size: Smallest ↑';
+                    } else if (b.key === 'duration') {
+                        optDesc.text = 'Duration: Longest ↓';
+                        optAsc.text = 'Duration: Shortest ↑';
+                    } else if (b.key === 'comments') {
+                        optDesc.text = 'Comments: Most ↓';
+                        optAsc.text = 'Comments: Least ↑';
+                    } else if (b.key === 'dimensions' || b.key === 'dims') {
+                        optDesc.text = 'Resolution: Highest ↓';
+                        optAsc.text = 'Resolution: Lowest ↑';
+                    } else if (b.key === 'type') {
+                        optDesc.text = 'Type: Z-A ↓';
+                        optAsc.text = 'Type: A-Z ↑';
+                    } else {
+                        const capKey = b.key.charAt(0).toUpperCase() + b.key.slice(1);
+                        optDesc.text = capKey + ': Desc ↓';
+                        optAsc.text = capKey + ': Asc ↑';
+                    }
+                    
+                    mobSelect.appendChild(optDesc);
+                    mobSelect.appendChild(optAsc);
+                });
+                mobSelect.dataset.rebuilt = 'true';
+            }
+
+            const val = sortBy + '|' + sortOrder;
+            let optionExists = Array.from(mobSelect.options).some(opt => opt.value === val);
+            mobSelect.value = optionExists ? val : (sortBy + '|desc');
+        }
+    }
+
+    function toggleLayoutMode() {
+        isListView = !isListView;
+        localStorage.setItem('sg_layout_mode', isListView ? 'list' : 'grid');
+        applyLayoutMode();
+        setTimeout(() => window.dispatchEvent(new Event('scroll')), 100);
+    }
+
+    function applyLayoutMode() {
+        const btn = document.getElementById('opt-btn-layout');
+        const status = document.getElementById('opt-status-layout');
+        
+        if (isListView) {
+            document.body.classList.add('list-view-active');
+            if (status) { status.textContent = 'LIST'; status.className = 'opt-status on'; status.style.backgroundColor = "var(--primary-color)"; status.style.color = "#fff"; }
+            if (btn) btn.classList.add('active');
+        } else {
+            document.body.classList.remove('list-view-active');
+            if (status) { status.textContent = 'GRID'; status.className = 'opt-status off'; status.style.backgroundColor = ""; status.style.color = ""; }
+            if (btn) btn.classList.remove('active');
+        }
+        if (typeof updateFocusStatusBar === 'function') updateFocusStatusBar();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => { 
+        applyLayoutMode(); 
+        initListSortUI();
+    });
+</script>

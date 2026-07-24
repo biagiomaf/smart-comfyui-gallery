@@ -1,4 +1,4 @@
-<!-- Version: 2.15 - July 15, 2026 -->
+<!-- Version: 2.16 - July 24, 2026 -->
 <!-- TAGGING MODAL (MANAGER) -->
 <div id="tagging-overlay">
     <div class="tag-panel">
@@ -43,8 +43,10 @@
 
 let colSortState = { key: 'name', dir: 'asc' }; 
 let colSearchTerm = '';
-let collectionsData = { flags: [], albums: [], tree: {} };
+let colNonEmptyOnly = localStorage.getItem('galleryColNonEmptyOnly') === 'true';
+let collectionsData = { flags: [], albums: [], tree: {}, all_count: 0 };
 let colExpandedState = new Set(JSON.parse(localStorage.getItem('galleryColExpandedState') || '[]'));
+let collectionsRequestId = 0;
 
 function buildCollectionTreeData(albums) {
     let tree = { '_root_': [] };
@@ -74,15 +76,45 @@ function sortCollections(albumArray) {
     });
 }
 
+function getNonEmptyCollectionIds(albums) {
+    if (!colNonEmptyOnly) return null;
+
+    const albumMap = new Map(albums.map(album => [album.id, album]));
+    const visibleIds = new Set();
+    albums.filter(album => Number(album.file_count) > 0).forEach(album => {
+        let current = album;
+        while (current && !visibleIds.has(current.id)) {
+            visibleIds.add(current.id);
+            current = current.parent_id ? albumMap.get(current.parent_id) : null;
+        }
+    });
+    return visibleIds;
+}
+
+function expandNonEmptyCollectionPaths() {
+    const visibleIds = getNonEmptyCollectionIds(collectionsData.albums);
+    if (!visibleIds) return;
+
+    collectionsData.albums.forEach(album => {
+        const hasVisibleChild = (collectionsData.tree[album.id] || []).some(child => visibleIds.has(child.id));
+        if (visibleIds.has(album.id) && hasVisibleChild) colExpandedState.add(album.id);
+    });
+    localStorage.setItem('galleryColExpandedState', JSON.stringify([...colExpandedState]));
+}
+
 function loadCollections() {
-    fetch('/galleryout/api/collections')
+    const requestId = ++collectionsRequestId;
+    return fetch('/galleryout/api/collections')
     .then(r => r.json())
     .then(data => {
+        if (requestId !== collectionsRequestId) return;
+
         let parsedTree = buildCollectionTreeData(data.albums);
-        collectionsData = { flags: data.flags, albums: data.albums, tree: parsedTree.tree, map: parsedTree.albumMap };
+        collectionsData = { flags: data.flags, albums: data.albums, tree: parsedTree.tree, map: parsedTree.albumMap, all_count: data.all_count || 0 };
         
         const searchInp = document.getElementById('col-search-input');
         const sortBtn = document.getElementById('col-sort-toggle');
+        const nonEmptyBtn = document.getElementById('col-nonempty-toggle');
         
         if (searchInp && !searchInp.dataset.listening) {
             searchInp.dataset.listening = "true";
@@ -103,6 +135,26 @@ function loadCollections() {
             });
         }
 
+        if (nonEmptyBtn) {
+            nonEmptyBtn.classList.toggle('filter-active', colNonEmptyOnly);
+            nonEmptyBtn.setAttribute('aria-pressed', String(colNonEmptyOnly));
+            nonEmptyBtn.title = colNonEmptyOnly ? 'Show all collections' : 'Show only non-empty collections';
+            nonEmptyBtn.setAttribute('aria-label', nonEmptyBtn.title);
+            if (!nonEmptyBtn.dataset.listening) {
+                nonEmptyBtn.dataset.listening = "true";
+                nonEmptyBtn.addEventListener('click', () => {
+                    colNonEmptyOnly = !colNonEmptyOnly;
+                    localStorage.setItem('galleryColNonEmptyOnly', String(colNonEmptyOnly));
+                    if (colNonEmptyOnly) expandNonEmptyCollectionPaths();
+                    nonEmptyBtn.classList.toggle('filter-active', colNonEmptyOnly);
+                    nonEmptyBtn.setAttribute('aria-pressed', String(colNonEmptyOnly));
+                    nonEmptyBtn.title = colNonEmptyOnly ? 'Show all collections' : 'Show only non-empty collections';
+                    nonEmptyBtn.setAttribute('aria-label', nonEmptyBtn.title);
+                    renderSidebarCollections();
+                });
+            }
+        }
+
         renderSidebarCollections();
         
         const tagOverlay = document.getElementById('tagging-overlay');
@@ -116,18 +168,21 @@ function loadCollections() {
 // Global Sidebar Utilities
 async function syncSidebarState() {
     if (document.body.classList.contains('modal-open') || document.querySelector('.folder-dropdown.show')) return;
+    const requestId = ++collectionsRequestId;
     try {
         const res = await fetch('/galleryout/api/sidebar_state');
         const data = await res.json();
+        if (requestId !== collectionsRequestId) return;
+
         const folderHash = Object.keys(data.folders).length + Object.keys(data.folders).join('');
         const currentFolderHash = Object.keys(foldersData).length + Object.keys(foldersData).join('');
-        const collHash = data.collections.albums.map(a => a.id + a.name).join('');
-        const currentCollHash = collectionsData.albums.map(a => a.id + a.name).join('');
+        const collHash = data.collections.albums.map(a => `${a.id}:${a.name}:${a.file_count}:${a.descendant_file_count}`).join('|') + `|all:${data.collections.all_count}`;
+        const currentCollHash = collectionsData.albums.map(a => `${a.id}:${a.name}:${a.file_count}:${a.descendant_file_count}`).join('|') + `|all:${collectionsData.all_count}`;
         
         if (folderHash !== currentFolderHash || collHash !== currentCollHash) {
             foldersData = data.folders;
             let parsedTree = buildCollectionTreeData(data.collections.albums);
-            collectionsData = { flags: data.collections.flags, albums: data.collections.albums, tree: parsedTree.tree, map: parsedTree.albumMap };
+            collectionsData = { flags: data.collections.flags, albums: data.collections.albums, tree: parsedTree.tree, map: parsedTree.albumMap, all_count: data.collections.all_count || 0 };
             
             if(typeof renderAllTrees === 'function') renderAllTrees();
             renderSidebarCollections();
@@ -163,24 +218,35 @@ function restoreSidebarTab() {
     } else switchSidebarTab('folders');
 }
 
-function renderSidebarTreeHTML(parentId = '_root_', isSearching = false) {
+function renderSidebarTreeHTML(parentId = '_root_', isSearching = false, visibleIds = null) {
     let children = collectionsData.tree[parentId] || [];
     if (isSearching) {
         if (parentId === '_root_') children = collectionsData.albums.filter(c => c.name.toLowerCase().includes(colSearchTerm));
         else return ''; 
     }
+    if (visibleIds) {
+        children = isSearching
+            ? children.filter(c => Number(c.file_count) > 0)
+            : children.filter(c => visibleIds.has(c.id));
+    }
     let sortedChildren = sortCollections([...children]);
     let html = '';
 
     sortedChildren.forEach(c => {
-        let hasChildren = !isSearching && collectionsData.tree[c.id] && collectionsData.tree[c.id].length > 0;
+        let childCollections = collectionsData.tree[c.id] || [];
+        if (visibleIds) childCollections = childCollections.filter(child => visibleIds.has(child.id));
+        let hasChildren = !isSearching && childCollections.length > 0;
         let isExpanded = colExpandedState.has(c.id) || isSearching;
         let isCollapsedClass = !isExpanded && hasChildren ? 'collapsed' : '';
         
         let publicIcon = '';
         if (typeof ENABLE_DAM_MODE !== 'undefined' && ENABLE_DAM_MODE) {
-            if (c.is_public) publicIcon = '<span class="public-eye" title="Exhibition Ready">👁️</span>';
-            else if (c.shared_users) publicIcon = '<span class="public-eye" style="color:var(--primary-color);">👥</span>';
+            if (c.is_public) {
+                publicIcon = '<span class="public-eye" title="Exhibition Ready (Public)">👁️</span>';
+            } else if (c.shared_users) {
+                let sharedNames = c.shared_user_names ? c.shared_user_names : 'selected users';
+                publicIcon = `<span class="public-eye" style="color:var(--primary-color); cursor:help;" title="Shared with: ${escapeHTML(sharedNames)}">👥</span>`;
+            }
         }
         
         let isActive = (typeof currentFolderInfo !== 'undefined' && c.id == currentFolderInfo.collection_id) ? 'active' : '';
@@ -194,6 +260,8 @@ function renderSidebarTreeHTML(parentId = '_root_', isSearching = false) {
                 <a href="/galleryout/collection/${c.id}" class="folder-link navigation-link" style="display:flex; align-items:center; flex-grow:1;">
                     <span class="col-icon">📚</span>
                     <span class="col-name" title="${c.name}">${escapeHTML(c.name)}</span>
+                    ${Number(c.file_count) > 0 ? `<span class="collection-count" title="${c.file_count} directly tagged files">${c.file_count}</span>` : ''}
+                    ${hasChildren && !isExpanded && Number(c.descendant_file_count) > 0 ? `<span class="collection-count collection-count-descendant" title="${c.descendant_file_count} unique files in sub-collections">+${c.descendant_file_count}</span>` : ''}
                     ${publicIcon}
                 </a>
                 <div class="folder-menu-container">
@@ -211,7 +279,7 @@ function renderSidebarTreeHTML(parentId = '_root_', isSearching = false) {
                     </div>
                 </div>
             </div>
-            ${hasChildren ? `<ul style="list-style:none;">${renderSidebarTreeHTML(c.id, false)}</ul>` : ''}
+            ${hasChildren ? `<ul style="list-style:none;">${renderSidebarTreeHTML(c.id, false, visibleIds)}</ul>` : ''}
         </li>`;
     });
     return html;
@@ -232,14 +300,16 @@ function renderSidebarCollections() {
     const usrContainer = document.getElementById('user-collections-list');
     if (usrContainer) {
         const isAllActive = (typeof currentFolderInfo !== 'undefined' && currentFolderInfo.collection_id === 'all');
+        const visibleIds = getNonEmptyCollectionIds(collectionsData.albums);
         let allHeaderHtml = `
             <div style="padding-left:0;">
                 <a href="/galleryout/collection/all" class="col-item folder-item navigation-link ${isAllActive ? 'active' : ''}" style="margin-bottom: 8px; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px;">
                     <span class="col-icon">🌈</span><span class="col-name" style="font-weight: bold;">All Collections</span>
+                    ${Number(collectionsData.all_count) > 0 ? `<span class="collection-count" title="${collectionsData.all_count} unique files">${collectionsData.all_count}</span>` : ''}
                 </a>
             </div>
             <ul class="folder-tree col-tree" id="main-col-tree" style="list-style:none; padding:0; margin:0;">
-                ${renderSidebarTreeHTML('_root_', colSearchTerm !== '')}
+                ${renderSidebarTreeHTML('_root_', colSearchTerm !== '', visibleIds)}
             </ul>`;
         usrContainer.innerHTML = allHeaderHtml;
     }
@@ -257,9 +327,53 @@ document.addEventListener('click', (e) => {
             if (isCollapsed) colExpandedState.delete(id);
             else colExpandedState.add(id);
             localStorage.setItem('galleryColExpandedState', JSON.stringify([...colExpandedState]));
+            renderSidebarCollections();
+            const tagOverlay = document.getElementById('tagging-overlay');
+            if (tagOverlay && tagOverlay.classList.contains('visible') && tmState.mode === 'collection') renderTagManagerList();
         }
     }
 }, true);
+
+function askCollectionVisibility(parentId) {
+    return new Promise((resolve) => {
+        const overlay = document.getElementById('col-vis-overlay');
+        const inheritBtn = document.getElementById('btn-vis-inherit');
+        
+        if (parentId) {
+            const parentColl = collectionsData.albums.find(a => a.id == parentId);
+            if (parentColl) {
+                inheritBtn.style.display = 'flex';
+                inheritBtn.innerHTML = `🧬 Inherit from "${escapeHTML(parentColl.name)}"`;
+            } else {
+                inheritBtn.style.display = 'none';
+            }
+        } else {
+            inheritBtn.style.display = 'none';
+        }
+
+        overlay.style.display = 'flex';
+        document.body.classList.add('modal-open');
+
+        const cleanup = () => {
+            overlay.style.display = 'none';
+            if (!document.querySelector('.folder-dropdown.show') && !document.getElementById('tagging-overlay').classList.contains('visible')) {
+                document.body.classList.remove('modal-open');
+            }
+            // cleanup listeners
+            document.getElementById('btn-vis-public').onclick = null;
+            document.getElementById('btn-vis-private').onclick = null;
+            document.getElementById('btn-vis-shared').onclick = null;
+            inheritBtn.onclick = null;
+            document.getElementById('btn-vis-cancel').onclick = null;
+        };
+
+        document.getElementById('btn-vis-public').onclick = () => { cleanup(); resolve('public'); };
+        document.getElementById('btn-vis-private').onclick = () => { cleanup(); resolve('private'); };
+        document.getElementById('btn-vis-shared').onclick = () => { cleanup(); resolve('shared'); };
+        inheritBtn.onclick = () => { cleanup(); resolve('inherit'); };
+        document.getElementById('btn-vis-cancel').onclick = () => { cleanup(); resolve(null); };
+    });
+}
 
 async function createNewCollection(autoAssign = false, parentId = null) {
     const promptMsg = parentId ? "Enter sub-collection name:" : "Enter collection name:";
@@ -267,24 +381,46 @@ async function createNewCollection(autoAssign = false, parentId = null) {
     if (!name || !name.trim()) return;
     
     let isPublic = false;
+    let sharedUsers = "";
+    let openShareAfter = false;
+
     if (typeof ENABLE_DAM_MODE !== 'undefined' && ENABLE_DAM_MODE) {
-        const choice = await showSmartDialog('yes_no_cancel', "🌐 Exhibition Visibility", "Make this collection visible in the Exhibition Portal? (Yes = Public, No = Private)", "", "active-blue");
+        const choice = await askCollectionVisibility(parentId);
         if (choice === null) {
             if (autoAssign) openTaggingModal('collection');
             return;
         }
-        isPublic = choice;
+        
+        if (choice === 'public') {
+            isPublic = true;
+        } else if (choice === 'private') {
+            isPublic = false;
+        } else if (choice === 'shared') {
+            isPublic = false;
+            openShareAfter = true;
+        } else if (choice === 'inherit') {
+            const parentColl = collectionsData.albums.find(a => a.id == parentId);
+            if (parentColl) {
+                isPublic = parentColl.is_public == 1;
+                sharedUsers = parentColl.shared_users || "";
+            }
+        }
     }
     
     fetch('/galleryout/api/collections/create', {
         method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ name: name.trim(), is_public: isPublic, parent_id: parentId })
+        body: JSON.stringify({ name: name.trim(), is_public: isPublic, shared_users: sharedUsers, parent_id: parentId })
     }).then(r => r.json()).then(d => {
         if (d.status === 'success') {
             showNotification(`Collection "${name}" created!`, 'success');
             if (autoAssign && d.id) tmState.pendingCollections[d.id] = 'add';
             if (parentId) colExpandedState.add(parentId);
-            loadCollections();
+            
+            loadCollections().then(() => {
+                if (openShareAfter && d.id) {
+                    openShareModal(null, d.id, name.trim());
+                }
+            });
         } else { showNotification(d.message || 'Error', 'error'); }
     }).catch(console.error);
 }
@@ -292,6 +428,36 @@ async function createNewCollection(autoAssign = false, parentId = null) {
 async function toggleCollectionPublic(e, id) {
     e.preventDefault(); e.stopPropagation();
     const menu = e.target.closest('.folder-dropdown'); if (menu) menu.classList.remove('show');
+
+    // --- CHECK FOR SHARED USERS BEFORE CHANGING GLOBAL VISIBILITY ---
+    const album = collectionsData.albums.find(a => a.id === id);
+    if (album && album.shared_users && album.shared_users.trim() !== '') {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); z-index:9999; display:flex; justify-content:center; align-items:center; backdrop-filter:blur(8px);';
+        overlay.innerHTML = `
+            <div style="background:var(--surface-color); width:400px; max-width:90vw; border-radius:16px; border:1px solid var(--favorite-color); border-top:4px solid var(--favorite-color); padding:30px; box-shadow:0 20px 60px #000; text-align:center; transform:scale(0.9); animation:popIn 0.2s forwards ease-out;">
+                <div style="font-size:2.5rem; margin-bottom:15px;">⚠️</div>
+                <h3 style="margin:0 0 15px 0; color:white; font-size:1.2rem;">Shared Access Priority</h3>
+                <p style="color:#bbb; line-height:1.5; margin-bottom:25px; font-size:0.95rem;">
+                    This collection is currently shared with specific users.<br><br>
+                    Please go to <strong>"👥 Share / Permissions"</strong> and remove the assigned users before changing the exhibition visibility, as explicit shares override global visibility settings.
+                </p>
+                <button id="close-shared-warning" class="glass-btn" style="background:var(--surface-hover); color:white; width:100%; padding:10px; border-radius:8px; cursor:pointer;">Understood</button>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        
+        if (!document.getElementById('popIn-anim')) {
+            const style = document.createElement('style');
+            style.id = 'popIn-anim';
+            style.innerHTML = `@keyframes popIn { to { transform: scale(1); } }`;
+            document.head.appendChild(style);
+        }
+
+        document.getElementById('close-shared-warning').onclick = () => overlay.remove();
+        return;
+    }
+
     fetch('/galleryout/api/collections/toggle_public', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ id: id }) })
     .then(r => r.json()).then(d => {
         if(d.status === 'success') { showNotification(d.new_state ? "Exhibition ready 👁️" : "Private 🔒", 'success'); loadCollections(); }
@@ -410,6 +576,8 @@ function renderTagManagerTreeHTML(parentId = '_root_', isSearching = false) {
                     <span class="tag-col-name" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 150px; display:inline-block; vertical-align:middle; ${isOriginal && !pendingAction ? 'color: var(--success-color); font-weight: bold;' : ''}">
                         ${c.is_public ? '👁️ ' : ''}${c.name}
                     </span>
+                    ${Number(c.file_count) > 0 ? `<span class="collection-count" title="${c.file_count} directly tagged files">${c.file_count}</span>` : ''}
+                    ${hasChildren && !isExpanded && Number(c.descendant_file_count) > 0 ? `<span class="collection-count collection-count-descendant" title="${c.descendant_file_count} unique files in sub-collections">+${c.descendant_file_count}</span>` : ''}
                 </div>
                 <div style="display:flex; gap:5px; z-index:10;">
                     <button class="tag-action-btn btn-tag-add" ${addActive} onclick="setTagAction(${c.id}, 'add')" style="padding:4px 8px; font-size:0.8rem;">➕ Add</button>
@@ -541,6 +709,7 @@ async function applyTagManagerChanges() {
         } else {
             btn.disabled = false; btn.textContent = "💾 Apply Changes";
             closeTaggingModal();
+            loadCollections();
             if (typeof currentLightboxFile !== 'undefined' && !currentLightboxFile && typeof deselectAll === 'function') deselectAll();
         }
     } catch (e) {
@@ -564,6 +733,7 @@ async function untagCurrentCollection() {
         const data = await res.json();
         if (data.status === 'success') {
             showNotification(`Removed ${targets.length} item(s).`, "success");
+            loadCollections();
             targets.forEach(fid => {
                 const item = document.querySelector(`.gallery-item[data-file-id="${fid}"]`);
                 if (item) {
@@ -642,3 +812,17 @@ function updateColorStrips(results, collId) {
     });
 }
 </script>
+
+<!-- VISIBILITY MODAL -->
+<div id="col-vis-overlay">
+    <div class="col-vis-panel">
+        <h3>🌐 Exhibition Visibility</h3>
+        <p>Choose the access level for this collection in the Exhibition Portal:</p>
+        <button id="btn-vis-public" class="col-vis-btn public">👁️ Exhibition Ready (Public)</button>
+        <button id="btn-vis-private" class="col-vis-btn private">🔒 Private</button>
+        <button id="btn-vis-shared" class="col-vis-btn shared">👥 Shared with selected users</button>
+        <div style="height:1px; background:rgba(255,255,255,0.1); margin: 5px 0;"></div>
+        <button id="btn-vis-inherit" class="col-vis-btn inherit">🧬 Inherit from parent</button>
+        <button id="btn-vis-cancel" class="col-vis-cancel">Cancel</button>
+    </div>
+</div>

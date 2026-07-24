@@ -1,0 +1,122 @@
+<!-- Version: 2.16 - July 24, 2026 -->
+<script id="changelog-data" type="text/markdown">
+# Changelog
+
+### **[2.16] - 2026-07-24**
+
+### 📑 The New List View Experience
+Sometimes a grid of thumbnails isn't enough when you need to analyze hard data. We are introducing a highly requested, fully responsive **List View** alternative to the standard Grid layout.
+* **Instant Activation:** Seamlessly toggle between Grid and List layouts at any time directly from the **⚙️ Options** menu. 
+* **High Data Density:** The fluid, squishy-column architecture displays everything at a glance: Index, Thumbnail Preview, Name, Rating, Comments, Size, Resolution (MP), Duration, Type, and Date. It scales perfectly without breaking, even if you zoom your browser up to 200%.
+* **Sticky Sortable Header (Desktop):** The column header stays pinned at the top of the gallery as you scroll. Simply click on any column name to instantly sort your files by that specific metric.
+* **Smart Mobile Sorting:** On smaller screens where the wide header cannot fit, it elegantly transforms into a compact dropdown menu, giving mobile users the exact same powerful sorting capabilities without sacrificing screen space.
+
+### 📚 Virtual Collections Evolution
+We took the hierarchical tree structure introduced in the last patch and supercharged it with smarter navigation, better filtering, and advanced permission management.
+* **Fully Navigable Nested Trees:** Seamlessly browse, expand, and collapse deep hierarchies of sub-collections directly from the sidebar. 
+* **Smart Permission Inheritance (🧬):** When creating a new nested sub-collection, you no longer need to manually re-configure its visibility. You can now choose to have it instantly inherit the exact Exhibition permissions (Public, Private, or Shared) from its direct **parent collection**.
+* **Shared Users Tooltip:** Wondering who has access? In both the main workspace and the Exhibition portal (for administrators), simply hover over the purple "Shared" icon (👥) next to a collection name to reveal a tooltip listing exactly which users have permission to view it.
+* **The `>0` Non-Empty Filter:** A new toggle in the collections toolbar allows you to instantly hide empty collections and cut through the noise. It features smart path preservation: parent folders with zero direct files will still remain visible if they contain populated sub-collections.
+* **Smarter Badges:** Enhanced visual counters clearly distinguish between *Direct Counts* (files specifically tagged in that collection) and *Descendant Counts* (`+N`, showing unique files hidden inside collapsed child collections).
+* **Audio File Support:** Audio files are now fully supported inside Virtual Collections. You can organize them and expose them to your clients via the Exhibition portal just like images and videos.
+
+### 🛠️ Security & Quality of Life Fixes
+* **Mobile Waveform Control:** You can now easily cycle through and manage audio/video waveform amplitudes directly from mobile devices.
+* **Security Hardening:** General backend fixes to strengthen data isolation, user permission checks, and overall system security.
+
+---
+
+### **[2.15] - 2026-07-16**
+
+### 🧠 OmniQuery (AI-Powered SQL Explorer)  
+* **⚡Omniquery** new button at the top of the main page.   
+Go beyond the standard filter UI. OmniQuery allows power users to interrogate their entire media database using natural language, assisted by AI (ChatGPT, Claude, etc.).
+* **Smart Prompting:** OmniQuery dynamically generates a prompt containing your database schema and rules. Paste it to your LLM to get the perfect SQL query for highly specific, multi-table requests.
+* **Safe Execution:** The engine strictly enforces read-only `SELECT` statements. Your database is completely secure.
+* **Query Management:** Save, name, and reload your favorite SQL snippets directly from the UI for future use.
+
+👉 For more detailed information, READ the **[OmniQuery MANUAL](https://github.com/biagiomaf/smart-comfyui-gallery/blob/main/docs/OmniQuery.md)**.
+
+
+### 🔌 LoRA Synergy™
+A zero-API, fully offline LoRA matchmaker and injector integrated directly into the Remix Nodepad. Stop guessing which LoRA works with your checkpoint.
+
+### How to Access
+* Press **B** on any file to enter the **Remix Workflow**.
+* Select **Nodepad**.
+* Find the new **LoRA Synergy** tab in purple at the right of the screen.
+
+* **Offline Architecture Scanning:** Reads your local `.safetensors` headers to determine their true base architecture (SD1.5, SDXL, Flux) and instantly buckets them into compatibility groups against your loaded checkpoint.
+* **Smart Trigger Memory:** Automatically surfaces official CivitAI trigger words and recalls historical triggers you've successfully used in the past via a floating clipboard widget.
+* **Auto-Wiring:** Seamlessly injects `LoraLoader` nodes and instantly rewires all downstream `MODEL` and `CLIP` connections without manual rerouting. 
+* **Seamless Integration:** Native synergy with `ComfyUI-Lora-Manager` to unlock rich preview thumbnails and CivitAI deep-links directly in the panel.
+
+👉 For more detailed information, READ the **[LoRA Synergy MANUAL](https://github.com/biagiomaf/smart-comfyui-gallery/blob/main/docs/LORA_SYNERGY.md)**.
+
+
+### 🌳 Nested Virtual Collections (Tree Structure)
+* **Hierarchical Organization:** Virtual Collections are no longer restricted to a flat list. You can now create sub-collections arranged in a folder-like tree structure, allowing for vastly superior organization of complex projects and client deliverables.
+
+---
+
+### **[2.14] - 2026-06-16**
+
+### 🚀 Remix Workflow Overhaul & The { } Nodepad (Major Update)
+The Remix feature has been completely rebuilt from the ground up. We retired the rigid "App View" and introduced a fluid, dynamic 3-tier workspace designed to give you absolute control over your generations, whether you want a quick tweak or deep structural modifications.
+
+* **The 3-Tier Workspace Architecture:**
+  * **📝 Auto-Form (Formerly Advanced):** The engine room. We drastically improved the extraction logic. It now intelligently filters out structural text strings and strictly exposes *actual* prompts (positive/negative), seeds, and key parameters. Find what you need and click the **📌 Pin** icon.
+  * **🛠️ My Panel (Formerly Custom View):** Your personal DIY dashboard. Populated exclusively with the fields you pinned. We completely overhauled the UI, removing the aggressive yellow/red badges in favor of a sleek, elegant, and distraction-free layout. Freely arrange your fields using the **↕ Reorder** button.
+  * **{ } Nodepad (The Game Changer):** A revolutionary raw JSON editor built for power users, prompt engineers, and curious learners. Dive into the exact "JSON recipe" behind any node without leaving the gallery.
+
+* **Nodepad Killer Features:**
+  * **Live Dictionary & Magic Injector:** The Nodepad actively interrogates your online ComfyUI server. Select a node, and it instantly loads the official definitions and allowed values. Use UI dropdowns or image upload buttons to magically inject perfectly formatted syntax directly into the raw JSON code!
+  * **Intelligent JSON Formatting:** Working with nested JSON strings (like Ideogram or Wan2.1 complex prompts) is no longer a nightmare. The Nodepad visually converts escaped characters into *physical newlines* for easy reading and writing, then automatically sanitizes them back into valid `\n` code upon saving to prevent ComfyUI syntax errors.
+  * **The "Favorite" Node System:** Have a custom node too complex for standard inputs? Open it in the Nodepad and click **⭐ Favorite**. That entire node will instantly appear as a "Quick Edit" button inside your clean *My Panel* dashboard. 
+  * **Real-Time Bidirectional Sync:** Flawless data synchronization. Change a prompt in the Auto-Form, and the raw JSON in the Nodepad updates instantly. Edit the JSON in the Nodepad, and your visual sliders and text boxes update the moment you switch tabs.
+
+* **Global Accessibility & Workflow Library:**
+  * **Tools Menu Integration:** You no longer need an existing source image to start generating! Remix can now be launched directly from the global **Tools menu** on the homepage.
+  * **Standalone Library Generation:** Access your saved Remix Templates straight from the homepage Tools menu to instantly load up your custom *My Panel* dashboard and start queueing jobs from scratch. 
+  * **Smarter Template Saving:** When saving a Template to the Library, SmartGallery now proactively suggests reordering your pinned fields for a better layout, and defaults to the original node names if you leave custom labels blank.
+
+---
+
+### **[2.13] - 2026-05-21**
+
+### 🪄 Experimental Remix Workflow (New!)
+* **Zero-UI Background Generation:** Tweak prompts, modify parameters, or randomize seeds and submit jobs directly to ComfyUI without ever opening the ComfyUI web canvas. Once generated, the new file instantly and automatically appears indexed inside your gallery.
+* **Instant Shortcut Activation:** Trigger the Remix panel instantly for any focused image or video directly from the gallery grid by pressing **"B"** on your keyboard (or by clicking the magical wand 🪄 icon).
+* **Dynamic Parameter & Prompt Extraction:** Automatically traces the workflow graph to extract text prompts (positive, negative, system), seeds, and key generation variables (Steps, CFG, Denoise, Resolution, etc.) into a clean, human-readable panel.
+* **Source Image Swapping:** Easily replace input/source images directly from the form, supporting Image-to-Image, ControlNet, and IP-Adapter nodes.
+* **Multi-Gen Batching:** Queue up to 100 generations in one click. Toggle the **Random Seed** option to ensure each background iteration produces a fresh variation instead of being skipped by ComfyUI's duplicate cache.
+* **Flexible Manual Exports (Copy / Download):** Don't want to queue directly via API? Instantly **Copy** the modified JSON to your clipboard or **Download** it as a file. Pasting or importing it manually into the ComfyUI canvas will perfectly preserve all your parameter edits and input image swaps on the workspace.
+* **High-Performance Architecture (Error 134 & 413 Resolution):** Complete structural refactoring of the submission workflow. The server now reads, modifies, and streams huge workflow files (100MB+) directly on local disk via `file_id` and binary Blob streaming. This entirely bypasses browser string memory crashes and proxy payload limitations (like Nginx `client_max_body_size`).
+* **Intelligent Autofix & Interactive Corrections:** Translates standard UI-format JSON graphs into execution-ready ComfyUI API formats. If ComfyUI rejects the workflow due to validation errors (e.g., missing custom models or sampler mismatches), the panel guides you through interactive choice dropdowns to correct them.
+* **Video Companion Sync:** Automatically detects video sidecar metadata files (such as `.png` companion files saved by VHS nodes) so you can remix prompt workflows directly from your video player card.
+* **⚠️ Pragmatic "Quick & Dirty" Honest Disclaimer:** Despite major technical efforts, this remains an *experimental* and *stateless helper tool* designed for rapid iterations. It is **not** a replacement for ComfyUI's full native node canvas. It simply lets you edit the variables it successfully intercepts. If you use highly complex workflows, the system might find it harder to accurately capture all parameters and/or label them correctly; however, for standard, medium-to-simple workflows, it is an incredibly useful time-saver. If a workflow fails to map, no worries: it just means it's time to open the full ComfyUI canvas.  
+
+### 🖥️ Desktop UI & UX Improvements
+* **Cleaner Thumbnail Cards:** Removed the bulky, multi-line metadata from the grid view cards for a much cleaner and modern look.
+* **Compact Inline Metadata:** Added a sleek, single-line metadata string (`Date • Dimensions • Size`) positioned at the bottom left of the card, perfectly aligned with the selection checkmark. 
+* **Responsive Typography:** Implemented CSS Container Queries. The new compact metadata automatically scales down its font size when the user switches to the "Compact" thumbnail size.
+* **Easier Selection:** The entire bottom dark area of the card (where the filename is) is now clickable. You can select or deselect a file simply by clicking the card's footer, without needing to precisely aim for the small checkmark.
+* **Smart Focus Status Bar:** 
+  * The bottom colored info bar no longer appears automatically on every mouse hover (reducing visual clutter), unless *Focus Mode* is explicitly enabled.
+  * Added a small **"i" (Info)** hover icon next to the compact metadata. Hovering over this icon seamlessly reveals the full bottom info bar.
+  * Added the **"Last Scanned"** timestamp to the data displayed in the bottom info bar.
+  * Added a subtle "pop" animation to the status bar, making data updates visually distinct when moving between files.
+
+### 📱 Mobile Enhancements
+* **New 2-Column Grid Mode:** Added a "2-Column Grid" toggle in the mobile Options (⚙️) menu.
+* **Optimized Compact Layout:** When 2-Column mode is active:
+  * Action buttons (Favorite, Download, Delete) are forced into a single, space-saving horizontal line.
+  * Cluttering overlay badges (workflow, video duration, star ratings) are hidden to maximize image visibility.
+* **Mobile Info Modal:** In 2-Column mode, a new "i" icon appears in the bottom left corner of the thumbnail. Tapping it opens a sleek, mobile-friendly modal displaying all the file details (Dimensions, Size, Date, Scanned, Workflow).
+
+### 🎵 Media Player & Waveform Fixes
+* **Dynamic Waveform Height:** Fixed a visual bug where the media player reserved blank vertical space even if the video had no audio/waveform. The player now dynamically expands only *after* the waveform image successfully loads.
+* **Mobile Waveform Amplitude Control:** Replaced the bulky amplitude slider on mobile. Now, users can simply tap the wave icon (🌊) to cycle through amplitude presets (`0.5x`, `1.0x`, `2.0x`, `5.0x`, `10.0x`), triggering a brief toast notification with the current value.
+
+***
+</script>

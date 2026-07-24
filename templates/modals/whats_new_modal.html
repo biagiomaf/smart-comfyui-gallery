@@ -1,0 +1,386 @@
+<!-- WHAT'S NEW CAROUSEL MODAL (DYNAMIC WITH RELIABLE SESSIONSTORAGE) -->
+<!-- Version: 2.16 - July 24, 2026 -->
+<style>
+    #whats-new-overlay {
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(10px);
+        z-index: 10000; display: none; justify-content: center; align-items: center;
+        opacity: 0; transition: opacity 0.3s ease;
+    }
+    #whats-new-overlay.visible { display: flex; opacity: 1; }
+
+    .wn-panel {
+        background: var(--surface-color);
+        border: 1px solid var(--primary-color);
+        border-radius: 16px;
+        width: 600px; max-width: 95vw;
+        height: 80vh; max-height: 700px;
+        display: flex; flex-direction: column;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.9);
+        overflow: hidden;
+        animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .wn-header {
+        padding: 15px 20px;
+        background: var(--surface-hover);
+        border-bottom: 1px solid var(--border-color);
+        display: flex; justify-content: space-between; align-items: center;
+        flex-shrink: 0;
+    }
+    .wn-header h3 { margin: 0; font-size: 1.2rem; color: white; display: flex; align-items: center; gap: 10px;}
+
+    .wn-body {
+        position: relative;
+        flex-grow: 1;
+        overflow: hidden;
+        background: #0f0f0f;
+    }
+
+    .wn-carousel-track {
+        display: flex;
+        height: 100%;
+        transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    .wn-slide {
+        height: 100%;
+        padding: 25px;
+        overflow-y: auto;
+        box-sizing: border-box;
+        scrollbar-width: thin;
+    }
+
+    /* Typography & Lists */
+    .wn-slide h4 { font-size: 1.4rem; margin-top: 0; margin-bottom: 5px; }
+    .wn-slide .wn-date { font-size: 0.8rem; color: #888; margin-bottom: 20px; }
+    .wn-slide h5 { font-size: 1.1rem; color: white; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; }
+    .wn-slide p { color: #bbb; line-height: 1.5; font-size: 0.95rem; margin-bottom: 15px; }
+    
+    /* Custom Link Style inside Markdown */
+    .wn-link {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-weight: 600;
+        border-bottom: 1px solid transparent;
+        transition: border-color 0.2s ease, color 0.2s ease;
+    }
+    .wn-link:hover {
+        border-bottom: 1px solid var(--primary-color);
+        filter: brightness(1.2);
+    }
+    
+    .wn-list { list-style: none; padding: 0; margin: 0; }
+    .wn-list li {
+        margin-bottom: 12px;
+        padding-left: 20px;
+        position: relative;
+        color: #ddd;
+        font-size: 0.95rem;
+        line-height: 1.5;
+    }
+    .wn-list li::before {
+        content: '▹';
+        position: absolute; left: 0; top: 0;
+        color: var(--primary-color);
+        font-weight: bold;
+    }
+    .wn-list li strong { color: white; }
+    .wn-list code {
+        background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1);
+        padding: 2px 6px; border-radius: 4px; color: var(--favorite-color);
+        font-family: monospace; font-size: 0.85rem;
+    }
+
+    /* Footer & Controls */
+    .wn-footer {
+        padding: 15px 20px;
+        background: var(--surface-hover);
+        border-top: 1px solid var(--border-color);
+        display: flex; flex-direction: column; gap: 15px;
+        flex-shrink: 0;
+    }
+
+    .wn-nav-row { display: flex; justify-content: space-between; align-items: center; }
+
+    .wn-dots { display: flex; gap: 8px; }
+    .wn-dot {
+        width: 10px; height: 10px; border-radius: 50%;
+        background: rgba(255,255,255,0.2); cursor: pointer; transition: all 0.2s;
+    }
+    .wn-dot.active { background: var(--primary-color); transform: scale(1.2); }
+
+    .wn-checkbox-label {
+        display: flex; align-items: center; gap: 8px; color: var(--text-muted);
+        font-size: 0.85rem; cursor: pointer; user-select: none;
+    }
+    .wn-checkbox-label input { accent-color: var(--primary-color); width: 16px; height: 16px; cursor:pointer;}
+    .wn-checkbox-label:hover { color: white; }
+
+    .wn-hint-text { font-size: 0.8rem; color: #777; text-align: center; margin: 0; font-style: italic; }
+
+    @media (max-width: 768px) {
+        .wn-slide { padding: 15px; }
+        .wn-slide h4 { font-size: 1.2rem; }
+        .wn-list li { font-size: 0.85rem; }
+        .wn-footer { padding: 15px; }
+    }
+</style>
+
+<div id="whats-new-overlay">
+    <div class="wn-panel">
+        
+        <div class="wn-header">
+            <h3>✨ What's New in SmartGallery</h3>
+            <button onclick="closeWhatsNewModal()" style="background:none; border:none; color:var(--text-muted); font-size:1.8rem; cursor:pointer; line-height:1;">×</button>
+        </div>
+
+        <div class="wn-body">
+            <!-- Dynamic Track -->
+            <div class="wn-carousel-track" id="wn-carousel-track"></div>
+        </div>
+
+        <div class="wn-footer">
+            <div class="wn-nav-row">
+                <button class="glass-btn" id="wn-btn-prev" onclick="wnChangeSlide(-1)" style="min-width: 80px;">&larr; Prev</button>
+                <div class="wn-dots" id="wn-dots-container"></div>
+                <button class="glass-btn active-blue" id="wn-btn-next" onclick="wnChangeSlide(1)" style="min-width: 80px;">Next &rarr;</button>
+            </div>
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; border-top: 1px solid rgba(255,255,255,0.05); padding-top:15px; flex-wrap:wrap; gap:10px;">
+                <label class="wn-checkbox-label">
+                    <input type="checkbox" id="wn-dont-show"> Don't show this automatically again
+                </label>
+                <a href="https://github.com/biagiomaf/smart-comfyui-gallery/blob/main/CHANGELOG.md" target="_blank" style="color:var(--primary-color); font-size:0.85rem; text-decoration:none; font-weight:bold;">
+                    📄 View Full Changelog (GitHub)
+                </a>
+            </div>
+            <p class="wn-hint-text">You can always re-open this guide anytime from the Options (⚙️) menu.</p>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    let currentWnSlide = 0;
+    let totalWnSlides = 0;
+    let latestVersionId = '1.0';
+    let isChangelogParsed = false;
+
+    // The Parser: Reads the Markdown script block and generates beautiful HTML
+    function parseChangelogToSlides() {
+        const rawDataEl = document.getElementById('changelog-data');
+        const track = document.getElementById('wn-carousel-track');
+        const dotsContainer = document.getElementById('wn-dots-container');
+
+        if (!rawDataEl) {
+            track.innerHTML = '<div class="wn-slide" style="width:100%; display:flex; align-items:center; justify-content:center; color:var(--text-muted);">Changelog data not found.</div>';
+            return false;
+        }
+
+        let md = rawDataEl.textContent.trim();
+        // Remove global title
+        md = md.replace(/^#\s*Changelog/im, '').trim();
+
+        // Split by markdown horizontal rule (---), supporting both Windows (\r\n) and Linux (\n)
+        const versions = md.split(/[\r\n]+---[\r\n]+/).map(s => s.trim()).filter(Boolean);
+        
+        // Take only the top 3 versions
+        const displayVersions = versions.slice(0, 3);
+        totalWnSlides = displayVersions.length;
+
+        // Setup CSS for Track based on slide count
+        track.style.width = `${totalWnSlides * 100}%`;
+
+        let slidesHTML = '';
+        let dotsHTML = '';
+        const colors = ['var(--ai-color)', 'var(--primary-color)', 'var(--favorite-color)'];
+
+        displayVersions.forEach((vBlock, index) => {
+            // Split line by line supporting both \r\n and \n
+            const lines = vBlock.split(/\r?\n/);
+            let slideContent = '';
+            let inList = false;
+
+            lines.forEach(line => {
+                line = line.trim();
+                if (!line) return;
+
+                // Match Version Title (e.g. ### **[2.15] - 2026-07-16**)
+                const verMatch = line.match(/^###\s*\*\*\[(.*?)\]\s*-\s*(.*?)\*\*/);
+                if (verMatch) {
+                    if (inList) { slideContent += '</ul>'; inList = false; }
+                    const vNum = verMatch[1];
+                    const vDate = verMatch[2];
+                    
+                    if (index === 0) latestVersionId = vNum; // Save dynamically for Memory Keys
+
+                    const color = colors[index % colors.length];
+                    const badge = index === 0 ? ' <span style="font-size:0.7rem; background:rgba(255,255,255,0.2); padding:2px 6px; border-radius:4px; vertical-align:middle; margin-left:8px; color:white;">LATEST</span>' : '';
+                    
+                    slideContent += `<h4 style="color:${color};">🚀 Version ${vNum}${badge}</h4>`;
+                    slideContent += `<div class="wn-date">Released: ${vDate}</div>`;
+                    return;
+                }
+
+                // Match Features/Sections (e.g. ### 🧠 OmniQuery)
+                const secMatch = line.match(/^###\s*(.*)/);
+                if (secMatch) {
+                    if (inList) { slideContent += '</ul>'; inList = false; }
+                    slideContent += `<h5>${secMatch[1]}</h5>`;
+                    return;
+                }
+
+                // Global Markdown Parsing for bold, code blocks, and links on any line
+                let formattedLine = line;
+                
+                // 1. Parse Bold (**text**)
+                formattedLine = formattedLine.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                
+                // 2. Parse Inline Code (`code`)
+                formattedLine = formattedLine.replace(/`(.*?)`/g, '<code>$1</code>');
+                
+                // 3. Parse Links ([text](url))
+                formattedLine = formattedLine.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="wn-link">$1</a>');
+
+                // Match Bullet Points (now matches after bold/links tags are applied or skipped)
+                const listMatch = formattedLine.match(/^\*\s+(.*)/);
+                if (listMatch) {
+                    if (!inList) { slideContent += '<ul class="wn-list">'; inList = true; }
+                    slideContent += `<li>${listMatch[1]}</li>`;
+                    return;
+                }
+
+                // Standard Paragraph
+                if (inList) { slideContent += '</ul>'; inList = false; }
+                slideContent += `<p>${formattedLine}</p>`;
+            });
+
+            if (inList) { slideContent += '</ul>'; }
+
+            // Slide Width calculation
+            const slideWidth = 100 / totalWnSlides;
+            slidesHTML += `<div class="wn-slide" style="width:${slideWidth}%;">${slideContent}</div>`;
+            
+            // Build Dots
+            dotsHTML += `<div class="wn-dot ${index === 0 ? 'active' : ''}" onclick="wnGoToSlide(${index})"></div>`;
+        });
+
+        track.innerHTML = slidesHTML;
+        dotsContainer.innerHTML = dotsHTML;
+        
+        isChangelogParsed = true;
+        return true;
+    }
+
+    function wnUpdateCarouselUI() {
+        const track = document.getElementById('wn-carousel-track');
+        // Calculate shift based on number of slides
+        const slidePct = 100 / totalWnSlides;
+        track.style.transform = `translateX(-${currentWnSlide * slidePct}%)`;
+        
+        // Update Dots
+        const dots = document.querySelectorAll('.wn-dot');
+        dots.forEach((dot, idx) => {
+            dot.classList.toggle('active', idx === currentWnSlide);
+        });
+
+        // Update Buttons
+        const btnPrev = document.getElementById('wn-btn-prev');
+        const btnNext = document.getElementById('wn-btn-next');
+        
+        btnPrev.style.visibility = currentWnSlide === 0 ? 'hidden' : 'visible';
+        
+        if (currentWnSlide === totalWnSlides - 1 || totalWnSlides === 0) {
+            btnNext.innerHTML = 'Got it! ✓';
+            btnNext.classList.replace('active-blue', 'active-fuxia');
+            btnNext.style.borderColor = 'var(--success-color)';
+            btnNext.style.color = 'var(--success-color)';
+        } else {
+            btnNext.innerHTML = 'Next &rarr;';
+            btnNext.classList.replace('active-fuxia', 'active-blue');
+            btnNext.style.borderColor = '';
+            btnNext.style.color = '';
+        }
+    }
+
+    function wnChangeSlide(dir) {
+        if (currentWnSlide === totalWnSlides - 1 && dir === 1) {
+            closeWhatsNewModal();
+            return;
+        }
+        currentWnSlide += dir;
+        if (currentWnSlide < 0) currentWnSlide = 0;
+        if (currentWnSlide >= totalWnSlides) currentWnSlide = totalWnSlides - 1;
+        wnUpdateCarouselUI();
+    }
+
+    window.wnGoToSlide = function(index) {
+        currentWnSlide = index;
+        wnUpdateCarouselUI();
+    }
+
+    window.openWhatsNewModal = function(forceShow = false) {
+        if (!isChangelogParsed) {
+            const success = parseChangelogToSlides();
+            if (!success) return; // Silent abort if no data
+        }
+
+        // Dynamic Storage Keys based on parsed version!
+        const lsKey = `sg_hideWhatsNew_v${latestVersionId}`;
+        const ssKey = `sg_whatsNewShown_v${latestVersionId.replace(/\./g, '_')}`;
+
+        if (!forceShow) {
+            // 1. Check LocalStorage (User clicked "Don't show again")
+            const hideForever = localStorage.getItem(lsKey) === 'true';
+            
+            // 2. Check SessionStorage (Strict per-tab session memory)
+            const shownThisSession = sessionStorage.getItem(ssKey) === 'true';
+            
+            if (hideForever || shownThisSession) return;
+            
+            // Mark as shown for THIS session
+            sessionStorage.setItem(ssKey, 'true');
+        }
+        
+        // Reset state
+        currentWnSlide = 0;
+        wnUpdateCarouselUI();
+        
+        // Sync checkbox state
+        document.getElementById('wn-dont-show').checked = localStorage.getItem(lsKey) === 'true';
+        
+        document.getElementById('whats-new-overlay').classList.add('visible');
+        document.body.classList.add('modal-open');
+    }
+
+    window.closeWhatsNewModal = function() {
+        // Save preference dynamically
+        const lsKey = `sg_hideWhatsNew_v${latestVersionId}`;
+        const dontShowCheckbox = document.getElementById('wn-dont-show');
+        
+        if (dontShowCheckbox.checked) {
+            localStorage.setItem(lsKey, 'true');
+        } else {
+            // Cleaner memory: simply remove the key instead of setting it to 'false'
+            localStorage.removeItem(lsKey);
+        }
+        
+        document.getElementById('whats-new-overlay').classList.remove('visible');
+        
+        // Restore background interaction safely
+        if (!document.querySelector('.folder-dropdown.show') && !document.getElementById('options-popover').classList.contains('visible')) {
+            document.body.classList.remove('modal-open');
+        }
+    }
+
+    // Auto-trigger logic
+    document.addEventListener('DOMContentLoaded', () => {
+        // Auto-show ONLY if we are in the exact Root folder (Main)
+        if (typeof currentFolderKey !== 'undefined' && currentFolderKey === '_root_') {
+            setTimeout(() => {
+                openWhatsNewModal(false);
+            }, 1000); // 1s delay allows page elements to render first
+        }
+    });
+</script>

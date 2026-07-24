@@ -1,6 +1,6 @@
 {% set app_logo_b64 = "data:image/png;base64,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" %}
 <!DOCTYPE html>
-<!-- Version: 2.15 - July 15, 2026 -->
+<!-- Version: 2.16 - July 24, 2026 -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -116,12 +116,13 @@
         border-bottom: 1px solid var(--border-color); position: relative; 
         flex-shrink: 0; 
     }
+    .sidebar-search-wrap { position: relative; display: flex; flex: 1; min-width: 0; }
     .search-input {
-        flex-grow: 1; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border);
+        width: 100%; min-width: 0; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border);
         border-radius: 6px; color: white; padding: 0 32px 0 10px; height: 34px; font-size: 0.85rem; outline: none;
     }
     .search-clear-btn {
-        position: absolute; right: 90px; /* Adjusted closer to sort buttons */ top: 50%;
+        position: absolute; right: 6px; top: 50%;
         transform: translateY(-50%); background: none; border: none; color: var(--text-muted);
         cursor: pointer; padding: 4px 6px; font-size: 1.2rem; line-height: 1; display: none;
         transition: color 0.2s; z-index: 10;
@@ -136,6 +137,7 @@
         white-space: nowrap;
     }
     .tool-btn:hover { background: var(--surface-hover); border-color: var(--primary-color); }
+    .tool-btn.filter-active { background: rgba(0, 123, 255, 0.2); border-color: var(--primary-color); color: #a8dcff; }
 
     /* Nav List (Scrollable Area) */
     .nav-list { 
@@ -194,6 +196,27 @@
         overflow: hidden;
         text-overflow: ellipsis;
         display: block;
+    }
+
+    .collection-count {
+        flex-shrink: 0;
+        min-width: 1.5rem;
+        padding: 1px 6px;
+        border-radius: 999px;
+        background: rgba(0, 123, 255, 0.18);
+        border: 1px solid rgba(137, 207, 240, 0.25);
+        color: #a8dcff;
+        font-size: 0.72rem;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        line-height: 1.35;
+        text-align: center;
+    }
+
+    .collection-count-descendant {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.18);
+        color: var(--text-muted);
     }
 
     /* Dots button (Hidden by default) */
@@ -716,11 +739,6 @@
             min-width: 38px;
         }
 
-        /* Adjust search clear button position for narrower mobile sidebar */
-        .search-clear-btn {
-            right: 96px !important; 
-        }
-        
         #theater-overlay { flex-direction: column; height: 100dvh; }
         
         /* MOBILE LIGHTBOX: Full-width image with overlaid arrows */
@@ -1464,13 +1482,155 @@
         0%, 100% { outline-color: transparent !important; box-shadow: none !important; }
         50% { outline-color: #007bff !important; box-shadow: 0 0 30px rgba(0, 123, 255, 0.8) !important; }
     }
-        50% { outline: 6px solid #007bff !important; outline-offset: 4px !important; box-shadow: 0 0 30px rgba(0, 123, 255, 0.8) !important; }
+
+    /* ========================================== */
+    /* ROBUST EXHIBITION LIST VIEW                */
+    /* ========================================== */
+    :root {
+        /* ARTIST'S TOUCH: Fluid/Squishy Columns! Allows zooming without breaking layout */
+        /* Desktop Columns: Index|Thumb|Name|Rating|Votes|Comments|Size|Dims|Dur|Date|Action */
+        --exh-list-cols: 40px 75px minmax(120px, 3fr) minmax(70px, 1.2fr) minmax(50px, 0.8fr) minmax(70px, 1fr) minmax(50px, 0.8fr) minmax(60px, 1fr) minmax(50px, 0.8fr) minmax(110px, 1.5fr) 80px;
+    }
+    
+    /* Magic CSS trick to allow columns to squish and truncate on zoom */
+    body.exh-list-view-active .exh-card > *, body.exh-list-view-active .exh-list-header > div {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    /* Interactive Sortable Headers CSS */
+    .sortable-hdr { cursor: pointer; user-select: none; transition: color 0.2s; display: flex; align-items: center; justify-content: center; }
+    .sortable-hdr:hover { color: white; }
+    .hdr-name.sortable-hdr { justify-content: flex-start; }
+    .hdr-size.sortable-hdr, .hdr-date.sortable-hdr { justify-content: flex-end; }
+
+    .exh-list-header { display: none; }
+    .exh-list-only { display: none; }
+
+    /* Desktop Grid Styles */
+    body.exh-list-view-active .exh-grid {
+        display: flex; flex-direction: column; gap: 6px; padding: 10px 2rem;
+        width: 100%; box-sizing: border-box; counter-reset: exh-row-num;
+        overflow-x: auto; /* ARTIST'S TOUCH: Horizontal scroll when zoomed */
+    }
+    
+    body.exh-list-view-active .exh-list-header {
+        display: grid; grid-template-columns: var(--exh-list-cols);
+        gap: 15px; padding: 12px 15px; margin: 10px 2rem 5px 2rem;
+        background: var(--surface-color); border: 1px solid var(--border-color);
+        border-bottom: 2px solid var(--primary-color); border-radius: 8px;
+        align-items: center; box-sizing: border-box; 
+        width: max(calc(100% - 4rem), 885px); /* Match card min-width */
+        font-size: 0.8rem; font-weight: bold; color: var(--text-muted); text-transform: uppercase;
+        transition: transform 0.1s ease-out;
+    }
+    
+    body.exh-list-view-active .exh-card {
+        display: grid; grid-template-columns: var(--exh-list-cols);
+        gap: 15px; align-items: center; padding: 8px 15px;
+        background: var(--glass-bg); border: 1px solid transparent; 
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        border-radius: 6px; 
+        width: 100%; min-width: 885px; /* Minimum width before scroll kicks in */
+        box-sizing: border-box; box-shadow: none;
+        min-height: 56px; height: auto;
+        counter-increment: exh-row-num;
+    }
+    body.exh-list-view-active .exh-card:hover { background: var(--surface-hover); transform: none; }
+
+    /* Flatten DOM structure for CSS Grid on Desktop */
+    body.exh-list-view-active .exh-info,
+    body.exh-list-view-active .exh-meta-row,
+    body.exh-list-view-active .exh-meta-left,
+    body.exh-list-view-active .exh-meta-right {
+        display: contents;
+    }
+
+    body.exh-list-view-active .exh-list-index { font-family: monospace; color: #888; font-weight: bold; text-align: center; font-size: 1.1rem; }
+    body.exh-list-view-active .exh-list-index::before { content: counter(exh-row-num); }
+
+    /* Fix Thumbnail rendering */
+    body.exh-list-view-active .exh-thumb-wrap { width: 70px !important; height: 40px !important; border-radius: 4px; overflow: hidden; margin: 0; display: block; flex-shrink: 0; }
+    body.exh-list-view-active .exh-thumb-wrap img,
+    body.exh-list-view-active .exh-thumb-wrap video { width: 100% !important; height: 100% !important; object-fit: cover !important; position: static !important; display: block; }
+    body.exh-list-view-active .video-play-overlay { width: 24px !important; height: 24px !important; font-size: 0.6rem !important; }
+    
+    body.exh-list-view-active .exh-name { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.95rem; font-weight: 600; min-width: 0; }
+    
+    body.exh-list-view-active .stars-outer { font-size: 1rem; letter-spacing: 0; margin-top:2px; justify-self: center; }
+    body.exh-list-view-active .vote-count { justify-content: center; display:flex; margin-top:2px; }
+    body.exh-list-view-active .comment-count { justify-content: center; display:flex; margin-top:2px; }
+    body.exh-list-view-active .exh-date { font-size: 0.8rem; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-muted); }
+    
+    body.exh-list-view-active .exh-list-only { display: block; }
+    body.exh-list-view-active .exh-list-btn {
+        background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 6px 12px; cursor: pointer; color: white; transition: 0.2s; font-size: 0.85rem; font-weight: bold; width: 100%; text-align: center; box-sizing: border-box;
+    }
+    body.exh-list-view-active .exh-list-btn:hover { background: var(--primary-color); border-color: white; }
+
+    /* Alignment */
+    .hdr-index { text-align: center; }
+    .hdr-votes { text-align: center; }
+    .hdr-comments { text-align: center; }
+    .hdr-date { text-align: right; }
+    .hdr-actions { text-align: right; }
+
+    /* Mobile Responsive - Switch to Flexbox */
+    @media (max-width: 1024px) {
+        body.exh-list-view-active .exh-list-header { display: none; }
+        body.exh-list-view-active .exh-grid { padding: 10px 1rem; width: 100%; }
+        
+        body.exh-list-view-active .exh-card {
+            display: flex; /* OVERRIDE GRID WITH FLEX ON MOBILE */
+            flex-direction: row;
+            gap: 12px; padding: 8px 10px; width: 100%;
+        }
+        
+        /* Rebuild the flattened DOM into a flex column */
+        body.exh-list-view-active .exh-info { display: flex; flex-direction: column; flex-grow: 1; min-width: 0; gap: 4px; justify-content: center; }
+        body.exh-list-view-active .exh-meta-row { display: flex; flex-direction: row; justify-content: space-between; align-items: center; width: 100%; }
+        body.exh-list-view-active .exh-meta-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+        body.exh-list-view-active .exh-meta-right { display: flex; align-items: center; flex-shrink: 0; }
+        
+        /* Hide unnecessary data to fit perfectly */
+        body.exh-list-view-active .exh-date,
+        body.exh-list-view-active .exh-size-col,
+        body.exh-list-view-active .exh-dims-col,
+        body.exh-list-view-active .exh-dur-col { display: none !important; }
+        
+        /* FIX: Re-enable list index in mobile list view and align it */
+        body.exh-list-view-active .exh-list-index { 
+            display: flex !important; 
+            align-items: center; 
+            font-size: 0.95rem; 
+            margin-right: 4px;
+        }
+        
+        /* Note: .vote-count will display natively unless Blind Rating mode is ON */
+        
+        body.exh-list-view-active .exh-thumb-wrap { width: 70px !important; height: 45px !important; }
+        body.exh-list-view-active .exh-name { font-size: 0.95rem; margin: 0; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        /* FIX: Hide the 'View' button on mobile list view as the row is already clickable */
+        body.exh-list-view-active .exh-list-btn { display: none !important; }
+        body.exh-list-view-active .stars-outer { font-size: 0.95rem; margin: 0; }
+        body.exh-list-view-active .comment-count { font-size: 0.85rem; margin: 0; }
     }
 </style>
 {% if blind_rating %}
     <style>
         /* BLIND RATING MODE: Hide global averages to prevent user bias */
         .vote-count, .global-avg-row, .mobile-rating-left { display: none !important; }
+        
+        /* Shift Headers and Adjust Fluid Grid (Remove Votes column) */
+        body.exh-list-view-active .hdr-votes { display: none !important; }
+        :root {
+            --exh-list-cols: 40px 75px minmax(120px, 3fr) minmax(70px, 1.2fr) minmax(70px, 1fr) minmax(50px, 0.8fr) minmax(60px, 1fr) minmax(50px, 0.8fr) minmax(110px, 1.5fr) 80px !important;
+        }
+        body.exh-list-view-active .exh-list-header { width: max(calc(100% - 4rem), 810px) !important; }
+        body.exh-list-view-active .exh-card { min-width: 810px !important; }
         .mobile-rating-strip { justify-content: center !important; } 
         #fi-rating-badge { display: none !important; }
     
@@ -1501,6 +1661,15 @@
             <h4 style="margin: 0; color: var(--text-color);">⚙️ Gallery Options</h4>
             <button onclick="toggleOptionsMenu(event)" title="Close Menu" style="background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; line-height: 1; padding: 0 5px; transition: color 0.2s;">&times;</button>
         </div>
+
+        <div class="opt-item" id="opt-btn-layout" onclick="toggleExhLayoutMode()" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; cursor: pointer; border-radius: 8px; transition: 0.2s; border: 1px solid transparent;">
+            <div>
+                <div class="opt-label" style="font-weight: 600; font-size: 0.9rem; color: white; display: flex; align-items: center; gap: 8px;">📄 Layout View</div>
+                <div style="font-size:0.75rem; color:var(--text-muted); line-height: 1.3; margin-top: 4px;">Toggle Grid/List mode.</div>
+            </div>
+            <span class="opt-status" id="opt-status-layout" style="font-size: 0.8rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; background: rgba(0,0,0,0.5);">GRID</span>
+        </div>
+        <div style="height:1px; background:rgba(255,255,255,0.1); margin:10px 0;"></div>
         
         <div class="opt-item desktop-only" id="opt-btn-size" onclick="toggleGridSize()" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; cursor: pointer; border-radius: 8px; transition: 0.2s; border: 1px solid transparent;">
             <div>
@@ -1533,10 +1702,13 @@
             </div>
         </a>
         <div class="sidebar-toolbar">
-            <input type="text" id="category-search" class="search-input" placeholder="🔍 Search Collections...">
-            <button class="search-clear-btn" id="search-clear-btn" onclick="clearSearch()" title="Clear search">×</button>
+            <div class="sidebar-search-wrap">
+                <input type="text" id="category-search" class="search-input" placeholder="🔍 Search Collections...">
+                <button class="search-clear-btn" id="search-clear-btn" onclick="clearSearch()" title="Clear search">×</button>
+            </div>
             <button class="tool-btn" id="cat-sort-type" onclick="cycleCatSortType()" title="Toggle sort by name/date">A-Z</button>
             <button class="tool-btn" id="cat-sort-dir" onclick="toggleCatSortDir()" title="Toggle sort direction">↓</button>
+            <button class="tool-btn" id="cat-nonempty-toggle" onclick="toggleCatNonEmpty()" title="Show only non-empty collections" aria-label="Show only non-empty collections" aria-pressed="false">&gt;0</button>
         </div>
         
         <ul class="nav-list" id="collection-list"></ul>
@@ -1627,10 +1799,29 @@
                     <option value="latestcomment_desc">💬🕒 Newest Comment</option> 
                     <option value="name_asc">🔤 Name A-Z</option>
                     <option value="name_desc">🔤 Name Z-A</option>
+                    <option value="size_desc">💾 Largest Size</option>
+                    <option value="size_asc">💾 Smallest Size</option>
+                    <option value="dimensions_desc">📐 Highest Res</option>
+                    <option value="dimensions_asc">📐 Lowest Res</option>
+                    <option value="duration_desc">⏳ Longest</option>
+                    <option value="duration_asc">⏳ Shortest</option>
                 </select>
             </div>
         </header>
 
+    <div class="exh-list-header">
+        <div class="hdr-index">#</div>
+        <div class="hdr-thumb">Media</div>
+        <div class="hdr-name sortable-hdr" data-sort="name" onclick="setSort('name')">Name</div>
+        <div class="hdr-rating sortable-hdr" data-sort="rating" onclick="setSort('rating')">Rating</div>
+        <div class="hdr-votes">Votes</div>
+        <div class="hdr-comments sortable-hdr" data-sort="comments" onclick="setSort('comments')">Comments</div>
+        <div class="hdr-size sortable-hdr" data-sort="size" onclick="setSort('size')">Size</div>
+        <div class="hdr-dims sortable-hdr" data-sort="dimensions" onclick="setSort('dimensions')">Dims</div>
+        <div class="hdr-dur sortable-hdr" data-sort="duration" onclick="setSort('duration')">Dur</div>
+        <div class="hdr-date sortable-hdr" data-sort="date" onclick="setSort('date')">Date</div>
+        <div class="hdr-actions">Action</div>
+    </div>
     <div class="exh-grid" id="gallery-grid">
                 <!-- Items will be injected here via JS -->
                 <!-- The anchor will be managed by JS to always stay at the bottom -->
@@ -2194,9 +2385,26 @@
                     const progressCont = cpWrapper.querySelector('.cp-progress-container');
                     if (fileId && typeof GENERATE_WAVEFORMS !== 'undefined' && GENERATE_WAVEFORMS) {
                 const savedAmp = localStorage.getItem('sg_wave_amp') || '1.0';
-                waveBg.style.backgroundImage = `url('/galleryout/waveform/${fileId}?amp=${savedAmp}')`;
-                if(progressCont) progressCont.classList.add('with-wave');
-                if(cpWaveCtrl) cpWaveCtrl.style.display = 'flex';
+                
+                // Defaults to hidden (thin bar) until we confirm audio exists
+                waveBg.style.backgroundImage = 'none';
+                if(progressCont) progressCont.classList.remove('with-wave');
+                if(cpWaveCtrl) cpWaveCtrl.style.display = 'none';
+
+                const initImg = new Image();
+                initImg.onload = () => {
+                    // Audio track exists and waveform loaded successfully! Expand UI.
+                    waveBg.style.backgroundImage = `url('${initImg.src}')`;
+                    if(progressCont) progressCont.classList.add('with-wave');
+                    if(cpWaveCtrl) cpWaveCtrl.style.display = 'flex';
+                };
+                initImg.onerror = () => {
+                    // No audio track or generation failed. Keep UI thin and hide slider.
+                    waveBg.style.backgroundImage = 'none';
+                    if(progressCont) progressCont.classList.remove('with-wave');
+                    if(cpWaveCtrl) cpWaveCtrl.style.display = 'none';
+                };
+                initImg.src = `/galleryout/waveform/${fileId}?amp=${savedAmp}`;
                 
                 if (cpWaveSlider) {
                     cpWaveSlider.min = "0.1";
@@ -2204,14 +2412,10 @@
                     cpWaveSlider.step = "0.1";
                     cpWaveSlider.value = savedAmp;
                     
-                    // Uses 'onchange' so it only fires when the user releases the mouse button
                     cpWaveSlider.onchange = (e) => {
                         const amp = e.target.value;
                         localStorage.setItem('sg_wave_amp', amp);
-                        
-                        // Visual feedback while server generates the new image
                         waveBg.style.opacity = '0.3'; 
-                        
                         const tempImg = new Image();
                         tempImg.onload = () => {
                             waveBg.style.backgroundImage = `url('${tempImg.src}')`;
@@ -2220,6 +2424,28 @@
                         tempImg.src = `/galleryout/waveform/${fileId}?amp=${amp}`;
                     };
                 }
+                // --- PATCH: Mobile Amplitude Cycle via Icon Click ---
+                const waveIcon = cpWaveCtrl.querySelector('span');
+                if (waveIcon) {
+                    waveIcon.style.cursor = 'pointer';
+                    waveIcon.onclick = (e) => {
+                        e.stopPropagation();
+                        const presets = ['0.5', '1.0', '2.0', '5.0', '10.0'];
+                        let current = localStorage.getItem('sg_wave_amp') || '1.0';
+                        let nextIdx = (presets.indexOf(current) + 1) % presets.length;
+                        let nextAmp = presets[nextIdx];
+                        
+                        if (cpWaveSlider) cpWaveSlider.value = nextAmp;
+                        if (cpWaveSlider && cpWaveSlider.onchange) {
+                            cpWaveSlider.onchange({target: {value: nextAmp}});
+                        }
+                        
+                        if (typeof showNotification === 'function') {
+                            showNotification(`Waveform Amplitude: ${nextAmp}x`, 'info', 1500);
+                        }
+                    };
+                }
+                // --- END PATCH ---
             } else {
                 waveBg.style.backgroundImage = 'none';
                 if(progressCont) progressCont.classList.remove('with-wave');
@@ -2229,6 +2455,7 @@
 
                 currentCustomMedia.addEventListener('loadedmetadata', updateTimeDisplay);
                 currentCustomMedia.addEventListener('timeupdate', () => {
+                    if (!currentCustomMedia) return;
                     if (!isSeeking && currentCustomMedia.duration && isFinite(currentCustomMedia.duration)) {
                         const progress = (currentCustomMedia.currentTime / currentCustomMedia.duration) * 100;
                         cpSeekbar.value = progress;
@@ -2468,6 +2695,30 @@
     };
     console.log("Current User Context Loaded:", CURRENT_USER);
 
+    // --- NATIVE LIST VIEW LOGIC ---
+    let isExhListView = localStorage.getItem('sg_exh_layout') === 'list';
+    function applyExhLayoutMode() {
+        if(isExhListView) document.body.classList.add('exh-list-view-active');
+        else document.body.classList.remove('exh-list-view-active');
+        
+        const status = document.getElementById('opt-status-layout');
+        const btn = document.getElementById('opt-btn-layout');
+        if (status) {
+            status.textContent = isExhListView ? 'LIST' : 'GRID';
+            status.style.color = isExhListView ? 'var(--success-color)' : 'var(--text-muted)';
+        }
+        if (btn) {
+            if (isExhListView) btn.classList.add('active');
+            else btn.classList.remove('active');
+        }
+    }
+    function toggleExhLayoutMode() {
+        isExhListView = !isExhListView;
+        localStorage.setItem('sg_exh_layout', isExhListView ? 'list' : 'grid');
+        applyExhLayoutMode();
+        window.dispatchEvent(new Event('scroll'));
+    }
+
     // Global tracking variables for Focus Follows Mouse logic
     window.lastActiveX = 0;
     window.lastActiveY = 0;
@@ -2483,7 +2734,8 @@
     let theaterPollingInterval = null;
     let displayedCount = 0, focusedGridIndex = -1;
     const CHUNK_SIZE = {{ page_size_from_backend | default(100) }};
-    let allCollections = [], categorySearchTerm = '';
+    let allCollections = [], allCollectionsCount = 0, categorySearchTerm = '';
+    let catNonEmptyOnly = localStorage.getItem('sg_exh_cat_nonempty_only') === 'true';
 
     // Technical configuration from backend
     const ffmpegAvailable = {{ ffmpeg_available | tojson }};
@@ -2877,6 +3129,20 @@
     });
 
     document.addEventListener('DOMContentLoaded', () => {
+        applyExhLayoutMode();
+        
+        // --- HORIZONTAL SCROLL SYNC FOR LIST VIEW ---
+        const gridEl = document.getElementById('gallery-grid');
+        const headerEl = document.querySelector('.exh-list-header');
+        if (gridEl && headerEl) {
+            gridEl.addEventListener('scroll', () => {
+                if (document.body.classList.contains('exh-list-view-active')) {
+                    headerEl.style.transform = `translateX(-${gridEl.scrollLeft}px)`;
+                } else {
+                    headerEl.style.transform = 'none';
+                }
+            }, { passive: true });
+        }
         applyGridSize();
         applyMobileTwoCols();
         
@@ -2904,6 +3170,7 @@
                 renderCategoryList();
             });
         }
+        updateCatNonEmptyUI();
         
         // --- INFINITE SCROLL OBSERVER SETUP ---
         const grid = document.getElementById('gallery-grid');
@@ -2997,28 +3264,46 @@
 
     // Polls the server for changes in public collections without refreshing the page
     // --- ROBUST COLLECTION SYNC FOR EXHIBITION ---
+    let collectionSyncRequestId = 0;
+
     async function loadCollections(isPolling = false) {
+        const requestId = ++collectionSyncRequestId;
         try {
             const res = await fetch('/galleryout/api/collections');
             const data = await res.json();
-            const newPublicAlbums = data.albums.filter(a => a.is_public || a.is_shared_access);
+            if (requestId !== collectionSyncRequestId) return;
+
+            // Allow restricted ancestors to pass through to build the tree
+            const newPublicAlbums = data.albums.filter(a => a.is_public || a.is_shared_access || a.restricted_access);
+            const previousActiveCount = currentCollectionId === 'all'
+                ? allCollectionsCount
+                : allCollections.find(c => c.id == currentCollectionId)?.file_count;
+            const nextActiveCount = currentCollectionId === 'all'
+                ? data.all_count
+                : newPublicAlbums.find(c => c.id == currentCollectionId)?.file_count;
+            const activeCountChanged = isPolling && currentCollectionId !== null && previousActiveCount !== nextActiveCount;
             
             // Generate a unique fingerprint of the public albums list
-            const newHash = newPublicAlbums.map(c => `${c.id}:${c.name}`).join('|');
-            const currentHash = allCollections.map(c => `${c.id}:${c.name}`).join('|');
+            const newHash = newPublicAlbums.map(c => `${c.id}:${c.name}:${c.file_count}:${c.descendant_file_count}`).join('|') + `|all:${data.all_count}`;
+            const currentHash = allCollections.map(c => `${c.id}:${c.name}:${c.file_count}:${c.descendant_file_count}`).join('|') + `|all:${allCollectionsCount}`;
 
             if (currentHash !== newHash) {
                 console.log("Sync: Public collections updated.");
                 allCollections = newPublicAlbums;
+                allCollectionsCount = data.all_count || 0;
                 renderCategoryList();
 
                 // Safety: if the current collection was deleted or set to private by Admin
                 if (currentCollectionId !== 'all' && currentCollectionId !== null) {
-                    const stillExists = allCollections.some(c => c.id == currentCollectionId);
+                    const stillExists = allCollections.some(c => c.id == currentCollectionId && !c.restricted_access);
                     if (!stillExists) {
-                        showNotification("This collection is no longer public.", "warning");
+                        showNotification("This collection is no longer accessible.", "warning");
                         loadGallery('all', 'All Collections');
+                    } else if (activeCountChanged) {
+                        loadGallery(currentCollectionId, document.getElementById('page-title').textContent);
                     }
+                } else if (currentCollectionId === 'all' && activeCountChanged) {
+                    loadGallery('all', 'All Collections');
                 }
             }
             
@@ -3134,6 +3419,11 @@
         
     // Function to play video IN GRID (Desktop Only) - Copied from index.html
     function playVideoInGrid(event, btnElement) {
+        if (document.body.classList.contains('exh-list-view-active')) {
+            // In list view, clicking the play icon should NOT play inline. 
+            // Return here lets the click bubble to the row and opens the Lightbox.
+            return; 
+        }
         // Prevent opening Lightbox or Selecting
         event.stopPropagation();
         event.preventDefault();
@@ -3265,18 +3555,37 @@
             const dateStr = dateObj.toLocaleDateString();
             const timeStr = dateObj.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
             
+            const sizeStr = file.size ? (file.size / (1024*1024)).toFixed(2) + ' MB' : '-';
+            
+            let dimsStr = '-';
+            if (file.dimensions && typeof file.dimensions === 'string' && file.dimensions.includes('x')) {
+                const parts = file.dimensions.split('x');
+                const w = parseInt(parts[0]);
+                const h = parseInt(parts[1]);
+                if (!isNaN(w) && !isNaN(h)) {
+                    dimsStr = ((w * h) / 1000000).toFixed(1) + ' MP';
+                }
+            }
+            
+            const durStr = file.duration ? file.duration : '-';
+            
             card.innerHTML = `
+                <div class="exh-list-index exh-list-only"></div>
                 ${media}
                 <div class="exh-info">
                     <div class="exh-name" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</div>
                     <div class="exh-meta-row">
                         <div class="exh-meta-left">
-                            <div class="stars-outer">☆☆☆☆☆<div class="stars-inner" style="width:${starPct}%">★★★★★</div></div>
-                            <span class="vote-count" data-file-id="${file.id}">${file.vote_count || 0}</span>
-                            <span class="comment-count">💬 ${file.comment_count || 0}</span>
+                            <div class="stars-outer" title="Rating">☆☆☆☆☆<div class="stars-inner" style="width:${starPct}%">★★★★★</div></div>
+                            <span class="vote-count" data-file-id="${file.id}" title="Total Votes">${file.vote_count || 0}</span>
+                            <span class="comment-count" title="Comments">💬 ${file.comment_count || 0}</span>
+                            <span class="exh-list-only exh-size-col" style="color:var(--text-muted); font-size:0.85rem; text-align:right;">${sizeStr}</span>
+                            <span class="exh-list-only exh-dims-col" style="color:var(--text-muted); font-size:0.85rem; text-align:center;">${dimsStr}</span>
+                            <span class="exh-list-only exh-dur-col" style="color:var(--text-muted); font-size:0.85rem; text-align:center;">${durStr}</span>
                         </div>
                         <div class="exh-meta-right">
                             <span class="exh-date">${dateStr} ${timeStr}</span>
+                            <button class="exh-list-only exh-list-btn" onclick="event.stopPropagation(); openTheater(${absIdx});" title="View Media">👁️ View</button>
                         </div>
                     </div>
                 </div>
@@ -4214,12 +4523,14 @@
         
         // --- GRID CONTEXT ---
         const grid = document.getElementById('gallery-grid');
-        const cols = window.getComputedStyle(grid).getPropertyValue('grid-template-columns').split(' ').length;
+        const cols = window.getComputedStyle(grid).getPropertyValue('grid-template-columns').split(' ').length; //da qui
+        mmcols = cols;
+        if(isExhListView) mmcols = 1;
         
         if (e.key === 'ArrowRight') { e.preventDefault(); updateGridFocus(1); }
         else if (e.key === 'ArrowLeft') { e.preventDefault(); updateGridFocus(-1); }
-        else if (e.key === 'ArrowDown') { e.preventDefault(); updateGridFocus(cols); }
-        else if (e.key === 'ArrowUp') { e.preventDefault(); updateGridFocus(-cols); }
+        else if (e.key === 'ArrowDown') { e.preventDefault(); updateGridFocus(mmcols); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); updateGridFocus(-mmcols); }
         else if ((e.key === 'Enter' || e.key === 'v' || e.key === 'V') && focusedGridIndex !== -1) {
             e.preventDefault();
             openTheater(focusedGridIndex);
@@ -4258,18 +4569,59 @@
         }
     }
 
+    let exhColExpandedState = new Set(JSON.parse(localStorage.getItem('exhColExpandedState') || '[]'));
+
+    function buildExhCollectionTreeData(albums) {
+        let tree = { '_root_': [] };
+        albums.forEach(a => tree[a.id] = []);
+        albums.forEach(a => {
+            let parent = a.parent_id || '_root_';
+            if (!tree[parent]) tree[parent] = [];
+            tree[parent].push(a);
+        });
+        return tree;
+    }
+
+    function getExhNonEmptyCollectionIds() {
+        if (!catNonEmptyOnly) return null;
+
+        const albumMap = new Map(allCollections.map(album => [album.id, album]));
+        const visibleIds = new Set();
+        allCollections.filter(album => Number(album.file_count) > 0).forEach(album => {
+            let current = album;
+            while (current && !visibleIds.has(current.id)) {
+                visibleIds.add(current.id);
+                current = current.parent_id ? albumMap.get(current.parent_id) : null;
+            }
+        });
+        return visibleIds;
+    }
+
+    function expandExhNonEmptyCollectionPaths() {
+        const visibleIds = getExhNonEmptyCollectionIds();
+        if (!visibleIds) return;
+
+        const tree = buildExhCollectionTreeData(allCollections);
+        allCollections.forEach(album => {
+            const hasVisibleChild = (tree[album.id] || []).some(child => visibleIds.has(child.id));
+            if (visibleIds.has(album.id) && hasVisibleChild) exhColExpandedState.add(album.id);
+        });
+        localStorage.setItem('exhColExpandedState', JSON.stringify([...exhColExpandedState]));
+    }
+
     function renderCategoryList() {
         const list = document.getElementById('collection-list'); 
         list.innerHTML = '';
         
-        // --- NEW: Prepend static "All Collections" item ---
         const isAllActive = (currentCollectionId === 'all');
         const allLi = document.createElement('li');
         allLi.className = `nav-item ${isAllActive ? 'active' : ''}`;
         allLi.dataset.id = 'all';
         allLi.innerHTML = `
-            <span style="flex-shrink:0;">🌈</span> 
+            <span style="flex-shrink:0; width:15px; display:inline-block; margin-right:5px;"></span>
+            <span style="flex-shrink:0; font-size:1.05rem; margin-right:8px;">🌈</span> 
             <span class="nav-text-wrapper" style="font-weight: bold;">All Collections</span>
+            ${Number(allCollectionsCount) > 0 ? `<span class="collection-count" title="${allCollectionsCount} unique files">${allCollectionsCount}</span>` : ''}
         `;
         allLi.onclick = () => { 
             activeSortCriteria = 'date';
@@ -4281,36 +4633,116 @@
         };
         list.appendChild(allLi);
 
-        // Standard filtering and sorting for other collections
-        let filtered = allCollections.filter(c => c.name.toLowerCase().includes(categorySearchTerm));
-        filtered.sort((a, b) => {
-            let result = (catSortType === 'date') ? (a.created_at - b.created_at) : a.name.localeCompare(b.name);
-            return (catSortDir === 'asc') ? result : -result;
-        });
-        
-        filtered.forEach(col => {
-            const li = document.createElement('li'); 
-            li.className = `nav-item ${currentCollectionId == col.id ? 'active' : ''}`;
-            li.dataset.id = col.id;
-            const safeName = escapeHtml(col.name).replace(/'/g, "\\'");
-            let iconStr = col.is_shared_access ? "👥" : "📚";
-            let textStyle = col.is_shared_access ? "color: var(--favorite-color);" : "";
-            li.innerHTML = `
-                <span style="flex-shrink:0; font-size:1.05rem;">${iconStr}</span> 
-                <span class="nav-text-wrapper" style="${textStyle}">${escapeHtml(col.name)}</span>
-                <button class="nav-expand-btn" title="Show full name" onclick="showFullName(event, '${safeName}')">•••</button>
-            `;
-            li.onclick = (e) => { 
-                if(e.target.closest('.nav-expand-btn')) return;
-                activeSortCriteria = 'date';
-                activeSortOrder = 'desc';
-                updateSortUI();
-                if (document.getElementById('sort-select')) document.getElementById('sort-select').value = 'date_desc';
-                loadGallery(col.id, col.name, li); 
-                if(window.innerWidth <= 1024) toggleMenu(); 
-            };
-            list.appendChild(li);
-        });
+        let tree = buildExhCollectionTreeData(allCollections);
+        let isSearching = categorySearchTerm !== '';
+        const visibleIds = getExhNonEmptyCollectionIds();
+
+        function renderNodes(parentId, parentElement, depth) {
+            let children = tree[parentId] || [];
+            
+            if (isSearching && parentId === '_root_') {
+                children = allCollections.filter(c => c.name.toLowerCase().includes(categorySearchTerm));
+            } else if (isSearching) {
+                return; 
+            }
+            if (visibleIds) {
+                children = isSearching
+                    ? children.filter(c => Number(c.file_count) > 0)
+                    : children.filter(c => visibleIds.has(c.id));
+            }
+
+            children.sort((a, b) => {
+                let result = (catSortType === 'date') ? (a.created_at - b.created_at) : a.name.localeCompare(b.name);
+                return (catSortDir === 'asc') ? result : -result;
+            });
+
+            children.forEach(col => {
+                let childCollections = tree[col.id] || [];
+                if (visibleIds) childCollections = childCollections.filter(child => visibleIds.has(child.id));
+                let hasChildren = !isSearching && childCollections.length > 0;
+                let isExpanded = exhColExpandedState.has(col.id) || isSearching;
+                
+                const safeName = escapeHtml(col.name).replace(/'/g, "\\\'").replace(/"/g, "&quot;");
+                
+                let iconStr = col.restricted_access ? "🔒" : (col.is_shared_access ? "👥" : "📚");
+                // Add tooltip for ADMIN users to see who the collection is shared with
+                if (col.is_shared_access && CURRENT_USER.role === 'ADMIN') {
+                    let sharedNames = col.shared_user_names ? col.shared_user_names : 'selected users';
+                    iconStr = `<span title="Shared with: ${escapeHtml(sharedNames)}" style="cursor:help;">👥</span>`;
+                }
+                let textStyle = col.is_shared_access ? "color: var(--favorite-color);" : (col.restricted_access ? "color: var(--text-muted); opacity: 0.6;" : "");
+                
+                let toggleIcon = '';
+                if (hasChildren && !isSearching) {
+                    toggleIcon = isExpanded ? '▾' : '▸';
+                }
+
+                const li = document.createElement('li');
+                li.style.listStyle = 'none';
+                
+                const indent = depth * 20; 
+
+                const itemDiv = document.createElement('div');
+                itemDiv.className = `nav-item ${currentCollectionId == col.id ? 'active' : ''}`;
+                itemDiv.dataset.id = col.id;
+                
+                itemDiv.style.paddingLeft = `${12 + indent}px`; 
+                
+                itemDiv.innerHTML = `
+                    <span class="exh-col-toggle" style="cursor:pointer; font-weight:bold; width:15px; display:inline-block; flex-shrink:0; text-align:center; color:var(--text-muted); margin-right:5px;">${toggleIcon}</span>
+                    <span style="flex-shrink:0; font-size:1.05rem; margin-right:8px;">${iconStr}</span> 
+                    <span class="nav-text-wrapper" style="${textStyle} ${col.restricted_access ? 'cursor:pointer;' : ''}">${escapeHtml(col.name)}</span>
+                    ${!col.restricted_access && Number(col.file_count) > 0 ? `<span class="collection-count" title="${col.file_count} directly tagged files">${col.file_count}</span>` : ''}
+                    ${hasChildren && !isExpanded && Number(col.descendant_file_count) > 0 ? `<span class="collection-count collection-count-descendant" title="${col.descendant_file_count} unique files in sub-collections">+${col.descendant_file_count}</span>` : ''}
+                    ${!col.restricted_access ? `<button class="nav-expand-btn" title="Show full name" onclick="showFullName(event, '${safeName}')">•••</button>` : ''}
+                `;
+                
+                li.appendChild(itemDiv);
+                
+                const toggleBtn = itemDiv.querySelector('.exh-col-toggle');
+                toggleBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (hasChildren && !isSearching) {
+                        if (isExpanded) exhColExpandedState.delete(col.id);
+                        else exhColExpandedState.add(col.id);
+                        localStorage.setItem('exhColExpandedState', JSON.stringify([...exhColExpandedState]));
+                        renderCategoryList();
+                    }
+                };
+                
+                itemDiv.onclick = (e) => {
+                    if(e.target.closest('.nav-expand-btn') || e.target.closest('.exh-col-toggle')) return;
+                    
+                    if (col.restricted_access) {
+                        if (hasChildren && !isSearching) toggleBtn.click();
+                        return; 
+                    }
+                    
+                    activeSortCriteria = 'date';
+                    activeSortOrder = 'desc';
+                    updateSortUI();
+                    if (document.getElementById('sort-select')) document.getElementById('sort-select').value = 'date_desc';
+                    loadGallery(col.id, col.name, itemDiv); 
+                    if(window.innerWidth <= 1024) toggleMenu(); 
+                };
+                
+                parentElement.appendChild(li);
+                
+                if (hasChildren && isExpanded && !isSearching) {
+                    const ul = document.createElement('ul');
+                    ul.style.padding = '0';
+                    ul.style.margin = '0';
+                    renderNodes(col.id, ul, depth + 1);
+                    li.appendChild(ul);
+                }
+            });
+        }
+
+        const ulWrapper = document.createElement('ul');
+        ulWrapper.style.padding = '0';
+        ulWrapper.style.margin = '0';
+        renderNodes('_root_', ulWrapper, 0);
+        list.appendChild(ulWrapper);
 
         requestAnimationFrame(() => { requestAnimationFrame(() => { checkSidebarOverflows(); }); });
     }
@@ -4426,6 +4858,23 @@
         document.getElementById('cat-sort-type').textContent = (catSortType === 'name') ? 'A-Z' : '📅'; 
         document.getElementById('cat-sort-dir').textContent = (catSortDir === 'asc') ? '↑' : '↓'; 
     }
+
+    function toggleCatNonEmpty() {
+        catNonEmptyOnly = !catNonEmptyOnly;
+        localStorage.setItem('sg_exh_cat_nonempty_only', String(catNonEmptyOnly));
+        if (catNonEmptyOnly) expandExhNonEmptyCollectionPaths();
+        updateCatNonEmptyUI();
+        renderCategoryList();
+    }
+
+    function updateCatNonEmptyUI() {
+        const button = document.getElementById('cat-nonempty-toggle');
+        if (!button) return;
+        button.classList.toggle('filter-active', catNonEmptyOnly);
+        button.setAttribute('aria-pressed', String(catNonEmptyOnly));
+        button.title = catNonEmptyOnly ? 'Show all collections' : 'Show only non-empty collections';
+        button.setAttribute('aria-label', button.title);
+    }
     
     async function changeNickname() { 
         // STYLE UPGRADE: Using SmartPrompt
@@ -4535,6 +4984,25 @@
                 arrow.textContent = (criteria === 'name') ? '↑' : '↓';
             }
         });
+
+        // --- NEW: Update List View Headers UI ---
+        document.querySelectorAll('.exh-list-header .sortable-hdr').forEach(hdr => {
+            const oldArrow = hdr.querySelector('.sort-arrow');
+            if (oldArrow) oldArrow.remove();
+            hdr.style.color = 'var(--text-muted)';
+            
+            let criteria = hdr.dataset.sort;
+            let isMatch = (criteria === activeSortCriteria);
+            if (criteria === 'rating' && activeSortCriteria === 'unrated') isMatch = true;
+            if (criteria === 'comments' && activeSortCriteria === 'uncommented') isMatch = true;
+            
+            if (isMatch) {
+                hdr.style.color = 'white';
+                let arrowChar = (activeSortOrder === 'asc') ? '↑' : '↓';
+                if (activeSortCriteria === 'unrated' || activeSortCriteria === 'uncommented') arrowChar = '∅';
+                hdr.innerHTML += `<span class="sort-arrow" style="color:var(--primary-color); margin-left:4px;">${arrowChar}</span>`;
+            }
+        });
     }
 
     /**
@@ -4560,7 +5028,10 @@
     /**
      * Refactored load logic to accept parameters directly
      */
+    let galleryRequestId = 0;
+
     async function loadGalleryInternal(collId, name, el = null) {
+        const requestId = ++galleryRequestId;
         currentCollectionId = collId; 
         document.getElementById('page-title').textContent = name;
         
@@ -4573,6 +5044,8 @@
                 headers: { 'Accept': 'application/json' } 
             });
             const data = await res.json(); 
+            if (requestId !== galleryRequestId || currentCollectionId != collId) return;
+
             currentFiles = data.files; 
             
             const countBadge = document.getElementById('file-count-total');
@@ -4838,9 +5311,26 @@
                     const progressCont = cpWrapper.querySelector('.cp-progress-container');
                     if (fileId && typeof GENERATE_WAVEFORMS !== 'undefined' && GENERATE_WAVEFORMS) {
                 const savedAmp = localStorage.getItem('sg_wave_amp') || '1.0';
-                waveBg.style.backgroundImage = `url('/galleryout/waveform/${fileId}?amp=${savedAmp}')`;
-                if(progressCont) progressCont.classList.add('with-wave');
-                if(cpWaveCtrl) cpWaveCtrl.style.display = 'flex';
+                
+                // Defaults to hidden (thin bar) until we confirm audio exists
+                waveBg.style.backgroundImage = 'none';
+                if(progressCont) progressCont.classList.remove('with-wave');
+                if(cpWaveCtrl) cpWaveCtrl.style.display = 'none';
+
+                const initImg = new Image();
+                initImg.onload = () => {
+                    // Audio track exists and waveform loaded successfully! Expand UI.
+                    waveBg.style.backgroundImage = `url('${initImg.src}')`;
+                    if(progressCont) progressCont.classList.add('with-wave');
+                    if(cpWaveCtrl) cpWaveCtrl.style.display = 'flex';
+                };
+                initImg.onerror = () => {
+                    // No audio track or generation failed. Keep UI thin and hide slider.
+                    waveBg.style.backgroundImage = 'none';
+                    if(progressCont) progressCont.classList.remove('with-wave');
+                    if(cpWaveCtrl) cpWaveCtrl.style.display = 'none';
+                };
+                initImg.src = `/galleryout/waveform/${fileId}?amp=${savedAmp}`;
                 
                 if (cpWaveSlider) {
                     cpWaveSlider.min = "0.1";
@@ -4848,14 +5338,10 @@
                     cpWaveSlider.step = "0.1";
                     cpWaveSlider.value = savedAmp;
                     
-                    // Uses 'onchange' so it only fires when the user releases the mouse button
                     cpWaveSlider.onchange = (e) => {
                         const amp = e.target.value;
                         localStorage.setItem('sg_wave_amp', amp);
-                        
-                        // Visual feedback while server generates the new image
                         waveBg.style.opacity = '0.3'; 
-                        
                         const tempImg = new Image();
                         tempImg.onload = () => {
                             waveBg.style.backgroundImage = `url('${tempImg.src}')`;
@@ -4873,6 +5359,7 @@
 
                 currentCustomMedia.addEventListener('loadedmetadata', updateTimeDisplay);
                 currentCustomMedia.addEventListener('timeupdate', () => {
+                    if (!currentCustomMedia) return;
                     if (!isSeeking && currentCustomMedia.duration && isFinite(currentCustomMedia.duration)) {
                         const progress = (currentCustomMedia.currentTime / currentCustomMedia.duration) * 100;
                         cpSeekbar.value = progress;

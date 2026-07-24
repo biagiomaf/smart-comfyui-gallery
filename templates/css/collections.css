@@ -1,4 +1,4 @@
-/* Version: 2.15 - July 15, 2026 */
+/* Version: 2.16 - July 24, 2026 */
 
 .collections-section { margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border-color); }
 .section-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 10px; padding-left: 5px; display: flex; justify-content: space-between; align-items: center; }
@@ -65,3 +65,21 @@
 .btn-tag-add:hover { background: rgba(40, 167, 69, 0.15); border-color: var(--success-color); }
 .btn-tag-remove { width: 44px; justify-content: center; color: var(--text-muted); }
 .btn-tag-remove:hover { background: rgba(220, 53, 69, 0.2); color: #ff6b6b; border-color: #ff6b6b; }
+
+/* --- VISIBILITY MODAL --- */
+#col-vis-overlay { position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); backdrop-filter:blur(8px); z-index:10000; display:none; justify-content:center; align-items:center; }
+.col-vis-panel { background:var(--surface-color); border:1px solid var(--primary-color); border-top:4px solid var(--primary-color); border-radius:16px; width:400px; max-width:95vw; padding:25px; display:flex; flex-direction:column; gap:12px; box-shadow:0 20px 60px rgba(0,0,0,0.9); animation:popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.col-vis-panel h3 { margin:0 0 10px 0; color:white; font-size:1.3rem; display:flex; align-items:center; gap:8px; }
+.col-vis-panel p { color:var(--text-muted); font-size:0.95rem; line-height:1.4; margin:0 0 10px 0; }
+.col-vis-btn { background:var(--glass-bg); border:1px solid var(--glass-border); color:white; padding:12px; border-radius:10px; cursor:pointer; transition:all 0.2s; font-size:0.95rem; font-weight:600; display:flex; align-items:center; gap:10px; justify-content:flex-start; text-align:left; box-shadow:var(--shadow-sm); }
+.col-vis-btn:hover { background:var(--surface-hover); transform:translateY(-2px); box-shadow:var(--shadow-md); }
+.col-vis-btn.public { border-left:4px solid var(--primary-color); }
+.col-vis-btn.public:hover { background:rgba(0, 123, 255, 0.15); border-color:var(--primary-color); }
+.col-vis-btn.private { border-left:4px solid var(--danger-color); }
+.col-vis-btn.private:hover { background:rgba(220, 53, 69, 0.15); border-color:var(--danger-color); }
+.col-vis-btn.shared { border-left:4px solid var(--favorite-color); }
+.col-vis-btn.shared:hover { background:rgba(255, 193, 7, 0.15); border-color:var(--favorite-color); }
+.col-vis-btn.inherit { background:rgba(40, 167, 69, 0.1); border-color:var(--success-color); color:var(--success-color); justify-content:center; text-align:center; border-left:1px solid var(--success-color); }
+.col-vis-btn.inherit:hover { background:rgba(40, 167, 69, 0.2); color:white; }
+.col-vis-cancel { background:transparent; border:none; color:var(--text-muted); cursor:pointer; padding:10px; margin-top:5px; font-weight:bold; transition:color 0.2s; }
+.col-vis-cancel:hover { color:white; }

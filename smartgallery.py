@@ -1,7 +1,7 @@
 # SmartGallery DAM for ComfyUI
 # Author: Biagio Maffettone © 2025-2026 — Free to use/modify with credit. Provided "as is". See license on GitHub.
 #
-# Version: 2.15 - July 15, 2026
+# Version: 2.16 - July 24, 2026
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -339,8 +339,8 @@ AI_MODELS_FOLDER_NAME = '.AImodels'
 ENABLE_DAM_MODE = True
 
 # --- APP INFO ---
-APP_VERSION = "2.15"
-APP_VERSION_DATE = "July 15, 2026"
+APP_VERSION = "2.16"
+APP_VERSION_DATE = "July 24, 2026"
 GITHUB_REPO_URL = "https://github.com/biagiomaf/smart-comfyui-gallery"
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/biagiomaf/smart-comfyui-gallery/main/smartgallery.py"
 
@@ -510,6 +510,7 @@ def run_integrity_check():
         'templates/modals/omniquery_modal.html',
         'templates/css/index.css',
         'templates/collections.html',
+        'templates/list_view.html',
         'templates/css/collections.css'
     ]
     
@@ -648,29 +649,27 @@ def print_configuration():
 
 def management_api_only(f):
     """
-    Security Decorator: Blocks access to destructive or management APIs 
-    when the server is running in Exhibition Mode.
-    Also enforces authentication and role checks if FORCE_LOGIN is enabled.
+    Bulletproof Security Decorator: Blocks access to destructive or management APIs.
+    Guarantees that Guests/Customers CANNOT execute these functions under ANY circumstance.
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Always lock down management APIs in Exhibition Mode
         if IS_EXHIBITION_MODE:
             return jsonify({
                 'status': 'error', 
                 'message': 'Security Lockdown: This API is physically disabled in Exhibition Mode.'
             }), 403
             
-        # Enforce strict authentication and role checking in Force Login mode
-        if FORCE_LOGIN:
-            user_id = session.get('user_id')
-            if not user_id:
-                return jsonify({'status': 'error', 'message': 'Unauthorized: Authentication required.'}), 401
-                
-            user_role = session.get('role')
+        user_role = session.get('role')
+        user_id = session.get('user_id')
+        
+        if user_id or user_role:
             if user_role not in ['ADMIN', 'MANAGER', 'STAFF']:
-                return jsonify({'status': 'error', 'message': 'Forbidden: Insufficient privileges.'}), 403
-                
+                return jsonify({'status': 'error', 'message': 'Forbidden: Insufficient privileges for this action.'}), 403
+        else:
+            if FORCE_LOGIN:
+                return jsonify({'status': 'error', 'message': 'Unauthorized: Authentication required.'}), 401
+
         return f(*args, **kwargs)
     return decorated_function
 
@@ -1411,6 +1410,35 @@ def analyze_file_metadata(filepath):
                 details['dimensions'] = f"{int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))}x{int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))}"
                 cap.release()
         except Exception: pass
+    elif details['type'] == 'audio':
+
+        current_ffprobe = FFPROBE_EXECUTABLE_PATH or find_ffprobe_path()
+
+        if current_ffprobe:
+
+            try:
+
+                cmd_info = [
+
+                    current_ffprobe, '-v', 'error', '-show_entries', 'format=duration',
+
+                    '-of', 'default=noprint_wrappers=1:nokey=1', filepath
+
+                ]
+
+                res = subprocess.run(
+
+                    cmd_info, capture_output=True, text=True, timeout=3,
+
+                    creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+
+                )
+
+                if res.stdout.strip():
+
+                    total_duration_sec = float(res.stdout.strip())
+
+            except Exception: pass
     elif details['type'] == 'animated_image':
         try:
             with Image.open(filepath) as img:
@@ -2736,7 +2764,7 @@ def check_exhibition_requirements():
     """
     Strict Pre-Flight Check for Exhibition Mode.
     Ensures that the Main gallery has been run before, the database exists, 
-    and at least one public collection is configured.
+    and at least one public or user-shared collection is configured.
     Exits the application if requirements are not met to prevent ghost databases.
     """
     if not IS_EXHIBITION_MODE:
@@ -2771,19 +2799,23 @@ def check_exhibition_requirements():
                 print(f"   {Colors.YELLOW}python smartgallery.py{Colors.RESET}\n")
                 sys.exit(1)
 
-            # Check if there is at least one PUBLIC user album
-            public_colls = conn.execute("SELECT COUNT(*) FROM collections WHERE type='user_album' AND is_public=1").fetchone()[0]
-            
-            if public_colls == 0:
-                print(f"\n{Colors.RED}{Colors.BOLD}❌ CRITICAL ERROR: No Exhibition Ready Collections Found{Colors.RESET}")
-                print(f"{Colors.RED}Exhibition Mode is a showcase. It only displays collections marked as 'Exhibition Ready'.{Colors.RESET}")
-                print(f"{Colors.RED}Currently, your database has 0 Exhibition Ready collections, so the Exhibition would be completely empty.{Colors.RESET}")
+            # Check if at least one user album is public or shared with a user.
+            accessible_colls = conn.execute("""
+                SELECT COUNT(*)
+                FROM collections
+                WHERE type = 'user_album'
+                  AND (is_public = 1 OR TRIM(COALESCE(shared_users, '')) != '')
+            """).fetchone()[0]
+
+            if accessible_colls == 0:
+                print(f"\n{Colors.RED}{Colors.BOLD}❌ CRITICAL ERROR: No Exhibition Collections Found{Colors.RESET}")
+                print(f"{Colors.RED}Exhibition Mode displays collections that are public or shared with at least one user.{Colors.RESET}")
+                print(f"{Colors.RED}Currently, your database has no accessible Exhibition collections, so the Exhibition would be completely empty.{Colors.RESET}")
                 print(f"\n{Colors.CYAN}{Colors.BOLD}💡 HOW TO FIX IT:{Colors.RESET}")
                 print(f"1. Start the standard gallery: {Colors.YELLOW}python smartgallery.py{Colors.RESET}")
                 print(f"2. Log in, select some files, and click the 📚️ Add/Remove from collection button.")
-                print(f"3. Create a new Collection and answer 'Yes' when asked if it should be set as Exhibition Ready.")
-                print(f"   (Or edit an existing one from the sidebar menu: ⋮ -> 👁️ Set as Exhibition Ready).")
-                print(f"4. Once you have at least one public collection, restart with --exhibition.\n")
+                print(f"3. Mark a collection as Exhibition Ready or share it with at least one user.")
+                print(f"4. Restart with --exhibition.\n")
                 sys.exit(1)
                 
     except sqlite3.DatabaseError as e:
@@ -2946,6 +2978,40 @@ def ensure_admin_user(conn):
         print(f"{Colors.CYAN}USER SETUP: Admin password verified/updated.{Colors.RESET}")
     conn.commit()
 
+def is_file_accessible(file_id):
+    """Checks if the current user has permission to access this specific file."""
+    if not IS_EXHIBITION_MODE and not FORCE_LOGIN:
+        return True
+        
+    user_role = session.get('role', 'GUEST')
+    user_id = str(session.get('user_id', ''))
+    
+    # Privileged roles always have full access to all files
+    if user_role in ['ADMIN', 'MANAGER', 'STAFF']:
+        return True
+        
+    if not IS_EXHIBITION_MODE:
+        # If in standard mode with FORCE_LOGIN, non-staff users should not be able to access files 
+        return False
+        
+    # Exhibition Mode: File MUST belong to a public collection OR a collection shared with this specific user
+    with get_db_connection() as conn:
+        query = '''
+            SELECT 1 
+            FROM collection_files cf
+            JOIN collections c ON cf.collection_id = c.id
+            WHERE cf.file_id = ? 
+            AND c.type = 'user_album'
+        '''
+        if user_id:
+            safe_uid = user_id.replace("'", "''")
+            query += f" AND (c.is_public = 1 OR (',' || c.shared_users || ',') LIKE '%,{safe_uid},%')"
+        else:
+            query += " AND c.is_public = 1"
+            
+        result = conn.execute(query, (file_id,)).fetchone()
+        return bool(result)
+
 def should_strip_metadata():
     """Helper to determine if metadata stripping is required based on session and flags."""
     user_role = session.get('role', 'GUEST') # Default to GUEST if not set
@@ -3003,8 +3069,8 @@ def strip_media_metadata(input_path, output_path, file_type):
                     img.save(output_path, img.format, optimize=True, exif=b"", xmp=b"")
             return True
 
-        # --- CASE B: REAL VIDEOS (MP4, MOV, MKV...) ---
-        elif file_type == 'video' and FFPROBE_EXECUTABLE_PATH:
+        # --- CASE B: REAL VIDEOS & AUDIO (MP4, MOV, MKV, MP3, WAV...) ---
+        elif file_type in ['video', 'audio'] and FFPROBE_EXECUTABLE_PATH:
             ffmpeg_dir = os.path.dirname(FFPROBE_EXECUTABLE_PATH)
             ffmpeg_name = "ffmpeg.exe" if os.name == 'nt' else "ffmpeg"
             ffmpeg_path = os.path.join(ffmpeg_dir, ffmpeg_name)
@@ -3040,38 +3106,40 @@ def gallery_redirect_base():
 
 @app.route('/galleryout/login', methods=['POST'])
 def exhibition_login():
-    data = request.json
-    username = data.get('username')
-    password = data.get('password')
+    import secrets # <--- FIX CRITICO: Import a livello di funzione prima di usarlo
+    
+    # Use silent=True to prevent 400 Bad Request if headers/content are malformed
+    data = request.get_json(silent=True) or {}
+    username = data.get('username', '')
+    password = data.get('password', '')
     provided_uuid = data.get('provided_uuid')
 
-    if ENABLE_GUEST_LOGIN and username and username.lower() == 'guest':
+    # Guest Login Logic
+    if ENABLE_GUEST_LOGIN and username and str(username).lower() == 'guest':
         session.permanent = False
-        guest_uuid = str(provided_uuid) if provided_uuid else f"guest_{secrets.token_hex(8)}"
+        
+        if provided_uuid and str(provided_uuid).lower() not in ['null', 'undefined', 'none', '']:
+            guest_uuid = str(provided_uuid)
+        else:
+            guest_uuid = f"guest_{secrets.token_hex(8)}"
+            
         session['user_id'] = guest_uuid
         session['username'] = 'guest'
         session['role'] = 'GUEST'
         session['full_name'] = 'Guest User'
         return jsonify({'status': 'success', 'role': 'GUEST', 'client_uuid': guest_uuid})
 
+    # Standard User Login Logic
     with get_db_connection() as conn:
         user = conn.execute("SELECT * FROM users WHERE username = ? AND is_active = 1", (username,)).fetchone()
         if user:
-            # --- MULTI-INSTANCE IN-MEMORY OVERRIDE ---
-            # If this specific instance was launched with an admin password parameter,
-            # it takes priority over the shared SQLite database.
-            # This allows running two instances (Index/Exhibition) with different passwords.
-            import secrets
             if username == 'admin' and ADMIN_PASS_INPUT:
-                # Use constant-time comparison to prevent timing attacks
                 is_valid = secrets.compare_digest(password, ADMIN_PASS_INPUT)
             else:
                 stored_password = decrypt_password(user['password'])
-                # Ensure we don't pass None to compare_digest if decryption fails
                 is_valid = secrets.compare_digest(password, stored_password) if stored_password else False
                 
             if is_valid:
-                # Update last login timestamp
                 try:
                     import time
                     conn.execute("UPDATE users SET last_login = ? WHERE user_id = ?", (time.time(), user['user_id']))
@@ -3087,7 +3155,7 @@ def exhibition_login():
                 return jsonify({'status': 'success', 'role': user['role']})
     
     return jsonify({'status': 'error', 'message': 'Invalid credentials'}), 401
-    
+
 @app.route('/galleryout/logout')
 def exhibition_logout():
     session.clear()
@@ -3095,14 +3163,15 @@ def exhibition_logout():
 
 @app.route('/galleryout/api/admin/users', methods=['GET', 'POST', 'PUT', 'DELETE'])
 def admin_manage_users():
-    # Role check: Root ADMIN and MANAGER are allowed. 
-    # If login is not forced, local user is implicit ADMIN.
-    is_implicit_admin = (not IS_EXHIBITION_MODE and not FORCE_LOGIN)
     user_role = session.get('role')
-    is_authorized = user_role in ['ADMIN', 'MANAGER']
-
-    if not (is_implicit_admin or is_authorized):
-        abort(403)
+    user_id = session.get('user_id')
+    
+    if user_id or user_role:
+        if user_role not in ['ADMIN', 'MANAGER']:
+            abort(403)
+    else:
+        if IS_EXHIBITION_MODE or FORCE_LOGIN:
+            abort(401)
 
     with get_db_connection() as conn:
         if request.method == 'GET':
@@ -3245,6 +3314,9 @@ def api_search_options():
 
 @app.route('/galleryout/api/compare_files', methods=['POST'])
 def compare_files_api():
+    if should_strip_metadata():
+        return jsonify({'status': 'error', 'message': 'Security Policy: Metadata comparison is restricted for your role.'}), 403
+
     data = request.json
     id_a = data.get('id_a')
     id_b = data.get('id_b')
@@ -3258,7 +3330,6 @@ def compare_files_api():
             wf_json = extract_workflow(info['path'])
             if not wf_json: return {}
             
-            # Reuse existing summary logic
             summary = generate_node_summary(wf_json)
             if not summary: return {}
             
@@ -3266,7 +3337,6 @@ def compare_files_api():
             for node in summary:
                 node_type = node['type']
                 for p in node['params']:
-                    # Create a readable key like "KSampler > steps"
                     key = f"{node_type} > {p['name']}"
                     flat_params[key] = str(p['value'])
             return flat_params
@@ -3277,7 +3347,6 @@ def compare_files_api():
         params_a = get_flat_params(id_a)
         params_b = get_flat_params(id_b)
         
-        # Identify all unique keys
         all_keys = sorted(list(set(params_a.keys()) | set(params_b.keys())))
         
         diff_table = []
@@ -3285,7 +3354,6 @@ def compare_files_api():
             val_a = params_a.get(key, 'N/A')
             val_b = params_b.get(key, 'N/A')
             
-            # Check difference (case insensitive)
             is_diff = str(val_a).lower() != str(val_b).lower()
             
             diff_table.append({
@@ -3295,7 +3363,6 @@ def compare_files_api():
                 'is_diff': is_diff
             })
             
-        # Sort: Differences at the top, then alphabetical
         diff_table.sort(key=lambda x: (not x['is_diff'], x['key']))
         
         return jsonify({'status': 'success', 'diff': diff_table})
@@ -3303,7 +3370,6 @@ def compare_files_api():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
         
-
 # --- AI MANAGER API ROUTES ---
 @app.route('/galleryout/ai_indexing/reset', methods=['POST'])
 @management_api_only
@@ -4100,6 +4166,21 @@ def gallery_view(folder_key):
                     conditions.append("f.id IN (SELECT file_id FROM file_ratings)")
 
                     order_clause = f"avg_rating {sort_order}, f.mtime DESC"
+            elif req_sort_by == 'size':
+
+                order_clause = f"f.size {sort_order}"
+
+            elif req_sort_by == 'type':
+
+                order_clause = f"f.type {sort_order}, f.name ASC"
+
+            elif req_sort_by == 'duration':
+
+                order_clause = f"f.duration {sort_order}"
+
+            elif req_sort_by == 'dimensions':
+
+                order_clause = f"(CAST(SUBSTR(f.dimensions, 1, INSTR(f.dimensions, 'x') - 1) AS INTEGER) * CAST(SUBSTR(f.dimensions, INSTR(f.dimensions, 'x') + 1) AS INTEGER)) {sort_order}"
             elif req_sort_by == 'unrated':
                 if is_effectively_blind():
                     conditions.append(f"f.id NOT IN (SELECT file_id FROM file_ratings WHERE client_uuid = '{safe_uuid}')")
@@ -4281,9 +4362,14 @@ def upload_files():
     destination_path = folders[folder_key]['path']
     if 'files' not in request.files: return jsonify({'status': 'error', 'message': 'No files were uploaded.'}), 400
     uploaded_files, errors, success_count = request.files.getlist('files'), {}, 0
+    ALLOWED_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif', '.webp', '.gif', '.mp4', '.mov', '.webm', '.mkv', '.avi', '.m4v', '.wmv', '.flv', '.mts', '.ts', '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.aac', '.json', '.txt'}
     for file in uploaded_files:
         if file and file.filename:
             filename = secure_filename(file.filename)
+            ext = os.path.splitext(filename)[1].lower()
+            if ext not in ALLOWED_EXTENSIONS:
+                errors[filename] = "Security Policy: File extension not allowed."
+                continue
             try:
                 file.save(os.path.join(destination_path, filename))
                 success_count += 1
@@ -5408,6 +5494,8 @@ def rename_file(file_id):
 
 @app.route('/galleryout/file_clean/<string:file_id>')
 def serve_cleaned_file(file_id):
+    if not is_file_accessible(file_id):
+        abort(403, description="Access Denied.")
     """
     Serves the cleaned file from cache. 
     If the cached file is corrupted (0 bytes) or the client specifically 
@@ -5442,8 +5530,11 @@ def serve_cleaned_file(file_id):
         os.makedirs(CLEAN_CACHE_DIR, exist_ok=True)
         success = strip_media_metadata(filepath, clean_path, file_type)
         if not success:
-            print(f"ERROR: Metadata stripping failed for {info['name']}")
-            abort(500, description="Stripping failed.")
+            print(f"WARNING: Metadata stripping failed for {info['name']}. Falling back to original file.")
+            # Fallback: serve the original file if stripping fails
+            if filepath.lower().endswith('.webp'):
+                return send_file(filepath, mimetype='image/webp')
+            return send_file(filepath)
             
     # Serve the file with correct mimetype for WebP
     if filepath.lower().endswith('.webp'):
@@ -5452,6 +5543,8 @@ def serve_cleaned_file(file_id):
     
 @app.route('/galleryout/file/<string:file_id>')
 def serve_file(file_id):
+    if not is_file_accessible(file_id):
+        abort(403, description="Access Denied.")
     if should_strip_metadata():
         return serve_cleaned_file(file_id)
     
@@ -5464,6 +5557,8 @@ def serve_file(file_id):
         
 @app.route('/galleryout/download/<string:file_id>')
 def download_file(file_id):
+    if not is_file_accessible(file_id):
+        abort(403, description="Access Denied.")
     if should_strip_metadata():
         # Logic for download is identical but we ensure serve_cleaned_file handles the cache
         info = get_file_info_from_db(file_id)
@@ -5475,7 +5570,11 @@ def download_file(file_id):
 
         if not os.path.exists(clean_path):
             os.makedirs(CLEAN_CACHE_DIR, exist_ok=True)
-            strip_media_metadata(filepath, clean_path, file_type)
+            success = strip_media_metadata(filepath, clean_path, file_type)
+            if not success:
+                print(f"WARNING: Metadata stripping failed for {info['name']} during download. Falling back to original.")
+                # Fallback: serve original file as attachment
+                return send_file(filepath, as_attachment=True, download_name=info['name'])
             
         return send_file(clean_path, as_attachment=True, download_name=info['name'])
     
@@ -5485,12 +5584,15 @@ def download_file(file_id):
         
 @app.route('/galleryout/workflow/<string:file_id>')
 def download_workflow(file_id):
+    if not is_file_accessible(file_id):
+        abort(403, description="Access Denied.")
+    if should_strip_metadata():
+        abort(403, description="Security Policy: Access to raw workflow metadata is restricted for your role.")
+        
     info = get_file_info_from_db(file_id)
     filepath = info['path']
     original_filename = info['name']
     
-    # EXPLICITLY request 'ui' format to ensure Groups, Notes and Positions are preserved.
-    # If we used 'api', the download would lack visual layout data.
     workflow_json = extract_workflow(filepath, target_type='ui')
     
     if workflow_json:
@@ -5502,25 +5604,24 @@ def download_workflow(file_id):
 
 @app.route('/galleryout/node_summary/<string:file_id>')
 def get_node_summary(file_id):
+    if should_strip_metadata():
+        return jsonify({'status': 'error', 'message': 'Security Policy: Access to node summary is restricted for your role.'}), 403
+
     try:
-        # 1. Fetch basic info from DB
         file_info = get_file_info_from_db(file_id)
         filepath = file_info['path']
         db_dimensions = file_info.get('dimensions')
         
-        # 2. Extract UI version for the Raw Node List (Always reliable)
         ui_json = extract_workflow(filepath, target_type='ui')
         if not ui_json:
             return jsonify({'status': 'error', 'message': 'Workflow not found for this file.'}), 404
             
         summary_data = generate_node_summary(ui_json)
         
-        # 3. Extract API version for high-quality Metadata Dashboard
         api_json = extract_workflow(filepath, target_type='api')
         meta_data = {}
         
         try:
-            # We prefer API format for real values (Seed, CFG, etc.)
             json_source = api_json if api_json else ui_json
             wf_data = json.loads(json_source)
             if isinstance(wf_data, list):
@@ -5528,11 +5629,6 @@ def get_node_summary(file_id):
             
             parser = ComfyMetadataParser(wf_data)
             parsed_meta = parser.parse()
-            
-            # --- STRICT VALIDATION LOGIC ---
-            # We only show the Dashboard if we have a "Solid Set" of data.
-            # Criteria: Must have a Positive Prompt AND at least 2 technical parameters (Seed, Model, Steps, etc.)
-            # This prevents showing a "messy" or near-empty dashboard for complex/unsupported workflows.
             
             tech_count = 0
             if parsed_meta.get('seed'): tech_count += 1
@@ -5589,14 +5685,11 @@ def get_node_summary(file_id):
                             pass
                         enriched_loras.append(l_dict)
                     meta_data['loras'] = enriched_loras
-                # Ensure resolution is always present using DB fallback
                 if not meta_data.get('width') or not meta_data.get('height'):
                     if db_dimensions and 'x' in db_dimensions:
                         w, h = db_dimensions.split('x')
                         meta_data['width'], meta_data['height'] = w.strip(), h.strip()
             else:
-                # Data is too sparse or unreliable. 
-                # We return empty meta to hide the dashboard and show only the Raw Node List.
                 meta_data = {}
                 
         except Exception as e:
@@ -5605,8 +5698,8 @@ def get_node_summary(file_id):
 
         return jsonify({
             'status': 'success', 
-            'summary': summary_data, # Raw Node List (Always shown)
-            'meta': meta_data        # Dashboard Data (Only if valid/complete)
+            'summary': summary_data,
+            'meta': meta_data        
         })
         
     except Exception as e:
@@ -5615,6 +5708,8 @@ def get_node_summary(file_id):
 
 @app.route('/galleryout/waveform/<string:file_id>')
 def serve_waveform(file_id):
+    if not is_file_accessible(file_id):
+        abort(403, description="Access Denied.")
     if not GENERATE_WAVEFORMS: abort(404)
     info = get_file_info_from_db(file_id)
     filepath = info['path']
@@ -5643,6 +5738,8 @@ def serve_waveform(file_id):
 
 @app.route('/galleryout/thumbnail/<string:file_id>')
 def serve_thumbnail(file_id):
+    if not is_file_accessible(file_id):
+        abort(403, description="Access Denied.")
     info = get_file_info_from_db(file_id)
     filepath, mtime = info['path'], info['mtime']
     file_hash = hashlib.md5((filepath + str(mtime)).encode()).hexdigest()
@@ -6139,6 +6236,9 @@ def api_remix_object_info():
 
 @app.route('/galleryout/input_file/<path:filename>')
 def serve_input_file(filename):
+    user_role = session.get('role', 'GUEST')
+    if (IS_EXHIBITION_MODE or FORCE_LOGIN) and user_role not in ['ADMIN', 'MANAGER', 'STAFF']:
+        abort(403, description="Access Denied.")
     """Serves input files directly from the ComfyUI Input folder."""
     try:
         # Prevent path traversal
@@ -6198,6 +6298,8 @@ def check_metadata(file_id):
         
 @app.route('/galleryout/stream/<string:file_id>')
 def stream_video(file_id):
+    if not is_file_accessible(file_id):
+        abort(403, description="Access Denied.")
     """
     Streams video files by transcoding them on-the-fly using FFmpeg.
     This allows professional formats like ProRes to be viewed in any browser.
@@ -6264,51 +6366,139 @@ def stream_video(file_id):
 
 # --- COLLECTIONS / CATEGORIES API ---
 
+def get_descendant_file_counts(conn, countable_collection_ids):
+    """Count unique files in descendant collections, excluding direct membership."""
+    if not countable_collection_ids:
+        return {}
+
+    placeholders = ','.join('?' for _ in countable_collection_ids)
+    rows = conn.execute(f"""
+        WITH RECURSIVE counted_descendants(id) AS (
+            SELECT DISTINCT collection_id
+            FROM collection_files
+            WHERE collection_id IN ({placeholders})
+        ), ancestry(ancestor_id, descendant_id) AS (
+            SELECT c.parent_id, c.id
+            FROM collections c
+            JOIN counted_descendants d ON d.id = c.id
+            WHERE c.parent_id IS NOT NULL
+            UNION
+            SELECT c.parent_id, a.descendant_id
+            FROM ancestry a
+            JOIN collections c ON c.id = a.ancestor_id
+            WHERE c.parent_id IS NOT NULL
+        )
+        SELECT a.ancestor_id, COUNT(DISTINCT cf.file_id) AS descendant_file_count
+        FROM ancestry a
+        JOIN collection_files cf ON cf.collection_id = a.descendant_id
+        WHERE a.ancestor_id != a.descendant_id
+        GROUP BY a.ancestor_id
+    """, countable_collection_ids).fetchall()
+    return {row['ancestor_id']: row['descendant_file_count'] for row in rows}
+
 
 @app.route('/galleryout/api/collections', methods=['GET'])
 def get_collections():
     user_id = str(session.get('user_id', '')).strip()
     user_role = session.get('role', 'GUEST')
     with get_db_connection() as conn:
-        # Fetch collections and force field types
-        rows = conn.execute("SELECT * FROM collections ORDER BY name").fetchall()
+        rows = conn.execute("""
+            SELECT c.*,
+                   (SELECT COUNT(*) FROM collection_files cf WHERE cf.collection_id = c.id) AS file_count
+            FROM collections c
+            ORDER BY c.name
+        """).fetchall()
         
-        filtered = []
-        for r in rows:
-            c = dict(r)
+        all_cols = [dict(r) for r in rows]
+        flags = [c for c in all_cols if c['type'] == 'system_flag']
+        albums = [c for c in all_cols if c['type'] == 'user_album']
+        for flag in flags:
+            flag.pop('file_count', None)
+        
+        filtered_albums = []
+        
+        if IS_EXHIBITION_MODE and user_role not in ['ADMIN', 'MANAGER', 'STAFF']:
+            explicit_access_ids = set()
+            album_dict = {c['id']: c for c in albums}
             
-            # Logic for Exhibition Mode
-            if IS_EXHIBITION_MODE and user_role not in ['ADMIN', 'MANAGER', 'STAFF']:
-                if c['type'] == 'system_flag': continue
-                
-                # Check Public flag
+            # Step 1: Identify explicitly accessible collections
+            for c in albums:
                 is_public = int(c.get('is_public', 0)) == 1
-                
-                # Robust Shared Users extraction
                 shared_raw = str(c.get('shared_users', '')).split(',')
-                # Remove spaces, ensure they are strings
                 shared_list = [str(uid).strip() for uid in shared_raw if uid.strip()]
                 
-                #DEBUG: Log what we are comparing
-                #print(f"DEBUG: Comparing UserID '{user_id}' against shared_list {shared_list}", c['name'])
-                
-                if not is_public and str(user_id) not in shared_list:
-                    continue
-                if not is_public and str(user_id) in shared_list:
-                    c['is_shared_access'] = True
-            
-            if IS_EXHIBITION_MODE and user_role in ['ADMIN', 'MANAGER', 'STAFF']:
-                # Robust Shared Users extraction
+                if is_public or str(user_id) in shared_list:
+                    explicit_access_ids.add(c['id'])
+                    if str(user_id) in shared_list:
+                        c['is_shared_access'] = True
+
+            # Step 2: Traverse upwards to unlock ancestor paths for the tree
+            required_ancestors = set()
+            for cid in explicit_access_ids:
+                curr = album_dict.get(cid)
+                while curr and curr.get('parent_id'):
+                    pid = curr['parent_id']
+                    required_ancestors.add(pid)
+                    curr = album_dict.get(pid)
+
+            # Step 3: Build final list with locked/unlocked flags
+            for c in albums:
+                if c['id'] in explicit_access_ids:
+                    c['restricted_access'] = False
+                    filtered_albums.append(c)
+                elif c['id'] in required_ancestors:
+                    c['restricted_access'] = True
+                    filtered_albums.append(c)
+                    
+        elif IS_EXHIBITION_MODE and user_role in ['ADMIN', 'MANAGER', 'STAFF']:
+            for c in albums:
                 shared_raw = str(c.get('shared_users', '')).split(',')
-                # Remove spaces, ensure they are strings
-                shared_list =[str(uid).strip() for uid in shared_raw if uid.strip()]
+                shared_list = [str(uid).strip() for uid in shared_raw if uid.strip()]
                 if shared_list:
                     c['is_shared_access'] = True
-                
-            filtered.append(c)
+                c['restricted_access'] = False
+            filtered_albums = albums
+            
+        else:
+            for c in albums:
+                c['restricted_access'] = False
+            filtered_albums = albums
+
+        if IS_EXHIBITION_MODE:
+            count_album_ids = [
+                c['id'] for c in filtered_albums
+                if not c.get('restricted_access') and (c.get('is_public') or c.get('is_shared_access'))
+            ]
+        else:
+            count_album_ids = [c['id'] for c in filtered_albums]
+
+        all_count = 0
+        if count_album_ids:
+            placeholders = ','.join('?' for _ in count_album_ids)
+            all_count = conn.execute(
+                f"SELECT COUNT(DISTINCT file_id) FROM collection_files WHERE collection_id IN ({placeholders})",
+                count_album_ids
+            ).fetchone()[0]
+
+        # Map user names for shared collections tooltip
+        user_rows = conn.execute("SELECT user_id, full_name FROM users").fetchall()
+        user_map = {str(r['user_id']): r['full_name'] for r in user_rows}
+
+        descendant_counts = get_descendant_file_counts(conn, count_album_ids)
+        for c in filtered_albums:
+            c['descendant_file_count'] = descendant_counts.get(c['id'], 0)
+            if c.get('restricted_access'):
+                c['file_count'] = None
+            if c.get('shared_users'):
+                uids = [u.strip() for u in str(c['shared_users']).split(',') if u.strip()]
+                names = [user_map.get(u, "Unknown User") for u in uids]
+                c['shared_user_names'] = ", ".join(names)
+
+
         return jsonify({
-            'flags': [c for c in filtered if c['type'] == 'system_flag'],
-            'albums': [c for c in filtered if c['type'] == 'user_album']
+            'flags': flags,
+            'albums': filtered_albums,
+            'all_count': all_count
         })
 
 @app.route('/galleryout/api/sidebar_state')
@@ -6317,14 +6507,49 @@ def get_sidebar_state():
     folders = get_dynamic_folder_config(force_refresh=True)
     with get_db_connection() as conn:
         flags = conn.execute("SELECT * FROM collections WHERE type='system_flag' ORDER BY id").fetchall()
-        albums = conn.execute("SELECT * FROM collections WHERE type='user_album' ORDER BY name").fetchall()
+        if IS_EXHIBITION_MODE:
+            albums = conn.execute("SELECT * FROM collections WHERE type='user_album' ORDER BY name").fetchall()
+            all_count = None
+        else:
+            albums = conn.execute("""
+                SELECT c.*,
+                       (SELECT COUNT(*) FROM collection_files cf WHERE cf.collection_id = c.id) AS file_count
+                FROM collections c
+                WHERE c.type='user_album'
+                ORDER BY c.name
+            """).fetchall()
+            all_count = conn.execute("""
+                SELECT COUNT(DISTINCT cf.file_id)
+                FROM collection_files cf
+                JOIN collections c ON c.id = cf.collection_id
+                WHERE c.type='user_album'
+            """).fetchone()[0]
+        album_dicts = [dict(r) for r in albums]
+        
+        user_rows = conn.execute("SELECT user_id, full_name FROM users").fetchall()
+        user_map = {str(r['user_id']): r['full_name'] for r in user_rows}
+        
+        for album in album_dicts:
+            if album.get('shared_users'):
+                uids = [u.strip() for u in str(album['shared_users']).split(',') if u.strip()]
+                names = [user_map.get(u, "Unknown User") for u in uids]
+                album['shared_user_names'] = ", ".join(names)
+                
+        if not IS_EXHIBITION_MODE:
+            descendant_counts = get_descendant_file_counts(conn, [album['id'] for album in album_dicts])
+            for album in album_dicts:
+                album['descendant_file_count'] = descendant_counts.get(album['id'], 0)
+
+    collections = {
+        'flags': [dict(r) for r in flags],
+        'albums': album_dicts
+    }
+    if all_count is not None:
+        collections['all_count'] = all_count
     
     return jsonify({
         'folders': folders,
-        'collections': {
-            'flags': [dict(r) for r in flags],
-            'albums': [dict(r) for r in albums]
-        }
+        'collections': collections
     })
 
 @app.route('/galleryout/api/collections/rename', methods=['POST'])
@@ -6358,6 +6583,7 @@ def create_collection():
     name = data.get('name', '').strip()
     is_public = data.get('is_public', False)
     parent_id = data.get('parent_id', None)
+    shared_users = data.get('shared_users', '')
     
     if not name: return jsonify({'status': 'error', 'message': 'Name required'}), 400
     
@@ -6365,8 +6591,8 @@ def create_collection():
         with get_db_connection() as conn:
             # Execute insert and get the cursor to retrieve the lastrowid
             cursor = conn.execute(
-                "INSERT INTO collections (name, type, color, is_public, parent_id, created_at) VALUES (?, 'user_album', '#ffffff', ?, ?, ?)",
-                (name, 1 if is_public else 0, parent_id, time.time())
+                "INSERT INTO collections (name, type, color, is_public, shared_users, parent_id, created_at) VALUES (?, 'user_album', '#ffffff', ?, ?, ?, ?)",
+                (name, 1 if is_public else 0, shared_users, parent_id, time.time())
             )
             new_id = cursor.lastrowid # <--- Get the newly created ID
             conn.commit()
@@ -6938,6 +7164,14 @@ def collection_view(coll_id):
             order_clause = f"comment_count {req_sort_order}, f.mtime DESC"
         else:
             order_clause = f"latest_comment_time {req_sort_order}, f.mtime DESC"
+    elif req_sort_by == 'size':
+        order_clause = f"f.size {req_sort_order}"
+    elif req_sort_by == 'type':
+        order_clause = f"f.type {req_sort_order}, f.name ASC"
+    elif req_sort_by == 'duration':
+        order_clause = f"f.duration {req_sort_order}"
+    elif req_sort_by == 'dimensions':
+        order_clause = f"(CAST(SUBSTR(f.dimensions, 1, INSTR(f.dimensions, 'x') - 1) AS INTEGER) * CAST(SUBSTR(f.dimensions, INSTR(f.dimensions, 'x') + 1) AS INTEGER)) {req_sort_order}"
     elif req_sort_by == 'date' or req_sort_by == 'mtime':
         order_clause = f"f.mtime {req_sort_order}"
     else:
@@ -7151,23 +7385,24 @@ def get_rating_details():
 def exhibition_rate_file():
     data = request.json
     file_id = data.get('file_id')
-    client_uuid = data.get('client_uuid')
+    
+    current_user_id = session.get('user_id')
+    # Spoofing Protection: Force server-side ID if authenticated
+    client_uuid = str(current_user_id) if current_user_id else data.get('client_uuid')
+    
     rating = data.get('rating')  # 1-5 integer, or None/0 to delete
     
     if not all([file_id, client_uuid]):
         return jsonify({'status': 'error', 'message': 'Missing data'}), 400
     
-    # Allow None or 0 to delete rating
     if rating is not None and rating != 0 and not (1 <= rating <= 5):
         return jsonify({'status': 'error', 'message': 'Invalid rating'}), 400
         
     try:
         with get_db_connection() as conn:
-            # Check if file exists
             if not conn.execute("SELECT 1 FROM files WHERE id=?", (file_id,)).fetchone():
                 return jsonify({'status': 'error', 'message': 'File not found'}), 404
             
-            # Delete rating if rating is None or 0
             if rating is None or rating == 0:
                 conn.execute("""
                     DELETE FROM file_ratings 
@@ -7175,7 +7410,6 @@ def exhibition_rate_file():
                 """, (file_id, client_uuid))
                 conn.commit()
             else:
-                # Upsert Rating
                 conn.execute("""
                     INSERT INTO file_ratings (file_id, client_uuid, rating, created_at)
                     VALUES (?, ?, ?, ?)
@@ -7185,7 +7419,6 @@ def exhibition_rate_file():
                 """, (file_id, client_uuid, rating, time.time()))
                 conn.commit()
             
-            # Get new Average and Vote Count
             result = conn.execute("""
                 SELECT AVG(rating), COUNT(*) 
                 FROM file_ratings 
@@ -7205,26 +7438,24 @@ def exhibition_rate_file():
 
 @app.route('/galleryout/api/exhibition/rate_batch', methods=['POST'])
 def exhibition_rate_batch():
-    """
-    Handles batch rating for multiple files in a single database transaction.
-    Greatly improves performance and prevents SQLite locking issues on large selections.
-    """
     data = request.json
     file_ids = data.get('file_ids', [])
-    client_uuid = data.get('client_uuid')
-    rating = data.get('rating')  # 1-5 integer, or None/0 to delete
+    
+    current_user_id = session.get('user_id')
+    # Spoofing Protection: Force server-side ID if authenticated
+    client_uuid = str(current_user_id) if current_user_id else data.get('client_uuid')
+    
+    rating = data.get('rating')
     
     if not file_ids or not client_uuid:
         return jsonify({'status': 'error', 'message': 'Missing data'}), 400
     
-    # Allow None or 0 to delete rating
     if rating is not None and rating != 0 and not (1 <= rating <= 5):
         return jsonify({'status': 'error', 'message': 'Invalid rating'}), 400
         
     try:
         with get_db_connection() as conn:
             if rating is None or rating == 0:
-                # Batch Delete
                 placeholders = ','.join(['?'] * len(file_ids))
                 query = f"""
                     DELETE FROM file_ratings 
@@ -7233,7 +7464,6 @@ def exhibition_rate_batch():
                 params = file_ids + [client_uuid]
                 conn.execute(query, params)
             else:
-                # Batch Upsert using executemany for optimal performance
                 current_time = time.time()
                 records = [(fid, client_uuid, rating, current_time) for fid in file_ids]
                 
@@ -7253,7 +7483,6 @@ def exhibition_rate_batch():
         print(f"Batch Rating Error: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
-        
 @app.route('/galleryout/api/exhibition/comments', methods=['GET'])
 def exhibition_get_comments():
     file_id = request.args.get('file_id')
@@ -7409,18 +7638,18 @@ def exhibition_delete_comment():
     current_role = session.get('role')
     
     client_uuid = str(current_user_id) if current_user_id else data.get('client_uuid')
-    is_admin = (current_role == 'ADMIN')
+    
+    is_local_admin = (not FORCE_LOGIN and not IS_EXHIBITION_MODE) and not current_user_id
+    is_privileged = is_local_admin or (current_role in ['ADMIN', 'MANAGER', 'STAFF'])
     
     try:
         with get_db_connection() as conn:
-            if IS_EXHIBITION_MODE and not is_admin:
-                # Normal user in exhibition: can only delete their own
+            if not is_privileged:
                 if not client_uuid: return jsonify({'status': 'error', 'message': 'Auth required'}), 403
                 res = conn.execute("DELETE FROM file_comments WHERE id=? AND client_uuid=?", (comment_id, client_uuid))
                 if res.rowcount == 0:
-                    return jsonify({'status': 'error', 'message': 'Permission denied'}), 403
+                    return jsonify({'status': 'error', 'message': 'Permission denied: Not your comment.'}), 403
             else:
-                # Admin (or Standard UI mode): Delete anything by ID
                 conn.execute("DELETE FROM file_comments WHERE id=?", (comment_id,))
             
             conn.commit()
@@ -7434,19 +7663,19 @@ def exhibition_edit_comment():
     comment_id = data.get('comment_id')
     new_text = data.get('new_text', '').strip()
     
-    # Secure ownership check using Session
     current_user_id = session.get('user_id')
-    
-    # Fallback for non-logged session (Guest), though less secure
+    current_role = session.get('role')
     client_uuid = str(current_user_id) if current_user_id else data.get('client_uuid')
     
     if not all([comment_id, client_uuid, new_text]):
         return jsonify({'status': 'error', 'message': 'Missing data'}), 400
+        
+    is_local_admin = (not FORCE_LOGIN and not IS_EXHIBITION_MODE) and not current_user_id
+    is_privileged = is_local_admin or (current_role in ['ADMIN', 'MANAGER', 'STAFF'])
     
     try:
         with get_db_connection() as conn:
-            if IS_EXHIBITION_MODE:
-                # Check match: ID must match Session ID
+            if not is_privileged:
                 res = conn.execute("""
                     UPDATE file_comments 
                     SET comment_text = ?
@@ -7454,9 +7683,8 @@ def exhibition_edit_comment():
                 """, (new_text, comment_id, client_uuid))
                 
                 if res.rowcount == 0:
-                    return jsonify({'status': 'error', 'message': 'Cannot edit this comment (Not owner)'}), 403
+                    return jsonify({'status': 'error', 'message': 'Permission denied: Cannot edit this comment (Not owner)'}), 403
             else:
-                # Admin mode (Main Interface): Can edit anything
                 conn.execute("""
                     UPDATE file_comments 
                     SET comment_text = ?
@@ -7478,21 +7706,29 @@ def execute_omniquery():
     if not raw_sql:
         return jsonify({'status': 'error', 'message': 'SQL query cannot be empty.'}), 400
         
-    # Security 1: Regex Blocklist for destructive keywords
-    forbidden = r'\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|PRAGMA|ATTACH|DETACH|COMMIT|ROLLBACK|REPLACE\s+INTO)\b'
+    # Security 1: Strict Prefix Check (Ensure it's a SELECT)
     import re
-    if re.search(forbidden, raw_sql, re.IGNORECASE):
-        return jsonify({'status': 'error', 'message': 'Security Block: Destructive commands are not allowed.'}), 403
+    # Remove leading comments and whitespace to check the actual command
+    clean_sql = re.sub(r'(/\*.*?\*/)|(--.*?\n)', '', raw_sql, flags=re.DOTALL).strip()
+    if not re.match(r'^SELECT\b', clean_sql, re.IGNORECASE):
+        return jsonify({'status': 'error', 'message': 'Security Block: Only SELECT statements are allowed.'}), 403
 
     import uuid
     session_id = str(uuid.uuid4())
     result_ids = []
     
-    # Security 2: True Read-Only Connection via URI
+    # Security 2: True Read-Only Connection via URI + SQLite Engine Authorizer
     db_uri = f"file:{os.path.abspath(DATABASE_FILE)}?mode=ro"
     try:
-        # uri=True forces SQLite to respect the mode=ro flag at the driver level
+        def query_authorizer(action, arg1, arg2, dbname, source):
+            # 21 = SQLITE_SELECT, 20 = SQLITE_READ, 31 = SQLITE_FUNCTION
+            # This completely blocks PRAGMA, ATTACH, INSERT, DELETE at the C-engine level
+            if action in (21, 20, 31):
+                return sqlite3.SQLITE_OK
+            return sqlite3.SQLITE_DENY
+
         with sqlite3.connect(db_uri, uri=True) as ro_conn:
+            ro_conn.set_authorizer(query_authorizer)
             cursor = ro_conn.execute(raw_sql)
             rows = cursor.fetchall()
             # Try to extract the first column assuming it contains the ID
@@ -7992,13 +8228,18 @@ def preview_omniquery_query():
     if not raw_sql: return jsonify({'status': 'error', 'message': 'Empty query.'}), 400
     
     import re
-    forbidden = r'\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|PRAGMA|ATTACH|DETACH|COMMIT|ROLLBACK|REPLACE\s+INTO)\b'
-    if re.search(forbidden, raw_sql, re.IGNORECASE):
-        return jsonify({'status': 'error', 'message': 'Destructive commands not allowed.'}), 403
+    clean_sql = re.sub(r'(/\*.*?\*/)|(--.*?\n)', '', raw_sql, flags=re.DOTALL).strip()
+    if not re.match(r'^SELECT\b', clean_sql, re.IGNORECASE):
+        return jsonify({'status': 'error', 'message': 'Security Block: Only SELECT statements are allowed.'}), 403
 
     db_uri = f"file:{os.path.abspath(DATABASE_FILE)}?mode=ro"
     try:
+        def query_authorizer(action, arg1, arg2, dbname, source):
+            if action in (21, 20, 31): return sqlite3.SQLITE_OK
+            return sqlite3.SQLITE_DENY
+
         with sqlite3.connect(db_uri, uri=True) as ro_conn:
+            ro_conn.set_authorizer(query_authorizer)
             cursor = ro_conn.execute(raw_sql)
             rows = cursor.fetchall()
             cols = [description[0] for description in cursor.description] if cursor.description else []
@@ -8507,11 +8748,13 @@ def _register_remix_routes_inline():
 
     @app.route('/galleryout/api/remix/info/<string:file_id>')
     def api_remix_info(file_id):
+        if should_strip_metadata():
+            return jsonify({'status': 'error', 'message': 'Security Policy: Access to remix workflow is restricted for your role.'}), 403
+
         try:
             workflow_override = request.args.get('workflow_file')
             companion_override = request.args.get('companion')
             
-            # PATCH: Avoid querying the database if we are loading an existing template from the library
             if not workflow_override:
                 info = get_file_info_from_db(file_id)
                 file_path = info['path']
@@ -8557,7 +8800,6 @@ def _register_remix_routes_inline():
             return jsonify({'status': 'success', 'data': extract})
         except Exception as e: return jsonify({'status': 'error', 'message': str(e)}), 500
 
-    
     import struct
 
     def _read_safetensors_metadata(filepath):
