@@ -4,8 +4,9 @@
 
 LoRA Synergy is a zero-API, fully offline LoRA matchmaker and injector built into SmartGallery's **Remix Workflow → Nodepad**. It scans the actual `.safetensors` files on your disk, reads their metadata, and tells you *exactly* which of your installed LoRAs are compatible with the checkpoint currently loaded in your workflow — then wires everything up for you in one click.
 
-No more scrolling through 400 LoRAs guessing if they're SDXL, Flux, or SD1.5. No more black-screen renders because you mixed architectures. No more digging through CivitAI tabs to remember the trigger word.
+No more scrolling through 400 LoRAs guessing if they're SDXL, Flux, or SD1.5. No more black-screen renders because you mixed architectures. No more digging through CivitAI tabs to remember the trigger word.  
 
+![SmartGallery DAM — LoRA Synergy](../assets/LoRA_Synergy.png)
 ---
 
 ## Table of Contents
