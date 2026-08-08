@@ -1,7 +1,7 @@
 # SmartGallery DAM for ComfyUI
 # Author: Biagio Maffettone © 2025-2026 — Free to use/modify with credit. Provided "as is". See license on GitHub.
 #
-# Version: 2.16 - July 24, 2026
+# Version: 2.21 - August 08, 2026
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -339,8 +339,8 @@ AI_MODELS_FOLDER_NAME = '.AImodels'
 ENABLE_DAM_MODE = True
 
 # --- APP INFO ---
-APP_VERSION = "2.16"
-APP_VERSION_DATE = "July 24, 2026"
+APP_VERSION = "2.21"
+APP_VERSION_DATE = "August 08, 2026"
 GITHUB_REPO_URL = "https://github.com/biagiomaf/smart-comfyui-gallery"
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/biagiomaf/smart-comfyui-gallery/main/smartgallery.py"
 
@@ -1362,9 +1362,167 @@ def extract_workflow(filepath, target_type='ui'):
     # 2. Fallback: If we wanted API but only have UI (or vice versa), return what we have
     if found_workflows:
         return list(found_workflows.values())[0]
-        
+
     return None
-    
+
+def extract_a1111_parameters(filepath):
+    """
+    Extracts the raw WebUI Forge/A1111-style 'parameters' generation text embedded
+    in an image (PNG text chunk, or JPEG/WebP Exif UserComment). Returns None if absent.
+    """
+    ext = os.path.splitext(filepath)[1].lower()
+    if ext not in ['.png', '.jpg', '.jpeg', '.webp']:
+        return None
+
+    try:
+        with Image.open(filepath) as img:
+            params = img.info.get('parameters')
+            if params and isinstance(params, str) and params.strip():
+                return params
+
+            exif_data = img.info.get('exif')
+            if exif_data and isinstance(exif_data, bytes):
+                try:
+                    exif_str = exif_data.decode('utf-8', errors='ignore')
+                    marker = 'UNICODE\x00' if 'UNICODE\x00' in exif_str else None
+                    idx = exif_str.find('parameters')
+                    if idx != -1:
+                        candidate = exif_str[idx + len('parameters'):].lstrip('\x00: ')
+                        candidate = candidate.split('\x00\x00')[0].strip('\x00 ')
+                        if candidate.strip():
+                            return candidate
+                except Exception:
+                    pass
+
+            try:
+                exif_tags = img.getexif()
+                if exif_tags:
+                    user_comment = exif_tags.get(0x9286)
+                    if user_comment:
+                        if isinstance(user_comment, bytes):
+                            user_comment = user_comment.decode('utf-8', errors='ignore').strip('\x00 ')
+                        if isinstance(user_comment, str) and user_comment.strip():
+                            return user_comment
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    return None
+
+
+def parse_webui_metadata(text, include_emojis=True):
+    """
+    Formats a raw WebUI Forge/A1111 'parameters' string into a human-readable report.
+    Mirrors the extraction/formatting approach used by the ComfyUI-Simple_Readable_Metadata-SG
+    custom node (https://github.com/ShammiG/ComfyUI-Simple_Readable_Metadata-SG).
+    """
+    if not text or not isinstance(text, str):
+        return None
+
+    emoji_map = {
+        "sampling": "🎯", "dimensions": "📏", "prompts": "📝",
+        "models": "🧠", "lora": "🎨", "advanced": "⚙️"
+    } if include_emojis else {k: "" for k in ["sampling", "dimensions", "prompts", "models", "lora", "advanced"]}
+
+    output = ["=== WebUI Forge/A1111 Generation Parameters ===\n"]
+
+    lines = text.strip().split('\n')
+    positive_prompt = ""
+    negative_prompt = ""
+    metadata_line = ""
+    section = "positive"
+
+    for line in lines:
+        if line.startswith("Negative prompt:"):
+            section = "negative"
+            negative_prompt += line.replace("Negative prompt:", "").strip() + " "
+        elif re.search(r'Steps:\s*\d+', line):
+            metadata_line = line
+            section = "done"
+        elif section == "positive":
+            positive_prompt += line + " "
+        elif section == "negative":
+            negative_prompt += line + " "
+
+    positive_prompt = positive_prompt.strip()
+    negative_prompt = negative_prompt.strip()
+
+    model_name_display = "N/A"
+    if metadata_line:
+        model_match = re.search(r'Model:\s*([^,\n]+)', metadata_line)
+        if model_match:
+            model_name_display = model_match.group(1).strip()
+
+    output.append(f"{emoji_map['models']} MODEL: {model_name_display}\n")
+    output.append(f"{emoji_map['prompts']} PROMPTS: |If empty, Check fail-safe below|\n")
+    output.append(f"  Positive:\n           {positive_prompt if positive_prompt else '(empty)'}\n")
+    if negative_prompt:
+        output.append(f"  Negative:\n           {negative_prompt}")
+    output.append("")
+
+    if metadata_line:
+        params = {}
+        patterns = {
+            'steps': r'Steps:\s*(\d+)',
+            'sampler': r'Sampler:\s*([^,]+)',
+            'cfg': r'CFG scale:\s*([\d.]+)',
+            'seed': r'Seed:\s*(\d+)',
+            'size': r'Size:\s*(\d+x\d+)',
+            'model': r'Model:\s*([^,]+)',
+            'model_hash': r'Model hash:\s*([^,]+)',
+            'denoising': r'Denoising strength:\s*([\d.]+)',
+            'clip_skip': r'Clip skip:\s*(\d+)',
+            'scheduler': r'Schedule type:\s*([^,]+)',
+            'version': r'Version:\s*([^,]+)',
+        }
+        for key, pattern in patterns.items():
+            match = re.search(pattern, metadata_line)
+            if match:
+                params[key] = match.group(1).strip()
+
+        output.append(f"{emoji_map['sampling']} SAMPLING SETTINGS:")
+        if 'seed' in params: output.append(f"  Seed: {params['seed']}")
+        if 'steps' in params: output.append(f"  Steps: {params['steps']}")
+        if 'cfg' in params: output.append(f"  CFG Scale: {params['cfg']}")
+        if 'sampler' in params: output.append(f"  Sampler: {params['sampler']}")
+        if 'scheduler' in params: output.append(f"  Scheduler: {params['scheduler']}")
+        if 'denoising' in params: output.append(f"  Denoise: {params['denoising']}")
+        output.append("")
+
+        if 'size' in params:
+            output.append(f"{emoji_map['dimensions']} IMAGE DIMENSIONS:")
+            output.append(f"  Resolution: {params['size']}")
+            output.append("")
+
+        if 'model' in params or 'model_hash' in params:
+            output.append(f"{emoji_map['models']} MODELS & COMPONENTS:")
+            if 'model' in params: output.append(f"  Checkpoint: {params['model']}")
+            if 'model_hash' in params: output.append(f"  Model Hash: {params['model_hash']}")
+            output.append("")
+
+        lora_pattern = r'<lora:([^:]+):([\d.]+)>'
+        lora_matches = re.findall(lora_pattern, text)
+        if lora_matches:
+            output.append(f"{emoji_map['lora']} LORA MODELS:")
+            for lora_name, lora_strength in lora_matches:
+                output.append(f"  {lora_name} (Strength: {lora_strength})")
+            output.append("")
+
+        params_check = {}
+        adv_patterns = {'clip_skip': r'Clip skip:\s*(\d+)', 'version': r'Version:\s*([^,]+)'}
+        for key, pattern in adv_patterns.items():
+            match = re.search(pattern, metadata_line)
+            if match: params_check[key] = match.group(1).strip()
+        if 'clip_skip' in params_check or 'version' in params_check:
+            output.append(f"{emoji_map['advanced']} ADVANCED SETTINGS:")
+            if 'clip_skip' in params_check: output.append(f"  Clip Skip: {params_check['clip_skip']}")
+            if 'version' in params_check: output.append(f"  WebUI Version: {params_check['version']}")
+            output.append("")
+
+    return "\n".join(output).strip()
+
+
 def is_webp_animated(filepath):
     try:
         with Image.open(filepath) as img: return getattr(img, 'is_animated', False)
@@ -1391,7 +1549,9 @@ def analyze_file_metadata(filepath):
         '.mkv': 'video', '.avi': 'video', '.m4v': 'video', 
         '.wmv': 'video', '.flv': 'video', '.mts': 'video', '.ts': 'video',
         # Audio
-        '.mp3': 'audio', '.wav': 'audio', '.ogg': 'audio', '.flac': 'audio', '.m4a': 'audio'
+        '.mp3': 'audio', '.wav': 'audio', '.ogg': 'audio', '.flac': 'audio', '.m4a': 'audio',
+        # Documents / Notes
+        '.txt': 'document', '.md': 'document'
     }
     details['type'] = type_map.get(ext_lower, 'unknown')
     if details['type'] == 'unknown' and ext_lower == '.webp': details['type'] = 'animated_image' if is_webp_animated(filepath) else 'image'
@@ -1805,12 +1965,14 @@ def process_single_file(filepath):
                 workflow_files_content = extract_workflow_files_string(wf_json)
                 workflow_prompt_content = extract_workflow_prompt_string(wf_json) 
         
+        wf_hash, pr_hash = compute_workflow_hashes(filepath) if metadata['has_workflow'] else ('', '')
         return (
             file_id, filepath, mtime, os.path.basename(filepath),
             metadata['type'], metadata['duration'], metadata['dimensions'], 
             metadata['has_workflow'], file_size, time.time(), 
             workflow_files_content, 
-            workflow_prompt_content 
+            workflow_prompt_content,
+            wf_hash, pr_hash
         )
     except Exception as e:
         print(f"ERROR: Failed to process file {os.path.basename(filepath)} in worker: {e}")
@@ -2042,7 +2204,9 @@ def init_db(conn=None):
             'ai_last_scanned': 'REAL DEFAULT 0',
             'ai_caption': 'TEXT',
             'ai_embedding': 'BLOB',
-            'ai_error': 'TEXT'
+            'ai_error': 'TEXT',
+            'workflow_hash': "TEXT DEFAULT ''",
+            'prompt_hash': "TEXT DEFAULT ''"
         }
 
         # Handle comments target migration
@@ -2059,6 +2223,8 @@ def init_db(conn=None):
         try:
             cursor_col = conn.execute("PRAGMA table_info(collections)")
             col_columns = {row['name'] for row in cursor_col.fetchall()}
+            # Auto-fix existing txt/md files in database from unknown to document
+            conn.execute("UPDATE files SET type = 'document' WHERE (type = 'unknown' OR type IS NULL OR type = '') AND (LOWER(name) LIKE '%.txt' OR LOWER(name) LIKE '%.md')")
             if 'is_public' not in col_columns:
                 print("INFO: Updating Database Schema... Adding 'is_public' to collections")
                 conn.execute("ALTER TABLE collections ADD COLUMN is_public INTEGER DEFAULT 0")
@@ -2153,8 +2319,8 @@ def get_dynamic_folder_config(force_refresh=False):
         except: pass
 
         all_folders = {}
-        for dirpath, dirnames, _ in os.walk(BASE_OUTPUT_PATH):
-            dirnames[:] = [d for d in dirnames if not d.startswith('.') and d not in [THUMBNAIL_CACHE_FOLDER_NAME, SQLITE_CACHE_FOLDER_NAME, ZIP_CACHE_FOLDER_NAME, AI_MODELS_FOLDER_NAME]]
+        for dirpath, dirnames, _ in os.walk(BASE_OUTPUT_PATH, followlinks=True):
+            dirnames[:] = [d for d in dirnames if (not d.startswith('.') or d == '.collection_notes') and d not in [THUMBNAIL_CACHE_FOLDER_NAME, SQLITE_CACHE_FOLDER_NAME, ZIP_CACHE_FOLDER_NAME, AI_MODELS_FOLDER_NAME]]
             for dirname in dirnames:
                 full_path = os.path.normpath(os.path.join(dirpath, dirname)).replace('\\', '/')
                 relative_path = os.path.relpath(full_path, BASE_OUTPUT_PATH).replace('\\', '/')
@@ -2210,7 +2376,8 @@ def get_dynamic_folder_config(force_refresh=False):
                 'mtime': folder_data['mtime'],
                 'is_watched': is_watched_folder,
                 'is_explicitly_watched': is_explicitly_watched,
-                'is_mount': is_mount
+                'is_mount': is_mount,
+                'is_hidden': folder_data['display_name'] == '.collection_notes'
             }
     except FileNotFoundError:
         print(f"WARNING: The base directory '{BASE_OUTPUT_PATH}' was not found.")
@@ -2241,15 +2408,15 @@ def background_watcher_task():
                         folder_path = row['path'] 
                         is_recursive = row['recursive']
                         
-                        valid_exts = {'.png','.jpg','.jpeg','.webp','.gif','.mp4','.mov','.avi','.webm'}
+                        valid_exts = {'.png','.jpg','.jpeg','.webp','.gif','.mp4','.mov','.avi','.webm','.txt','.md'}
                         EXCLUDED = {'.thumbnails_cache', '.sqlite_cache', '.zip_downloads', '.AImodels', 'venv', 'venv-ai', '.git'}
                         
                         files_to_check = []
 
                         if os.path.isdir(folder_path):
                             if is_recursive:
-                                for root, dirs, files in os.walk(folder_path, topdown=True):
-                                    dirs[:] = [d for d in dirs if not d.startswith('.') and d not in EXCLUDED]
+                                for root, dirs, files in os.walk(folder_path, topdown=True, followlinks=True):
+                                    dirs[:] = [d for d in dirs if (not d.startswith('.') or d == '.collection_notes') and d not in EXCLUDED]
                                     for f in files:
                                         if os.path.splitext(f)[1].lower() in valid_exts:
                                             files_to_check.append(os.path.join(root, f))
@@ -2341,7 +2508,7 @@ def full_sync_database(conn):
     valid_extensions = {
         '.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif', '.webp', '.gif',  # Images
         '.mp4', '.mov', '.webm', '.mkv', '.avi', '.m4v', '.wmv', '.flv', '.mts', '.ts', # Videos
-        '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.aac' # Audio
+        '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.aac', '.txt', '.md' # Audio & Docs
     }
 
     for folder_data in all_folders.values():
@@ -2403,8 +2570,8 @@ def full_sync_database(conn):
             for i in range(0, len(results), BATCH_SIZE):
                 batch = results[i:i + BATCH_SIZE]
                 conn.executemany("""
-                    INSERT INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned, workflow_files, workflow_prompt) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned, workflow_files, workflow_prompt, workflow_hash, prompt_hash) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(id) DO UPDATE SET
                         path = excluded.path,
                         name = excluded.name,
@@ -2416,6 +2583,8 @@ def full_sync_database(conn):
                         last_scanned = excluded.last_scanned,
                         workflow_files = excluded.workflow_files,
                         workflow_prompt = excluded.workflow_prompt,
+                        workflow_hash = excluded.workflow_hash,
+                        prompt_hash = excluded.prompt_hash,
                         
                         -- CONDITIONAL LOGIC:
                         is_favorite = CASE 
@@ -2481,7 +2650,21 @@ def full_sync_database(conn):
         if protected_count > 0:
             print(f"{Colors.YELLOW}PROTECTION ACTIVE: Skipped deletion of {protected_count} files because their source drive appears offline.{Colors.RESET}")
 
-        # 3. Proceed with safe deletion
+        # 3. Proceed with safe deletion (protecting collection notes from being purged)
+        if safe_to_delete:
+            notes_dir_smart = os.path.normpath(os.path.join(BASE_SMARTGALLERY_PATH, '.collection_notes')).lower()
+            notes_dir_out = os.path.normpath(os.path.join(BASE_OUTPUT_PATH, '.collection_notes')).lower()
+            
+            real_to_delete = []
+            for p in safe_to_delete:
+                p_norm = os.path.normpath(p).lower()
+                if p_norm.startswith(notes_dir_smart) or p_norm.startswith(notes_dir_out):
+                    if not os.path.exists(p):
+                        real_to_delete.append(p)
+                else:
+                    real_to_delete.append(p)
+            safe_to_delete = real_to_delete
+
         if safe_to_delete:
             print(f"INFO: Removing {len(safe_to_delete)} obsolete file entries from the database...")
             
@@ -2501,7 +2684,7 @@ def sync_folder_on_demand(folder_path):
     
     try:
         with get_db_connection() as conn:
-            disk_files, valid_extensions = {}, {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.mp4', '.mkv', '.webm', '.mov', '.avi', '.mp3', '.wav', '.ogg', '.flac'}
+            disk_files, valid_extensions = {}, {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.mp4', '.mkv', '.webm', '.mov', '.avi', '.mp3', '.wav', '.ogg', '.flac', '.txt', '.md'}
             if os.path.isdir(folder_path):
                 for name in os.listdir(folder_path):
                     filepath = os.path.join(folder_path, name)
@@ -2555,8 +2738,8 @@ def sync_folder_on_demand(folder_path):
 
                 if data_to_upsert:
                     conn.executemany("""
-                        INSERT INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned, workflow_files, workflow_prompt) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned, workflow_files, workflow_prompt, workflow_hash, prompt_hash) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON CONFLICT(id) DO UPDATE SET
                             path = excluded.path,
                             name = excluded.name,
@@ -2568,6 +2751,8 @@ def sync_folder_on_demand(folder_path):
                             last_scanned = excluded.last_scanned,
                             workflow_files = excluded.workflow_files,
                             workflow_prompt = excluded.workflow_prompt,
+                            workflow_hash = excluded.workflow_hash,
+                            prompt_hash = excluded.prompt_hash,
                         
                             -- CONDITIONAL LOGIC:
                             is_favorite = CASE 
@@ -2618,7 +2803,7 @@ def scan_folder_and_extract_options(folder_path, recursive=False):
         
         if recursive:
             # Recursive scan using os.walk
-            for root, dirs, files in os.walk(folder_path):
+            for root, dirs, files in os.walk(folder_path, followlinks=True):
                 # Filter out hidden/protected folders in-place
                 dirs[:] = [d for d in dirs if not d.startswith('.') and d not in [THUMBNAIL_CACHE_FOLDER_NAME, SQLITE_CACHE_FOLDER_NAME, ZIP_CACHE_FOLDER_NAME, AI_MODELS_FOLDER_NAME]]
                 for filename in files:
@@ -2834,17 +3019,35 @@ def initialize_gallery():
     os.makedirs(THUMBNAIL_CACHE_DIR, exist_ok=True)
     os.makedirs(SQLITE_CACHE_DIR, exist_ok=True)
     os.makedirs(CLEAN_CACHE_DIR, exist_ok=True)
+    os.makedirs(os.path.join(BASE_SMARTGALLERY_PATH, '.collection_notes'), exist_ok=True)
     os.makedirs(IMPORTED_WORKFLOWS_DIR, exist_ok=True)
     
     with get_db_connection() as conn:
         try:
             init_db(conn) 
+            # Auto-migrate collection notes paths if directory moved to BASE_SMARTGALLERY_PATH
+            try:
+                old_notes_prefix = os.path.join(BASE_OUTPUT_PATH, '.collection_notes')
+                new_notes_prefix = os.path.join(BASE_SMARTGALLERY_PATH, '.collection_notes')
+                if old_notes_prefix != new_notes_prefix:
+                    rows = conn.execute("SELECT id, path FROM files WHERE path LIKE ?", (old_notes_prefix + '%',)).fetchall()
+                    for r in rows:
+                        old_p = r['path']
+                        new_p = old_p.replace(old_notes_prefix, new_notes_prefix, 1)
+                        new_id = hashlib.md5(new_p.encode()).hexdigest()
+                        conn.execute("UPDATE files SET id = ?, path = ? WHERE id = ?", (new_id, new_p, r['id']))
+                        conn.execute("UPDATE collection_files SET file_id = ? WHERE file_id = ?", (new_id, r['id']))
+                    conn.commit()
+            except Exception as e:
+                print(f"Notes path migration notice: {e}")
             # Cleanup invalid watched folders before full sync
             if ENABLE_AI_SEARCH:
                 cleanup_invalid_watched_folders(conn)
             # Force full sync on every startup to clean external deletions
             print(f"{Colors.BLUE}INFO: Performing startup consistency check...{Colors.RESET}")
             full_sync_database(conn)
+            check_and_update_workflow_hashes(conn)
+            backfill_audio_durations(conn)
             ensure_admin_user(conn)
             
             # Pre-generate clean files for Exhibition Mode (safe cross-platform call)
@@ -2898,7 +3101,9 @@ def get_filter_options_from_db(conn, scope, folder_path=None, recursive=False):
                 # 1. Extensions
                 _, ext = os.path.splitext(f_name)
                 if ext: 
-                    extensions.add(ext.lstrip('.').lower())
+                    ext_clean = ext.lstrip('.').lower()
+                    if ext_clean not in ['txt', 'md']:
+                        extensions.add(ext_clean)
                 
                 # 2. Prefixes
                 if not prefix_limit_reached and '_' in f_name:
@@ -3067,6 +3272,11 @@ def strip_media_metadata(input_path, output_path, file_type):
                 else:
                     # Static image: Save pixel data only, explicitly stripping EXIF/XMP
                     img.save(output_path, img.format, optimize=True, exif=b"", xmp=b"")
+            return True
+
+        # --- CASE C: DOCUMENTS (Bypass stripping, just copy safely) ---
+        elif file_type == 'document' or input_path.lower().endswith(('.txt', '.md')):
+            shutil.copy2(input_path, output_path)
             return True
 
         # --- CASE B: REAL VIDEOS & AUDIO (MP4, MOV, MKV, MP3, WAV...) ---
@@ -3301,14 +3511,69 @@ def sync_status(folder_key):
 def api_search_options():
     scope = request.args.get('scope', 'local')
     folder_key = request.args.get('folder_key', '_root_')
-    is_rec = request.args.get('recursive', 'false').lower() == 'true' # Added
+    is_rec = request.args.get('recursive', 'false').lower() == 'true'
     
-    folders = get_dynamic_folder_config()
-    folder_path = folders.get(folder_key, {}).get('path', BASE_OUTPUT_PATH)
-    
+    exts, pfxs, limit_reached = [], [], False
+    user_role = session.get('role', 'GUEST')
+    safe_uid = str(session.get('user_id', '')).replace("'", "''")
+    is_local_admin = (not FORCE_LOGIN and not IS_EXHIBITION_MODE)
+    is_privileged = is_local_admin or user_role in ['ADMIN', 'MANAGER', 'STAFF']
+
     with get_db_connection() as conn:
-        # Now passing the recursive flag to the options extractor
-        exts, pfxs, limit_reached = get_filter_options_from_db(conn, scope, folder_path, recursive=is_rec)
+        if folder_key.startswith('collection_') or IS_EXHIBITION_MODE:
+            coll_id_str = folder_key.replace('collection_', '') if folder_key.startswith('collection_') else 'all'
+            if scope == 'global':
+                coll_id_str = 'all'
+
+            is_all_mode = (coll_id_str == 'all')
+            ext_query = "SELECT DISTINCT f.name FROM files f JOIN collection_files cf ON f.id = cf.file_id"
+            if not is_all_mode and coll_id_str.isdigit():
+                coll_id_int = int(coll_id_str)
+                if is_rec:
+                    sub_query = f"""
+                        WITH RECURSIVE children AS (
+                            SELECT id, is_public, shared_users FROM collections WHERE id = {coll_id_int}
+                            UNION ALL
+                            SELECT c.id, c.is_public, c.shared_users FROM collections c INNER JOIN children p ON c.parent_id = p.id
+                        )
+                        SELECT id FROM children
+                    """
+                    if IS_EXHIBITION_MODE and not is_privileged:
+                        sub_query += f" WHERE (is_public = 1 OR (',' || shared_users || ',') LIKE '%,{safe_uid},%')"
+                    ext_query += f" WHERE cf.collection_id IN ({sub_query})"
+                else:
+                    ext_query += f" WHERE cf.collection_id = {coll_id_int}"
+            elif is_all_mode:
+                sub_query = "SELECT id FROM collections WHERE type='user_album'"
+                if IS_EXHIBITION_MODE:
+                    if is_privileged:
+                        sub_query += " AND (is_public = 1 OR shared_users != '')"
+                    else:
+                        sub_query += f" AND (is_public = 1 OR (',' || shared_users || ',') LIKE '%,{safe_uid},%')"
+                ext_query += f" WHERE cf.collection_id IN ({sub_query})"
+            
+            extensions = set()
+            prefixes = set()
+            ext_rows = conn.execute(ext_query).fetchall()
+            for r in ext_rows:
+                fname = r['name']
+                if '.' in fname:
+                    ext_clean = fname.split('.')[-1].lower()
+                    if ext_clean not in ['txt', 'md']:
+                        extensions.add(ext_clean)
+                if not limit_reached and '_' in fname:
+                    pfx = fname.split('_')[0]
+                    if pfx:
+                        prefixes.add(pfx)
+                        if len(prefixes) > MAX_PREFIX_DROPDOWN_ITEMS:
+                            limit_reached = True
+                            prefixes.clear()
+            exts = sorted(list(extensions))
+            pfxs = sorted(list(prefixes)) if not limit_reached else []
+        else:
+            folders = get_dynamic_folder_config()
+            folder_path = folders.get(folder_key, {}).get('path', BASE_OUTPUT_PATH)
+            exts, pfxs, limit_reached = get_filter_options_from_db(conn, scope, folder_path, recursive=is_rec)
         
     return jsonify({'extensions': exts, 'prefixes': pfxs, 'prefix_limit_reached': limit_reached})
 
@@ -3572,8 +3837,8 @@ def ai_indexing_add_folder():
         files_found = []
         try:
             if recursive:
-                for r, d, f in os.walk(raw_path, topdown=True, followlinks=False):
-                    d[:] = [x for x in d if not x.startswith('.') and x not in exc]
+                for r, d, f in os.walk(raw_path, topdown=True, followlinks=True):
+                    d[:] = [x for x in d if (not x.startswith('.') or x == '.collection_notes') and x not in exc]
                     for x in f:
                         if os.path.splitext(x)[1].lower() in valid: files_found.append(os.path.join(r, x))
             else:
@@ -3773,6 +4038,109 @@ def ai_indexing_control():
         conn.commit()
     return jsonify({'status': 'success', 'message': f'Queue {action}d'})
     
+
+def process_clustering(current_files, cluster_mode, cluster_sort, cluster_target_id, cluster_scope, active_filters_count=0):
+    if not cluster_mode:
+        return current_files
+
+    with get_db_connection() as conn_check:
+        unhashed_cnt = conn_check.execute("SELECT COUNT(*) FROM files WHERE has_workflow = 1 AND (workflow_hash IS NULL OR workflow_hash = '')").fetchone()[0]
+        if unhashed_cnt > 0:
+            backfill_unhashed_workflows(conn_check)
+
+    result_files = []
+
+    if cluster_scope == 'global':
+        with get_db_connection() as conn_target:
+            safe_uuid = str(session.get('user_id', '')).replace("'", "''")
+            user_role = session.get('role', 'GUEST')
+            is_local_admin = (not FORCE_LOGIN and not IS_EXHIBITION_MODE)
+            
+            if is_local_admin or user_role in ['ADMIN', 'MANAGER', 'STAFF']:
+                comment_sub_filter = ""
+            else:
+                comment_sub_filter = f" AND (target_audience = 'public' OR target_audience = 'user:{safe_uuid}' OR client_uuid = '{safe_uuid}')"
+
+            if cluster_target_id:
+                hash_col = 'workflow_hash' if cluster_mode == 'workflow' else ('prompt_hash' if cluster_mode == 'prompt' else 'workflow_hash')
+                target_row = conn_target.execute(f"SELECT workflow_hash, prompt_hash FROM files WHERE id = ? AND has_workflow = 1", (cluster_target_id,)).fetchone()
+                target_wf = target_row[0] if target_row else None
+                target_pr = target_row[1] if target_row else None
+
+                where_clause = ""
+                params_t = ()
+                if cluster_mode == 'combo' and target_wf and target_pr:
+                    where_clause = "f.workflow_hash = ? AND f.prompt_hash = ?"
+                    params_t = (target_wf, target_pr)
+                elif cluster_mode == 'prompt' and target_pr:
+                    where_clause = "f.prompt_hash = ?"
+                    params_t = (target_pr,)
+                elif target_wf:
+                    where_clause = "f.workflow_hash = ?"
+                    params_t = (target_wf,)
+
+                if where_clause:
+                    rows = conn_target.execute(f"""
+                        SELECT DISTINCT f.*,
+                        (SELECT c.color FROM collections c JOIN collection_files cf ON c.id = cf.collection_id WHERE cf.file_id = f.id AND c.type = 'system_flag' LIMIT 1) as status_color,
+                        (SELECT AVG(rating) FROM file_ratings WHERE file_id = f.id) as avg_rating,
+                        (SELECT COUNT(*) FROM file_ratings WHERE file_id = f.id) as vote_count,
+                        (SELECT rating FROM file_ratings WHERE file_id = f.id AND client_uuid = '{safe_uuid}') as my_rating,
+                        (SELECT COUNT(*) FROM file_comments WHERE file_id = f.id {comment_sub_filter}) as comment_count,
+                        (SELECT MAX(created_at) FROM file_comments WHERE file_id = f.id {comment_sub_filter}) as latest_comment_time
+                        FROM files f
+                        WHERE f.has_workflow = 1 AND {where_clause}
+                    """, params_t).fetchall()
+                    result_files = [dict(r) for r in rows]
+                else:
+                    result_files = []
+            else:
+                rows = conn_target.execute(f"""
+                    SELECT DISTINCT f.*,
+                    (SELECT c.color FROM collections c JOIN collection_files cf ON c.id = cf.collection_id WHERE cf.file_id = f.id AND c.type = 'system_flag' LIMIT 1) as status_color,
+                    (SELECT AVG(rating) FROM file_ratings WHERE file_id = f.id) as avg_rating,
+                    (SELECT COUNT(*) FROM file_ratings WHERE file_id = f.id) as vote_count,
+                    (SELECT rating FROM file_ratings WHERE file_id = f.id AND client_uuid = '{safe_uuid}') as my_rating,
+                    (SELECT COUNT(*) FROM file_comments WHERE file_id = f.id {comment_sub_filter}) as comment_count,
+                    (SELECT MAX(created_at) FROM file_comments WHERE file_id = f.id {comment_sub_filter}) as latest_comment_time
+                    FROM files f
+                    WHERE f.has_workflow = 1 AND f.workflow_hash IS NOT NULL AND f.workflow_hash != ''
+                """).fetchall()
+                result_files = [dict(r) for r in rows]
+
+            for d in result_files:
+                d.pop('ai_embedding', None)
+    else:
+        result_files = [dict(f) for f in current_files]
+        if cluster_target_id:
+            with get_db_connection() as conn_t:
+                t_row = conn_t.execute("SELECT workflow_hash, prompt_hash FROM files WHERE id = ? AND has_workflow = 1", (cluster_target_id,)).fetchone()
+                if t_row:
+                    t_wf, t_pr = t_row[0], t_row[1]
+                    if cluster_mode == 'combo':
+                        result_files = [f for f in result_files if f.get('workflow_hash') == t_wf and f.get('prompt_hash') == t_pr]
+                    elif cluster_mode == 'prompt':
+                        result_files = [f for f in result_files if f.get('prompt_hash') == t_pr]
+                    else:
+                        result_files = [f for f in result_files if f.get('workflow_hash') == t_wf]
+                else:
+                    result_files = []
+
+    result_files = [
+        f for f in result_files 
+        if f.get('has_workflow') and f.get('workflow_hash') and str(f.get('workflow_hash')).strip() != ''
+    ]
+
+    primary_hash_key = 'prompt_hash' if cluster_mode == 'prompt' else 'workflow_hash'
+
+    def get_inner_sort_key(item):
+        if cluster_sort == 'date_asc': return item.get('mtime') or 0
+        elif cluster_sort == 'rating_desc': return -(item.get('avg_rating') or 0)
+        else: return -(item.get('mtime') or 0)
+
+    result_files.sort(key=lambda x: (x.get(primary_hash_key) or '', x.get('workflow_hash') or '', get_inner_sort_key(x)))
+    return result_files
+
 @app.route('/galleryout/view/<string:folder_key>')
 def gallery_view(folder_key):
     # 1. SECURITY LOCKDOWN CHECK
@@ -3959,7 +4327,7 @@ def gallery_view(folder_key):
     # --- PATH B: STANDARD VIEW / SEARCH ---
     if not is_ai_search and not is_omniquery:
         with get_db_connection() as conn:
-            conditions, params = [], []
+            conditions, params = ["f.type != 'document' AND LOWER(f.name) NOT LIKE '%.txt' AND LOWER(f.name) NOT LIKE '%.md'"], []
 
             if search_term:
                 conditions.append("name LIKE ?")
@@ -3986,8 +4354,14 @@ def gallery_view(folder_key):
                             cond_str = f"{col_expr} {'NOT LIKE' if is_not else 'LIKE'} ?"
                             param_val = f"% {normalize_smart_path(clean_s)} %"
                         else:
-                            cond_str = f"workflow_files {'NOT LIKE' if is_not else 'LIKE'} ?"
-                            param_val = f"%{normalize_smart_path(s)}%"
+                            norm_s = _normalize_fuzzy_string(s) if '_normalize_fuzzy_string' in globals() else normalize_smart_path(s)
+                            if len(norm_s) >= 3:
+                                col_expr = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LOWER(workflow_files), ' ', ''), '.', ''), '_', ''), '-', ''), '/', '')"
+                                cond_str = f"{col_expr} {'NOT LIKE' if is_not else 'LIKE'} ?"
+                                param_val = f"%{norm_s}%"
+                            else:
+                                cond_str = f"workflow_files {'NOT LIKE' if is_not else 'LIKE'} ?"
+                                param_val = f"%{normalize_smart_path(s)}%"
                             
                         if is_not:
                             not_conds.append((cond_str, param_val))
@@ -4087,10 +4461,18 @@ def gallery_view(folder_key):
                 conditions.append("(ai_caption IS NULL OR ai_caption = '')")
 
             if start_date:
-                try: conditions.append("mtime >= ?"); params.append(datetime.strptime(start_date, '%Y-%m-%d').timestamp())
+                try: 
+                    ts = datetime.strptime(start_date, '%Y-%m-%d').timestamp()
+                    conditions.append("mtime >= ?")
+                    params.append(ts)
+                    active_filters_count += 1
                 except: pass
             if end_date:
-                try: conditions.append("mtime <= ?"); params.append(datetime.strptime(end_date, '%Y-%m-%d').timestamp() + 86399)
+                try: 
+                    ts = datetime.strptime(end_date, '%Y-%m-%d').timestamp() + 86399
+                    conditions.append("mtime <= ?")
+                    params.append(ts)
+                    active_filters_count += 1
                 except: pass
 
             if selected_rating_ranges:
@@ -4264,8 +4646,8 @@ def gallery_view(folder_key):
     if wf_files: active_filters_count += 1
     if wf_prompt: active_filters_count += 1
     if request.args.get('comment_search', '').strip(): active_filters_count += 1
-    if start_date: active_filters_count += 1
-    if end_date: active_filters_count += 1
+    
+    
     if selected_exts: active_filters_count += 1
     if selected_prefixes: active_filters_count += 1
     if selected_raters: active_filters_count += 1
@@ -4274,6 +4656,15 @@ def gallery_view(folder_key):
     if request.args.get('no_workflow') == 'true': active_filters_count += 1
     if ENABLE_AI_SEARCH and request.args.get('no_ai_caption') == 'true': active_filters_count += 1
     if is_global_search or is_recursive: active_filters_count += 1
+
+    
+    # --- CLUSTER MODE OVERRIDE LOGIC & SCOPE SEARCH ---
+    cluster_mode = request.args.get('cluster_mode')
+    cluster_sort = request.args.get('cluster_sort', 'date_desc')
+    cluster_target_id = request.args.get('cluster_target_id')
+    cluster_scope = request.args.get('cluster_scope', 'global')
+    
+    gallery_view_cache = process_clustering(gallery_view_cache, cluster_mode, cluster_sort, cluster_target_id, cluster_scope, active_filters_count)
 
     total_folder_files, _, _ = scan_folder_and_extract_options(folder_path, recursive=is_recursive)
     total_db_files = 0 
@@ -4350,7 +4741,7 @@ def gallery_view(folder_key):
                            session_username=session.get('username', 'Guest'), 
                            session_user_id=session.get('user_id'),
                            session_role=session.get('role'), 
-                           session_full_name=session.get('full_name'))
+                           session_full_name=session.get('full_name'), has_notes=False, note_files=[])
                            
 @app.route('/galleryout/upload', methods=['POST'])
 @management_api_only
@@ -4362,7 +4753,7 @@ def upload_files():
     destination_path = folders[folder_key]['path']
     if 'files' not in request.files: return jsonify({'status': 'error', 'message': 'No files were uploaded.'}), 400
     uploaded_files, errors, success_count = request.files.getlist('files'), {}, 0
-    ALLOWED_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif', '.webp', '.gif', '.mp4', '.mov', '.webm', '.mkv', '.avi', '.m4v', '.wmv', '.flv', '.mts', '.ts', '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.aac', '.json', '.txt'}
+    ALLOWED_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif', '.webp', '.gif', '.mp4', '.mov', '.webm', '.mkv', '.avi', '.m4v', '.wmv', '.flv', '.mts', '.ts', '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.aac', '.json', '.txt', '.md'}
     for file in uploaded_files:
         if file and file.filename:
             filename = secure_filename(file.filename)
@@ -4418,8 +4809,8 @@ def background_rescan_worker(job_id, files_to_process):
 
             if results:
                 conn.executemany("""
-                    INSERT INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned, workflow_files, workflow_prompt) 
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned, workflow_files, workflow_prompt, workflow_hash, prompt_hash) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(id) DO UPDATE SET
                         path = excluded.path,
                         name = excluded.name,
@@ -4431,6 +4822,8 @@ def background_rescan_worker(job_id, files_to_process):
                         last_scanned = excluded.last_scanned,
                         workflow_files = excluded.workflow_files,
                         workflow_prompt = excluded.workflow_prompt,
+                        workflow_hash = excluded.workflow_hash,
+                        prompt_hash = excluded.prompt_hash,
                         is_favorite = CASE WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN 0 ELSE files.is_favorite END,
                         ai_caption = CASE WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN NULL ELSE files.ai_caption END,
                         ai_embedding = CASE WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN NULL ELSE files.ai_embedding END,
@@ -5022,12 +5415,16 @@ def delete_folder(folder_key):
 @app.route('/galleryout/api/current_view_ids')
 def get_current_view_ids():
     """Returns all file IDs currently in the global search cache."""
+    if (IS_EXHIBITION_MODE or FORCE_LOGIN) and not session.get('user_id'):
+        return jsonify({'status': 'error', 'message': 'Authentication required'}), 401
     global gallery_view_cache
     ids = [f['id'] for f in gallery_view_cache]
     return jsonify({'status': 'success', 'ids': ids})
 
 @app.route('/galleryout/load_more')
 def load_more():
+    if (IS_EXHIBITION_MODE or FORCE_LOGIN) and not session.get('user_id'):
+        return jsonify({'files': []}), 401
     offset = request.args.get('offset', 0, type=int)
     if offset >= len(gallery_view_cache): return jsonify(files=[])
     return jsonify(files=gallery_view_cache[offset:offset + PAGE_SIZE])
@@ -5085,7 +5482,8 @@ def move_batch():
                 query_fetch = """
                     SELECT 
                         path, name, size, has_workflow, is_favorite, type, duration, dimensions,
-                        ai_last_scanned, ai_caption, ai_embedding, ai_error, workflow_files, workflow_prompt 
+                        ai_last_scanned, ai_caption, ai_embedding, ai_error, workflow_files, workflow_prompt,
+                        workflow_hash, prompt_hash
                     FROM files WHERE id = ?
                 """
                 file_info = conn.execute(query_fetch, (file_id,)).fetchone()
@@ -5110,7 +5508,9 @@ def move_batch():
                     'ai_embedding': file_info['ai_embedding'],
                     'ai_error': file_info['ai_error'],
                     'workflow_files': file_info['workflow_files'],
-                    'workflow_prompt': file_info['workflow_prompt']
+                    'workflow_prompt': file_info['workflow_prompt'],
+                    'workflow_hash': file_info.get('workflow_hash', ''),
+                    'prompt_hash': file_info.get('prompt_hash', '')
                 }
                 
                 # Check Source vs Dest (OS Agnostic comparison)
@@ -5152,7 +5552,8 @@ def move_batch():
                             size = ?, has_workflow = ?, is_favorite = ?, 
                             type = ?, duration = ?, dimensions = ?,
                             ai_last_scanned = ?, ai_caption = ?, ai_embedding = ?, ai_error = ?,
-                            workflow_files = ?, workflow_prompt = ?
+                            workflow_files = ?, workflow_prompt = ?,
+                            workflow_hash = ?, prompt_hash = ?
                         WHERE id = ?
                     """
                     conn.execute(query_merge, (
@@ -5162,6 +5563,7 @@ def move_batch():
                         meta['ai_last_scanned'], meta['ai_caption'], meta['ai_embedding'], meta['ai_error'],
                         meta['workflow_files'], 
                         meta['workflow_prompt'],
+                        meta['workflow_hash'], meta['prompt_hash'],
                         new_id
                     ))
                     conn.execute("DELETE FROM files WHERE id = ?", (file_id,))
@@ -5241,8 +5643,9 @@ def copy_batch():
                     INSERT INTO files (
                         id, path, mtime, name, type, duration, dimensions, has_workflow, 
                         size, is_favorite, last_scanned, workflow_files, workflow_prompt,
-                        ai_last_scanned, ai_caption, ai_embedding, ai_error
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ai_last_scanned, ai_caption, ai_embedding, ai_error,
+                        workflow_hash, prompt_hash
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     new_id, final_dest_path, new_mtime, final_filename, 
                     file_info['type'], file_info['duration'], file_info['dimensions'], 
@@ -5250,7 +5653,8 @@ def copy_batch():
                     is_fav, # User Choice
                     file_info['last_scanned'], 
                     file_info['workflow_files'], file_info['workflow_prompt'],
-                    file_info['ai_last_scanned'], file_info['ai_caption'], file_info['ai_embedding'], file_info['ai_error']
+                    file_info['ai_last_scanned'], file_info['ai_caption'], file_info['ai_embedding'], file_info['ai_error'],
+                    file_info.get('workflow_hash', ''), file_info.get('prompt_hash', '')
                 ))
                 
                 copied_count += 1
@@ -5404,7 +5808,8 @@ def rename_file(file_id):
             query_fetch = """
                 SELECT 
                     path, name, size, has_workflow, is_favorite, type, duration, dimensions,
-                    ai_last_scanned, ai_caption, ai_embedding, ai_error, workflow_files, workflow_prompt  
+                    ai_last_scanned, ai_caption, ai_embedding, ai_error, workflow_files, workflow_prompt,
+                    workflow_hash, prompt_hash
                 FROM files WHERE id = ?
             """
             file_info = conn.execute(query_fetch, (file_id,)).fetchone()
@@ -5428,7 +5833,9 @@ def rename_file(file_id):
                 'ai_embedding': file_info['ai_embedding'],
                 'ai_error': file_info['ai_error'],
                 'workflow_files': file_info['workflow_files'],
-                'workflow_prompt': file_info['workflow_prompt']
+                'workflow_prompt': file_info['workflow_prompt'],
+                'workflow_hash': file_info.get('workflow_hash', ''),
+                'prompt_hash': file_info.get('prompt_hash', '')
             }
             
             # Extension logic
@@ -5461,16 +5868,18 @@ def rename_file(file_id):
                         size = ?, has_workflow = ?, is_favorite = ?, 
                         type = ?, duration = ?, dimensions = ?,
                         ai_last_scanned = ?, ai_caption = ?, ai_embedding = ?, ai_error = ?,
-                        workflow_files = ?, workflow_prompt = ?
+                        workflow_files = ?, workflow_prompt = ?,
+                        workflow_hash = ?, prompt_hash = ?
                     WHERE id = ?
                 """
                 conn.execute(query_merge, (
-                    final_dest_path, final_filename, time.time(),
+                    new_path, final_new_name, time.time(),
                     meta['size'], meta['has_workflow'], meta['is_favorite'],
                     meta['type'], meta['duration'], meta['dimensions'],
                     meta['ai_last_scanned'], meta['ai_caption'], meta['ai_embedding'], meta['ai_error'],
                     meta['workflow_files'], 
                     meta['workflow_prompt'],
+                    meta['workflow_hash'], meta['prompt_hash'],
                     new_id
                 ))
                 conn.execute("DELETE FROM files WHERE id = ?", (file_id,))
@@ -5753,6 +6162,8 @@ def serve_thumbnail(file_id):
 # --- STORYBOARD (GRID SYSTEM) - FAST + SMART CORRUPTION DETECTION ---
 @app.route('/galleryout/storyboard/<string:file_id>')
 def get_storyboard(file_id):
+    if not is_file_accessible(file_id):
+        abort(403, description="Access Denied.")
     # 1. Validation
     has_ffmpeg = FFPROBE_EXECUTABLE_PATH is not None
     
@@ -6262,6 +6673,8 @@ def check_metadata(file_id):
     Lightweight endpoint to check real-time status of metadata.
     Now includes Real Path resolution for mounted folders.
     """
+    if not is_file_accessible(file_id):
+        return jsonify({'status': 'error', 'message': 'Access Denied'}), 403
     try:
         with get_db_connection() as conn:
             # Added 'path' to selection to resolve symlinks
@@ -6399,12 +6812,15 @@ def get_descendant_file_counts(conn, countable_collection_ids):
 
 @app.route('/galleryout/api/collections', methods=['GET'])
 def get_collections():
+    if (IS_EXHIBITION_MODE or FORCE_LOGIN) and not session.get('user_id'):
+        return jsonify({'status': 'error', 'message': 'Authentication required'}), 401
     user_id = str(session.get('user_id', '')).strip()
     user_role = session.get('role', 'GUEST')
     with get_db_connection() as conn:
         rows = conn.execute("""
             SELECT c.*,
-                   (SELECT COUNT(*) FROM collection_files cf WHERE cf.collection_id = c.id) AS file_count
+                   (SELECT COUNT(*) FROM collection_files cf WHERE cf.collection_id = c.id) AS file_count,
+                   (SELECT COUNT(*) FROM collection_files cf JOIN files f ON cf.file_id = f.id WHERE cf.collection_id = c.id AND (f.type = 'document' OR LOWER(f.name) LIKE '%.txt' OR LOWER(f.name) LIKE '%.md')) AS note_count
             FROM collections c
             ORDER BY c.name
         """).fetchall()
@@ -6504,16 +6920,26 @@ def get_collections():
 @app.route('/galleryout/api/sidebar_state')
 def get_sidebar_state():
     """Returns the current state of folders and collections for real-time sync."""
+    if (IS_EXHIBITION_MODE or FORCE_LOGIN) and not session.get('user_id'):
+        return jsonify({'status': 'error', 'message': 'Authentication required'}), 401
     folders = get_dynamic_folder_config(force_refresh=True)
     with get_db_connection() as conn:
         flags = conn.execute("SELECT * FROM collections WHERE type='system_flag' ORDER BY id").fetchall()
         if IS_EXHIBITION_MODE:
-            albums = conn.execute("SELECT * FROM collections WHERE type='user_album' ORDER BY name").fetchall()
+            albums = conn.execute("""
+                SELECT c.*,
+                       (SELECT COUNT(*) FROM collection_files cf WHERE cf.collection_id = c.id) AS file_count,
+                       (SELECT COUNT(*) FROM collection_files cf JOIN files f ON cf.file_id = f.id WHERE cf.collection_id = c.id AND (f.type = 'document' OR LOWER(f.name) LIKE '%.txt' OR LOWER(f.name) LIKE '%.md')) AS note_count
+                FROM collections c
+                WHERE c.type='user_album'
+                ORDER BY c.name
+            """).fetchall()
             all_count = None
         else:
             albums = conn.execute("""
                 SELECT c.*,
-                       (SELECT COUNT(*) FROM collection_files cf WHERE cf.collection_id = c.id) AS file_count
+                       (SELECT COUNT(*) FROM collection_files cf WHERE cf.collection_id = c.id) AS file_count,
+                       (SELECT COUNT(*) FROM collection_files cf JOIN files f ON cf.file_id = f.id WHERE cf.collection_id = c.id AND (f.type = 'document' OR LOWER(f.name) LIKE '%.txt' OR LOWER(f.name) LIKE '%.md')) AS note_count
                 FROM collections c
                 WHERE c.type='user_album'
                 ORDER BY c.name
@@ -6677,9 +7103,159 @@ def share_collection():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+@app.route('/galleryout/api/file_full_details/<string:file_id>')
+def get_file_full_details(file_id):
+    if not is_file_accessible(file_id):
+        return jsonify({'status': 'error', 'message': 'Access Denied'}), 403
+
+    try:
+        with get_db_connection() as conn:
+            row = conn.execute("""
+                SELECT f.*,
+                (SELECT c.color FROM collections c JOIN collection_files cf ON c.id = cf.collection_id WHERE cf.file_id = f.id AND c.type = 'system_flag' LIMIT 1) as status_color,
+                (SELECT c.name FROM collections c JOIN collection_files cf ON c.id = cf.collection_id WHERE cf.file_id = f.id AND c.type = 'system_flag' LIMIT 1) as status_name,
+                (SELECT AVG(rating) FROM file_ratings WHERE file_id = f.id) as avg_rating,
+                (SELECT COUNT(*) FROM file_ratings WHERE file_id = f.id) as vote_count,
+                (SELECT COUNT(*) FROM file_comments WHERE file_id = f.id) as comment_count
+                FROM files f WHERE f.id = ?
+            """, (file_id,)).fetchone()
+
+            if not row:
+                return jsonify({'status': 'error', 'message': 'File not found'}), 404
+
+            file_data = dict(row)
+            if 'ai_embedding' in file_data:
+                del file_data['ai_embedding']
+
+            if should_strip_metadata():
+                file_data['has_workflow'] = 0
+
+            generation_metadata_text = None
+            if not should_strip_metadata() and file_data.get('type') in ('image', 'animated_image'):
+                raw_params = extract_a1111_parameters(file_data['path'])
+                if raw_params:
+                    generation_metadata_text = parse_webui_metadata(raw_params)
+            file_data['generation_metadata'] = generation_metadata_text
+
+            folders_config = get_dynamic_folder_config()
+            abs_path = file_data['path']
+            real_path = os.path.realpath(abs_path).replace('\\', '/')
+            is_link = (os.path.normpath(abs_path).lower() != os.path.normpath(real_path).lower())
+
+            parent_dir = os.path.dirname(abs_path)
+            folder_hierarchy = []
+            
+            curr_key = None
+            for fk, finfo in folders_config.items():
+                if os.path.normpath(finfo['path']).lower() == os.path.normpath(parent_dir).lower():
+                    curr_key = fk
+                    break
+            
+            if curr_key:
+                chain = []
+                k = curr_key
+                while k and k in folders_config:
+                    chain.append(folders_config[k]['display_name'])
+                    k = folders_config[k].get('parent')
+                chain.reverse()
+                folder_hierarchy = chain
+            else:
+                try:
+                    rel_dir = os.path.relpath(parent_dir, BASE_OUTPUT_PATH).replace('\\', '/')
+                    if rel_dir and rel_dir != '.':
+                        folder_hierarchy = ['Main'] + [p for p in rel_dir.split('/') if p]
+                    else:
+                        folder_hierarchy = ['Main']
+                except Exception:
+                    folder_hierarchy = [os.path.basename(parent_dir)]
+
+            coll_rows = conn.execute("""
+                SELECT c.id, c.name, c.color, c.type, c.parent_id, c.is_public
+                FROM collections c
+                JOIN collection_files cf ON c.id = cf.collection_id
+                WHERE cf.file_id = ? AND c.type = 'user_album'
+                ORDER BY c.name
+            """, (file_id,)).fetchall()
+
+            all_colls = conn.execute("SELECT id, name, parent_id FROM collections WHERE type = 'user_album'").fetchall()
+            coll_map = {c['id']: c for c in all_colls}
+
+            collections_list = []
+            for cr in coll_rows:
+                cid = cr['id']
+                chain = []
+                curr_cid = cid
+                visited = set()
+                while curr_cid and curr_cid in coll_map and curr_cid not in visited:
+                    visited.add(curr_cid)
+                    chain.append(coll_map[curr_cid]['name'])
+                    curr_cid = coll_map[curr_cid]['parent_id']
+                chain.reverse()
+
+                collections_list.append({
+                    'id': cid,
+                    'name': cr['name'],
+                    'color': cr['color'],
+                    'is_public': bool(cr['is_public']),
+                    'hierarchy': chain
+                })
+
+            cluster_wf_count = 0
+            cluster_pr_count = 0
+            nodes_pipeline = []
+            models_used = []
+
+            if file_data.get('has_workflow'):
+                wf_h = file_data.get('workflow_hash')
+                pr_h = file_data.get('prompt_hash')
+                if wf_h:
+                    cluster_wf_count = conn.execute("SELECT COUNT(*) FROM files WHERE workflow_hash = ? AND has_workflow = 1", (wf_h,)).fetchone()[0]
+                if pr_h:
+                    cluster_pr_count = conn.execute("SELECT COUNT(*) FROM files WHERE prompt_hash = ? AND has_workflow = 1", (pr_h,)).fetchone()[0]
+
+                wf_json = extract_workflow(abs_path, target_type='ui')
+                if not wf_json:
+                    wf_json = extract_workflow(abs_path, target_type='api')
+                if wf_json:
+                    try:
+                        summary = generate_node_summary(wf_json)
+                        if summary:
+                            for n in summary:
+                                nodes_pipeline.append({
+                                    'id': n.get('id'),
+                                    'type': n.get('type'),
+                                    'category': n.get('category'),
+                                    'color': n.get('color')
+                                })
+                    except Exception: pass
+
+                if file_data.get('workflow_files'):
+                    for item in file_data['workflow_files'].split(' ||| '):
+                        if item.strip():
+                            models_used.append(os.path.basename(item.strip()))
+
+            return jsonify({
+                'status': 'success',
+                'file': file_data,
+                'is_link': is_link,
+                'real_path': real_path if is_link else None,
+                'folder_hierarchy': folder_hierarchy,
+                'collections': collections_list,
+                'cluster_wf_count': cluster_wf_count,
+                'cluster_pr_count': cluster_pr_count,
+                'nodes_pipeline': nodes_pipeline,
+                'models_used': sorted(list(set(models_used)))
+            })
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
 @app.route('/galleryout/api/file_collections/<string:file_id>')
 def get_file_collections(file_id):
     """Returns a list of all collections and status flags associated with a file."""
+    if not is_file_accessible(file_id):
+        return jsonify({'status': 'error', 'message': 'Access Denied'}), 403
     # Check if frontend specifically requested only public collections (Exhibition mode)
     public_only = request.args.get('public_only', 'false').lower() == 'true'
     
@@ -6844,6 +7420,19 @@ def tag_batch():
 @app.route('/galleryout/collection/<coll_id>')
 def collection_view(coll_id):
     global gallery_view_cache
+
+    # AUTHENTICATION CHECK FOR EXHIBITION / FORCE_LOGIN MODES
+    is_management_side = not IS_EXHIBITION_MODE
+    is_logged_in = 'user_id' in session
+    must_authenticate = IS_EXHIBITION_MODE or FORCE_LOGIN
+
+    if must_authenticate and not is_logged_in:
+        if request.headers.get('Accept') == 'application/json':
+            return jsonify({'status': 'error', 'message': 'Authentication required'}), 401
+        return render_template('exhibition_login.html', 
+                               app_version=APP_VERSION, 
+                               enable_guest_login=ENABLE_GUEST_LOGIN if IS_EXHIBITION_MODE else False,
+                               admin_side=is_management_side)
     
     # 1. Handle Virtual "All Categories" vs Specific Collection
     coll_info = None
@@ -6905,8 +7494,10 @@ def collection_view(coll_id):
     req_sort_order = request.args.get('sort_order', 'desc').upper()
     if req_sort_order not in ['ASC', 'DESC']: req_sort_order = 'DESC'
 
+    active_filters_count = 0
+
     # 3. Build Dynamic Query Conditions
-    conditions = []
+    conditions = ["f.id IN (SELECT id FROM files WHERE type != 'document' AND LOWER(name) NOT LIKE '%.txt' AND LOWER(name) NOT LIKE '%.md')"]
     params = []
 
     if is_all_mode:
@@ -6924,17 +7515,71 @@ def collection_view(coll_id):
         
         conditions.append(f"cf.collection_id IN ({sub_query})")
     else:
-        # Standard logic for a specific collection ID
-        conditions.append("cf.collection_id = ?")
-        params.append(int(coll_id))
+        is_recursive = request.args.get('recursive', 'false').lower() == 'true'
+        if is_recursive:
+            active_filters_count += 1
+            user_role = session.get('role', 'GUEST')
+            safe_uid = str(session.get('user_id', '')).replace("'", "''")
+            is_local_admin = (not FORCE_LOGIN and not IS_EXHIBITION_MODE)
+            
+            sub_query = f"""
+                WITH RECURSIVE children AS (
+                    SELECT id, is_public, shared_users FROM collections WHERE id = {int(coll_id)}
+                    UNION ALL
+                    SELECT c.id, c.is_public, c.shared_users FROM collections c INNER JOIN children p ON c.parent_id = p.id
+                )
+                SELECT id FROM children
+            """
+            if IS_EXHIBITION_MODE:
+                if is_local_admin or user_role in ['ADMIN', 'MANAGER', 'STAFF']:
+                    pass # Staff sees all nested
+                else:
+                    sub_query += f" WHERE (is_public = 1 OR (',' || shared_users || ',') LIKE '%,{safe_uid},%')"
+            
+            conditions.append(f"cf.collection_id IN ({sub_query})")
+        else:
+            conditions.append("cf.collection_id = ?")
+            params.append(int(coll_id))
     
     # --- Apply common filters ---
-    active_filters_count = 0
 
     if search_term:
-        conditions.append("f.name LIKE ?")
-        params.append(f"%{search_term}%")
         active_filters_count += 1
+        for kw in [k.strip() for k in search_term.split(',') if k.strip()]:
+            sub_kws = [s.strip() for s in kw.split(';') if s.strip()]
+            if not sub_kws: continue
+            
+            or_conds = []
+            not_conds = []
+            for s in sub_kws:
+                is_not = False
+                if s.startswith('!'):
+                    is_not = True
+                    s = s[1:].strip()
+                if not s: continue
+                
+                if s.startswith('"') and s.endswith('"') and len(s) > 2:
+                    cond_str = f"f.name {'NOT LIKE' if is_not else 'LIKE'} ?"
+                    param_val = f"%{s[1:-1]}%"
+                else:
+                    cond_str = f"f.name {'NOT LIKE' if is_not else 'LIKE'} ?"
+                    param_val = f"%{s}%"
+                    
+                if is_not:
+                    not_conds.append((cond_str, param_val))
+                else:
+                    or_conds.append((cond_str, param_val))
+                    
+            if or_conds:
+                if len(or_conds) > 1:
+                    conditions.append("(" + " OR ".join([c[0] for c in or_conds]) + ")")
+                elif len(or_conds) == 1:
+                    conditions.append(or_conds[0][0])
+                params.extend([c[1] for c in or_conds])
+                
+            for cond, param in not_conds:
+                conditions.append(cond)
+                params.append(param)
     
     if wf_files:
         active_filters_count += 1
@@ -6957,8 +7602,14 @@ def collection_view(coll_id):
                     cond_str = f"{col_expr} {'NOT LIKE' if is_not else 'LIKE'} ?"
                     param_val = f"% {normalize_smart_path(clean_s)} %"
                 else:
-                    cond_str = f"f.workflow_files {'NOT LIKE' if is_not else 'LIKE'} ?"
-                    param_val = f"%{normalize_smart_path(s)}%"
+                    norm_s = _normalize_fuzzy_string(s) if '_normalize_fuzzy_string' in globals() else normalize_smart_path(s)
+                    if len(norm_s) >= 3:
+                        col_expr = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LOWER(f.workflow_files), ' ', ''), '.', ''), '_', ''), '-', ''), '/', '')"
+                        cond_str = f"{col_expr} {'NOT LIKE' if is_not else 'LIKE'} ?"
+                        param_val = f"%{norm_s}%"
+                    else:
+                        cond_str = f"f.workflow_files {'NOT LIKE' if is_not else 'LIKE'} ?"
+                        param_val = f"%{normalize_smart_path(s)}%"
                     
                 if is_not:
                     not_conds.append((cond_str, param_val))
@@ -7070,17 +7721,19 @@ def collection_view(coll_id):
         active_filters_count += 1
 
     if start_date:
-        active_filters_count += 1
         try: 
+            ts = datetime.strptime(start_date, '%Y-%m-%d').timestamp()
             conditions.append("f.mtime >= ?")
-            params.append(datetime.strptime(start_date, '%Y-%m-%d').timestamp())
+            params.append(ts)
+            active_filters_count += 1
         except: pass
     if end_date:
+        try: 
+            ts = datetime.strptime(end_date, '%Y-%m-%d').timestamp() + 86399
+            conditions.append("f.mtime <= ?")
+            params.append(ts)
             active_filters_count += 1
-            try: 
-                conditions.append("f.mtime <= ?")
-                params.append(datetime.strptime(end_date, '%Y-%m-%d').timestamp() + 86399)
-            except: pass
+        except: pass
 
     if selected_rating_ranges:
         active_filters_count += 1
@@ -7196,10 +7849,23 @@ def collection_view(coll_id):
                 f"SELECT COUNT(DISTINCT file_id) FROM collection_files WHERE collection_id IN ({count_subquery})"
             ).fetchone()[0]
         else:
-            total_folder_files = conn.execute(
-                "SELECT COUNT(*) FROM collection_files WHERE collection_id = ?", 
-                (int(coll_id),)
-            ).fetchone()[0]
+            if is_recursive:
+                sub_query = f"""
+                    WITH RECURSIVE children AS (
+                        SELECT id FROM collections WHERE id = {int(coll_id)}
+                        UNION ALL
+                        SELECT c.id FROM collections c INNER JOIN children p ON c.parent_id = p.id
+                    )
+                    SELECT id FROM children
+                """
+                total_folder_files = conn.execute(
+                    f"SELECT COUNT(DISTINCT file_id) FROM collection_files WHERE collection_id IN ({sub_query})"
+                ).fetchone()[0]
+            else:
+                total_folder_files = conn.execute(
+                    "SELECT COUNT(*) FROM collection_files WHERE collection_id = ?", 
+                    (int(coll_id),)
+                ).fetchone()[0]
         
         try:
             total_db_files = conn.execute("SELECT COUNT(*) FROM files").fetchone()[0]
@@ -7247,9 +7913,85 @@ def collection_view(coll_id):
             available_raters =[]
         available_raters.insert(0, {'id': 'admin', 'name': 'System Admin'})
             
+    # --- CLUSTER MODE OVERRIDE LOGIC & SCOPE SEARCH ---
+    cluster_mode = request.args.get('cluster_mode')
+    cluster_sort = request.args.get('cluster_sort', 'date_desc')
+    cluster_target_id = request.args.get('cluster_target_id')
+    cluster_scope = request.args.get('cluster_scope', 'global')
+    
+    final_files = process_clustering(final_files, cluster_mode, cluster_sort, cluster_target_id, cluster_scope, active_filters_count)
     gallery_view_cache = final_files
     
     fake_folder_key = f"collection_{coll_id}"
+
+    # Fetch notes dynamically for the current collection
+    has_notes = False
+    note_files = []
+    try:
+        with get_db_connection() as conn_notes:
+            query = '''
+                SELECT DISTINCT f.id, f.name, f.path, f.mtime, f.type 
+                FROM files f 
+                JOIN collection_files cf ON f.id = cf.file_id 
+                WHERE (cf.collection_id = ? OR ? = 'all') 
+                AND (f.type = 'document' OR LOWER(f.name) LIKE '%.txt' OR LOWER(f.name) LIKE '%.md')
+                ORDER BY f.mtime DESC
+            '''
+            rows = conn_notes.execute(query, (coll_id if coll_id != 'all' else -1, coll_id)).fetchall()
+            note_files = [dict(r) for r in rows]
+            has_notes = len(note_files) > 0
+    except Exception:
+        pass
+
+    # Standard metadata extraction for UI filters
+    extensions = set()
+    prefixes = set()
+    prefix_limit_reached = False
+    
+    # Extract all extensions independently from filters to populate the dropdowns fully
+    with get_db_connection() as conn_ext:
+        ext_query = "SELECT DISTINCT f.name FROM files f JOIN collection_files cf ON f.id = cf.file_id"
+        if not is_all_mode:
+            if is_recursive:
+                sub_query = f"""
+                    WITH RECURSIVE children AS (
+                        SELECT id, is_public, shared_users FROM collections WHERE id = {int(coll_id)}
+                        UNION ALL
+                        SELECT c.id, c.is_public, c.shared_users FROM collections c INNER JOIN children p ON c.parent_id = p.id
+                    )
+                    SELECT id FROM children
+                """
+                if IS_EXHIBITION_MODE and not is_privileged:
+                    sub_query += f" WHERE (is_public = 1 OR (',' || shared_users || ',') LIKE '%,{safe_uid},%')"
+                ext_query += f" WHERE cf.collection_id IN ({sub_query})"
+            else:
+                ext_query += f" WHERE cf.collection_id = {int(coll_id)}"
+        else:
+            count_subquery = "SELECT id FROM collections WHERE type='user_album'"
+            if IS_EXHIBITION_MODE: 
+                user_role = session.get('role', 'GUEST')
+                safe_uid = str(session.get('user_id', '')).replace("'", "''")
+                is_local_admin = (not FORCE_LOGIN and not IS_EXHIBITION_MODE)
+                if is_local_admin or user_role in['ADMIN', 'MANAGER', 'STAFF']:
+                    count_subquery += " AND (is_public = 1 OR shared_users != '')"
+                else:
+                    count_subquery += f" AND (is_public = 1 OR (',' || shared_users || ',') LIKE '%,{safe_uid},%')"
+            ext_query += f" WHERE cf.collection_id IN ({count_subquery})"
+            
+        ext_rows = conn_ext.execute(ext_query).fetchall()
+        for r in ext_rows:
+            fname = r['name']
+            if '.' in fname:
+                ext_clean = fname.split('.')[-1].lower()
+                if ext_clean not in ['txt', 'md']:
+                    extensions.add(ext_clean)
+            if not prefix_limit_reached and '_' in fname:
+                pfx = fname.split('_')[0]
+                if pfx:
+                    prefixes.add(pfx)
+                    if len(prefixes) > MAX_PREFIX_DROPDOWN_ITEMS:
+                        prefix_limit_reached = True
+                        prefixes.clear()
 
     # --- JSON RESPONSE FOR AJAX/EXHIBITION ---
     if request.headers.get('Accept') == 'application/json':
@@ -7257,7 +7999,10 @@ def collection_view(coll_id):
             'status': 'success',
             'collection_name': coll_info['name'],
             'files': final_files,
-            'total_count': total_folder_files 
+            'total_count': total_folder_files,
+            'has_notes': has_notes,
+            'note_files': note_files,
+            'available_extensions': sorted(list(extensions))
         })
     
     # --- TEMPLATE RENDERING ---
@@ -7289,22 +8034,6 @@ def collection_view(coll_id):
     }
     
     folders = get_dynamic_folder_config()
-    
-    # Standard metadata extraction for UI filters
-    extensions = set()
-    prefixes = set()
-    prefix_limit_reached = False
-    
-    for f in final_files:
-        fname = f['name']
-        if '.' in fname: extensions.add(fname.split('.')[-1].lower())
-        if not prefix_limit_reached and '_' in fname:
-            pfx = fname.split('_')[0]
-            if pfx:
-                prefixes.add(pfx)
-                if len(prefixes) > MAX_PREFIX_DROPDOWN_ITEMS:
-                    prefix_limit_reached = True
-                    prefixes.clear()
 
     try:
         with get_db_connection() as conn_opts:
@@ -7340,7 +8069,8 @@ def collection_view(coll_id):
                            app_version=APP_VERSION, github_url=GITHUB_REPO_URL,
                            update_available=UPDATE_AVAILABLE, remote_version=REMOTE_VERSION,
                            ffmpeg_available=(FFPROBE_EXECUTABLE_PATH is not None),
-                           stream_threshold=STREAM_THRESHOLD_BYTES)
+                           stream_threshold=STREAM_THRESHOLD_BYTES,
+                           has_notes=has_notes, note_files=note_files)
 
 # --- EXHIBITION API: RATINGS & COMMENTS ---
 
@@ -7383,6 +8113,8 @@ def get_rating_details():
 
 @app.route('/galleryout/api/exhibition/rate', methods=['POST'])
 def exhibition_rate_file():
+    if (IS_EXHIBITION_MODE or FORCE_LOGIN) and not session.get('user_id'):
+        return jsonify({'status': 'error', 'message': 'Authentication required'}), 401
     data = request.json
     file_id = data.get('file_id')
     
@@ -7485,6 +8217,8 @@ def exhibition_rate_batch():
 
 @app.route('/galleryout/api/exhibition/comments', methods=['GET'])
 def exhibition_get_comments():
+    if (IS_EXHIBITION_MODE or FORCE_LOGIN) and not session.get('user_id'):
+        return jsonify({'status': 'error', 'message': 'Authentication required'}), 401
     file_id = request.args.get('file_id')
     current_user_id = session.get('user_id')
     current_role = session.get('role', 'GUEST')
@@ -7570,6 +8304,8 @@ def get_users_simple_list():
 
 @app.route('/galleryout/api/exhibition/post_comment', methods=['POST'])
 def exhibition_post_comment():
+    if (IS_EXHIBITION_MODE or FORCE_LOGIN) and not session.get('user_id'):
+        return jsonify({'status': 'error', 'message': 'Authentication required'}), 401
     data = request.json
     file_id = data.get('file_id')
     text = data.get('text', '').strip()
@@ -7695,6 +8431,8 @@ def exhibition_edit_comment():
         return jsonify({'status': 'success'})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
 
 # --- OMNIQUERY API ---
 @app.route('/galleryout/api/omniquery/execute', methods=['POST'])
@@ -9415,6 +10153,501 @@ def _register_remix_routes_inline():
         except Exception as e: return jsonify({'status': 'error', 'message': str(e)}), 500
 
 _register_remix_routes_inline()
+
+
+@app.route('/galleryout/api/collections/upload_note', methods=['POST'])
+@management_api_only
+def upload_collection_note():
+    coll_id = request.form.get('collection_id')
+    if not coll_id: return jsonify({'status': 'error', 'message': 'Missing collection ID'}), 400
+    
+    if 'file' not in request.files: return jsonify({'status': 'error', 'message': 'No file uploaded'}), 400
+    file = request.files['file']
+    
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in ['.txt', '.md']: return jsonify({'status': 'error', 'message': 'Only .txt and .md files are allowed as notes.'}), 400
+    
+    notes_dir = os.path.join(BASE_SMARTGALLERY_PATH, '.collection_notes')
+    os.makedirs(notes_dir, exist_ok=True)
+    
+    from werkzeug.utils import secure_filename
+    import hashlib, time
+    safe_name = f"note_c{coll_id}_{int(time.time())}_{secure_filename(file.filename)}"
+    dest_path = os.path.join(notes_dir, safe_name)
+    
+    try:
+        file.save(dest_path)
+        mtime = os.path.getmtime(dest_path)
+        file_id = hashlib.md5(dest_path.encode()).hexdigest()
+        file_size = os.path.getsize(dest_path)
+        
+        with get_db_connection() as conn:
+            conn.execute("""
+                INSERT OR REPLACE INTO files (id, path, mtime, name, type, size) 
+                VALUES (?, ?, ?, ?, 'document', ?)
+            """, (file_id, dest_path, mtime, file.filename, file_size))
+            
+            conn.execute("""
+                INSERT OR IGNORE INTO collection_files (collection_id, file_id, added_at) 
+                VALUES (?, ?, ?)
+            """, (int(coll_id), file_id, time.time()))
+            
+            conn.commit()
+            
+        return jsonify({'status': 'success', 'message': 'Note added successfully to the collection.'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+# --- SMART WORKFLOW FILES SEARCH, SUGGESTIONS & CLUSTERING HASHES ---
+import difflib
+
+def _normalize_fuzzy_string(s):
+    """Strips non-alphanumeric characters and lowercases for fuzzy matching."""
+    if not s: return ""
+    return re.sub(r'[^a-zA-Z0-9]', '', str(s)).lower()
+
+def compute_workflow_hashes(filepath):
+    """
+    Computes workflow_hash (canonical structural architecture & models) and prompt_hash (positive prompt).
+    Ignores folder paths, seeds, steps, CFG, prompts, and ephemeral widget values.
+    """
+    if not filepath or not os.path.exists(filepath):
+        return '', ''
+    try:
+        wf_json = extract_workflow(filepath, target_type='api')
+        if not wf_json:
+            wf_json = extract_workflow(filepath, target_type='ui')
+        if not wf_json:
+            return '', ''
+
+        data = json.loads(wf_json)
+        prompt_text = extract_workflow_prompt_string(wf_json)
+        prompt_hash = hashlib.md5(prompt_text.strip().lower().encode('utf-8')).hexdigest() if prompt_text else ''
+
+        MODEL_EXTENSIONS = ('.safetensors', '.ckpt', '.pt', '.pth', '.bin', '.gguf', '.lora', '.sft', '.vae', '.onnx', '.engine')
+        IGNORED_NODES = {'Note', 'NotePrimitive', 'Reroute', 'ShowText', 'Display Text', 'SaveImage', 'PreviewImage', 'VHS_VideoCombine', 'PrimitiveNode'}
+
+        node_descriptors = []
+
+        # CASE A: UI Format ({'nodes': [...], 'links': [...]})
+        if isinstance(data, dict) and 'nodes' in data and isinstance(data['nodes'], list):
+            node_type_by_id = {}
+            for node in data['nodes']:
+                if isinstance(node, dict):
+                    nid = str(node.get('id'))
+                    ntype = str(node.get('type', '')).strip()
+                    node_type_by_id[nid] = ntype
+
+            links_map = {}
+            if 'links' in data and isinstance(data['links'], list):
+                for link in data['links']:
+                    if isinstance(link, list) and len(link) >= 4:
+                        link_id = link[0]
+                        from_id = str(link[1])
+                        from_type = node_type_by_id.get(from_id, 'Unknown')
+                        links_map[link_id] = from_type
+
+            for node in data['nodes']:
+                if not isinstance(node, dict): continue
+                node_type = str(node.get('type', '')).strip()
+                if not node_type or node_type in IGNORED_NODES:
+                    continue
+
+                connections = []
+                inputs = node.get('inputs', [])
+                if isinstance(inputs, list):
+                    for inp in inputs:
+                        if isinstance(inp, dict):
+                            link_id = inp.get('link')
+                            inp_name = str(inp.get('name', '')).lower()
+                            if link_id is not None and link_id in links_map:
+                                connections.append((inp_name, links_map[link_id]))
+
+                models = []
+                widgets = node.get('widgets_values', [])
+                if isinstance(widgets, list):
+                    for w in widgets:
+                        if isinstance(w, str) and w.strip():
+                            w_clean = w.strip().replace(chr(92), '/')
+                            base = os.path.basename(w_clean).lower()
+                            if any(base.endswith(ext) for ext in MODEL_EXTENSIONS):
+                                models.append(base)
+                elif isinstance(widgets, dict):
+                    for k, v in widgets.items():
+                        if isinstance(v, str) and v.strip():
+                            v_clean = v.strip().replace(chr(92), '/')
+                            base = os.path.basename(v_clean).lower()
+                            if any(base.endswith(ext) for ext in MODEL_EXTENSIONS):
+                                models.append(base)
+
+                descriptor = {
+                    'type': node_type,
+                    'connections': sorted(connections),
+                    'models': sorted(list(set(models)))
+                }
+                node_descriptors.append(descriptor)
+
+        # CASE B: API Format ({ '1': {'class_type': '...', 'inputs': {...}}, ... })
+        elif isinstance(data, dict):
+            node_type_by_id = {}
+            for nid, node in data.items():
+                if isinstance(node, dict):
+                    ntype = str(node.get('class_type', node.get('type', ''))).strip()
+                    node_type_by_id[str(nid)] = ntype
+
+            for nid, node in data.items():
+                if not isinstance(node, dict): continue
+                node_type = str(node.get('class_type', node.get('type', ''))).strip()
+                if not node_type or node_type in IGNORED_NODES:
+                    continue
+
+                connections = []
+                models = []
+                inputs = node.get('inputs', {})
+
+                if isinstance(inputs, dict):
+                    for k, v in inputs.items():
+                        k_str = str(k).lower()
+                        if isinstance(v, list) and len(v) >= 1:
+                            from_id = str(v[0])
+                            from_type = node_type_by_id.get(from_id, 'Unknown')
+                            connections.append((k_str, from_type))
+                        elif isinstance(v, str) and v.strip():
+                            v_clean = v.strip().replace(chr(92), '/')
+                            base = os.path.basename(v_clean).lower()
+                            if any(base.endswith(ext) for ext in MODEL_EXTENSIONS):
+                                models.append(base)
+
+                descriptor = {
+                    'type': node_type,
+                    'connections': sorted(connections),
+                    'models': sorted(list(set(models)))
+                }
+                node_descriptors.append(descriptor)
+
+        node_descriptors.sort(key=lambda d: (d['type'], json.dumps(d['connections']), json.dumps(d['models'])))
+
+        if not node_descriptors:
+            return '', prompt_hash
+
+        struct_str = json.dumps(node_descriptors, sort_keys=True)
+        workflow_hash = hashlib.md5(struct_str.encode('utf-8')).hexdigest()
+
+        if not prompt_hash and workflow_hash:
+            prompt_hash = hashlib.md5((workflow_hash + "_prompt").encode('utf-8')).hexdigest()
+
+        return workflow_hash, prompt_hash
+    except Exception:
+        return '', '' 
+
+def backfill_audio_durations(conn=None):
+    """
+    Auto-migrates existing audio files in DB to populate their duration.
+    """
+    close_conn = False
+    if conn is None:
+        conn = get_db_connection()
+        close_conn = True
+
+    try:
+        rows = conn.execute("SELECT id, path FROM files WHERE type = 'audio' AND (duration IS NULL OR duration = '')").fetchall()
+        if not rows:
+            if close_conn: conn.close()
+            return 0
+
+        uncalculated = [(r['id'], r['path']) for r in rows if os.path.exists(r['path'])]
+        total_uncalc = len(uncalculated)
+        if total_uncalc == 0:
+            if close_conn: conn.close()
+            return 0
+
+        print(f"{Colors.BLUE}INFO: [Audio] Starting duration calculation for {total_uncalc} audio files...{Colors.RESET}", flush=True)
+
+        def _work(item):
+            fid, fpath = item
+            dur = ""
+            current_ffprobe = FFPROBE_EXECUTABLE_PATH or find_ffprobe_path()
+            if current_ffprobe:
+                try:
+                    cmd_info = [
+                        current_ffprobe, '-v', 'error', '-show_entries', 'format=duration',
+                        '-of', 'default=noprint_wrappers=1:nokey=1', fpath
+                    ]
+                    res = subprocess.run(
+                        cmd_info, capture_output=True, text=True, timeout=3,
+                        creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+                    )
+                    if res.stdout.strip():
+                        total_duration_sec = float(res.stdout.strip())
+                        dur = format_duration(total_duration_sec)
+                except Exception: pass
+            return (dur, fid) if dur else None
+
+        results = []
+        completed = 0
+        last_reported_pct = -1
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_PARALLEL_WORKERS) as executor:
+            futures = [executor.submit(_work, item) for item in uncalculated]
+            for future in concurrent.futures.as_completed(futures):
+                completed += 1
+                try:
+                    res = future.result()
+                    if res:
+                        results.append(res)
+                except Exception:
+                    pass
+
+                pct = int((completed / total_uncalc) * 100)
+                if pct % 5 == 0 and pct != last_reported_pct:
+                    last_reported_pct = pct
+                    print(f"\r   [Audio Progress] Calculated {completed}/{total_uncalc} files ({pct}%)...", end="", flush=True)
+
+        if results:
+            batch_size = 500
+            for i in range(0, len(results), batch_size):
+                batch = results[i:i + batch_size]
+                conn.executemany("UPDATE files SET duration = ? WHERE id = ?", batch)
+                conn.commit()
+
+        print()
+        print(f"{Colors.GREEN}SUCCESS: [Audio] Successfully calculated durations for {len(results)}/{total_uncalc} files!{Colors.RESET}", flush=True)
+        return len(results)
+    except Exception as e:
+        print(f"ERROR in backfill_audio_durations: {e}")
+        return 0
+    finally:
+        if close_conn and conn:
+            conn.close()
+
+def backfill_unhashed_workflows(conn=None, force_all=False):
+    """
+    Auto-migrates existing files in DB with real-time console progress.
+    Fast parallel execution, safe, non-destructive.
+    """
+    close_conn = False
+    if conn is None:
+        conn = get_db_connection()
+        close_conn = True
+
+    try:
+        if force_all:
+            rows = conn.execute("SELECT id, path FROM files WHERE has_workflow = 1").fetchall()
+        else:
+            rows = conn.execute("SELECT id, path FROM files WHERE has_workflow = 1 AND (workflow_hash IS NULL OR workflow_hash = '')").fetchall()
+            
+        if not rows:
+            if close_conn: conn.close()
+            return 0
+
+        unhashed = [(r['id'], r['path']) for r in rows if os.path.exists(r['path'])]
+        total_unhashed = len(unhashed)
+        if total_unhashed == 0:
+            if close_conn: conn.close()
+            return 0
+
+        print(f"{Colors.BLUE}INFO: [Clustering] Starting hash indexing for {total_unhashed} files...{Colors.RESET}", flush=True)
+
+        def _work(item):
+            fid, fpath = item
+            wf_h, pr_h = compute_workflow_hashes(fpath)
+            return (wf_h, pr_h, fid)
+
+        results = []
+        completed = 0
+        last_reported_pct = -1
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_PARALLEL_WORKERS) as executor:
+            futures = [executor.submit(_work, item) for item in unhashed]
+            for future in concurrent.futures.as_completed(futures):
+                completed += 1
+                try:
+                    res = future.result()
+                    if res and (res[0] or res[1]):
+                        results.append(res)
+                except Exception:
+                    pass
+
+                pct = int((completed / total_unhashed) * 100)
+                if pct % 5 == 0 and pct != last_reported_pct:
+                    last_reported_pct = pct
+                    print(f"\r   [Clustering Progress] Indexed {completed}/{total_unhashed} files ({pct}%)...", end="", flush=True)
+
+        if results:
+            batch_size = 500
+            for i in range(0, len(results), batch_size):
+                batch = results[i:i + batch_size]
+                conn.executemany("UPDATE files SET workflow_hash = ?, prompt_hash = ? WHERE id = ?", batch)
+                conn.commit()
+
+        print()
+        print(f"{Colors.GREEN}SUCCESS: [Clustering] Successfully indexed {len(results)}/{total_unhashed} files!{Colors.RESET}", flush=True)
+        return len(results)
+    except Exception as e:
+        print(f"ERROR in backfill_unhashed_workflows: {e}")
+        return 0
+    finally:
+        if close_conn and conn:
+            conn.close()
+
+def check_and_update_workflow_hashes(conn):
+    """
+    Tests a few existing hashes against the current algorithm. 
+    If the algorithm was updated, it forces a complete recalculation of all hashes.
+    """
+    sample = conn.execute("SELECT id, path, workflow_hash FROM files WHERE has_workflow = 1 AND workflow_hash IS NOT NULL AND workflow_hash != '' LIMIT 3").fetchall()
+    
+    needs_update = False
+    for row in sample:
+        if os.path.exists(row['path']):
+            new_wf_hash, _ = compute_workflow_hashes(row['path'])
+            # If the newly computed hash differs from the one in the DB, the algorithm changed!
+            if new_wf_hash and new_wf_hash != row['workflow_hash']:
+                needs_update = True
+                break
+                
+    if needs_update:
+        print(f"{Colors.YELLOW}INFO: Workflow clustering algorithm updated. Re-indexing architectures...{Colors.RESET}")
+        backfill_unhashed_workflows(conn, force_all=True)
+    else:
+        # Standard check for newly added files that missed the hash
+        backfill_unhashed_workflows(conn, force_all=False)
+
+@app.route('/galleryout/api/workflow_files_suggestions', methods=['GET'])
+def api_workflow_files_suggestions():
+    """
+    Returns unique model/LoRA filenames from DB and calculates 'Did you mean?'
+    fuzzy suggestions using Python's native difflib without any external AI model.
+    """
+    query = request.args.get('q', '').strip()
+    with get_db_connection() as conn:
+        rows = conn.execute("SELECT DISTINCT workflow_files FROM files WHERE workflow_files IS NOT NULL AND workflow_files != ''").fetchall()
+        
+    all_files = set()
+    for r in rows:
+        wf_str = r['workflow_files']
+        if wf_str:
+            for item in wf_str.split(' ||| '):
+                item_clean = item.strip()
+                if item_clean:
+                    all_files.add(item_clean)
+                    
+    all_files_list = sorted(list(all_files))
+    if not query:
+        return jsonify({'status': 'success', 'suggestions': all_files_list[:20], 'did_you_mean': None})
+        
+    norm_query = _normalize_fuzzy_string(query)
+    query_tokens = [t for t in re.split(r'[^a-zA-Z0-9]+', query) if len(t) > 1]
+    
+    matching_suggestions = []
+    for f in all_files_list:
+        norm_f = _normalize_fuzzy_string(f)
+        if norm_query and norm_query in norm_f:
+            matching_suggestions.append(f)
+        elif query_tokens and all(_normalize_fuzzy_string(tok) in norm_f for tok in query_tokens):
+            matching_suggestions.append(f)
+            
+    did_you_mean = None
+    if query and query not in all_files_list:
+        file_map = {os.path.basename(f): f for f in all_files_list}
+        close_matches = difflib.get_close_matches(query, list(file_map.keys()), n=1, cutoff=0.3)
+        if close_matches:
+            did_you_mean = file_map[close_matches[0]]
+        else:
+            close_full = difflib.get_close_matches(query, all_files_list, n=1, cutoff=0.25)
+            if close_full:
+                did_you_mean = close_full[0]
+
+    return jsonify({
+        'status': 'success',
+        'suggestions': matching_suggestions[:15],
+        'did_you_mean': did_you_mean
+    })
+
+
+# --- CLUSTER INFO INSPECTOR API ROUTE ---
+@app.route('/galleryout/api/cluster_info/<string:hash_type>/<string:hash_val>')
+def api_cluster_info(hash_type, hash_val):
+    if (IS_EXHIBITION_MODE or FORCE_LOGIN) and not session.get('user_id'):
+        return jsonify({'status': 'error', 'message': 'Authentication required'}), 401
+
+    if should_strip_metadata():
+        return jsonify({'status': 'error', 'message': 'Security Policy: Access to cluster metadata is restricted for your role.'}), 403
+
+    if hash_type not in ('workflow', 'prompt'):
+        return jsonify({'status': 'error', 'message': 'Invalid hash type'}), 400
+
+    col_name = 'workflow_hash' if hash_type == 'workflow' else 'prompt_hash'
+    requested_file_id = request.args.get('file_id')
+
+    try:
+        with get_db_connection() as conn:
+            rows = conn.execute(f"SELECT id, name, path, type, mtime, dimensions, workflow_files, workflow_prompt FROM files WHERE {col_name} = ? AND has_workflow = 1 ORDER BY mtime DESC", (hash_val,)).fetchall()
+            
+            if not rows:
+                return jsonify({'status': 'error', 'message': 'No matching cluster assets found'}), 404
+
+            matching_files = [dict(r) for r in rows]
+
+            if IS_EXHIBITION_MODE:
+                matching_files = [f for f in matching_files if is_file_accessible(f['id'])]
+                if not matching_files:
+                    return jsonify({'status': 'error', 'message': 'Access Denied'}), 403
+
+            total_count = len(matching_files)
+            
+            sample = matching_files[0]
+            if requested_file_id:
+                matched_sample = next((f for f in matching_files if f['id'] == requested_file_id), None)
+                if matched_sample and is_file_accessible(matched_sample['id']):
+                    sample = matched_sample
+
+            nodes_pipeline = []
+            models_used = []
+            sample_prompt = sample.get('workflow_prompt', '')
+
+            wf_json = extract_workflow(sample['path'], target_type='ui')
+            if not wf_json:
+                wf_json = extract_workflow(sample['path'], target_type='api')
+
+            if wf_json:
+                try:
+                    summary = generate_node_summary(wf_json)
+                    if summary:
+                        for n in summary:
+                            nodes_pipeline.append({
+                                'id': n.get('id'),
+                                'type': n.get('type'),
+                                'category': n.get('category'),
+                                'color': n.get('color')
+                            })
+                except Exception: pass
+
+            if sample.get('workflow_files'):
+                for item in sample['workflow_files'].split(' ||| '):
+                    if item.strip():
+                        models_used.append(os.path.basename(item.strip()))
+
+            distinct_other_hashes = 0
+            if hash_type == 'prompt':
+                distinct_other_hashes = conn.execute("SELECT COUNT(DISTINCT workflow_hash) FROM files WHERE prompt_hash = ? AND has_workflow = 1", (hash_val,)).fetchone()[0]
+            else:
+                distinct_other_hashes = conn.execute("SELECT COUNT(DISTINCT prompt_hash) FROM files WHERE workflow_hash = ? AND has_workflow = 1", (hash_val,)).fetchone()[0]
+
+            return jsonify({
+                'status': 'success',
+                'hash_type': hash_type,
+                'hash_val': hash_val,
+                'total_count': total_count,
+                'sample_file': sample,
+                'nodes_pipeline': nodes_pipeline,
+                'models_used': sorted(list(set(models_used))),
+                'sample_prompt': sample_prompt,
+                'distinct_counterparts': distinct_other_hashes
+            })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 if __name__ == '__main__':
 

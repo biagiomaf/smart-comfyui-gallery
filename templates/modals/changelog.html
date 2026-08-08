@@ -1,6 +1,83 @@
-<!-- Version: 2.16 - July 24, 2026 -->
+<!-- Version: 2.21 - August 08, 2026 -->
 <script id="changelog-data" type="text/markdown">
 # Changelog
+
+### **[2.21] - 2026-08-08**
+
+### 🧬 Smart Asset Clustering & Visual Inspector
+
+**What it does:**  
+Smart Asset Clustering organizes your gallery into visual groups based on how your images were created. Instead of getting lost in thousands of generated files, it lets you instantly group and compare images that share either the same workflow pipeline or the same prompt text.
+
+**The 2 Clustering Modes:**
+1. **By Architecture (`workflow`):** Groups images created with the exact same workflow setup (node structure + model files), ignoring random seeds, steps, CFG, or prompt text changes. Perfect for comparing all variations produced by a specific pipeline.
+2. **By Prompt Text (`prompt`):** Groups images that share the exact same prompt, even if you tested that prompt across different models, Flux/SDXL workflows, or settings.
+
+**How to Use It:**
+* **Quick Shortcut:** Focus or hover over any image in the gallery or Lightbox and press <kbd>Shift</kbd>+<kbd>C</kbd>.
+* **Click Any Badge:** Click the colorful `#HASH` badge on any thumbnail card or inside the Details panel.
+* **From Tools Menu:** Open the **🛠️ Tools** menu and click **🧬 Smart Clustering**.
+* **Exit Clustering:** Press <kbd>ESC</kbd> anytime or click **✕ Exit Cluster Mode** on the top banner.
+
+**Interactive Hash Inspector Modal:**  
+Clicking any `#HASH` badge on a thumbnail card opens an **Inspector Panel** showing you:
+* **The Visual Pipeline:** A sequence of color-coded chips showing the active node flow (e.g. `CheckpointLoader ➔ LoraLoader ➔ KSampler ➔ VAEDecode`).
+* **Models Loaded:** The exact checkpoint and LoRA model files used.
+* **Asset Prompt:** The prompt text of that image with a one-click **📋 Copy** button.
+* **Cluster Stats:** How many other matching assets exist in your entire gallery.
+* **One-Click Launch:** A **`🚀 Clusterize Gallery`** button that opens the clustering settings pre-targeted on that asset, letting you choose your scope (Global vs. Current Folder).
+
+**Sub-Badges:**  
+When clustering by Prompt, thumbnail badges display both the primary Prompt badge (`💬 #PROMPT`) and a secondary Architecture variant badge (`🧬 #ARCH`), letting you spot pipeline variations at a glance.
+
+
+### 📋 Redesigned 'Full Asset Details' Panel (Shortcut <kbd>I</kbd>)
+
+Press <kbd>I</kbd> on any image or click the **ⓘ** icon to open a high-density details panel with two organized tabs:
+
+* **Tab 1: 📋 Overview & Paths:** View resolution (with Megapixels), file size, creation/scan dates, physical disk path, collections, ratings, AI captions, and A1111/Forge metadata.
+  * *New:* The green **`⚙️ Workflow`** badge is now a clickable button to download the JSON workflow file directly!
+* **Tab 2: 🧬 Architecture & Cluster:** Inspect the node pipeline sequence, checkpoints/models loaded, asset prompt text, and launch **`🧬 Smart Asset Clustering`** with a single click (automatically hidden if no other matching assets exist in your library).
+* **Keyboard Accessible:** Press <kbd>Tab</kbd> to easily focus and navigate between tabs using your keyboard.
+
+
+### ⚙️ Cluster Badges in Normal Grid
+
+Want to see architecture and prompt hashes all the time in your normal gallery?
+* Open **⚙️ Settings & Info** and enable **`🧬 Cluster Badges`** (saved in your browser).
+* Normal grid thumbnails will display interactive `#HASH` badges instead of the standard green `⚙️ Workflow` badge, letting you inspect any image's setup with a single click.
+
+
+### 🔍 Fuzzy Workflow Search & Live Auto-Suggest
+Find models, LoRAs, and workflow files effortlessly without remembering exact filenames or formatting.
+* **Alphanumeric Normalization:** Strips spaces, dots, dashes, and underscores during search queries (e.g. `wan 2.2` seamlessly matches `wan2.2_i2v_high.safetensors`).
+* **Live Autocomplete Dropdown:** Typing in the **⚙️ Workflow Files** input opens a two-line dropdown displaying clean filenames prominently alongside folder paths.
+* **"Did You Mean?" Suggestions:** Native Python `difflib` string similarity calculates close match suggestions when queries yield low or zero results.
+
+
+### 📝 Interactive Collection Notes & Production Briefs
+Keep your team and clients aligned with rich production briefs and documentation tied directly to virtual collections.
+* **Simple Creation Workflow:** Attach a brief to any collection by clicking the **⋮** menu next to its name in the sidebar and selecting **📤 Upload Note** to upload `.txt` or `.md` files.
+* **Visual Yellow Accent:** Collections containing active notes are immediately highlighted with a distinct **yellow accent** across the sidebar, breadcrumbs, and Exhibition Mode.
+* **Top Header Access Button:** When viewing a collection with notes, a prominent **📝 Collection Notes** button automatically appears in the top toolbar header for instant one-click access.
+* **Rich Markdown Rendering:** Full native rendering of Markdown documentation (headers, lists, tables, code fences, task lists, and formatting).
+* **Multi-Note Reader & Feedback:** View and switch between multiple notes via tabs, download notes, or open them in the details panel to leave ratings and public/private comments just like any media asset.
+
+### 🎵 Embedded Audio Player in List View
+Audio management gets a massive efficiency boost for sound designers, musicians, and voiceover workflows.
+* **Inline Audio Playback:** The List View now features an integrated inline audio player available in both the Main Workspace and Exhibition portal.
+* **Instant Media Controls:** Play, pause, scrub, and check track durations directly within list rows without opening the full Lightbox viewer.
+
+### 🔍 Dedicated Exhibition Filter Panel
+Clients and external stakeholders can now navigate large Exhibition galleries with pinpoint accuracy.
+* **Granular Filtering Overlay:** Exhibition Mode introduces a sleek filter panel allowing users to narrow down media by smart filename queries, file extensions, and date ranges.
+* **Smart Scope & Auto-Close:** Search within the active collection (with optional sub-collection recursion) or across all accessible media, with intuitive click-outside panel dismissal.
+
+### 🛡️ API Route & System Hardening
+* **Comprehensive Route Fortification:** General security enhancements across all backend API endpoints to reinforce session validation and strict access controls.
+* **Enhanced Data Isolation:** Strengthened authentication guards to ensure bulletproof data segregation between public, guest, and administrative contexts.
+
+---
 
 ### **[2.16] - 2026-07-24**
 

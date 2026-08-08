@@ -1,14 +1,149 @@
 {% set app_logo_b64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsIAAA7CARUoSoAAAAGHaVRYdFhNTDpjb20uYWRvYmUueG1wAAAAAAA8P3hwYWNrZXQgYmVnaW49J++7vycgaWQ9J1c1TTBNcENlaGlIenJlU3pOVGN6a2M5ZCc/Pg0KPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyI+PHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj48cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0idXVpZDpmYWY1YmRkNS1iYTNkLTExZGEtYWQzMS1kMzNkNzUxODJmMWIiIHhtbG5zOnRpZmY9Imh0dHA6Ly9ucy5hZG9iZS5jb20vdGlmZi8xLjAvIj48dGlmZjpPcmllbnRhdGlvbj4xPC90aWZmOk9yaWVudGF0aW9uPjwvcmRmOkRlc2NyaXB0aW9uPjwvcmRmOlJERj48L3g6eG1wbWV0YT4NCjw/eHBhY2tldCBlbmQ9J3cnPz4slJgLAAA3X0lEQVR4Xu2dd7gmR3Xmf6equvtLN86dPMoBUDKgAAogi2SCCTYIMMb2YmNwJBowGJAwXlhgMRmbaK8xSeRgkS0Jg4QAIQkFJCEhaTRRM3Pjl7ornP2jv5GHe6+wJNg12vX7PP3cme7T4au3u+rUSQX/hf9UyPId/xnQC9R96ItXFtVc1yyIycKe1KgGsShDP8+jNS5rRCtJre9YKbMsiaobL/x4u+VNlpLviwj77MRBxa6nvvu47vLr/zLjHhPwvId9fX1n34aNrZg2V9XtGxaXqrVRzJQYGsnIQNU7TzlVpUGnTKWrQjSRQKRnEimLqqJJlCQNTWnCYNomGVvYvMhNo2nVFQaTFWRiydRJQ5umYwrTsS1tqtUsWOOCwShJsVhnxvOfLB5ZPeFVXzv05uXP+8uKu03AG46/+IGDHROv6JfhjKBpRiTZEIdUfoDXQFQlmkjUCr9/wxM0kSSQtE80AxKgKKSEAUAwOBwOS0aGIyOnoIklJ6dFh0la0qGlDTIKMnIMFoNgKMjaEywdtvWPX3L1YX+//Ll/WVH/9ruINx533TN7t2y4IM3OPFm7xfrUS3bY69MfDgmhIsWSkIZUoUcZe3jt4+ni6RKkh6dLxRIhBVIKJPUkAokIMGpIg0WwCA6LlQwnBZkUOLEYVSIBtQHJwGYW6yzOKFaXcLHctfy5f5lxlwhQPce868jr/rve2vxQ6ObjXZ0lsIgywCoUKlgxGBwWh5Ws3jQj1ya5FjjNcJphyTAIggEsiEOl/otYwGJwGDJk9G/L6Dyt3/acBnlsY3yB8QUutmkxje9kS3rfxqXLn/+XGXb5juW4+OOp+bEnbfhQ2NH540GvAgJCQgkoBkUQKYE4atT6ovURUCCSSChKQog46m5HEMDUpJFjaeDI6wamQUGLMaZoyThNmaBlxmi6JkXWxGZNxGWoS3hJuAYMJvd+9IXfOeSfl/+GX2b8zDHg42++uPnDd/PJfNvmx1ZlH0FxklMRGBBQjRgqhCFJAhEhKCQBlUhMFSUlSiKYgJqKaEpirEjiUedRSaiapFEWRcxco7BLuXGlsw3foOFbqTUnNHZlWXtvbprd3OT7Cte+PanYmLKg2XY/6Km1Y91qfu3nLn3Hd9+xuPx3/DLjZxLw0qMueI3etvbVaSgYEioBIzk+GQzQweKsUJlI0opkAlVWMqDq+aSzPlWLpXb3+VTdmrXizsYk3SRhz1Lf7wmpnO1MZ3NTkzP9NExhT7x1/pPXvHgOQZc/x//LuFMC3vbo74z/5NvVj2RpfBNGiBqwCE1yOs0m0jCzWWFv1UyuWJTqqir5odDvpc7CYs/tXRoGP1uFQYJBw0rlYmZ1EAb4yreyhca4T6ZTpdBRyduZbReZk/EQyxmT7EQmWcMFI1ZsMJmtLBlNM94uwlhmUse4GFJO01srYsjVmLyyRawsRchy01OjPoWhDQxMZjNv8zxYJ8HrMPlQShDjTJZVfb+wp2RhX3QLA9OmL5mdH/Tj7DB1B1FDSA3TdzZU4+Mw3nTp0PsfOnzWa84aLm+rnwd3SsDfHHnlg/fd6i8JPmCMQdVQaM5k1mLNoeO61Cyv3La067vV4lIlPe/U2k3BlFPDND9exWFLxDV80o7XasyKcUYU1JM0EKMQNBI0ogJWMhTFpwqjoxFADLlYCjtGFlt0ZIaWTmNTA4fHsabWioiIFBjJyYxFLCRVhrHE08eJ4DIDNjL0Pco4IGpATaJPj4EsMjRLYD2iHh8HsSKUSVJMIkMVrZSEMZKsyfuZZnsKm+/Jm8Vss9ncR+Zuy5vu1rFDJ77/ys+cvHN5O/5HuFMCzjniB88ub2u8r6r62Lr3x2BwonRlQJ8+4GmkHEtOIuEZ4hngqUgoCQhElDgatCsSJUokklBJCIqojJRRj0MoJKPBGDkNGtKioVO0dQ0NmjhAJMPKGBY7GvxzcAlnCiyBFIRKBS9pRFAiUuHjgJgqPH1KugwZMKSPZ4Di63kJEFA8sVYwgIgnkbCS0aBJIW1y06bIcpzNyZwjy/X2sen2+zvHZB/4k0/f5yfL2/POcKcEvO6QK9443D75kir0sSMtBkmgadSoHqUkkUhkWBEg4PFESqJUoIqqQ0VQEaKWeO0TqUgkGGlCtX5kUJRczGiS1aCQNoVrUdChmcZp0qwVUlvgsKA5RgqMCNEGsAZHJHpPjNyheSFKSBVRK1IaUGpFX0uG9BhIl4o+iRIhAEoQpUqRKCNNTiOYiIqQaZM8tXGSk1lopCZZysnEUTTHKdv9hcZYeOcZN1XnniVnheXtuhx3SsDfbr7mI8OdU7/V09sRtSQKMAFSJJhY/zQVBI8wwKpDsQT8SN2sGz1IQCWSEJJ6vPYIGkgjNVXEYMRgsYhSz4JNgTWOzOY0TYuGHaOgQ5ZynAq5tWS2geBwDkTBK9gCnIFYQVUmSFp3c0ZQUWL0hKqkDBVDhpQM6bNAT5cIlBhirbERqKiIBEQUqwYd7XXkFHQQKXDGkacmVkPdQ4hBNWM8b6EbF79w5FOGv/W7b/613vK2PRCrEnCenm13bfnvl1TbZ07uyk4CGUqOSA9JGZAIVCiJVqNBZhsQApEBIa9/mKpLSVwZ83KYZCkGQrKZ88aJT1rGqhyIwhCkL0YGVk3UQPSBQZ7lVZZnVdYw3tlMnSmskyI6KQaZuH5m6DrNB1neEOOyseC9T1VcyqxYhIZq1FgFVZJEDa1kQkfENMq+NocDaaQYm1jvong71L70q64L4jvWZmMhlM3KDxspVU0j2sxcE6ctJFiieiRFci2wqYUkN+pqBaTA6YAoGZk0WF9spNqy9xWv+PEDX7+8fQ/EqgR8/M/PX7vnE/e7yu+aWb/EAoFAZgYYVUQ3gCvpNnZCq/rRWKf5wyJzO5d0MNfThZ3tMdmRNcxsmaS0ptmLWa+X20VPPkyb1h/tDz10UxjbFNK+xatl82M2+2OPPTaISN0f/SdCVe17z72smP3+9cW2HYOm+DguuUzmyU5lg8Y0odWOYp36NCXJbUjDfD0xbTHIkflw/Vr68wykj6FDZhp0Uodqerh905PTsc9970kLy++3H6sS8IGHXX1M74eTl/u9Wd6nj0oi04CYDtX4YKsbr/45TlZfav1V/7IXP+20wfLz/3/CW59+yfrBNWNP8bcN39Cbj+1EIBcDIjTytdhDy9e94rpj/mr5efuxKgEfOu3Wh8zf0P5m2Guo8HjpY7VgMNHbMXb69ae95Pxfv3X5Of+/4w0nX/vr4QY+1V1IuZM+lmZt3V1PLzt54fiXfOHBq5rIVzXGxWinCm1SkJNLE5WC3Oa4xvD9/9X4q+Nl3zvmi7qpfGe7GMeR4YBCE+MLa9tyzdjZy+X3Y1UC/NCuyWMDKwCKxeGzMjUnJr64XPa/8O+wRw/fEZoLXas5mRbkMkaepvCLzVOXy+7HqgQw1GnxprZ2aonTBilLe/xBO+/yBOP/R7z8c6feYhpyeYMxHBlGHAaPDeVBI617BVYlIJWprQlwBrUepw4xcc/lX3/Q/HLZnwfbL5p94s5vLD11+f57M1qtxlWNfGLkWkqIVBQUa//kqe9sL5flzghAo4mS8OJRBAto7O/6hIxcV78AfPsrV6xrzrf/17rY+fjuL+87bfnxeyumOsVt7XYTVzRw0sJKkzybmNq47QFrlstyZwSUMpyoUgUpErW24njC3HK5nwdbZg9/8lTIJ0wFOmi+avnxeysajbQjy5XcNjDW1maM1BibqO67Zbksd0aAj2G9VcGliCiICWDinU4m7gnEF2f7ISwtgS3to277yOwJy2XujfCU/USJVcGa2gLsYkFY6m5eLsudEZAqt84lwWqqfbmScIXvL5e7p7jxI/se18Q9dKmnlGViyuXGpuJpy+XujajCMJZhQEoVRsFIbULzXT+9XJY7I0BS1raiiLE4GoCgxlbL5e4Jfvyp7Q9sDzrvsz1jyzISh0pvAVyVPfeaD99+1HL5ext8RKvgiTFAGgUf+IRWqbFcltUIeM57vp8Za1tiFbUOMRFIONf4ub6Acy64wO39zODPJ5dmvtqq8o39HqivzXGDHhRka6b91Od+/JH5Ry8/994EMQ2bohBiImFRLAZDIaZYLstqBJxyY7thjOlEATUQ6JHEk0T3LJe9q9j7ld6DXlo+9BuTqfH2op+v6fVTPbZEg0YhJmW+F2l4d7+J/viXbvnI0ntuvuDmyeXXuau49kO3bLzhn2d/ffn+/xtwkiUVi1dIUdBoIULUMLFcltUIqG6cbRK1BYpqolRPjx597d7jgKfMmd9sTZuHdudhsR9JClZBsASjaFJMMHQHSssIGyc6z7Fx6ujl17mrmKg2PnddmvrCjz+x89jlx/5Po90e9mPmRxEiQ9RXBFW8MWPLZVmNgIUdi63gB+1EqCMh1DN080ixeI/V0Pm8/B9L28O7nKsj2TSACNT+RZAgWC+MNYUyTzo/qF57k534wfLr3BVcfcHuTor2mQ2g8J2HLT9+T3HOOZ9v/f1JtzzzHUff/uq3n3TNI87T81aNqZpZ2+zmRR07lZTa76dKxN+1idhwkPJYqYs+oUlQMrzz6qbzexxvc8hDJufGfyP7s/nW8A9cK4axjkEdSKZYJ4gVxsdgmPvrZhuDx6x/SvHqs86S/9Cdtxomd088dyKzR8zPQpptPlPvxARwd/Das244ov3Bky5IN099yNzWfI27YcPXlo566CUfOHXpxX/3tJ2HHihri7XeW4NnESsJSx1wECXkB8rtxwoCbJkVKSSXIkRNQIamLKQYyuWydxdbzm5+cJgNnxDHqz2tCcgyIWsYJtZBrxW/25ssf/Wop3S+svy8u4pdXy9PaKbs5X4A/T401Z5ywwe7r1gud3fwzgde8qA1V49/Y3L79CnduZJu6BOXmpTb15ycrm38z/Lr5ntvPOym17ztz88fB5if35lVMVECQQKJWnnMs8aqTqcVBDiXN6yog4i4iBGLTTbk/hejhh703zpf6jbLP/SZT9ZClgNjwJR/1RFPHNu9XP6uYuEbC/dpLMk3Gsms6ffBmEivB2u1/Tdbz1v8k+XydwVvPPF7p6etR/2L2zd9SDfNkVTQkOPtHP0wz9zCPGFfc0a3T7167mNHXvqXR/zoCa1+JtZXGsUxTBAIdT+bdEVbsxoB6ydnirF8SlQNYpQ8z+g0s15nDb+wxIeDnzL2ed+X67MWNDrgNW2bne5eslzu7sCr7/oy/CAlajO6CLkFZ8EvF74LePuJF58+fvOhnynm1qxZ1FkiTVQy0IREi4l1tEVFn361RNzTvm++XT63e3v7jT7GFLVHokKkDsMf+n5r+T1YjYDWlBRZq8AYh9VahxWlNC78wlyPIqJZwVdaTSgmgSx8/H5nrF1aLnd3MPOIme1rn976tYW49JasUcdYZw3Y5edfeMRTx9+9XP5n4R9Pvuah9uZDPz+cb67txkUiOYYe46Zgan2bVnscTaDaQxiSoxQMKCrL9lv3nbpvcd4GSoxRrNSh9uKlufw+rEYAbZtroTibkWuBBqHy/uceyJbDN4cfXLChOzcMl/bae//H8uP3FBf/ty+/ZMn76zatgV4+/NujnzP11uUyPwtfeNyNRy1t7ZzXncume2mBZOpovTEzgW4c/mj8gYuPN4cM32Cn7aDIJkZJIkIyOdEZlvwSZazACEkTkjwuGZoyftcGYYnNTm2AFiRmSDKEqCaVfoXsz4MNTxu7alc+f/IN3PyozWdt3rv8+D3FU+WpURvlJ7bHwfX9oxfPWX78Z+GzT9+z6bYfdj6xsLe5fo4udUrVEpNZTvsI+8PGyfqY3/rSui/+4TXTf8mJ/hQO776+uZkdnWYblyIExYgDDAqjMH6tg9pSftdmwsNFpkJfiFFRL2TkOFzqlcNVR/GfB/d99NrrHvzYo++xentn2Om2vem2mR0PPe6s9Xd53Hr9M/5t6iffXPj0/C79lUHs0lIlEQnJ0T6i3HvS78jTn/3p6Tv84S/42sarX3D9wa84/ClTp2eHhW+vbW2imVqjbtuiKiiGCFQEqhQa5+g5K9p7xQ6psrUu5hgMXhIWizUm7JTb7slY9p+CM559v6XTn3zk7cv3/yzk39z4XvZMPKjnZ7GUqHSxlKxZY9nyIL53n1c3frT8HIDHvK15y9Qf/OQJ9r7dz06OTyI4khQYtSABLwYvkaRJzl1+8moEOMu4tRmoUpmAKOSSh/zo6hfmDftlw5uPufrF2b6pp1S+T0ETKECbCHDcyTMc/YDmz5wUPu3Fp82ectnOp4VNe78x7mZwCmIMmeaI1r713NhK5DUrepEVBDQbDWNGe4U6Ic7YzBw2fsgvfCC+O7j66qs7u6/e3Vm+/+fFpx6095HNnRtf3x0GglTkGJpYDA0OOmKG4x+SU0z4FQ23HMfJcZWc2P0du27hyik7Q0ZBoXU0t8WRm2LVxJMVBBiLxBhQTRgxJCJJ1LV7R7nlsv+3sHXr1ubm2SO+2pid/tLWrVtXVefuCT706L1bdt2s/xDmG5loxNDAiSUn47Aj2zzocTMUG8BLvEuT0D/68DE7Ww/a/pjOTH75etkAxiAiiDpEbFMvuGBFG64gwFlxkEiaQE0dmG5DZpuyqhr1fwPtazb87qQ0Th3P3BnZ9dPPX378nmLnNfN/392bbV5gFkfEaYGqYWyN4eRHTzFxpDIAQrCblp97Z/ijz5y5c80G96GZxgSONrLfoaWSXXjhof8xASFWjRBDHV6uQiJhsuTaMV/V+vd/Gtu/vziTdeXlYQcsblfsHvfC2z/V3bhc7u7i7cfe9AfsG3tcPy1hKUEMFsWYBoc9YJyJg6DKlDIByR13+T/uXdWnuxoWkb6XIe2UYSmwgBNrq+7CijZcQYCKyYIaRGyd2IDQaJr2offZtEl1fqraWp2yeFP/IYvbdWb5ub9o3P617gMmt7U/08IdsrgEvT1KsVis08XiU7eeP3/EHXJXDI/ed2359Lkry7f3ropvHl6bXt69Ljx76+WrN9rrHnDxkYvb9A2hn8glgTZG6qOy5T5tDn9QE595xBuqqIznbqLRt89Zfp07g5FkSlPn17iRX8xItANTrGjvFTswxoo1WGtw1pAI5GSNw44ce6ruHHu57+nnTWkvtIvVRd0fl89W1RWf1X587pm3HPbpR86ffd6Zt7/gU4/sPfczT9pz4nKZO8PCt/qnNob5hY1ozlici6gHgmGhm2gad2ojtr4x933/jsXvhX9t+OwH4+QfnWzmf95qmRcVbXlde8a+b1LG/2D5dd959nkdu3Xiw83FqTUiCTEKVvAkOhOOEx6R0VivJHGYCFkQlpLSKRovuer9O89afr3VkIk0VAUxgphEoiTqINfbG//xF2AtwWQGnMWYOvV6sNSDYXx83JH+IB/m6zOfm5bJjzFD+5L+1v665df4u4fdcMzfHXXbh7f+q/xgz2V63r7LW2/Z9/3872+7WC55+8G7vvzmE659+nl63p2OKdUPq5NaeeNvx6az8V5IiNTRBdaBawuxpUxNZodMZu7PxnJ7VsOY9rAf6c4r/XmghMGuUGoMXzvwuv/jZedNVN++z8fH5recEjVirWCtxSXL5HjGiY+ZZOpIKEfhDFYikqAaKm0azWmmP3L1P2098sBrroaq8hNWHdYJNlPEeIKWsRjfvUKbWkGAy+w8RgmqqNSZ7ohRreS+ZuCmq74SBgoBomf3vJv/qXDFj59y8281rpz6VvrJzDPKHfnkvtl5di7OsW3uNhZvn8/KrfJr8cbxj27dcP9vv/bYix514LkAF1xwgcPbc9yUPHiQRxprDa6t4BLkkXxckTGhH2BpDhYXoF8qIQheI60MfE971VB+Z+LE1h0W1n84++YN4SPHfU33bnhsP/bw4kkSydTRyoUH/uoUW060lCJoMhiTSFJXssgqQ68H03m+YayaectPP/FKaNIJKw4xgrGKs4JVWepOb12R4rqCAOOySg2EGIkaiUDRaZFnVuqyA0LmhN4whoh/7ebNm++IlvjEg3f80eD6mQ8v7LNT++IuSgKVGIwtyUWxWIYyT9UfYndPnGRumT7/nMPPf/qB9z/rrLNCFf27/Xy8qdm2mA7YjkUKwRQGaRhUgQpipYSQkBLc0DCeOXpVnF8oy8dPnuQ+ceB193x78IHWjs0nL1SeUgZ1PQrNSR42HNVi88mWqlHnvWXisSokcSB1fplRmF1Sctf89es/sPSIA6+9HJJMu1ZiIjHFmlBx5dnnnr3CmrCCgKRaJB9JDoLLsWIZ6zgxhVBJnQRnHQyGPH/ygc07PvF/Ou7G5/nr1//d/ILKrOkTJeFNicXRSeO0dKwOVzUJTKIvA1q9cbt250H/8Lb7XPrbBz5D55TGl8qFwenVXHprIlXNGSHLBWvqzMfolVhBjAoxokHpFOCHsZqfD7+79sHNCw683mvve8WrdXbssb24AOJJ5BhyUshpThUcfXobmRoFC1Ang6YEqGCSjHoCJSQlB4rUeO0Fq+j0+2HRhk2j7MoghBjxEuoSGsuwYocoSkxgwDjFFYaAJZYgqjTHYX4weOva090dNvZ3H3/bY/q3rn3r7XM9+tyOTQpqyFKbqeYUa9a0F/IJG1qNGdppiizliFZ4SspybaPauemf33TwDz9yzlPed0f02NgjxnYXp9sXlrH6NU+6pn0wlG0lKcSkBKnnKU4zJiYM/RBvnx36J2x5ROMLd/wY4PUnXPXH7Bh/jR96wii1Fc2oVJjYmPOQs8fZdLyQpK7EIqqk5IgKOnKqK0IytZOn34fJlnvwzK0nvvTA+xwIMeJIkHyCIIDiU2hceO6F2XLZFQQ0rMTcGlxM5CkiktGtBC2h0Ra681y0c6z5sv3y73jw947Pb53+YFzqSJc9qEQsOS3bpr3O72wd3P/ztQ+VX8lPKU72B+99ezFRlh3pjG5sGEqCbmBy1+bfal50+pf/+kEX/lR03NipzQv3af9h3UH6h6nCMD0tuIaQW8N0B4omzA78F27v9c/c/LDmHf7k88+/ofjbo294LTePvztfLHBkCAmhJBGZ2Wg58+ktDn2wIWT/bjaOdzR6/TcBdYyUoEaIAmUJ49p6xQ8+uHoknxETxGrdvAJGHJqQW5YLrkZAlmOcMZAU4w0mRox6mhn05tJ1+7r6rOOOkwrgzQ++8Hi9cf2/6JJsGMg2MlPn9bZNwcShsuuwhy098vevm3nnr3+6detzvta54kU3HPL8cJ8dZ/Y37b14srGBjBZZXCRqlz3VPrK9UyfLtWsvfOORVz7jwGfaePrY7WMPs79fleHJgyr9KyZ614SlGL4365eesubM/AmHPXr8uv3yb73vDx559TMX/62/VV5ZLnmCeJI1ODvEIczMjHH64zusPzqxWEEZDEl1ZEKuTV4qo+7AjNrxAEtYWSkbm7Y9abPn/fvef4faMiT1IAlrwJoMI6469FdZYdRbQUAMpoxa93eVBpxEfOh1r9/TfcH1u2cffuivmZsB3nTqNw4pb5j+vO6bPmiP7KUSjzMOlxpsOtxx8GmtNzzxY8des/z6L7z01Eu7//zRh4ctu96VdSaJtCjV4VEW2E3su026bfzDb978w2+96wGXPf7Ac8efmH16/NH24QupPHlPnDvzK3uuP2PTw8Y/daDMB4+94U+4rf3l4dzYyYNyUPf5VsCWOITJzjQPOHOM9UdC6YXgFY0JDabu90Vr+80BDV67H+uMxhEfdIdgknnMxR+/eIVtSpJXvMFpnXwuGJx1/qyzVmbOryCg2yP4JCSBYBJCg243Xn/8C8beduIz1u4AeMfvXLumf+PMJ2Vu/NBZ3U5FIKoQQ0XWVLacKsMTHu8uXH7t/XjNWa8Z/tmNR/9ZOnjXf58Ya2BwBDyZQp4iYTik2p2d3r954vNvP+KqT7z5KV/4qRnt4Y/uXHn4w6e/+dSnHneHkew952xvffhBu/8y7Rh7V7cnZkm6GDzoEBigMZIVBSc/fJwjT07ETNEINkVMgv2FDYA6WMyMvoSkkOoBQbTOylcVKoWMYtPM3DEr7EQOmxutPWOSDCklok9mtRillQQsxqgYjDFIyInRo3FU2AF404uvaG/92u3n+Vk5aU73MJA+mjxJ6/oRR57e5LBHNWy/0Vs1FvJAPO/aw19pD5k/pzFpaZoC6tIaJAlUcchwYQG9LXvK4gWb/+1VR1/5xOXn78f7nn7ZCcUnuSpdO/P6vXMDPB6bHGFUsKPSkorEnJ9laOYpWrUqm7yg3o3e8NoRa/fX/RpxYVQQre1iqjUZBiUXyIxxaayxYmBttfJmsoF4RxcmJI1JVqmFtIKAyg8XRerSGTKqz0HSsf2dY+8ju95v9uUPm4s7WZQ5+lLXWcibDY57zFqOf1qHiQ0my8WvXX7t1fDcq4/+63DY3ie4DcMfdMbatNRiJGBsxCDs9bPk+9xhbpv57Es3XfHhl57+byviPZMs7nCi715q7p6XbAzFkRHrjtsKGA9SEXzioq/fyGUXzJMWhaQRnwKqgqR/fzlVtXaoiyCGett/UEAQWjmkBru0vbT9jhNHsE0zFqQuW+JNqqfxLq4aXb6SgNhfVPWo1gnaSQXjOxZBX3HEBS/3s9nTF/xu+jJP38wzSPMoA37lzBkecPY4YRMkB9Zkq8bBrIaXX37KF4r333aaPWj+RW4qLI3Z9RhtEiWh4hiaRXy/IttVPCNekX3nZRu/9fevOOWrD95//nM/etbeZ1695c3mpNsf3doUblzXXE8m0NKcjBwxEKWHdRW9pQFf/dw1XPKVXYSuJTMZksCMPnJVrSd6+99VOXAArjUhayFrQ2ykv73fk1aG05hcMp88aoXoBGMtrsGqRTtWEOD9Qj/4ITFWVGnAULs4Z1qvO+aHr53dNvu6HeU++vSoGBBTSUWXQ4+d5tiHN4ntyLCqPxWnnbsVXv78xz62fN61J76lf8ziQ3Rd/+tTxSROW7ikmJSTqBikWWJPOuxtP5dr137rrw+7+rXnHGAM/KPz739peuDSWe7gwUfbEzM4m4MGTDKoBKL0EFcR05DvXvITvv7JnSxsS+RGII1m2LW6j9k/BlDPPXQ0OUuqtMZhlx98cvMTG6uGvDhjokptysFYsgSZcSuIYjUCXK7dpJ6UPARPX/ZSVkub57b5V/arLtF4jBgyMlQTmzev48QnH0qYhqprMMOR1mDtf2i0Wg0v//aDr3zetiMfNTxs/gX5dL5notgAo8qLBouViI9dYjdYdsZXpg2XXPSqo7/58P3nP/8zR2/7o+s3PsPeJz6uOJjr1rTXIUlQtXXNxiQkY0iUXPujG/nSx37M9usDWQ7G1gzUjT/q80eEAKBKboUFH+dn7eBF+++5HJpSoUmJqZ7T2ghWV4y/sBoBZRSfYl3RKlCBRnqDeRYWt2Ekw2ld3dapYaI1zkOfeDJjGxzlIBEroBQGA0guPvRnmap/FkTQF11z7NvaJy2dwqHdt+Qz4jtmCiMKEhCtgCH94TxpltOGW/n6Sya/dt5fnPaNO3wEL7j0sPO3nHTkWXaD/kunPYGJTaJmCGATd1TwumXXdj710e9x2QVz2MqQZ0I0ShJFkmJj7RtXUYzxjLWgVP++439jzW0//dQ1VK/Oh2WYCFHwySJR6sphGu9aipJYJ3akC6SRNVTxQKgrfIrFqsHR5PQzT+LQ+41TeVBvCL4ultRbAhftCbd/s3rm8uvfHfzxVx5wywuvP/ZFzUPcWbpm+IPJfD3tNI5RRzAViazWYkqDLK05u3lN61vnHH3ps/ere0/9hOz6+Hue8aTu2OK72kWD8TSG0sSL4EWocIgIc0uzfO2z1/PNz+1huE9pZ0KmUnc7oqOiTcJ4I2dPiDcvFHNvWv6s+3Hdt+eLauBbOoqMMGIIBkqJK3wBrEZA02XBmrpq7cgWje5XBbTWLxwN7nv0ERx3/y2UZaQKCR+VGGsLZRyAdo1oaf/21m/1H7L8HncXL7rsAd+Ov7HtIbpxz6saa9PujcVGWpoRzIAgJZaExC4s5BvSNve+l2+85KKXH/ndZ77s7PMmLjrronDO9vv/WdqSntxe19i2MV+DVYNhgJMBisGaRGKO73zras57zw/53hd3E+YjzYYhWcWooZPB0MV+N1981gOftulO07UWL5/O/VCbMaW6dqoqXiDV1W1XYAUBZRl9QgE7quNWfw2CQVUwWnDwpsM48SFHoxn4niVVSgyRECIhJFIJwy7kpZ1yvewf91zWWzFZubt4zXuf0P+rWx70N/lpSyfrhuHbGmMNP0kb1YhqgUqga+ao+iVut3tI2uo/NDi/ffkLN37+eeep2r/68TGfHpywcFpYF/6x1ZqhqTM0ZIDVPkkL6vKBA27dsYPPfuF7fPDvvsmebX3WTFuKdqKYgAXmXnPCb09ftPzZDkRz8SBnQ57XlbQ8KY3yLJLeNS1oMCx9SEoaTUtqEYfgUAwzMzMcf9LRSDunX9WNnXqGUFpisERv8B6qCubmlIZ3h/f3FP/0ox/tWTVH6u7iLz535m0vvvWEF6TD/a+mNdllE/nM/uA/nCaUkj67Kas9uH48LO21b7tk5l8uesNDLnrgq756ym0v23rss8KW/pNksjHb0kOwBBiFEVZEPAsESm7eOcvH3v9dZm+rmN4iac5Ul35l8XtvW/48y2EWO0UopahH0YQzQmYESbJqdPkKAnIj89ba0pgMJB99AQ6jjtw2OPS+B5NNWAaDhB+AH0T8EEIl+LLeqhLKIVQDmNurNKN9+NiO6Y/efPnc3VJNfxZedcXpF+971LUPK9ctvcWOM2jZMVCLZ55AScAwYEA/LKKz1el7frh40UsPueCtf/3AL574uhtO/lyxwT7Sj8nWppkkZwjSI0qFR0hSkZvALXt287/edQXXXFrtXXtQ/kfPf/5jV+1GDoTx2gghFoGAjhK1cyc0smyFN4zVCBjbFPdZ5+ZzU1dCB8Fo3QVt3rKJifXj9MshsQzoUPFVpAyJUNUDcPCp3kql6sOwr8zthbwyjzOzrU/efPlP51T9PHjHh39n8bXbTn1R8/7x9Pwg9w9mSqvCTeM0x9JDCVgMA+0xv7DUmdu29Pzbbhh85yWHfvmdPO3fbth3yldPGIz3PlAUk7SYIMOAWJKNRCosyg1bf8JH3nP5mrece82dmkIOxGDBNxRxEHEqGAfGgcvMqkHIKwiYfHToOmuWbNKR9lPr4LnN2bJpE2akHYQyUA0rfJlIHlKA5JXoIfhIqEL978pQDWFhHxRV/nDdu+brN33LP3n5fX8evPqbv3r5q29+0O+PHZc9ZPqwqS+uG9tEk3EKbWLUUmHp02WBm1jo7nV7dsz96dZ3TF+R33DfM946/5hn55vT40w73z3BRnLN0GRqNVwGeCm5fts19oqLv3/uUw/+wD++8CkXr1pyYD/mZ/szTjNbF6QNpKQEB7ER9y2XZTUCHv+cEwdRylmjiTQqsJpQ2o0OraKNhoQEQ/JCKJXkQUP9N3jwZaw1Ia+E0d/kI3GgdPdA0c+OKJbcJ2/5yvBjN164ukPjnuKV/3bmd19yw/FPKA7RVzSnxnY3iqlRbGYfFU9MFi9D9lW30Z8tjxjsTl/8wy2f/PjsIduuWX964wFhPHy5mW2gnTo4HVKawND0SDJPr387S9vL37vu29/9xp/85vsPWX7v/dixc9dRVVdGdYMV0UQUqKS6a7YgEVFc2JMMRAkoETA4U0B04B0aDRqEFOroiBQMwUeSj2iU+pi3pCAkrwSvhCHEAfTnlTQP41o8zQ6mv3PTRf2X33z5Pc+KXw4R0RdefdLr1z3cnTh+uL62s35yLiuma3u+1jNiJWdgFthX7qK/e/GpS1f0r73y6mtftPeorX9aTupfmsZ4GtNDGYsN8ugICp5IiHupbl+6/7ZL+5995W9+ddWXp1eGTbEEQ10x2Ar4MjEcpBUOeVYjAEDtcJCkto7XTNYp96kyaLRoqLPbiYYYFD/0dZcTIilEQpnwZSKWELwQSzsaoJVqGOkOEvtmE0W00xOp+bp8bst3tn2z/6I9vyBNCeCPP3na9r/60cNePX365GmNwxqfbY/NkCNYeuR4jCa86bPgF+nOxVZ1u/2L6nq9MOTX36Trs0eUreYPrbRwBBIwNJ5oEiY6dJe9/67vzX/rT0/63IpoOR/V2CxHnCWJ1A7+MpJituoAvioBeeFuz5zWpcpGi2yEqq5sokFIsXZup+BIpUGHCS0NqbKkStAAeEOohFBC7AtxCH4opIEhlkI1EHqL0J2HLLn7NKX55uHtY9/Y+f3yqTt37lw1q/ye4C8+fdJ1b7nusb/R2ex+r7O2c/nM+EYatlUvvTJ6S0sGLMVdDPvdg7p74idm9137+2yce/PEljVXWTdRL6uiFtRhKAgxMrujt27pNt7zB8e/7/cOvF8wMiW2ibMOjMWKpZkZprLxVbN1ViWgyJu3OmcxWlc+MxhSUsrSE4LWXUslxEpJlYI3iLdQWWJl8JUhREOISlVGqkopK6iqiC+VOFBCX/GjbXFfZGkvFGVxcpw3H0+3TJ+/67LymWln+oUR8bbrnvxPT/pfv3vqxmMP+f0tGzf+eCZfDynDMEClh0fp6xzz1W4W+kvPvH7r1e+7Pd66cWLNtI5lMzS0HtRlVAm+ivMs3T7H7Pbq1c985IvveE43HDs4VBmWHDJLaEDRsky0OnedAJPbfcnUqmed8WSxagkeQpC6axmClgb1tt7K+lPTUkkBYojEoCRfdz3e191R8EIqBR0KaSDEnhB6Bt9VenOQlhxuKX9onMs+tONH8YLbvjN4zvzW+Z+pedxVPPaxpjz3krP+4Vcee/Bp04eOv2l6YrxsyjRGMxqpAg14Iotplp5fyH+049qZ6/ZeI3nLsWZ8BmNyPIHSeIZEhrqHcjA8fPbHkydS+xJEy+yggR8gCTIVUg7BeVK2dNcJ0Ga14F0gjd7+nLyujl6CDSCVIQ2FWApUDvEO4wUpBbwgFVAp4hVCPWDHStHKIFX9f41CrMAPlNQX/BDK0dyhOwthUSgqd3Kz33hP/+bWd3ZcuvSihW0Lqxa+u7v47feetPf1Nzz+pUcdfdgZG9Zv+PRUaw3G1LkB1aiIPShJYCHt5SeL17Iv7KY0JUMCA5bomQV6VAx9xC8VBwOc+/gL18wu7j2o1DlirMuWOQveDkLIdt81LQhAxpdu7MneNLKG4zDkZAzneoRuJAyUVNUW0FRBLGstJ5WWNHDEnpB6QuorqUxoqCdpcaikUokhEYLihwlfKsFTmzQGQhpCGkLsK/15ZbAARZUd1YqdNw9ubl2y71J/7tzNg1/IZO5l3zvj+2/f+YQnTx4y9hut8fymtpsYKY+jiKDRCh9DSnb1d7IYZokMMSkQCQzxVCpk0AboXxt/23dlTRX7DClZlC4hBSr6MejsiogI7oyA/L9deVXMy+90GKOgUSeq4hj2hsxuW6DqxzpaKQkpQvL/3riprK2hvgtVT+o3fJiQYUSrRFUq1ajRfaqtqH5kxk6lEkpGpAqhqlW47hL09kFWuqMawZ3jb8sumL88/dniDeku+Z3/I7zzR0//7Majxs5oT+u7J1tFaMsEBkGlXikK1XoNBClJlLXzMlmEEtE+zdxu/JuTv3X/4Z783LIMqHpKSsowqBetM0H7jYUVDnlqj+fqeNdJP35a9uNDPjZYqqf0KfWpTEmVChpNR3u8TbNTUDQcWWbJstG0OwfJRoFNOdg25HkdTyo5kIFzkLfBNrWuaCdaL8ZgDSarp+4mAzGKcxHXdNgMMLVxq9ESSqloTLpPujXypvYR5rvLn/+e4reOfucZw33Z63pLvTOWqlkJo1VCFK0L8I3MMjIqRiYY1k9smZ0ym6zMTUw0KGiZFrk0aEnBpsn1VOMLgz2Hfef+r/jGb96w/H53SsB5ep6dPea081vbNzxqadhlEEsq7YJ6Sg14EsY4sqyo11LJLGpG/jcH1lmMNZjC0GxZmh2LbRlMYWllOe1xR9YBk+2P/7cUuSC2JtFl9Za5mjAEbJ22QMrBNCAbSz/prJfzQ+KLxdH8gA6LxphV9e27gxc96n8epNtPef3crp2/fdO+qxhS1bPa0dp+RmrbsCPDSkFDpxjTdTSYoEWLlumQkdOWgo2T6/BjS91dR111wqu+9msrKqjfKQEA//i712+uvtv5Wmfr2vvtrvbQjQanS/SlS9R6TT3FAEKs88pJo6U/6oq7rl6aZLTmTHSeZCMY0AzEKa5wuMxRiIxW37PkRYtG1qQoGjjJEQWThIbLyJ2lmWU0C4fLSV5TOYyx6i0xF4MuZk0zT0o701CX+gvDsUEox0LVqIKmbpLF0idjQmAyyqARtR/6cdENw2Kr1EGqnDSNxnXRh5aKbXRDNTk/3EVgOHrja7W8dkplODFYsTRo007TdNhAW8ZpaAtHQdtmTLWn6U/M7h2ceemxL/nnJ69IHv+ZBAD83W/+4Ch71bpP5vvWnbB3fh/9NEsgkATiKIwDqNeIqb2fo0Gsno5bHCqKqieaijL1mWcfQ4YjI4cdLQKSan8tOQUtDBmGDEubDEuTBo3RXNbSIKNDzlhdd44KIeFwtIucRiao1lrVMNYz2brwYJ+gHq8Jj8fTp888fZ3HM2BARcWQkpJIHxhQUX/tkO5Y5bJe8bWoV7sUoSFtOmmKCTbTYIK2mWR8bJo0HNLMx1icuPWHNzz2TSe9973vXWGOWNVPeSD+5UfvmT39Dx/z0ebs5CBTf1LDTxUxxnrVU7FYa7CSkWlGIRm5ycilINeCXHKcg8wYrLFYU79DUcPoTXK1y0fAYnHSoEFBgSPH0Njf1FLQphgda9YrLNGgGBnM8zomH5GEDYFUeSpfMUzD2m3JLEG6BBJJS5L08PQY6iJDWWJIj0AJDOr8JvHUwWkZURiNUXX3U3dBFjt6+w2OTFu0mKRhJli3ZoZNmzax2BsQQ6SVtxg29l3w+n991nnL25a78gUciA884epj4i1Tf+oX4tktP7U2DaEKJaSstoiO1geLGtDgaw3CKWoCXutvo0x9FnWJkgGJIT5VREC07rDc6AN3WDKTY02TLBYU6uqIDGmRSYO2KyhsRtScGCOS6vsZVRBLqVBJQADPgEBFGFm3Qu2qoac9+vTwMsBrHQESCMRRqbF6wa5A1DDKDWLUsdYrHVvqROymjrGhvYUTfuV43+403bVX3i57di+wsdjAutYke6dvesWLb7rPqov53C0C9uNTf37DloVrJh/tF+wZWdU/OvPZRp9ia1BVLnjbMJq1pFJiTOBcvQSUT8SohFTSlR5eSwRPkkQaxc+gYNVg1ZJJRmYdzhbkaYzMO1yA3BRY06blChoOgoEYan9E0AQxAoKPkMRSOUXTkBR9vfaZLSmlx0CHDCjp64AhVa3pSUVQf0fjCxExtfZlpX6+OmUpoiIDp40lFbOwdmpm22kPPHVzNb902JVXbM0WuzlNyZmUtYyvt8Hcd99Jz7vgPlcub0fuKQHL8f43vH9Mto01+nuKrJo9qFVUU2sGi6mtGnKTqoYh5lUZmqEKE0HKtUFCK2rlRFSEpCmpiUlNEowRMVZdZkQyUfWZuH4uEw7vxtSrMZJrgxw7bDRzOzlNXrRjCmUI3T3DtBTFt8etKSaSBqMp7vHFUjcG70Lp2tFGTc3F2SjdXtTgI5Ehpa18N4bkS5+hKrEqw6Anqn2J0uu0m7NFI6ucMcYgYtUuuk57acGJ9Oajs5Ktn2h1HpEvydOXtvbHYYymtGggTNvDMQft/ZeX3nz0nRaR/YUQ8P8Kfu/3zmnsubY9Wc0PpxYWFifx+Xie2m3nXVusToVhtRbM2ixnvXHhIPpufUFrQyt1XBEtOW0sHVqS09YZWtPrGT988fTnf/9+Fy+/137cawl42/lvKzqfeNY4Sx0G62QwNb+Qua6s6y/4qWFZWjFVisPWmJTlwf1ydrMXHQ+VjPuB75Sh7JQMxwO+VTJsDKpe0a96WS/1msFU4yqxGZKiyYzCVUaTLgVRhwFyItlIicglo02bhowhWpCnNlOdI0hbBm/86+uOuSOdazXcqwg458zLJzs3T70kqzjVV2GzlfEJUSeJNNCUrMOsMVI0Y4KER1JGCpHSL+Hx9WKEaYkyLdFnyJA+w/2BxgwIdEehKbU9SImUeJLoaN3vWjlwWHJ19Vr3CIXJaNkOY2YcVzXoZBthffVPr916yk/5ClbDqragX1aEm7NzW3sOeYXsWn+WnZ0+2uwr1stsvs7Ntg8x8+0t1bw0h3OBciFSLQiDpSGDwQLDsEgV5vFhgZjqhTuhAiqECktF7YbPUfLR5BJAcaKjELX9ORM60rQSlopCAo0YyHxFRmKiM4Gun3+PedZLVpRJWA33mi/gzU+5eLr71bFrWotbNgxtF03UFQs1Q2RUWkpKooIgJKnf4KSeoH2ieCIQ1VNJvd6lZ0hJj0oGBC3xVARKPENU64lhlDiyBNn63ddaTc4RnIAjx2mbTraWmbVjOrF2/HmvuPLkdy5//jvDveYL2H2tP9JXdkOfHiEqSQ1Ja+NFVEHVYFNRxwSpI0v1ZhSEUdKvav2T1WDU4NSRaU6WcqwWZJrhtMBpc7QSXgOjGUYdTvP6GEUdJSgOkYLcTdKeGGdqS35p41D7pLvT+NybvoA/POJTD8x3b7psMh5BC4NRqRtD3KjGdcKqQcTU1Wo1kJKnYpEgS0RTEoBkIIinTCUpDanoM9S6dkQk1UGOUqYgSzGZfsxUoiUPRkwCM5AoC4jpW5G+tcVCqzN97fSG9jeeeNnUv96V9YOX415DwNlnn23X/eA5D5k06w7p0FJVsYIVsZkmNUFANYVMRDJrkCqWEkKMqmW0Jgyzhu2p0ZiwErNk+uUAn3paxuFgmAb9EIZYE6w3kjx+mNg9DK19oZM3vSsmQzvPY7fZLQ92Ve/cL5w7/GVYAfa/8F+49+N/A15aDc0sAre5AAAAAElFTkSuQmCC" %}
 <!DOCTYPE html>
-<!-- Version: 2.16 - July 24, 2026 -->
+<!-- Version: 2.21 - August 08, 2026 -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartGallery: {{ current_folder_info.display_name }}</title>
     <link rel="icon" type="image/png" href="{{ app_logo_b64 }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css', v='2.16') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/collections.css', v='2.16') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css', v='2.21') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/collections.css', v='2.21') }}">
+
+<script>
+<script>
+// --- EARLY INSTANT ESC KEY LISTENER FOR CLUSTERING EXIT (MAC & SAFARI OPTIMIZED) ---
+(function() {
+    if (window.location.search.indexOf('cluster_mode=') !== -1) {
+        window.addEventListener('keydown', function(e) {
+            var isEsc = (e.key === 'Escape' || e.key === 'Esc' || e.keyCode === 27 || e.which === 27 || e.code === 'Escape');
+            if (!isEsc) return;
+
+            var activeTag = document.activeElement ? document.activeElement.tagName : '';
+            if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || (document.activeElement && document.activeElement.isContentEditable)) return;
+
+            var openOverlay = document.querySelector('.modal-overlay.visible, #smart-dialog-overlay.visible, .sort-popover.visible, #options-popover.visible, #tools-popover.visible, #desktop-search-panel.visible');
+            if (openOverlay) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+
+            var params = new URLSearchParams(window.location.search);
+            params.delete('cluster_mode');
+            params.delete('cluster_scope');
+            params.delete('cluster_sort');
+            params.delete('cluster_target_id');
+
+            var newSearch = params.toString();
+            var targetUrl = newSearch ? (window.location.pathname + '?' + newSearch) : (window.location.pathname || '/galleryout/');
+
+            setTimeout(function() {
+                window.location.replace(targetUrl);
+            }, 10);
+        }, true);
+    }
+})();
+
+// --- GLOBAL WORKFLOW FILES AUTOCOMPLETE FUNCTIONS (HEAD LEVEL) ---
+var wfDebounceTimer = null;
+
+function safeEscapeHTML(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function handleWfInput(inputEl) {
+    var menu = document.getElementById('wf-suggestions-menu');
+    if (!menu) return;
+
+    clearTimeout(wfDebounceTimer);
+    var val = inputEl.value;
+    
+    var terms = val.split(/[,;]/);
+    var lastTerm = terms[terms.length - 1].replace(/^!/, '').trim();
+
+    wfDebounceTimer = setTimeout(function() {
+        fetch('/galleryout/api/workflow_files_suggestions?q=' + encodeURIComponent(lastTerm))
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.status === 'success' && data.suggestions && data.suggestions.length > 0) {
+                    renderWfSuggestions(data.suggestions, lastTerm, inputEl, menu);
+                } else {
+                    menu.style.display = 'none';
+                }
+            })
+            .catch(function() { menu.style.display = 'none'; });
+    }, 150);
+}
+
+function renderWfSuggestions(suggestions, currentTerm, inputEl, menu) {
+    menu.innerHTML = '';
+    
+    suggestions.forEach(function(item) {
+        var div = document.createElement('div');
+        div.className = 'wf-suggestion-item';
+        div.title = item;
+        
+        var normalizedPath = item.replace(/\\/g, '/');
+        var lastSlashIdx = normalizedPath.lastIndexOf('/');
+        
+        var filename = item;
+        var folderPath = '';
+        if (lastSlashIdx !== -1) {
+            filename = normalizedPath.substring(lastSlashIdx + 1);
+            folderPath = normalizedPath.substring(0, lastSlashIdx);
+        }
+
+        var itemHtml = '<div class="wf-sug-filename">🧩 ' + safeEscapeHTML(filename) + '</div>';
+        if (folderPath) {
+            itemHtml += '<div class="wf-sug-path">📂 ' + safeEscapeHTML(folderPath) + '</div>';
+        }
+
+        div.innerHTML = itemHtml;
+        div.onmousedown = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            applyWfSuggestion(inputEl, menu, filename);
+        };
+        menu.appendChild(div);
+    });
+    
+    menu.style.display = 'block';
+}
+
+function applyWfSuggestion(inputEl, menu, selectedText) {
+    var rawVal = inputEl.value;
+    var terms = rawVal.split(/([,;])/);
+    
+    for (var i = terms.length - 1; i >= 0; i--) {
+        if (terms[i] !== ',' && terms[i] !== ';') {
+            var isNeg = terms[i].trim().indexOf('!') === 0;
+            terms[i] = (isNeg ? '!' : '') + selectedText;
+            break;
+        }
+    }
+    
+    inputEl.value = terms.join('');
+    menu.style.display = 'none';
+    inputEl.focus();
+}
+
+['click', 'focusin'].forEach(function(evt) {
+    document.addEventListener(evt, function(e) {
+        var wfInput = document.getElementById('wf-files-input');
+        var wfMenu = document.getElementById('wf-suggestions-menu');
+        if (wfInput && wfMenu && !wfInput.contains(e.target) && !wfMenu.contains(e.target)) {
+            wfMenu.style.display = 'none';
+        }
+    }, true); // Use capture phase to bypass stopPropagation
+});
+</script>
 </head>
 
 <body>
@@ -94,6 +229,19 @@
 
         <div style="height:1px; background:rgba(255,255,255,0.1); margin:10px 0;"></div>
         
+        <!-- Cluster Badges in Normal Grid Option -->
+        <div class="opt-item" id="opt-btn-cluster-badges" onclick="toggleClusterBadgesSetting()">
+            <div>
+                <div class="opt-label" style="display: flex; align-items: center; gap: 8px;">🧬 Cluster Badges</div>
+                <div style="font-size:0.75rem; color:var(--text-muted); line-height: 1.3; margin-top: 4px;">
+                    Display cluster hash badges on normal grid thumbnails instead of the standard workflow badge.
+                </div>
+            </div>
+            <span class="opt-status" id="opt-status-cluster-badges" style="align-self: center;">OFF</span>
+        </div>
+
+        <div style="height:1px; background:rgba(255,255,255,0.1); margin:10px 0;"></div>
+
         <!-- Official Help Link (Mobile Friendly) -->
         <a href="https://smartgallerydam.com/#docs" target="_blank" class="opt-item" style="text-decoration: none; align-items: flex-start;">
             <div>
@@ -116,6 +264,18 @@
             </button>
         </div>
         
+                <!-- Smart Clustering Option -->
+        <div class="opt-item" onclick="document.getElementById('tools-popover').classList.remove('visible'); openClusteringModal();">
+            <div>
+                <div class="opt-label" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                    <span style="background:var(--ai-gradient); color:#fff; border-radius:6px; padding:2px 8px; font-size:0.85rem; font-weight:bold;">🧬 Smart Clustering</span>
+                </div>
+                <div style="font-size:0.75rem; color:var(--text-muted); line-height: 1.3;">
+                    Group assets by exact workflow architecture or prompt text.
+                </div>
+            </div>
+        </div>
+
         <!-- Remix Workflow Option -->
         <div class="opt-item" onclick="document.getElementById('tools-popover').classList.remove('visible'); if(typeof openRemixModal === 'function') openRemixModal(); else showNotification('Remix module not loaded.', 'warning');">
             <div>
@@ -474,6 +634,9 @@
                         
                         {% if not loop.last %}<span>/</span>{% endif %}
                     {% endfor %}
+                    {% if current_folder_info is defined and current_folder_info.is_collection and current_folder_info.collection_id != 'all' and has_notes %}
+                    <button type="button" class="glass-btn" onclick="openCollectionNotesModal()" style="border-color:var(--favorite-color); color:var(--favorite-color); font-weight:bold; height:28px; padding:0 12px; font-size:0.8rem; margin-left:12px; cursor:pointer; transform:none !important;">📝 Collection Notes</button>
+                    {% endif %}
                 </div>
             </div>
 
@@ -767,15 +930,27 @@
                     </label>
                 </div>
                 {% else %}
-                <!-- Hidden Inputs to maintain default state inside Collections -->
+                <!-- Hidden Inputs & Sub-collection toggle for Collections -->
                 <input type="hidden" name="scope" value="local">
+                {% if current_folder_info.collection_id != 'all' %}
+                <div class="filter-group">
+                    <label>Search Scope</label>
+                    <label class="recursive-wrapper {% if request.args.get('recursive') == 'true' %}active{% endif %}" id="recursive-collection-ui">
+                        <input type="checkbox" name="recursive" value="true" {% if request.args.get('recursive') == 'true' %}checked{% endif %} onchange="this.parentElement.classList.toggle('active', this.checked)">
+                        <span class="recursive-label">📚 Include Sub-collections</span>
+                    </label>
+                </div>
+                {% endif %}
                 {% endif %}
                 
                 <div class="filter-group"><label>🔍 Search by Name</label><input type="text" name="search" placeholder="Search files..." value="{{ request.args.get('search', '') }}"></div>
                 <div class="filter-group">
                     <label style="margin-bottom:2px;">⚙️ Workflow Files</label>
                     <div class="filter-hint">Use <code>,</code> for <strong>AND</strong>, <code>;</code> for <strong>OR</strong>. Prefix with <code>!</code> to <strong>EXCLUDE</strong> (e.g. <code>flux1, !lora</code>).<br>Wrap in <code>" "</code> for exact words (<code>man</code> finds <code>woman</code>, <code>"man"</code> finds only <code>man</code>).</div>
-                    <input type="text" name="workflow_files" class="multi-keyword-input" placeholder="Models, LoRAs..." value="{{ request.args.get('workflow_files', '') }}">
+                    <div class="wf-autocomplete-wrapper">
+                        <input type="text" name="workflow_files" id="wf-files-input" class="multi-keyword-input" placeholder="Models, LoRAs (e.g. flux, wan2.2)..." value="{{ request.args.get('workflow_files', '') }}" autocomplete="off" oninput="handleWfInput(this)" onfocus="handleWfInput(this)">
+                        <div id="wf-suggestions-menu" class="wf-suggestions-dropdown"></div>
+                    </div>
                     <div class="filter-warning">⚠️ Cannot mix AND (,) and OR (;)</div>
                 </div>
                 <div class="filter-group">
@@ -875,7 +1050,22 @@
     </div>
     {% endif %}
     
-        <div id="gallery-anchor"></div>
+        <!-- === DID YOU MEAN SUGGESTION BANNER === -->
+    <div id="did-you-mean-banner" class="did-you-mean-container" style="display: none;">
+        <span class="dym-icon">✨</span>
+        <span class="dym-text">Did you mean: <strong id="dym-suggestion-target"></strong>?</span>
+        <button type="button" id="dym-apply-btn" class="glass-btn active-blue dym-btn">Apply Suggestion</button>
+        <button type="button" onclick="document.getElementById('did-you-mean-banner').style.display='none'" class="dym-close">&times;</button>
+    </div>
+
+    <!-- === CLUSTERING ACTIVE BANNER === -->
+    <div id="clustering-active-banner" class="did-you-mean-container" style="display: none; background: rgba(155, 48, 255, 0.2); border: 2px solid var(--ai-color, #ff00ff); box-shadow: 0 4px 20px rgba(255, 0, 255, 0.3);">
+        <span class="dym-icon">🧬</span>
+        <span class="dym-text" id="cluster-banner-text"><strong>CLUSTERING MODE ACTIVE</strong></span>
+        <button type="button" onclick="exitClusteringMode()" class="glass-btn active-blue dym-btn" style="border-color: var(--danger-color, #dc3545) !important; background: rgba(220, 53, 69, 0.25) !important; color: #ffffff !important; font-weight: bold;">✕ Exit Cluster Mode</button>
+    </div>
+
+    <div id="gallery-anchor"></div>
         <!-- Static List View Header -->
         <div class="list-view-header" id="static-list-header">
             <div style="text-align: center;">#</div>
@@ -1197,97 +1387,91 @@
 </style>
 
             <div class="shortcuts-content" style="display: block; padding: 15px; overflow-y: auto; flex: 1;">
-                
+                <div class="help-action-row" onclick="closeLightboxHelp(); if(currentLightboxFile) openFullDetailsModal(currentLightboxFile.id);">
+                    <div class="har-icon">📋</div>
+                    <div class="har-desc">Full Asset Details</div>
+                    <div class="har-key"><span class="key">I</span></div>
+                </div>
                 <div class="help-action-row" onclick="closeLightboxHelp(); rotateLightbox();">
                     <div class="har-icon">🔄</div>
                     <div class="har-desc">Rotate Media 90°</div>
                     <div class="har-key"><span class="key">T</span></div>
                 </div>
-
                 <div class="help-action-row" onclick="closeLightboxHelp(); document.getElementById('lightbox-download').click();">
                     <div class="har-icon">💾</div>
                     <div class="har-desc">Download Media File</div>
                     <div class="har-key"><span class="key">S</span></div>
                 </div>
-
                 <div class="help-action-row" onclick="closeLightboxHelp(); if(currentLightboxFile) downloadCleanedFile(currentLightboxFile.id, currentLightboxFile.name);">
                     <div class="har-icon" style="color:var(--success-color)">🛡️</div>
                     <div class="har-desc">Clean Export (Remove metadata)</div>
                     <div class="har-key"><span class="key">Shift</span><span class="key">W</span></div>
                 </div>
-
                 <div class="help-action-row" onclick="closeLightboxHelp(); renameFileFromLightbox();">
                     <div class="har-icon">✏️</div>
                     <div class="har-desc">Rename File</div>
                     <div class="har-key"><span class="key">R</span></div>
                 </div>
-
                 <div class="help-action-row" onclick="closeLightboxHelp(); const fId = currentLightboxFile ? currentLightboxFile.id : null; closeLightbox(); if(fId) { deselectAll(); selectedFiles.add(fId); updateSelectionUI(); initiateMove(); }">
                     <div class="har-icon">📁</div>
                     <div class="har-desc">Move File</div>
                     <div class="har-key"><span class="key">M</span></div>
                 </div>
-
                 <div class="help-action-row" onclick="closeLightboxHelp(); if(currentLightboxFile && currentLightboxFile.has_workflow) document.getElementById('lightbox-summary-btn').click(); else showNotification('No workflow available', 'warning');">
                     <div class="har-icon">📝</div>
                     <div class="har-desc">View Node Summary (Parameters)</div>
                     <div class="har-key"><span class="key">N</span></div>
                 </div>
-
                 <div class="help-action-row" onclick="closeLightboxHelp(); if(typeof openRemixModal === 'function') openRemixModal();">
                     <div class="har-icon" style="color:var(--favorite-color);">🪄</div>
                     <div class="har-desc">Remix Workflow <span style="color:red;">*HOT!*</span></div>
                     <div class="har-key"><span class="key">B</span></div>
                 </div>
-
                 <div class="help-action-row" onclick="closeLightboxHelp(); if(currentLightboxFile) document.getElementById('lightbox-workflow').click();">
                     <div class="har-icon">⚙️</div>
                     <div class="har-desc">Download Workflow JSON</div>
                     <div class="har-key"><span class="key">W</span></div>
                 </div>
-
                 <div class="help-action-row" onclick="closeLightboxHelp(); if(currentLightboxFile) copyWorkflowToClipboard(currentLightboxFile.id);">
                     <div class="har-icon">📋</div>
                     <div class="har-desc">Copy Workflow to Clipboard</div>
                     <div class="har-key"><span class="key">C</span></div>
                 </div>
-
+                <div class="help-action-row" onclick="closeLightboxHelp(); openClusteringModal(currentLightboxFile ? currentLightboxFile.id : null);">
+                    <div class="har-icon" style="color:var(--ai-color, #ff00ff);">🧬</div>
+                    <div class="har-desc">Smart Asset Clustering</div>
+                    <div class="har-key"><span class="key">Shift</span><span class="key">C</span></div>
+                </div>
                 <div class="help-action-row" onclick="closeLightboxHelp(); if(currentLightboxFile) openStoryboard(currentLightboxFile.id);">
                     <div class="har-icon">🎞️</div>
                     <div class="har-desc">Generate Video Storyboard</div>
                     <div class="har-key"><span class="key">E</span></div>
                 </div>
-
                 <div class="help-action-row" onclick="closeLightboxHelp(); openTaggingModal('collection');">
                     <div class="har-icon">📚</div>
                     <div class="har-desc">Add/Remove Collection</div>
                     <div class="har-key"><span class="key">A</span></div>
                 </div>
-
                 <div class="help-action-row" onclick="closeLightboxHelp(); openTaggingModal('status');">
                     <div class="har-icon">🏷️</div>
                     <div class="har-desc">Set Status</div>
                     <div class="har-key"><span class="key">Y</span></div>
                 </div>
-
                 <div class="help-action-row" onclick="closeLightboxHelp(); if(currentLightboxFile) openFileInfoPanel(currentLightboxFile.id);">
                     <div class="har-icon" style="letter-spacing: -2px;">⭐💬</div>
                     <div class="har-desc">Manage Ratings & Comments</div>
                     <div class="har-key"><span class="key">G</span></div>
                 </div>
-
                 <div class="help-action-row" onclick="closeLightboxHelp(); toggleLightboxUi();">
                     <div class="har-icon">👁️</div>
                     <div class="har-desc">Hide/Show UI (Clean View)</div>
                     <div class="har-key"><span class="key">H</span></div>
                 </div>
-
                 <div class="help-action-row" onclick="closeLightboxHelp(); document.getElementById('lightbox-new-tab').click();">
                     <div class="har-icon">↗️</div>
                     <div class="har-desc">Open Full-res in New Tab</div>
                     <div class="har-key"><span class="key">O</span></div>
                 </div>
-
                 <div class="help-action-row" onclick="closeLightboxHelp(); deleteFromLightbox(false);">
                     <div class="har-icon" style="color:var(--danger-color)">🗑️</div>
                     <div class="har-desc" style="color:var(--danger-color)">Delete File</div>
@@ -1855,7 +2039,7 @@
                         <span class="sc-sub">Hover or Selected</span>
                     </div>
                     <div class="shortcut-item"><span class="key">V</span> or <span class="key">Enter</span> <span class="desc">Open Lightbox</span></div>
-                    <div class="shortcut-item"><span class="key">I</span> <span class="desc">Show File Path Info</span></div>
+                    <div class="shortcut-item"><span class="key">I</span> <span class="desc">Full Asset Details</span></div>
                     <div class="shortcut-item"><span class="key">X</span> or <span class="key">Spacebar</span> <span class="desc">Select / Deselect</span></div>
                     <div class="shortcut-item"><span class="key">N</span> <span class="desc">Node Summary</span></div>
                     <div class="shortcut-item"><span class="key">B</span> <span class="desc">Remix Workflow <span style="color:red;">*HOT!*</span></span></div>
@@ -1864,6 +2048,7 @@
                     <div class="shortcut-item"><span class="key">W</span> <span class="desc">Download Workflow</span></div>
                     <div class="shortcut-item"><span class="key">Shift</span>+<span class="key">W</span> <span class="desc">Clean Export (No metadata)</span></div>
                     <div class="shortcut-item"><span class="key">C</span> <span class="desc">Copy Workflow</span></div>
+                    <div class="shortcut-item"><span class="key">Shift</span>+<span class="key">C</span> <span class="desc">Smart Asset Clustering</span></div>
                     <div class="shortcut-item"><span class="key">S</span> <span class="desc">Download File</span></div>
                     <div class="shortcut-item"><span class="key">R</span> <span class="desc">Rename File</span></div>
                     <div class="shortcut-item"><span class="key">E</span> <span class="desc">Video Storyboard</span></div>
@@ -1921,6 +2106,7 @@
                         
                         <!-- Sub-Col 2: Display & Info -->
                         <div style="display:flex; flex-direction:column; gap:0.4rem;">
+                            <div class="shortcut-item"><span class="key">I</span> <span class="desc">Full Asset Details</span></div>
                             <div class="shortcut-item"><span class="key">H</span> <span class="desc">Hide/Show UI</span></div>
                             <div class="shortcut-item"><span class="key">T</span> <span class="desc">Rotate</span></div>
                             <div class="shortcut-item"><span class="key">O</span> <span class="desc">Open New Tab</span></div>
@@ -1936,6 +2122,7 @@
                         <div style="display:flex; flex-direction:column; gap:0.4rem;">
                             <div class="shortcut-item"><span class="key">W</span> <span class="desc">Download Workflow</span></div>
                             <div class="shortcut-item"><span class="key">C</span> <span class="desc">Copy Workflow</span></div>
+                            <div class="shortcut-item"><span class="key">Shift</span>+<span class="key">C</span> <span class="desc">Smart Asset Clustering</span></div>
                             <div class="shortcut-item"><span class="key">R</span> <span class="desc">Rename File</span></div>
                             <div class="shortcut-item"><span class="key">E</span> <span class="desc">Video Storyboard</span></div>
                             <div class="shortcut-item"><span class="key">M</span> <span class="desc">Move File</span></div>
@@ -2024,6 +2211,18 @@
         <div id="sb-zoom-quality-msg">⚠️ Low-Res Preview (360p)</div>
         <!-- Close Button -->
         <button class="close-btn" onclick="closeSbZoom()" style="position:absolute; top:20px; right:20px; font-size:2rem; z-index:4005;">×</button>
+    </div>
+        <!-- FULL FILE DETAILS MODAL (Shortcut: I) -->
+    <div id="full-file-details-overlay" class="modal-overlay" onclick="if(event.target === this) closeFullDetailsModal();">
+        <div class="full-details-panel" onclick="event.stopPropagation();">
+            <div class="full-details-header">
+                <h3>📋 Full Asset Details</h3>
+                <button class="close-btn" onclick="event.stopPropagation(); closeFullDetailsModal();" title="Close (Esc)">&times;</button>
+            </div>
+            <div id="full-details-content" class="full-details-body">
+                <div class="loader" style="margin: 40px auto;"></div>
+            </div>
+        </div>
     </div>
     {% include 'collections.html' %}
     {% include 'list_view.html' %}
@@ -2206,6 +2405,7 @@
     {% include 'modals/omniquery_modal.html' %}
     {% include 'modals/changelog.html' ignore missing %}
     {% include 'modals/whats_new_modal.html' %}
+    {% include 'modals/clustering_modal.html' %}
     <script>
         // --- DATA INITIALIZATION AND GLOBAL STATE ---
         // --- GLOBAL VIEW CONTEXT (Hardcoded from server on load) ---
@@ -2295,6 +2495,14 @@
         const expandedFolderKeys = savedFolderState ? new Set(JSON.parse(savedFolderState)) : new Set();
 
         // --- GLOBAL UTILITIES (Load first to avoid ReferenceErrors) ---
+        document.addEventListener("DOMContentLoaded", function() {
+            const briefContent = document.getElementById("brief-reader-content");
+            if (briefContent && briefContent.textContent.trim().length > 0 && !briefContent.dataset.parsed) {
+                let rawText = briefContent.textContent.trim().replace(/\r\n/g, "\n");
+                briefContent.innerHTML = renderMarkdownText(rawText);
+                briefContent.dataset.parsed = "true";
+            }
+        });
         function escapeHTML(value) {
             if (value === null || typeof value === 'undefined') {
                 return '<em>null</em>';
@@ -2611,7 +2819,7 @@
 
         function buildFolderTreeHTML(folderKey, isMovePanel = false) {
             const folder = foldersData[folderKey];
-            if (!folder) return '';
+            if (!folder || folder.is_hidden) return '';
 
             const hasChildren = folder.children && folder.children.length > 0;
             const isManuallyExpanded = expandedFolderKeys.has(folderKey);
@@ -3193,7 +3401,7 @@
         }
         
         function formatBytes(bytes, decimals = 1) { if (!bytes) return '0 B'; const k = 1024; const dm = decimals < 0 ? 0 : decimals; const sizes = ['B', 'KB', 'MB', 'GB', 'TB']; const i = Math.floor(Math.log(bytes) / Math.log(k)); return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]; }
-        function appendFiles(files) { if (!files || files.length === 0) { if (currentItemCount === 0) showEmptyState(); updateLoadMoreVisibility(); return; } const fragment = document.createDocumentFragment(); const newLazyElements = []; files.forEach(file => { allFilesData.push(file); const item = createGalleryItem(file); fragment.appendChild(item); galleryItems.push(item); const lazyEl = item.querySelector('.lazy'); if (lazyEl) newLazyElements.push(lazyEl); }); galleryContainer.appendChild(fragment); initializeLazyLoading(newLazyElements); currentItemCount += files.length; updateLoadMoreVisibility(); }
+        function appendFiles(files) { if (typeof resetClusterColorMap === 'function' && currentItemCount === 0) resetClusterColorMap(); if (!files || files.length === 0) { if (currentItemCount === 0) showEmptyState(); updateLoadMoreVisibility(); return; } const fragment = document.createDocumentFragment(); const newLazyElements = []; files.forEach(file => { allFilesData.push(file); const item = createGalleryItem(file); fragment.appendChild(item); galleryItems.push(item); const lazyEl = item.querySelector('.lazy'); if (lazyEl) newLazyElements.push(lazyEl); }); galleryContainer.appendChild(fragment); initializeLazyLoading(newLazyElements); currentItemCount += files.length; updateLoadMoreVisibility(); }
         function createGalleryItem(file) {
             const item = document.createElement('div');
             item.className = `gallery-item ${selectedFiles.has(file.id) ? 'selected' : ''}`;
@@ -3218,6 +3426,21 @@
                 mediaHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:4rem;color:#1ed760;">🎵</div>`;
             } else if (['image', 'animated_image'].includes(file.type)) {
                 mediaHTML = `<img class="lazy" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E" data-src="/galleryout/thumbnail/${file.id}" alt="${file.name}" loading="lazy">`;
+            } else if (file.type === 'document') {
+                mediaEl = document.createElement('div');
+                mediaEl.className = 'theater-document-reader';
+                mediaEl.innerHTML = '<div class="loader" style="margin:40px auto; border-top-color:#333;"></div>';
+                fetch(`/galleryout/file/${file.id}`)
+                    .then(r => r.text())
+                    .then(text => {
+                        if (file.name.toLowerCase().endsWith('.md')) {
+                            mediaEl.innerHTML = `<div>${renderMarkdownText(text)}</div>`;
+                        } else {
+                            const safeText = (typeof escapeHTML === 'function') ? escapeHTML(text) : text;
+                            mediaEl.innerHTML = `<pre>${safeText}</pre>`;
+                        }
+                    })
+                    .catch(() => mediaEl.innerHTML = '<div style="color:red;text-align:center;">Failed to load document</div>');
             } else if (file.type === 'video') {
                 // SMART STREAMING LOGIC
                 // 1. Is it a format browsers can't play natively? (MOV/ProRes) -> Force Stream
@@ -3252,9 +3475,11 @@
                         poster="/galleryout/thumbnail/${file.id}"></video>
                     ${overlayHTML}
                 `;
+            } else if (file.type === 'document') {
+                const ext = file.name.split('.').pop().toUpperCase();
+                mediaHTML = `<div class="doc-thumb-preview"><span class="doc-icon">📄</span><span class="doc-ext">${ext}</span></div>`;
             } else {
-                // Unknown / Text files
-                mediaHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:3rem;color:var(--text-muted);">📄</div>`;
+                mediaHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:3rem;color:var(--text-muted);">❓</div>`;
             }
 
             // --- WORKFLOW COLOR STRIP LOGIC (NEW) ---
@@ -3265,6 +3490,55 @@
             }
 
             // --- METADATA & BUTTONS ---
+            // --- WORKFLOW CLUSTER BADGE & COLOR ROTATION ---
+            let clusterBadgeHTML = '';
+            let showStandardWfBadge = file.has_workflow;
+            const currentClusterMode = new URLSearchParams(window.location.search).get('cluster_mode');
+
+            if (currentClusterMode) {
+                showStandardWfBadge = false;
+                const wfHash = file.workflow_hash;
+                const prHash = file.prompt_hash;
+                const rawHash = (currentClusterMode === 'prompt') ? prHash : wfHash;
+                if (rawHash) {
+                    const clusterColor = (typeof getClusterColor === 'function') ? getClusterColor(rawHash) : '#007bff';
+                    item.style.setProperty('--cluster-color', clusterColor);
+                    item.classList.add('cluster-item-active');
+                    const shortHash = rawHash.substring(0, 5).toUpperCase();
+                    
+                    let secondaryBadge = '';
+                    if (currentClusterMode === 'prompt' && wfHash) {
+                        const subColor = (typeof getClusterColor === 'function') ? getClusterColor(wfHash) : '#ff00ff';
+                        const subShort = wfHash.substring(0, 5).toUpperCase();
+                        secondaryBadge = ` <span class="cluster-sub-badge" style="background:${subColor}; color:#fff;" onclick="event.stopPropagation(); openClusterInfoInspector('${wfHash}', 'workflow', '${file.id}')" title="Architecture Variant: #${subShort} (Click to Inspect)">🧬 #${subShort}</span>`;
+                    } else if (currentClusterMode === 'workflow' && prHash) {
+                        const subColor = (typeof getClusterColor === 'function') ? getClusterColor(prHash) : '#ff00ff';
+                        const subShort = prHash.substring(0, 5).toUpperCase();
+                        secondaryBadge = ` <span class="cluster-sub-badge" style="background:${subColor}; color:#fff;" onclick="event.stopPropagation(); openClusterInfoInspector('${prHash}', 'prompt', '${file.id}')" title="Prompt Group: #${subShort} (Click to Inspect)">💬 #${subShort}</span>`;
+                    }
+
+                    const mainIcon = (currentClusterMode === 'prompt') ? '💬' : '🧬';
+                    const mainType = (currentClusterMode === 'prompt') ? 'prompt' : 'workflow';
+
+                    clusterBadgeHTML = `<div class="ai-badge cluster-badge-style cluster-badge-top-flush" style="background: linear-gradient(90deg, ${clusterColor} 0%, ${clusterColor}CC 70%, #00ffff 100%); color: #ffffff !important; font-weight: bold; cursor:pointer;" onclick="event.stopPropagation(); openClusterInfoInspector('${rawHash}', '${mainType}', '${file.id}')" title="Click to Inspect Cluster Details">${mainIcon} #${shortHash}${secondaryBadge}</div>`;
+                }
+            } else if (typeof showClusterBadgesSetting !== 'undefined' && showClusterBadgesSetting && file.has_workflow && file.workflow_hash && !document.body.classList.contains('focus-mode')) {
+                showStandardWfBadge = false;
+                const wfHash = file.workflow_hash;
+                const prHash = file.prompt_hash;
+                const clusterColor = (typeof getClusterColor === 'function') ? getClusterColor(wfHash) : '#007bff';
+                const shortWf = wfHash.substring(0, 5).toUpperCase();
+                
+                let secondaryBadge = '';
+                if (prHash) {
+                    const subColor = (typeof getClusterColor === 'function') ? getClusterColor(prHash) : '#00ffff';
+                    const subShort = prHash.substring(0, 5).toUpperCase();
+                    secondaryBadge = ` <span class="cluster-sub-badge" style="background:${subColor}; color:#fff;" onclick="event.stopPropagation(); openClusterInfoInspector('${prHash}', 'prompt', '${file.id}')" title="Prompt Group: #${subShort} (Click to Inspect)">💬 #${subShort}</span>`;
+                }
+
+                clusterBadgeHTML = `<div class="ai-badge cluster-badge-style cluster-badge-top-flush" style="background: linear-gradient(90deg, ${clusterColor} 0%, ${clusterColor}CC 70%, #00ffff 100%); color: #ffffff !important; font-weight: bold; cursor:pointer;" onclick="event.stopPropagation(); openClusterInfoInspector('${wfHash}', 'workflow', '${file.id}')" title="Click to Inspect Architecture Details">🧬 #${shortWf}${secondaryBadge}</div>`;
+            }
+            
             const summaryButtonHTML = file.has_workflow ? `<button title="Node Summary" onclick="showNodeSummary(event, '${file.id}')">📝</button>` : '';
             
             let metadataHTML = '';
@@ -3323,8 +3597,8 @@
                     <span class="desktop-info-btn" 
                           onmouseenter="window.forceShowStatusBar(event)" 
                           onmouseleave="window.unforceShowStatusBar(event)"
-                          onclick="window.forceShowStatusBar(event)" 
-                          title="Show Details">i</span>
+                          onclick="event.stopPropagation(); openFullDetailsModal('${file.id}');" 
+                          title="Click for Full Asset Details (Hover for quick info)">i</span>
                 </div>`;
             }
             // --- END PATCH ---
@@ -3332,14 +3606,15 @@
             // --- FINAL HTML ASSEMBLY ---
             item.innerHTML = `
                 <div class="selection-checkmark" onclick="toggleSelection(event, '${file.id}', this.closest('.gallery-item'))">✓</div>
-                <div class="mobile-info-icon" onclick="event.stopPropagation(); showMobileInfoModal('${file.id}')">i</div>
+                <div class="mobile-info-icon" onclick="event.stopPropagation(); openFullDetailsModal('${file.id}')">i</div>
                 ${desktopCompactMetaHTML}
                 
                 <div class="thumbnail-link" onclick="openLightbox(event, '${file.id}'); event.stopPropagation();" draggable="false">
                     <div class="thumbnail-wrapper">
                         ${mediaHTML}
                         ${colorStripHTML} <!-- Inserted Color Strip Here -->
-                        ${file.has_workflow ? `<a href="/galleryout/workflow/${file.id}" class="workflow-badge" onclick="event.stopPropagation()">⚙️ Workflow</a>` : ''}
+                        ${clusterBadgeHTML}
+                        ${showStandardWfBadge ? `<a href="/galleryout/workflow/${file.id}" class="workflow-badge" onclick="event.stopPropagation()">⚙️ Workflow</a>` : ''}
                         ${(ENABLE_DAM_MODE && file.avg_rating) ? `<span class="workflow-badge" style="top:35px; background:rgba(0,0,0,0.7); color:var(--favorite-color); border:1px solid rgba(255,193,7,0.3);">⭐ ${file.avg_rating.toFixed(1)}</span>` : ''}
                         ${aiBadgeHTML}
                         ${file.duration ? `<span class="duration-overlay">⏱️ ${file.duration}</span>` : ''}
@@ -3356,7 +3631,7 @@
                     <!-- Data strictly used by the new List View -->
                     <div class="list-view-only-cols">
                         <div class="list-col-index"></div>
-                        <div class="list-col-name" title="${file.name}">${file.name}</div>
+                        <div class="list-col-name" title="${file.name}" style="display:flex; align-items:center;"><span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1 1 auto; min-width:0;">${file.name}</span>${file.type === 'audio' ? ` <button class="inline-audio-btn" onclick="playInlineAudio(event, '${file.id}', this)" title="Play Audio">▶</button>` : ''}</div>
                         <div class="list-col-rating list-hide-mob">${(typeof ENABLE_DAM_MODE !== 'undefined' && ENABLE_DAM_MODE && file.avg_rating > 0) ? '★ ' + file.avg_rating.toFixed(1) : '-'}</div>
                         <div class="list-col-comments list-hide-mob">${file.comment_count > 0 ? '💬 ' + file.comment_count : '-'}</div>
                         <div class="list-col-size list-hide-mob">${typeof formatBytes === 'function' && file.size ? formatBytes(file.size) : '-'}</div>
@@ -4565,12 +4840,14 @@
             
             // 3. Info Icon & Tooltip Binding
             if (file.path) {
-                metaHtml += ` <span style="color:var(--favorite-color); font-size:1em; margin-left:6px; cursor:help;" title="Click to see full path">ⓘ</span>`;
-                lightboxFolderEl.title = file.path; 
-                lightboxFolderEl.style.cursor = 'help';
+                metaHtml += ` <span style="color:var(--favorite-color); font-size:1em; margin-left:6px; cursor:pointer;" title="Click for Full Asset Details" onclick="event.stopPropagation(); openFullDetailsModal('${file.id}');">ⓘ</span>`;
+                lightboxFolderEl.title = 'Click for Full Asset Details'; 
+                lightboxFolderEl.style.cursor = 'pointer';
                 
-                // Bind the click event for the full path notification
-                updateLightboxPathTooltip(file);
+                lightboxFolderEl.onclick = (e) => {
+                    e.stopPropagation();
+                    openFullDetailsModal(file.id);
+                };
             } else {
                 lightboxFolderEl.title = '';
                 lightboxFolderEl.style.cursor = 'default';
@@ -4603,6 +4880,21 @@
                 mediaEl = document.createElement('img');
                 mediaEl.src = `/galleryout/file/${file.id}`;
                 mediaEl.alt = file.name;
+            } else if (file.type === 'document') {
+                mediaEl = document.createElement('div');
+                mediaEl.className = 'theater-document-reader';
+                mediaEl.innerHTML = '<div class="loader" style="margin:40px auto; border-top-color:#333;"></div>';
+                fetch(`/galleryout/file/${file.id}`)
+                    .then(r => r.text())
+                    .then(text => {
+                        if (file.name.toLowerCase().endsWith('.md')) {
+                            mediaEl.innerHTML = `<div>${renderMarkdownText(text)}</div>`;
+                        } else {
+                            const safeText = (typeof escapeHTML === 'function') ? escapeHTML(text) : text;
+                            mediaEl.innerHTML = `<pre>${safeText}</pre>`;
+                        }
+                    })
+                    .catch(() => mediaEl.innerHTML = '<div style="color:red;text-align:center;">Failed to load document</div>');
             } else if (file.type === 'video') {
                 mediaEl = document.createElement('video');
                 
@@ -4641,7 +4933,7 @@
                     updateMediaTransform();
                 };
 
-                if (isImage && mediaEl.complete) {
+                if (file.type === 'document' || (isImage && mediaEl.complete)) {
                     mediaEl.style.opacity = '1'; 
                     lightboxMedia.appendChild(mediaEl);
                     updateMediaTransform();
@@ -5075,15 +5367,65 @@
         
         const summaryOverlay = document.getElementById('node-summary-overlay'); const summaryContent = document.getElementById('node-summary-content');
         
-        // Helper for Copy with Notification
-        function copyTextAndNotify(text) {
+        // Smart Clipboard Copy with Notification Toast (Cross-platform: HTTP/HTTPS/Docker/Linux/macOS/Windows)
+        function copyTextAndNotify(text, btnElement = null) {
             if (!text) return;
-            navigator.clipboard.writeText(text).then(() => {
-                showNotification("📋 Copied to clipboard!", "success");
-            }).catch(err => {
-                console.error(err);
-                showNotification("Failed to copy.", "error");
-            });
+            
+            const doNotify = (msg, type) => {
+                if (typeof showNotification === 'function') {
+                    showNotification(msg, type, 3000);
+                }
+                if (btnElement && btnElement.tagName) {
+                    const origText = btnElement.getAttribute('data-orig-html') || btnElement.innerHTML;
+                    if (!btnElement.hasAttribute('data-orig-html')) {
+                        btnElement.setAttribute('data-orig-html', origText);
+                    }
+                    if (type === 'success') {
+                        btnElement.innerHTML = '✓ Copied!';
+                        btnElement.style.color = '#20c997';
+                        btnElement.style.borderColor = '#20c997';
+                    } else {
+                        btnElement.innerHTML = '❌ Failed';
+                    }
+                    setTimeout(() => {
+                        btnElement.innerHTML = origText;
+                        btnElement.style.color = '';
+                        btnElement.style.borderColor = '';
+                    }, 2000);
+                }
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text)
+                    .then(() => doNotify("📋 Copied to clipboard!", "success"))
+                    .catch(() => fallbackCopyText(text, doNotify));
+            } else {
+                fallbackCopyText(text, doNotify);
+            }
+        }
+
+        function fallbackCopyText(text, doNotify) {
+            try {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-9999px";
+                textArea.style.top = "0";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textArea);
+                
+                if (successful) {
+                    if (doNotify) doNotify("📋 Copied to clipboard!", "success");
+                } else {
+                    if (doNotify) doNotify("❌ Failed to copy to clipboard.", "error");
+                }
+            } catch (err) {
+                console.error("Fallback copy error:", err);
+                if (doNotify) doNotify("❌ Failed to copy to clipboard.", "error");
+            }
         }
 
         async function showNodeSummary(event, fileId) {
@@ -5868,22 +6210,24 @@
         // 3. Logic to disable/enable Recursive checkbox based on Global Scope
         function updateRecursiveUIState() {
             const isGlobal = document.querySelector('input[name="scope"][value="global"]')?.checked;
-            if (recursiveWrapper && recursiveCheckbox) {
+            const recWrap = document.querySelector('.recursive-wrapper');
+            const recCheck = document.querySelector('input[name="recursive"]');
+            if (recWrap && recCheck) {
                 if (isGlobal) {
-                    recursiveWrapper.classList.add('disabled');
-                    recursiveCheckbox.checked = false; 
-                    recursiveWrapper.classList.remove('active');
+                    recWrap.classList.add('disabled');
+                    recCheck.checked = false; 
+                    recWrap.classList.remove('active');
                 } else {
-                    recursiveWrapper.classList.remove('disabled');
-                    recursiveWrapper.classList.toggle('active', recursiveCheckbox.checked);
+                    recWrap.classList.remove('disabled');
+                    recWrap.classList.toggle('active', recCheck.checked);
                 }
             }
         }
 
         // 4. AJAX Refresh
         function triggerOptionsRefresh() {
-            const scope = document.querySelector('input[name="scope"]:checked')?.value || 'local';
-            const isRec = recursiveCheckbox?.checked || false;
+            const scope = document.querySelector('input[name="scope"][value="global"]')?.checked ? 'global' : 'local';
+            const isRec = document.querySelector('input[name="recursive"]')?.checked || false;
             const folderKey = '{{ current_folder_key }}';
             
             const wrapExt = document.getElementById('wrapper-extensions');
@@ -5928,9 +6272,11 @@
             });
         });
 
-        if (recursiveCheckbox) {
-            recursiveCheckbox.addEventListener('change', function() {
-                if (recursiveWrapper) recursiveWrapper.classList.toggle('active', this.checked);
+        const recCheck = document.querySelector('input[name="recursive"]');
+        if (recCheck) {
+            recCheck.addEventListener('change', function() {
+                const parentWrap = this.closest('.recursive-wrapper');
+                if (parentWrap) parentWrap.classList.toggle('active', this.checked);
                 triggerOptionsRefresh();
             });
         }
@@ -6200,15 +6546,15 @@
                 
                 keywordInputs.forEach(input => {
                     const val = input.value;
-                    const warningEl = input.parentElement.querySelector('.filter-warning');
+                    const warningEl = input.closest('.filter-group')?.querySelector('.filter-warning');
                     
                     // Check if both comma and semicolon exist in the same field
                     if (val.includes(',') && val.includes(';')) {
-                        warningEl.style.display = 'block';
+                        if (warningEl) warningEl.style.display = 'block';
                         input.style.borderColor = 'var(--danger-color)';
                         hasError = true;
                     } else {
-                        warningEl.style.display = 'none';
+                        if (warningEl) warningEl.style.display = 'none';
                         input.style.borderColor = ''; // Revert to default glass style
                     }
                 });
@@ -6707,6 +7053,7 @@
             // 1. ZOOM via Mouse Wheel
             document.getElementById('lightbox-content').addEventListener('wheel', (event) => { 
                 if (lightboxOverlay.classList.contains('visible')) { 
+                    if (currentLightboxFile && currentLightboxFile.type === 'document') return; 
                     event.preventDefault(); 
                     // Zoom In if scrolling up, Zoom Out if scrolling down
                     zoomLightbox(event.deltaY < 0 ? 0.1 : -0.1); 
@@ -6885,6 +7232,7 @@
                             // Prevent execution if holding Ctrl/Cmd
                             if (e.ctrlKey || e.metaKey) return;
                             const keyMap = {
+                                'i': 'Full Asset Details',
                                 't': 'Rotate Media 90°',
                                 's': 'Download Media File',
                                 'r': 'Rename File',
@@ -6901,7 +7249,12 @@
                                 'm': 'Move File'
                             };
 
-                            const actionDesc = keyMap[e.key.toLowerCase()];
+                            let actionDesc = keyMap[e.key.toLowerCase()];
+                            if (e.key.toLowerCase() === 'c' && e.shiftKey) {
+                                actionDesc = 'Smart Asset Clustering';
+                            } else if (e.key.toLowerCase() === 'w' && e.shiftKey) {
+                                actionDesc = 'Clean Export (Remove metadata)';
+                            }
                             if (actionDesc) {
                                 e.preventDefault();
                                 // Find the row containing this description and click it
@@ -6968,7 +7321,11 @@
                     }
 
                     // A. High Priority Overlays
+                    if (document.getElementById('full-file-details-overlay') && document.getElementById('full-file-details-overlay').classList.contains('visible')) { closeFullDetailsModal(); return; }
                     if (document.getElementById('file-info-overlay').classList.contains('visible')) { closeFileInfoPanel(); return; } 
+                    const notesOverlay = document.getElementById('notes-reader-overlay');
+                    if (notesOverlay && notesOverlay.classList.contains('visible')) { closeCollectionNotesModal(); return; }
+    
                     const sbOverlay = document.getElementById('storyboard-overlay');
                     if (sbOverlay && sbOverlay.classList.contains('visible')) { closeStoryboard(); return; }
                     if (document.getElementById('shortcuts-help-overlay').classList.contains('visible')) { closeShortcutsHelp(); return; }
@@ -6979,6 +7336,8 @@
                     // NEW: Intercept Tagging, Move and AI Indexing panels to close them with Esc BEFORE the Lightbox
                     if (document.getElementById('tagging-overlay').classList.contains('visible')) { closeTaggingModal(); return; }
                     if (document.getElementById('drag-drop-overlay').classList.contains('visible')) { hideDropZone(); return; }
+                    if (document.getElementById('clustering-modal-overlay') && document.getElementById('clustering-modal-overlay').classList.contains('visible')) { closeClusteringModal(); return; }
+                    if (document.getElementById('cluster-prompt-modal-overlay') && document.getElementById('cluster-prompt-modal-overlay').classList.contains('visible')) { closeClusterPromptModal(); return; }
                     if (document.getElementById('ai-options-modal') && document.getElementById('ai-options-modal').classList.contains('visible')) { closeAiOptions(); return; }
                     if (document.getElementById('ai-manager-overlay') && document.getElementById('ai-manager-overlay').classList.contains('visible')) { toggleAiManager(false); return; }
 
@@ -7034,6 +7393,18 @@
                     
                     if (selectedFiles.size > 0) { deselectAll(); }
                     hideDropZone();
+
+                    if (document.getElementById('cluster-info-modal-overlay') && document.getElementById('cluster-info-modal-overlay').classList.contains('visible')) {
+                        closeClusterInfoInspector();
+                        return;
+                    }
+
+                    // Exit clustering mode if active
+                    if (document.body.classList.contains('cluster-mode-active') && typeof exitClusteringMode === 'function') {
+                        exitClusteringMode();
+                        return;
+                    }
+
                     return;
                 }
 
@@ -7043,6 +7414,8 @@
                 // SPECIFIC SHORTCUTS BLOCK: Stop propagation if these panels are open
                 if (document.getElementById('tagging-overlay').classList.contains('visible')) return;
                 if (document.getElementById('drag-drop-overlay').classList.contains('visible')) return;
+                if (document.getElementById('clustering-modal-overlay') && document.getElementById('clustering-modal-overlay').classList.contains('visible')) return;
+                if (document.getElementById('cluster-prompt-modal-overlay') && document.getElementById('cluster-prompt-modal-overlay').classList.contains('visible')) return;
                 if (document.getElementById('ai-options-modal') && document.getElementById('ai-options-modal').classList.contains('visible')) return;
 
                 const isLightboxOpen = document.body.classList.contains('lightbox-open');
@@ -7055,6 +7428,7 @@
                         case 'ArrowLeft': navigateLightbox(-1); break;
                         case 'ArrowRight': navigateLightbox(1); break;
                         case 'v': case 'V': closeLightbox(); break; // V acts as close inside lightbox
+                        case 'i': case 'I': if(currentLightboxFile) openFullDetailsModal(currentLightboxFile.id); break;
                         
                         case 'j': case 'J': {
                             const rangeBtn = document.getElementById('range-select-btn');
@@ -7252,21 +7626,9 @@
                         case 'i': case 'I': {
                             const idx = getTargetIndex();
                             if (idx !== -1) {
-                                const fileId = galleryItems[idx].dataset.fileId;
-                                const file = allFilesData.find(f => f.id === fileId);
-                                if (file && file.path) {
-                                    const normalize = (p) => p ? p.replace(/\\/g, '/') : null;
-                                    const cleanInternal = normalize(file.path);
-                                    const cleanReal = normalize(file.real_path);
-                                    let msg = "";
-                                    const isDifferent = cleanReal && (cleanInternal.toLowerCase() !== cleanReal.toLowerCase());
-                                    if (isDifferent) {
-                                        msg = `📍 Gallery Link:\n${cleanInternal}\n\n🔗 Real Source:\n${cleanReal}`;
-                                    } else {
-                                        msg = `📍 File Path:\n${cleanInternal}`;
-                                    }
-                                    showNotification(msg, 'info path-msg', 10000);
-                                }
+                                openFullDetailsModal(galleryItems[idx].dataset.fileId);
+                            } else if (selectedFiles.size > 0) {
+                                openFullDetailsModal(Array.from(selectedFiles)[0]);
                             }
                             break;
                         }
@@ -7793,7 +8155,33 @@
             }
         }
         
+        let showClusterBadgesSetting = localStorage.getItem('sg_showClusterBadges') === 'true';
+
+        function toggleClusterBadgesSetting() {
+            showClusterBadgesSetting = !showClusterBadgesSetting;
+            localStorage.setItem('sg_showClusterBadges', showClusterBadgesSetting);
+            updateOptionsUI();
+            window.location.reload();
+        }
+
         function updateOptionsUI() {
+            // 0. Cluster Badges UI
+            const cbStatusEl = document.getElementById('opt-status-cluster-badges');
+            const cbItemEl = document.getElementById('opt-btn-cluster-badges');
+            if (cbStatusEl && cbItemEl) {
+                if (showClusterBadgesSetting) {
+                    cbStatusEl.textContent = "ON";
+                    cbStatusEl.className = "opt-status on";
+                    cbItemEl.classList.add('active');
+                    cbItemEl.classList.remove('inactive');
+                } else {
+                    cbStatusEl.textContent = "OFF";
+                    cbStatusEl.className = "opt-status off";
+                    cbItemEl.classList.remove('active');
+                    cbItemEl.classList.add('inactive');
+                }
+            }
+
             // 1. Autoplay UI
             const statusEl = document.getElementById('opt-status-autoplay');
             const itemEl = document.getElementById('opt-btn-autoplay');
@@ -8075,7 +8463,37 @@
                     showNotification('Error fetching workflow: ' + err.message, 'error');
                 });
         }
-        
+
+        // --- COPY GENERATION METADATA (WebUI Forge/A1111) HELPER FUNCTION ---
+        function copyGenerationMetadataToClipboard(btn) {
+            const box = btn.nextElementSibling;
+            if (!box) return;
+            const text = box.textContent;
+
+            const done = (ok) => {
+                showNotification(ok ? '📋 Generation metadata copied!' : 'Failed to copy (Browser restriction).', ok ? 'success' : 'error');
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => done(true)).catch(() => done(false));
+            } else {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-9999px";
+                textArea.style.top = "0";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    done(document.execCommand('copy'));
+                } catch (err) {
+                    done(false);
+                }
+                document.body.removeChild(textArea);
+            }
+        }
+
         // --- AI MANAGER FUNCTIONS (RENAMED TO FIX CONFLICT) ---
         let aiManagerPollInterval = null;
 
@@ -11182,6 +11600,12 @@ async function openShareModal(e, collId, collName) {
                 deskPanelToggle.parentNode.replaceChild(newDesk, deskPanelToggle);
                 
                 newDesk.addEventListener('click', async (e) => {
+                    if (e.target.classList.contains('filter-reset-icon') || e.target.classList.contains('filter-reset-badge')) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        window.location.href = "{{ url_for('gallery_view', folder_key=current_folder_key) }}";
+                        return;
+                    }
                     await interceptLogic(e, newDesk);
                     if (!e.defaultPrevented) {
                         e.stopPropagation();
@@ -11196,6 +11620,12 @@ async function openShareModal(e, collId, collName) {
                 mobPanelToggle.parentNode.replaceChild(newMob, mobPanelToggle);
                 
                 newMob.addEventListener('click', async (e) => {
+                    if (e.target.classList.contains('filter-reset-icon') || e.target.classList.contains('filter-reset-badge')) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        window.location.href = "{{ url_for('gallery_view', folder_key=current_folder_key) }}";
+                        return;
+                    }
                     await interceptLogic(e, newMob);
                     if (!e.defaultPrevented) {
                         e.stopPropagation();
@@ -11219,5 +11649,662 @@ async function openShareModal(e, collId, collName) {
         setTimeout(attachFilterInterceptors, 500);
     });
     </script>
+
+
+</div>
+<style>
+#brief-reader-overlay.visible { display: flex !important; animation: popIn 0.2s ease-out; }
+/* Document Assets CSS */
+.doc-thumb-preview { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 180px; background: #1a1a24; color: #fff; border-radius: 12px; border:1px solid rgba(255,255,255,0.1); }
+.doc-icon { font-size: 3.5rem; margin-bottom: 10px; opacity:0.9; }
+.doc-ext { font-size: 0.8rem; font-weight: bold; background: var(--primary-color); padding: 3px 8px; border-radius: 4px; letter-spacing:1px; }
+.theater-document-reader { background: #18181c; color: #eee; width: 90vw; max-width: 800px; height: 75vh; border-radius: 12px; padding: 35px; overflow-y: auto; text-align: left; box-shadow: 0 10px 40px rgba(0,0,0,0.8); margin: 0 auto; pointer-events: auto; border: 1px solid var(--border-color); }
+.theater-document-reader pre { white-space: pre-wrap; word-wrap: break-word; font-family: 'Segoe UI', system-ui, sans-serif; font-size: 1.05rem; line-height: 1.7; margin:0; }
+</style>
+<script>
+// ==========================================
+// MARKDOWN RENDERER (vanilla JS, no dependencies)
+// Block-level parsing (headers, lists, tables, blockquotes, code fences)
+// plus inline formatting (bold, italic, links, images, strikethrough).
+// ==========================================
+function renderMarkdownText(text) {
+    if (!text) return '';
+
+    // Escape raw HTML first so any user-typed tags/scripts never leak through as real markup.
+    const escapeFn = (typeof escapeHTML === 'function')
+        ? escapeHTML
+        : (typeof escapeHtml === 'function'
+            ? escapeHtml
+            : (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+
+    let src = String(text).replace(/\r\n?/g, '\n');
+    src = escapeFn(src);
+
+    // --- Placeholder stash: content here is restored verbatim at the very end,
+    // so nothing else (bold/italic/links/etc.) can ever touch it in the meantime. ---
+    const stash = [];
+    function stow(html) {
+        const token = '\u0000STASH' + stash.length + '\u0000';
+        stash.push(html);
+        return token;
+    }
+    function unstow(html) {
+        return html.replace(/\u0000STASH(\d+)\u0000/g, (_, idx) => stash[Number(idx)]);
+    }
+
+    // 1) Fenced code blocks ```lang ... ``` — stashed before anything else touches them.
+    src = src.replace(/```([a-zA-Z0-9_+-]*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+        const langLabel = lang
+            ? `<div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); padding:4px 12px 0 12px;">${lang}</div>`
+            : '';
+        const codeBody = code.replace(/\n$/, '');
+        return stow(`${langLabel}<pre style="background:#000; padding:12px; border-radius:6px; border:1px solid #333; overflow-x:auto; font-family:monospace; color:#89CFF0; margin:10px 0;"><code>${codeBody}</code></pre>`);
+    });
+
+    // 2) Inline code `code` — stashed so markdown chars inside are never parsed.
+    src = src.replace(/`([^`\n]+)`/g, (_, code) => {
+        return stow(`<code style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; font-family:monospace; color:var(--favorite-color);">${code}</code>`);
+    });
+
+    const lines = src.split('\n');
+    const out = [];
+    let i = 0;
+
+    function isBlank(l) { return l.trim() === ''; }
+
+    function splitTableRow(row) {
+        return row.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+    }
+
+    // Inline formatting: images, links, autolinks, bold/italic, strikethrough.
+    function inlineFormat(str) {
+        let s = str;
+
+        // Images: ![alt](url "title")
+        s = s.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)/g, (_, alt, url, title) =>
+            `<img src="${url}" alt="${alt}" title="${title || alt}" style="max-width:100%; border-radius:6px; margin:6px 0; display:block;">`);
+
+        // Links: [text](url "title")
+        s = s.replace(/\[([^\]]+)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)/g, (_, txt, url, title) =>
+            `<a href="${url}" title="${title || ''}" target="_blank" rel="noopener noreferrer" style="color:var(--primary-color); text-decoration:underline;">${txt}</a>`);
+
+        // Autolinks: <https://example.com>  (note: source is already HTML-escaped, so < > became &lt; &gt;)
+        s = s.replace(/&lt;((?:https?|ftp):\/\/[^\s&]+)&gt;/g, (_, url) =>
+            `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:var(--primary-color); text-decoration:underline;">${url}</a>`);
+
+        // Bold + italic: ***text*** or ___text___
+        s = s.replace(/(\*\*\*|___)([^*_]+?)\1/g, '<strong><em>$2</em></strong>');
+        // Bold: **text** or __text__
+        s = s.replace(/(\*\*|__)([^*_]+?)\1/g, '<strong style="color:#fff;">$2</strong>');
+        // Strikethrough: ~~text~~
+        s = s.replace(/~~(.+?)~~/g, '<del style="color:var(--text-muted);">$1</del>');
+        // Italic: *text* or _text_
+        s = s.replace(/(^|[^\w*])\*(?!\*)([^*]+?)\*(?!\*)/g, '$1<em>$2</em>');
+        s = s.replace(/(^|[^\w_])_(?!_)([^_]+?)_(?!_)/g, '$1<em>$2</em>');
+
+        return s;
+    }
+
+    // Groups consecutive list-item lines (starting at `start`) into a <ul> or <ol>.
+    function parseList(allLines, start) {
+        const isOrdered = /^ {0,3}\d+[.)]\s+/.test(allLines[start]);
+        const tag = isOrdered ? 'ol' : 'ul';
+        const itemRe = isOrdered ? /^ {0,3}\d+[.)]\s+(.*)$/ : /^ {0,3}[-*+]\s+(.*)$/;
+        const items = [];
+        let j = start;
+
+        while (j < allLines.length && !isBlank(allLines[j])) {
+            const m = allLines[j].match(itemRe);
+            if (!m) break;
+            const content = m[1];
+
+            // Task list item: - [ ] todo / - [x] done
+            const taskMatch = content.match(/^\[( |x|X)\]\s+(.*)$/);
+            if (taskMatch) {
+                const checked = taskMatch[1].toLowerCase() === 'x';
+                const label = inlineFormat(taskMatch[2]);
+                const labelHtml = checked
+                    ? `<span style="text-decoration:line-through; color:var(--text-muted);">${label}</span>`
+                    : label;
+                items.push(`<li style="list-style:none; margin-bottom:4px; display:flex; align-items:center; gap:6px;"><input type="checkbox" disabled ${checked ? 'checked' : ''}>${labelHtml}</li>`);
+            } else {
+                items.push(`<li style="margin-left:20px; margin-bottom:4px;">${inlineFormat(content)}</li>`);
+            }
+            j++;
+        }
+
+        return { html: `<${tag} style="margin:8px 0; padding-left:20px;">${items.join('')}</${tag}>`, next: j };
+    }
+
+    while (i < lines.length) {
+        const line = lines[i];
+
+        // Blank line: just advances, paragraph grouping below handles spacing naturally.
+        if (isBlank(line)) { i++; continue; }
+
+        // A line that is purely a stashed placeholder (e.g. a fenced code block) —
+        // emit it as-is, don't wrap it in <p>, so <pre> never ends up nested inside <p>.
+        if (/^\u0000STASH\d+\u0000$/.test(line.trim())) {
+            out.push(line.trim());
+            i++; continue;
+        }
+
+        // Horizontal rule: ---, ***, ___ (3+ of the same char, optionally spaced)
+        if (/^ {0,3}([-*_])( *\1){2,}\s*$/.test(line)) {
+            out.push('<hr style="border:0; border-top:1px solid #444; margin:16px 0;">');
+            i++; continue;
+        }
+
+        // ATX headers: # through ######
+        const headerMatch = line.match(/^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$/);
+        if (headerMatch) {
+            const level = headerMatch[1].length;
+            const content = inlineFormat(headerMatch[2]);
+            const styles = {
+                1: 'color:var(--favorite-color); border-bottom:1px solid #555; padding-bottom:5px; margin:20px 0 10px 0; font-size:1.6rem;',
+                2: 'color:var(--primary-color); border-bottom:1px solid #444; padding-bottom:5px; margin:20px 0 10px 0; font-size:1.35rem;',
+                3: 'color:#fff; margin:15px 0 5px 0; font-size:1.15rem;',
+                4: 'color:#eee; margin:12px 0 5px 0; font-size:1.05rem;',
+                5: 'color:#ddd; margin:10px 0 4px 0; font-size:0.95rem;',
+                6: 'color:var(--text-muted); margin:10px 0 4px 0; font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em;'
+            };
+            out.push(`<h${level} style="${styles[level]}">${content}</h${level}>`);
+            i++; continue;
+        }
+
+        // Blockquote: group consecutive "> " lines. Inline-formatted line by line
+        // (kept non-recursive on purpose, to avoid re-entering the code/inline-code stash).
+        if (/^ {0,3}>\s?/.test(line)) {
+            const quoteLines = [];
+            while (i < lines.length && /^ {0,3}>\s?/.test(lines[i])) {
+                quoteLines.push(lines[i].replace(/^ {0,3}>\s?/, ''));
+                i++;
+            }
+            const quoteHtml = quoteLines.map(l => isBlank(l) ? '' : inlineFormat(l)).join('<br>');
+            out.push(`<blockquote style="border-left:3px solid var(--primary-color); margin:10px 0; padding:4px 16px; color:var(--text-muted); font-style:italic;">${quoteHtml}</blockquote>`);
+            continue;
+        }
+
+        // Tables (GFM-style): a row with "|", followed by a "|---|---|" separator row.
+        if (/\|/.test(line) && i + 1 < lines.length && /^ {0,3}\|?[\s:|-]+\|?\s*$/.test(lines[i + 1]) && /-/.test(lines[i + 1])) {
+            const headerCells = splitTableRow(line);
+            const alignCells = splitTableRow(lines[i + 1]).map(c => {
+                const left = c.startsWith(':'), right = c.endsWith(':');
+                return left && right ? 'center' : right ? 'right' : left ? 'left' : '';
+            });
+            i += 2;
+            const bodyRows = [];
+            while (i < lines.length && /\|/.test(lines[i]) && !isBlank(lines[i])) {
+                bodyRows.push(splitTableRow(lines[i]));
+                i++;
+            }
+            let table = '<table style="border-collapse:collapse; width:100%; margin:12px 0; font-size:0.9rem;">';
+            table += '<thead><tr>' + headerCells.map((c, idx) =>
+                `<th style="border:1px solid #444; padding:6px 10px; text-align:${alignCells[idx] || 'left'}; color:#fff; background:rgba(255,255,255,0.05);">${inlineFormat(c)}</th>`
+            ).join('') + '</tr></thead>';
+            table += '<tbody>' + bodyRows.map(r =>
+                '<tr>' + r.map((c, idx) =>
+                    `<td style="border:1px solid #444; padding:6px 10px; text-align:${alignCells[idx] || 'left'};">${inlineFormat(c)}</td>`
+                ).join('') + '</tr>'
+            ).join('') + '</tbody></table>';
+            out.push(table);
+            continue;
+        }
+
+        // Unordered (-, *, +) or ordered (1. / 1)) lists.
+        if (/^ {0,3}[-*+]\s+/.test(line) || /^ {0,3}\d+[.)]\s+/.test(line)) {
+            const { html, next } = parseList(lines, i);
+            out.push(html);
+            i = next;
+            continue;
+        }
+
+        // Plain paragraph: gather consecutive lines that aren't a block-level construct.
+        const paraLines = [];
+        while (
+            i < lines.length && !isBlank(lines[i]) &&
+            !/^\u0000STASH\d+\u0000$/.test(lines[i].trim()) &&
+            !/^ {0,3}(#{1,6})\s+/.test(lines[i]) &&
+            !/^ {0,3}>\s?/.test(lines[i]) &&
+            !/^ {0,3}([-*_])( *\1){2,}\s*$/.test(lines[i]) &&
+            !/^ {0,3}[-*+]\s+/.test(lines[i]) &&
+            !/^ {0,3}\d+[.)]\s+/.test(lines[i])
+        ) {
+            paraLines.push(lines[i]);
+            i++;
+        }
+        const paraHtml = paraLines.map(l => inlineFormat(l)).join('<br>');
+        out.push(`<p style="margin:8px 0; line-height:1.6;">${paraHtml}</p>`);
+    }
+
+    return unstow(out.join('\n'));
+}
+
+        // --- FULL FILE DETAILS MODAL (Shortcut: I) ---
+        let currentFullDetailsFileId = null;
+
+        async function openFullDetailsModal(fileId) {
+            if (!fileId) {
+                if (currentLightboxFile) fileId = currentLightboxFile.id;
+                else if (focusedItemIndex !== -1 && galleryItems[focusedItemIndex]) fileId = galleryItems[focusedItemIndex].dataset.fileId;
+                else if (selectedFiles.size > 0) fileId = Array.from(selectedFiles)[0];
+            }
+            if (!fileId) {
+                showNotification("Hover or select an item to view full details.", "info");
+                return;
+            }
+
+            currentFullDetailsFileId = fileId;
+            const overlay = document.getElementById('full-file-details-overlay');
+            const content = document.getElementById('full-details-content');
+
+            content.innerHTML = '<div class="loader" style="margin:40px auto;"></div>';
+            overlay.classList.add('visible');
+            document.body.classList.add('modal-open');
+
+            try {
+                const res = await fetch(`/galleryout/api/file_full_details/${fileId}`);
+                const data = await res.json();
+
+                if (data.status !== 'success' || !data.file) {
+                    content.innerHTML = `<div style="text-align:center; color:var(--danger-color); padding:20px;">Error: ${data.message || 'File details not found.'}</div>`;
+                    return;
+                }
+
+                const f = data.file;
+                const isLink = data.is_link;
+                const realPath = data.real_path;
+                const folderChain = data.folder_hierarchy || [];
+                const collections = data.collections || [];
+
+                // Format size & dates
+                const sizeStr = typeof formatBytes === 'function' ? formatBytes(f.size) : (f.size / 1024 / 1024).toFixed(2) + ' MB';
+                const dateStr = f.mtime ? new Date(f.mtime * 1000).toLocaleString() : 'N/A';
+                const scanStr = f.last_scanned ? new Date(f.last_scanned * 1000).toLocaleString() : 'N/A';
+                
+                // Resolution & MP
+                let resStr = f.dimensions || 'N/A';
+                if (f.dimensions) {
+                    const parts = f.dimensions.split('x');
+                    if (parts.length === 2) {
+                        const mp = (parseInt(parts[0]) * parseInt(parts[1])) / 1000000;
+                        resStr += ` <span style="color:var(--favorite-color);">(${mp % 1 === 0 ? mp.toFixed(0) : mp.toFixed(1)} MP)</span>`;
+                    }
+                }
+
+                // Status badge
+                let statusBadgeHtml = '';
+                if (f.status_name && f.status_color) {
+                    statusBadgeHtml = `<span class="fd-badge" style="background:${f.status_color}; color:#fff;">📍 ${escapeHTML(f.status_name)}</span>`;
+                }
+
+                // Rating
+                const avgRating = f.avg_rating ? parseFloat(f.avg_rating).toFixed(1) : 'N/A';
+                const voteCount = f.vote_count || 0;
+                const commentCount = f.comment_count || 0;
+
+                // Folder Hierarchy Pills
+                let folderHierarchyHtml = folderChain.map((folderName, idx) => `
+                    <span class="fd-pill folder">
+                        <span class="fd-pill-icon">📂</span> ${escapeHTML(folderName)}
+                    </span>
+                    ${idx < folderChain.length - 1 ? '<span class="fd-arrow">➔</span>' : ''}
+                `).join('');
+
+                // Collection Hierarchies
+                let collectionsHtml = '';
+                if (collections.length > 0) {
+                    collectionsHtml = collections.map(col => {
+                        const chainHtml = col.hierarchy.map((cName, idx) => `
+                            <span class="fd-pill collection" style="${col.color ? 'border-color:' + col.color + ';' : ''}">
+                                <span class="fd-pill-icon">📚</span> ${escapeHTML(cName)}
+                            </span>
+                            ${idx < col.hierarchy.length - 1 ? '<span class="fd-arrow">➔</span>' : ''}
+                        `).join('');
+                        return `<div class="fd-chain-row">${chainHtml}</div>`;
+                    }).join('');
+                } else {
+                    collectionsHtml = '<div style="color:var(--text-muted); font-style:italic;">No collection membership</div>';
+                }
+
+                // Thumbnail / Media Preview
+                let previewHtml = '';
+                if (['image', 'animated_image'].includes(f.type)) {
+                    previewHtml = `<img src="/galleryout/thumbnail/${f.id}" alt="${escapeHTML(f.name)}" class="fd-thumb">`;
+                } else if (f.type === 'video') {
+                    previewHtml = `<video src="/galleryout/file/${f.id}" poster="/galleryout/thumbnail/${f.id}" muted loop playsinline autoplay class="fd-thumb"></video>`;
+                } else if (f.type === 'audio') {
+                    previewHtml = `<div class="fd-thumb-placeholder">🎵</div>`;
+                } else {
+                    previewHtml = `<div class="fd-thumb-placeholder">📄</div>`;
+                }
+
+                let pipelineChips = '';
+                if (data.nodes_pipeline && data.nodes_pipeline.length > 0) {
+                    pipelineChips = data.nodes_pipeline.map(n => 
+                        `<span style="background:${n.color || 'rgba(255,255,255,0.1)'}; color:#fff; padding:4px 10px; border-radius:6px; font-size:0.8rem; font-weight:bold; display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 4px rgba(0,0,0,0.3); white-space:nowrap;">${escapeHTML(n.type)}</span>`
+                    ).join(' <span style="color:var(--text-muted, #777); font-size:0.8rem;">➔</span> ');
+                } else {
+                    pipelineChips = '<span style="color:var(--text-muted, #aaa); font-style:italic;">No node structure available</span>';
+                }
+
+                let modelsPills = '';
+                if (data.models_used && data.models_used.length > 0) {
+                    modelsPills = data.models_used.map(m => `<span class="fd-pill folder" style="font-size:0.8rem;">📦 ${escapeHTML(m)}</span>`).join(' ');
+                } else {
+                    modelsPills = '<span style="color:var(--text-muted, #aaa); font-style:italic;">No model files detected</span>';
+                }
+
+                const wfHashStr = f.workflow_hash ? f.workflow_hash.substring(0, 7).toUpperCase() : 'N/A';
+                const prHashStr = f.prompt_hash ? f.prompt_hash.substring(0, 7).toUpperCase() : 'N/A';
+
+                const totalClusterSum = (data.cluster_wf_count || 0) + (data.cluster_pr_count || 0);
+                const showClusterBtn = totalClusterSum > 2;
+
+                const clusterBtnHtml = showClusterBtn ? `
+                    <div style="display:flex; gap:10px; margin:10px 0; flex-wrap:wrap;">
+                        <button type="button" class="glass-btn active-fuxia" style="width:100%; height:40px !important; font-weight:bold;" onclick="closeFullDetailsModal(); openClusteringModal('${f.id}');">🧬 Smart Asset Clustering</button>
+                    </div>` : '';
+
+                content.innerHTML = `
+                    <div class="fd-tab-bar">
+                        <button type="button" class="fd-tab-btn active" id="fd-tab-btn-overview" tabindex="0" onclick="switchFdTab('overview')">📋 Overview & Paths</button>
+                        <button type="button" class="fd-tab-btn" id="fd-tab-btn-cluster" tabindex="0" onclick="switchFdTab('cluster')">🧬 Architecture & Cluster</button>
+                    </div>
+
+                    <div class="fd-tab-pane active" id="fd-tab-pane-overview">
+                        <div class="fd-top-card">
+                            <div class="fd-thumb-box">${previewHtml}</div>
+                            <div class="fd-main-meta">
+                                <h3 class="fd-title" title="${escapeHTML(f.name)}">${escapeHTML(f.name)}</h3>
+                                <div class="fd-badges-row">
+                                    <span class="fd-badge type">${escapeHTML(f.type || 'file')}</span>
+                                    ${f.has_workflow ? `<a href="/galleryout/workflow/${f.id}" class="fd-badge workflow" style="text-decoration:none; cursor:pointer;" onclick="event.stopPropagation();" title="Click to Download Workflow JSON">⚙️ Workflow</a>` : ''}
+                                    ${f.is_favorite ? '<span class="fd-badge favorite">⭐ Favorite</span>' : ''}
+                                    ${statusBadgeHtml}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="fd-grid">
+                            <div class="fd-card">
+                                <span class="fd-card-label">📐 Dimensions</span>
+                                <span class="fd-card-val">${resStr}</span>
+                            </div>
+                            <div class="fd-card">
+                                <span class="fd-card-label">💾 File Size</span>
+                                <span class="fd-card-val">${sizeStr}</span>
+                            </div>
+                            <div class="fd-card">
+                                <span class="fd-card-label">📅 Modified Date</span>
+                                <span class="fd-card-val">${dateStr}</span>
+                            </div>
+                            <div class="fd-card">
+                                <span class="fd-card-label">🔍 Last Scanned</span>
+                                <span class="fd-card-val">${scanStr}</span>
+                            </div>
+                            ${f.duration ? `
+                            <div class="fd-card">
+                                <span class="fd-card-label">⏱️ Duration</span>
+                                <span class="fd-card-val">${f.duration}</span>
+                            </div>` : ''}
+                        </div>
+
+                        <div class="fd-section">
+                            <div class="fd-section-title">⭐ Rating & Activity</div>
+                            <div class="fd-stats-row">
+                                <div class="fd-stat-box">
+                                    <span class="fd-stat-num">★ ${avgRating}</span>
+                                    <span class="fd-stat-lbl">${voteCount} ${voteCount === 1 ? 'vote' : 'votes'}</span>
+                                </div>
+                                <div class="fd-stat-box">
+                                    <span class="fd-stat-num">💬 ${commentCount}</span>
+                                    <span class="fd-stat-lbl">${commentCount === 1 ? 'comment' : 'comments'}</span>
+                                </div>
+                                ${f.status_name ? `
+                                <div class="fd-stat-box">
+                                    <span class="fd-stat-num" style="color:${f.status_color || '#fff'};">📍 ${escapeHTML(f.status_name)}</span>
+                                    <span class="fd-stat-lbl">Workflow Status</span>
+                                </div>` : ''}
+                            </div>
+                        </div>
+
+                        <div class="fd-section">
+                            <div class="fd-section-title">📁 Folder Tree Location</div>
+                            <div class="fd-chain-row">${folderHierarchyHtml}</div>
+                        </div>
+
+                        <div class="fd-section">
+                            <div class="fd-section-title">📍 Physical Disk Path</div>
+                            <div class="fd-path-box">
+                                <code>${escapeHTML(f.path)}</code>
+                                ${isLink && realPath ? `<div class="fd-link-source">🔗 <strong>Real Target:</strong> <code>${escapeHTML(realPath)}</code></div>` : ''}
+                            </div>
+                        </div>
+
+                        <div class="fd-section">
+                            <div class="fd-section-title">📚 Collections & Sub-collections</div>
+                            <div class="fd-collections-box">${collectionsHtml}</div>
+                        </div>
+
+                        ${f.ai_caption ? `
+                        <div class="fd-section">
+                            <div class="fd-section-title">🧠 AI Caption</div>
+                            <div class="fd-caption-box">${formatAiCaptionText(f.ai_caption)}</div>
+                        </div>` : ''}
+
+                        ${f.generation_metadata ? `
+                        <div class="fd-section">
+                            <div class="fd-section-title">🖼️ Generation Metadata</div>
+                            <button class="fd-genmeta-copy" onclick="copyGenerationMetadataToClipboard(this)">📋 Copy</button>
+                            <div class="fd-genmeta-box">${escapeHTML(f.generation_metadata)}</div>
+                        </div>` : ''}
+                    </div>
+
+                    <div class="fd-tab-pane" id="fd-tab-pane-cluster">
+                        <div class="fd-stats-row" style="justify-content:space-around; background:rgba(255,255,255,0.03); padding:15px; border-radius:12px; border:1px solid var(--glass-border,#333);">
+                            <div class="fd-stat-box">
+                                <span class="fd-stat-num" style="color:var(--ai-color, #ff00ff);">🧬 #${wfHashStr}</span>
+                                <span class="fd-stat-lbl">${data.cluster_wf_count || 0} Assets with Architecture</span>
+                            </div>
+                            <div class="fd-stat-box">
+                                <span class="fd-stat-num" style="color:#00ffff;">💬 #${prHashStr}</span>
+                                <span class="fd-stat-lbl">${data.cluster_pr_count || 0} Assets with Prompt</span>
+                            </div>
+                        </div>
+
+                        ${clusterBtnHtml}
+
+                        <div class="fd-section">
+                            <div class="fd-section-title">🧩 Node Pipeline Architecture</div>
+                            <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; background:rgba(0,0,0,0.3); padding:12px; border-radius:8px; border:1px solid var(--glass-border,#333); max-height:180px; overflow-y:auto;">
+                                ${pipelineChips}
+                            </div>
+                        </div>
+
+                        <div class="fd-section">
+                            <div class="fd-section-title">📦 Checkpoints & Models Loaded</div>
+                            <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                                ${modelsPills}
+                            </div>
+                        </div>
+
+                        ${f.workflow_prompt ? `
+                        <div class="fd-section">
+                            <div class="fd-section-title" style="display:flex; justify-content:space-between; align-items:center;">
+                                <span>💬 Asset Prompt Text</span>
+                                <button type="button" class="glass-btn dym-btn" onclick="copyTextAndNotify(document.getElementById('fd-prompt-text').innerText.trim(), this)" style="padding:2px 8px !important; height:22px !important; font-size:0.7rem !important;">📋 Copy</button>
+                            </div>
+                            <div id="fd-prompt-text" class="fd-caption-box" style="max-height:140px; overflow-y:auto; border-color:var(--glass-border,#333); white-space:pre-wrap; word-break:break-word;">${escapeHTML(f.workflow_prompt)}</div>
+                        </div>` : ''}
+
+                        ${clusterBtnHtml}
+                    </div>
+                `;
+
+            } catch (e) {
+                console.error("Full Details Error:", e);
+                content.innerHTML = `<div style="text-align:center; color:var(--danger-color); padding:20px;">Error loading file details.</div>`;
+            }
+        }
+
+        
+        function switchFdTab(tabName) {
+            document.querySelectorAll('.fd-tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.fd-tab-pane').forEach(p => p.classList.remove('active'));
+            
+            const btn = document.getElementById('fd-tab-btn-' + tabName);
+            const pane = document.getElementById('fd-tab-pane-' + tabName);
+            
+            if (btn) btn.classList.add('active');
+            if (pane) pane.classList.add('active');
+        }
+        
+        function closeFullDetailsModal() {
+            const overlay = document.getElementById('full-file-details-overlay');
+            if (overlay) overlay.classList.remove('visible');
+            currentFullDetailsFileId = null;
+
+            // Remove modal-open class if no other modal overlay is open.
+            // Note: Lightbox uses 'lightbox-open', not 'modal-open', so it should not prevent removing 'modal-open'.
+            const isOtherModalOpen =
+                (document.getElementById('file-info-overlay') && document.getElementById('file-info-overlay').classList.contains('visible') && !document.body.classList.contains('lb-info-docked')) ||
+                (document.getElementById('node-summary-overlay') && document.getElementById('node-summary-overlay').classList.contains('visible') && !document.body.classList.contains('lb-nodes-docked')) ||
+                (document.getElementById('shortcuts-help-overlay') && document.getElementById('shortcuts-help-overlay').classList.contains('visible'));
+
+            if (!isOtherModalOpen) {
+                document.body.classList.remove('modal-open');
+            }
+        }</script>
+
 </body>
 </html>
+
+<!-- COLLECTION NOTES READER MODAL -->
+<div id="notes-reader-overlay" style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.85); backdrop-filter:blur(8px); z-index:9999; display:none; justify-content:center; align-items:center;">
+    <div style="background:var(--surface-color); border:1px solid var(--favorite-color); border-top:4px solid var(--favorite-color); border-radius:16px; width:750px; max-width:95vw; height:85vh; padding:25px; box-shadow:0 20px 60px rgba(0,0,0,0.9); display:flex; flex-direction:column; gap:15px; overscroll-behavior:contain;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:12px;">
+            <h3 style="margin:0; color:white; display:flex; align-items:center; gap:10px;">📝 Collection Notes</h3>
+            <button onclick="closeCollectionNotesModal()" style="background:none; border:none; color:var(--text-muted); font-size:1.8rem; cursor:pointer;">×</button>
+        </div>
+        
+        <!-- FLEX WRAP to prevent squishing of buttons -->
+        <div id="notes-selector-bar" style="display:flex; gap:10px; flex-wrap:wrap; padding-bottom:5px; align-items:flex-start; width:100%;"></div>
+
+        <div style="flex-grow:1; overflow-y:auto; padding:20px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); border-radius:12px; color:#ddd; line-height:1.6; font-size:1.05rem; -webkit-overflow-scrolling:touch;" id="notes-reader-content" onwheel="event.stopPropagation()" ontouchmove="event.stopPropagation()"></div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; border-top:1px solid rgba(255,255,255,0.1); padding-top:12px;">
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <button class="glass-btn" onclick="openNotesInfoPanel()" style="font-size:0.85rem; border-color:var(--border-color); color:white; background:var(--surface-hover);">⭐/💬 Ratings & Comments</button>
+                <a class="glass-btn" id="notes-download-btn" href="#" download style="font-size:0.85rem; text-decoration:none;">💾 Download Note</a>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="glass-btn" onclick="deleteCurrentNote()" style="border-color:var(--danger-color); color:var(--danger-color); font-size:0.85rem;">🗑️ Delete Note</button>
+                <button class="glass-btn" onclick="closeCollectionNotesModal()">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+let currentNoteFiles = {{ note_files | tojson if note_files is defined else '[]' }};
+let activeNoteIndex = 0;
+
+function openCollectionNotesModal() {
+    if (!currentNoteFiles || currentNoteFiles.length === 0) return;
+    activeNoteIndex = 0;
+    renderCollectionNoteView();
+    document.getElementById('notes-reader-overlay').classList.add('visible');
+    document.body.classList.add('modal-open');
+}
+
+function closeCollectionNotesModal() {
+    document.getElementById('notes-reader-overlay').classList.remove('visible');
+    if (!document.getElementById('file-info-overlay').classList.contains('visible') && !document.querySelector('.folder-dropdown.show')) {
+        document.body.classList.remove('modal-open');
+    }
+}
+
+function selectNoteTab(index) {
+    activeNoteIndex = index;
+    renderCollectionNoteView();
+}
+
+function renderCollectionNoteView() {
+    if (!currentNoteFiles || currentNoteFiles.length === 0) return;
+    const currentNote = currentNoteFiles[activeNoteIndex];
+    
+    const selectorBar = document.getElementById('notes-selector-bar');
+    if (currentNoteFiles.length > 1) {
+        selectorBar.style.display = 'flex';
+        selectorBar.innerHTML = currentNoteFiles.map((note, idx) => {
+            let dStr = '';
+            if (note.mtime) {
+                const d = new Date(note.mtime * 1000);
+                dStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            }
+            return `<button class="ntab-btn ${idx === activeNoteIndex ? 'active' : ''}" onclick="selectNoteTab(${idx})" title="${escapeHTML(note.name)}">📄 ${escapeHTML(note.name)} <span style="opacity:0.6; margin-left:6px; font-weight:normal; font-size:0.75rem;">(${dStr})</span></button>`;
+        }).join('');
+    } else {
+        selectorBar.style.display = 'none';
+    }
+
+    const contentBox = document.getElementById('notes-reader-content');
+    contentBox.innerHTML = '<div class="loader" style="margin:40px auto;"></div>';
+
+    fetch(`/galleryout/file/${currentNote.id}`)
+        .then(r => r.text())
+        .then(text => { contentBox.innerHTML = renderMarkdownText(text); })
+        .catch(() => { contentBox.innerHTML = '<div style="color:var(--danger-color); text-align:center;">Failed to load note content.</div>'; });
+
+    const dlBtn = document.getElementById('notes-download-btn');
+    if (dlBtn) dlBtn.href = `/galleryout/download/${currentNote.id}`;
+}
+
+function openNotesInfoPanel() {
+    if (!currentNoteFiles || !currentNoteFiles[activeNoteIndex]) return;
+    const currentNote = currentNoteFiles[activeNoteIndex];
+    
+    // 1. Close the notes modal
+    closeCollectionNotesModal(); 
+    
+    // 2. Inject into cache if missing, so the panel knows its details
+    let fileObj = allFilesData.find(f => f.id === currentNote.id);
+    if (!fileObj) {
+        currentNote.has_workflow = 0;
+        currentNote.is_favorite = 0;
+        allFilesData.push(currentNote);
+    }
+    
+    // 3. Open the rating panel
+    openFileInfoPanel(currentNote.id); 
+}
+
+async function deleteCurrentNote() {
+    if (!currentNoteFiles || !currentNoteFiles[activeNoteIndex]) return;
+    const currentNote = currentNoteFiles[activeNoteIndex];
+    const confirmed = await smartConfirm("🗑️ Delete Note?", `Delete note file "${currentNote.name}"?`, true);
+    if (!confirmed) return;
+
+    fetch(`/galleryout/delete/${currentNote.id}`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showNotification("Note deleted.", "success");
+                currentNoteFiles.splice(activeNoteIndex, 1);
+                if (currentNoteFiles.length === 0) {
+                    closeCollectionNotesModal();
+                    window.location.reload();
+                } else {
+                    activeNoteIndex = Math.max(0, activeNoteIndex - 1);
+                    renderCollectionNoteView();
+                }
+            } else {
+                showNotification(data.message || "Deletion failed", "error");
+            }
+        });
+}
+</script>
+<style>
+#notes-reader-overlay.visible { display: flex !important; animation: popIn 0.2s ease-out; }
+@media (max-width: 768px) { #notes-reader-overlay .glass-btn, #notes-reader-overlay a.glass-btn { font-size: 0.75rem !important; padding: 0 8px !important; } }
+</style>

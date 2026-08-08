@@ -1,5 +1,5 @@
 <!-- templates/list_view.html -->
-<!-- Version: 2.16 - July 24, 2026 -->
+<!-- Version: 2.21 - August 08, 2026 -->
 <style>
     :root {
         /* ARTIST'S TOUCH: Fluid/Squishy Columns! Allows zooming up to 200% without breaking layout */
@@ -185,6 +185,75 @@
     body.list-view-active #focus-status-bar {
         display: none !important;
     }
+
+    /* --- INLINE AUDIO PLAYER --- */
+    .inline-audio-btn {
+        display: none !important; /* Nascosto di default fuori dalla list view */
+        background: rgba(0, 123, 255, 0.15); border: 1px solid var(--primary-color);
+        color: white; border-radius: 50%; width: 28px; height: 28px;
+        align-items: center; justify-content: center;
+        font-size: 0.85rem; cursor: pointer; margin-left: 10px; transition: all 0.2s;
+        flex-shrink: 0; 
+        padding: 1px 1px 4px 1px; 
+    }
+    
+    /* Visibile solo quando List View è attiva */
+    body.list-view-active .inline-audio-btn,
+    body.exh-list-view-active .inline-audio-btn {
+        display: inline-flex !important;
+    }
+    
+    .inline-audio-btn:hover {
+        background: var(--primary-color);
+        box-shadow: 0 0 8px rgba(0, 123, 255, 0.6);
+        border-color: #fff;
+    }
+    
+    .inline-audio-overlay {
+        position: absolute; top: 0; right: 0; bottom: 0;
+        background: rgba(20, 20, 20, 0.98); backdrop-filter: blur(10px);
+        border-radius: 0 6px 6px 0; z-index: 50; display: flex; align-items: center;
+        padding: 0 15px; gap: 12px; animation: slideInAudio 0.2s ease-out;
+        border: 1px solid var(--primary-color); border-left: none;
+        box-shadow: -15px 0 20px rgba(20,20,20,0.95);
+    }
+    @media (max-width: 768px) {
+        .inline-audio-overlay { left: 0 !important; border-radius: 6px; border-left: 1px solid var(--primary-color) !important; }
+    }
+    @keyframes slideInAudio {
+        from { opacity: 0; transform: scaleX(0); transform-origin: right center; }
+        to { opacity: 1; transform: scaleX(1); transform-origin: right center; }
+    }
+    
+    .ia-play-btn {
+        background: var(--primary-color); border: none; color: white;
+        width: 32px; height: 32px; border-radius: 50%; display: flex;
+        align-items: center; justify-content: center; font-size: 0.9rem;
+        cursor: pointer; box-shadow: 0 0 10px rgba(0, 123, 255, 0.5); flex-shrink: 0; padding-left: 2px;
+    }
+    .ia-play-btn:hover { filter: brightness(1.2); transform: scale(1.05); }
+    
+    .ia-time { font-family: monospace; font-size: 0.8rem; color: #bbb; min-width: 45px; text-align: center; flex-shrink: 0; }
+    
+    .ia-seek {
+        -webkit-appearance: none; flex-grow: 1; height: 6px; background: rgba(255,255,255,0.1);
+        border-radius: 3px; outline: none; cursor: pointer; min-width: 50px;
+    }
+    .ia-seek::-webkit-slider-thumb {
+        -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%;
+        background: white; cursor: pointer; box-shadow: 0 0 5px rgba(0, 123, 255, 0.8);
+    }
+    
+    .ia-close-btn {
+        background: rgba(220, 53, 69, 0.2); border: 1px solid var(--danger-color);
+        color: #ff6b6b; width: 28px; height: 28px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1rem; cursor: pointer; transition: all 0.2s; margin-left: auto; flex-shrink: 0;
+    }
+    .ia-close-btn:hover { background: var(--danger-color); color: white; }
+
+    .list-col-name, .exh-name { position: relative; }
+    
 </style>
 
 <script>
@@ -297,4 +366,138 @@
         applyLayoutMode(); 
         initListSortUI();
     });
+
+    // --- INLINE AUDIO PLAYER LOGIC ---
+    let currentInlineAudio = null;
+    let currentInlineContainer = null;
+    let inlineAudioEscHandler = null;
+
+    window.playInlineAudio = function(event, fileId, btnElement) {
+        event.stopPropagation();
+        event.preventDefault();
+
+        // Evita conflitti e stoppa riproduzioni in corso
+        if (currentInlineAudio) {
+            currentInlineAudio.pause();
+            if (currentInlineContainer) currentInlineContainer.remove();
+            if (inlineAudioEscHandler) document.removeEventListener('keydown', inlineAudioEscHandler);
+        }
+
+        const row = btnElement.closest('.gallery-item') || btnElement.closest('.exh-card');
+        if (!row) return;
+
+        row.style.position = 'relative';
+
+        const overlay = document.createElement('div');
+        overlay.className = 'inline-audio-overlay';
+        
+        // Calcolo preciso per far partire l'overlay ESATTAMENTE dove si trova il bottone
+        const rowRect = row.getBoundingClientRect();
+        const btnRect = btnElement.getBoundingClientRect();
+        
+        if (window.innerWidth > 768) {
+            const leftOffset = btnRect.left - rowRect.left;
+            overlay.style.left = (leftOffset - 5) + 'px';
+            overlay.style.borderLeft = '1px solid var(--primary-color)';
+        } else {
+            overlay.style.left = '0px';
+        }
+
+        // Blocca interazioni mouse in modo che non si inneschino azioni della List View (come Lightbox)
+        overlay.onclick = (e) => { e.stopPropagation(); e.preventDefault(); };
+        overlay.onmousedown = (e) => { e.stopPropagation(); };
+
+        overlay.innerHTML = `
+            <button class="ia-play-btn" title="Play/Pause">⏸</button>
+            <span class="ia-time current">00:00</span>
+            <input type="range" class="ia-seek" min="0" max="100" value="0">
+            <span class="ia-time total">00:00</span>
+            <button class="ia-close-btn" title="Close Player (Esc)">✕</button>
+        `;
+
+        row.appendChild(overlay);
+
+        const audio = new Audio(`/galleryout/file/${fileId}`);
+        currentInlineAudio = audio;
+        currentInlineContainer = overlay;
+
+        const playBtn = overlay.querySelector('.ia-play-btn');
+        const seek = overlay.querySelector('.ia-seek');
+        const currTime = overlay.querySelector('.ia-time.current');
+        const totTime = overlay.querySelector('.ia-time.total');
+        const closeBtn = overlay.querySelector('.ia-close-btn');
+
+        seek.addEventListener('mousedown', e => e.stopPropagation());
+        seek.addEventListener('click', e => e.stopPropagation());
+        seek.addEventListener('input', e => e.stopPropagation());
+        seek.addEventListener('change', e => e.stopPropagation());
+
+        const formatTime = (secs) => {
+            if (isNaN(secs)) return "00:00";
+            const m = Math.floor(secs / 60);
+            const s = Math.floor(secs % 60);
+            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        };
+
+        audio.addEventListener('loadedmetadata', () => {
+            totTime.textContent = formatTime(audio.duration);
+        });
+
+        audio.addEventListener('timeupdate', () => {
+            currTime.textContent = formatTime(audio.currentTime);
+            if (audio.duration) {
+                seek.value = (audio.currentTime / audio.duration) * 100;
+            }
+        });
+
+        audio.addEventListener('ended', () => {
+            playBtn.innerHTML = '<span style="padding-left:2px;">▶</span>';
+            seek.value = 0;
+            currTime.textContent = "00:00";
+        });
+
+        playBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (audio.paused) { audio.play(); playBtn.textContent = '⏸'; }
+            else { audio.pause(); playBtn.innerHTML = '<span style="padding-left:2px;">▶</span>'; }
+        };
+
+        seek.oninput = (e) => {
+            e.stopPropagation();
+            if (audio.duration) {
+                audio.currentTime = (e.target.value / 100) * audio.duration;
+            }
+        };
+
+        const closePlayer = () => {
+            if (currentInlineAudio) currentInlineAudio.pause();
+            if (currentInlineContainer) currentInlineContainer.remove();
+            currentInlineAudio = null;
+            currentInlineContainer = null;
+            if (inlineAudioEscHandler) {
+                document.removeEventListener('keydown', inlineAudioEscHandler);
+                inlineAudioEscHandler = null;
+            }
+        };
+
+        closeBtn.onclick = (e) => {
+            e.stopPropagation();
+            closePlayer();
+        };
+
+        inlineAudioEscHandler = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                closePlayer();
+            }
+        };
+        document.addEventListener('keydown', inlineAudioEscHandler);
+
+        audio.play().catch(e => {
+            console.error("Autoplay blocked:", e);
+            playBtn.innerHTML = '<span style="padding-left:2px;">▶</span>';
+        });
+    };
+    
 </script>

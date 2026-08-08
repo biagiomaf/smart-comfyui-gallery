@@ -1,0 +1,732 @@
+<!-- SMART ASSET CLUSTERING MODAL & PROMPT READER (MODULAR COMPONENT) -->
+<!-- Version: 2.21 - August 08, 2026 -->
+
+<style>
+.clustering-modal-panel {
+    width: 760px !important;
+    max-width: 95vw !important;
+    background: #151515 !important; 
+}
+.cluster-modal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+@media (max-width: 768px) {
+    .cluster-modal-grid {
+        grid-template-columns: 1fr; /* Incolonnamento su mobile */
+    }
+}
+.cluster-opt-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--glass-border, #333);
+    border-radius: 12px;
+    padding: 15px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    user-select: none;
+    height: 100%;
+}
+.cluster-opt-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+.cluster-opt-card.active {
+    background: rgba(255, 0, 255, 0.1);
+    border-color: var(--ai-color, #ff00ff);
+    box-shadow: inset 0 0 10px rgba(255, 0, 255, 0.15);
+}
+.cluster-opt-card input[type="radio"] {
+    margin-top: 4px;
+    width: 18px;
+    height: 18px;
+    accent-color: var(--ai-color, #ff00ff);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.cluster-card-title {
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: #fff;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.cluster-card-sub {
+    font-size: 0.85rem;
+    color: var(--text-muted, #aaa);
+    line-height: 1.4;
+}
+.cluster-section-title {
+    color: var(--text-muted, #aaa);
+    font-weight: 800;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    display: block;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    padding-bottom: 5px;
+}
+</style>
+
+<!-- Cluster Settings Modal -->
+<div id="clustering-modal-overlay" class="modal-overlay" style="display: none;" onclick="if(event.target === this) closeClusteringModal();">
+    <div class="smart-dialog-panel clustering-modal-panel" onclick="event.stopPropagation();">
+        <div class="shortcuts-header" style="display:flex; justify-content:space-between; align-items:center; padding:15px 20px; border-bottom:1px solid var(--border-color, #333); background:var(--surface-hover, #222);">
+            <h2 style="display:flex; align-items:center; gap:10px; margin:0; color:white; font-size:1.3rem;">🧬 Smart Asset Clustering</h2>
+            <button class="close-btn" onclick="closeClusteringModal()" style="background:none; border:none; color:var(--text-muted, #aaa); font-size:1.8rem; cursor:pointer; line-height:1;">&times;</button>
+        </div>
+        
+        <div style="padding: 20px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; max-height: 75vh;">
+            
+            <div id="clustering-target-badge" style="display:none; background:rgba(0,123,255,0.1); border:1px solid var(--primary-color, #007bff); padding:10px 15px; border-radius:8px; font-size:0.95rem; color:#fff; align-items:center; gap:8px;">
+                <span style="font-size:1.2rem;">🎯</span> 
+                <div>Target Asset: <strong id="clustering-target-name" style="color:#89CFF0;"></strong></div>
+            </div>
+
+            <!-- SECTION 1: BASIS -->
+            <div class="filter-group">
+                <label class="cluster-section-title" style="color:var(--ai-color, #ff00ff);">1. Clustering Basis</label>
+                <div class="cluster-modal-grid">
+                    <label class="cluster-opt-card active" id="lbl-basis-wf" onclick="selectClusterBasis('workflow')">
+                        <input type="radio" name="cluster_basis" value="workflow" checked>
+                        <div>
+                            <div class="cluster-card-title">⚙️ Architecture</div>
+                            <div class="cluster-card-sub">Group by identical node connections. Useful to find variations of the same setup (seeds, prompts).</div>
+                        </div>
+                    </label>
+                    <label class="cluster-opt-card" id="lbl-basis-prompt" onclick="selectClusterBasis('prompt')">
+                        <input type="radio" name="cluster_basis" value="prompt">
+                        <div>
+                            <div class="cluster-card-title">💬 Prompt Text</div>
+                            <div class="cluster-card-sub">Group by exact positive prompt match. Useful to see how different models interpret the same text.</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- SECTION 2: SCOPE -->
+            <div class="filter-group">
+                <label class="cluster-section-title">2. Search Scope</label>
+                <div class="cluster-modal-grid">
+                    <label class="cluster-opt-card active" id="lbl-scope-global" onclick="selectClusterScope('global')">
+                        <input type="radio" name="cluster_scope" value="global" checked>
+                        <div>
+                            <div class="cluster-card-title">🌐 Global</div>
+                            <div class="cluster-card-sub">Search across your entire database. Automatically resets active filters to prevent hiding matches.</div>
+                        </div>
+                    </label>
+                    <label class="cluster-opt-card" id="lbl-scope-current" onclick="selectClusterScope('current')">
+                        <input type="radio" name="cluster_scope" value="current">
+                        <div>
+                            <div class="cluster-card-title">📂 Current Context</div>
+                            <div class="cluster-card-sub">Search only within the currently active folder or collection, respecting your active search filters.</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- SECTION 3: SORTING -->
+            <div class="filter-group">
+                <label class="cluster-section-title">3. Inner-Cluster Sorting</label>
+                <select id="cluster-sort-select" class="sd-text-input" style="background:rgba(0,0,0,0.5); color:white; padding:12px; border-radius:8px; border:1px solid var(--border-color, #333); width:100%; font-size:0.95rem; outline:none;">
+                    <option value="date_desc">📅 Newest First</option>
+                    <option value="date_asc">📅 Oldest First</option>
+                    <option value="rating_desc">⭐ Highest Rated First</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="sd-actions" style="padding:15px 20px; background:var(--surface-hover, #222); border-top:1px solid var(--border-color, #333); display:flex; justify-content:flex-end; gap:10px;">
+            <button type="button" onclick="closeClusteringModal()" class="glass-btn">Cancel</button>
+            <button type="button" onclick="submitClusteringModal()" class="glass-btn active-fuxia" style="font-weight:bold; min-width: 150px;">🚀 Clusterize</button>
+        </div>
+    </div>
+</div>
+
+<!-- Prompt Reader Modal -->
+<div id="cluster-prompt-modal-overlay" class="modal-overlay" style="display: none;" onclick="if(event.target === this) closeClusterPromptModal();">
+    <div class="smart-dialog-panel" style="width: 700px; max-width: 95vw; height: 75vh; max-height: 600px; padding: 0; overflow: hidden; display: flex; flex-direction: column; border-color: var(--ai-color, #ff00ff) !important;">
+        <div class="shortcuts-header" style="padding: 15px 20px; background: var(--surface-hover, #222); border-bottom: 1px solid var(--border-color, #333); display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin:0; color:white; font-size:1.1rem; display:flex; align-items:center; gap:8px;">💬 Shared Cluster Prompt</h3>
+            <button class="close-btn" onclick="closeClusterPromptModal()" style="background:none; border:none; color:var(--text-muted, #aaa); font-size:1.5rem; cursor:pointer;">&times;</button>
+        </div>
+        
+        <div id="cluster-prompt-modal-text" style="flex-grow: 1; padding: 20px; overflow-y: auto; color: #eee; font-family: 'Segoe UI', system-ui, sans-serif; font-size: 1rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word; background: rgba(0,0,0,0.3);">
+            Loading prompt...
+        </div>
+
+        <div style="padding: 15px 20px; background: var(--surface-hover, #222); border-top: 1px solid var(--border-color, #333); display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <button type="button" class="glass-btn active-blue" onclick="copyClusterPromptToClipboard()">📋 Copy Prompt to Clipboard</button>
+            <button type="button" class="glass-btn" onclick="closeClusterPromptModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// --- GLOBAL CLUSTERING LOGIC & STRICT SEQUENTIAL COLOR MAPPER ---
+const CLUSTER_PALETTE = [
+    '#ff00ff', // Fuchsia
+    '#00ffff', // Cyan
+    '#ffc107', // Gold/Yellow
+    '#28a745', // Green
+    '#007bff', // Blue
+    '#dc3545', // Red
+    '#fd7e14', // Orange
+    '#20c997'  // Teal
+];
+
+let clusterColorMap = new Map();
+let lastAssignedColorIdx = -1;
+
+function resetClusterColorMap() {
+    clusterColorMap.clear();
+    lastAssignedColorIdx = -1;
+}
+
+function getClusterColor(hashStr) {
+    if (!hashStr) return '#007bff';
+    if (clusterColorMap.has(hashStr)) {
+        return clusterColorMap.get(hashStr);
+    }
+    
+    // Strict alternating algorithm to guarantee adjacent hashes never share the same color
+    let nextIdx = (lastAssignedColorIdx + 1) % CLUSTER_PALETTE.length;
+    lastAssignedColorIdx = nextIdx;
+    
+    const chosenColor = CLUSTER_PALETTE[nextIdx];
+    clusterColorMap.set(hashStr, chosenColor);
+    return chosenColor;
+}
+
+let activeClusterTargetFileId = null;
+
+function selectClusterBasis(basis) {
+    document.getElementById('lbl-basis-wf').classList.toggle('active', basis === 'workflow');
+    document.getElementById('lbl-basis-prompt').classList.toggle('active', basis === 'prompt');
+    const radWf = document.querySelector('input[name="cluster_basis"][value="workflow"]');
+    const radPr = document.querySelector('input[name="cluster_basis"][value="prompt"]');
+    if (radWf) radWf.checked = (basis === 'workflow');
+    if (radPr) radPr.checked = (basis === 'prompt');
+}
+
+function selectClusterScope(scope) {
+    document.getElementById('lbl-scope-global').classList.toggle('active', scope === 'global');
+    document.getElementById('lbl-scope-current').classList.toggle('active', scope === 'current');
+    const radGl = document.querySelector('input[name="cluster_scope"][value="global"]');
+    const radCu = document.querySelector('input[name="cluster_scope"][value="current"]');
+    if (radGl) radGl.checked = (scope === 'global');
+    if (radCu) radCu.checked = (scope === 'current');
+}
+
+function openClusteringModal(targetFileId = null) {
+    if (targetFileId && typeof allFilesData !== 'undefined') {
+        const fileObj = allFilesData.find(f => f.id === targetFileId);
+        if (fileObj && !fileObj.has_workflow) {
+            if (typeof showNotification === 'function') {
+                showNotification("⚠️ This asset has no workflow metadata and cannot be clustered.", "warning");
+            } else {
+                alert("This asset has no workflow metadata and cannot be clustered.");
+            }
+            return;
+        }
+    }
+
+    activeClusterTargetFileId = targetFileId;
+    const badge = document.getElementById('clustering-target-badge');
+    const nameEl = document.getElementById('clustering-target-name');
+    
+    if (targetFileId && typeof allFilesData !== 'undefined') {
+        const fileObj = allFilesData.find(f => f.id === targetFileId);
+        if (fileObj) {
+            nameEl.textContent = fileObj.name;
+            badge.style.display = 'flex';
+        } else {
+            badge.style.display = 'none';
+        }
+    } else {
+        badge.style.display = 'none';
+    }
+
+    // Determine default scope intelligently
+    const params = new URLSearchParams(window.location.search);
+    const currentScopeParam = params.get('cluster_scope');
+    let defaultScope = 'global';
+    
+    if (currentScopeParam) {
+        defaultScope = currentScopeParam;
+    } else if ((typeof activeFiltersCount !== 'undefined' && activeFiltersCount > 0) || 
+               (typeof currentFolderKey !== 'undefined' && currentFolderKey !== '_root_')) {
+        defaultScope = 'current';
+    }
+    
+    selectClusterScope(defaultScope);
+
+    const overlay = document.getElementById('clustering-modal-overlay');
+    if (overlay) {
+        overlay.classList.add('visible');
+        document.body.classList.add('modal-open');
+    }
+}
+
+function closeClusteringModal() {
+    const overlay = document.getElementById('clustering-modal-overlay');
+    if (overlay) {
+        overlay.classList.remove('visible');
+        if (!document.getElementById('full-file-details-overlay')?.classList.contains('visible') &&
+            !document.getElementById('file-info-overlay')?.classList.contains('visible')) {
+            document.body.classList.remove('modal-open');
+        }
+    }
+}
+
+function submitClusteringModal() {
+    const basisRad = document.querySelector('input[name="cluster_basis"]:checked');
+    const basis = basisRad ? basisRad.value : 'workflow';
+    const scopeRad = document.querySelector('input[name="cluster_scope"]:checked');
+    const scopeVal = scopeRad ? scopeRad.value : 'global';
+    const sortVal = document.getElementById('cluster-sort-select').value;
+
+    closeClusteringModal();
+    if (typeof closeLightbox === 'function') closeLightbox();
+
+    const params = new URLSearchParams(window.location.search);
+    
+    // Clear ALL active filter parameters if Global Scope is selected
+    if (scopeVal === 'global') {
+        params.delete('search');
+        params.delete('workflow_files');
+        params.delete('workflow_prompt');
+        params.delete('comment_search');
+        params.delete('start_date');
+        params.delete('end_date');
+        params.delete('extension');
+        params.delete('prefix');
+        params.delete('rated_by');
+        params.delete('rating_range');
+        params.delete('favorites');
+        params.delete('no_workflow');
+        params.delete('no_ai_caption');
+        params.delete('recursive');
+        params.delete('scope');
+        
+        // Break out of collections/folders constraint
+        if (window.location.pathname.includes('/collection/') || window.location.pathname.includes('/view/')) {
+            window.location.href = '/galleryout/view/_root_?cluster_mode=' + basis + '&cluster_scope=' + scopeVal + '&cluster_sort=' + sortVal + (activeClusterTargetFileId ? '&cluster_target_id=' + activeClusterTargetFileId : '');
+            return;
+        }
+    }
+
+    params.set('cluster_mode', basis);
+    params.set('cluster_scope', scopeVal);
+    params.set('cluster_sort', sortVal);
+    if (activeClusterTargetFileId) {
+        params.set('cluster_target_id', activeClusterTargetFileId);
+    } else {
+        params.delete('cluster_target_id');
+    }
+
+    window.location.href = window.location.pathname + '?' + params.toString();
+}
+
+function exitClusteringMode(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+    }
+    const params = new URLSearchParams(window.location.search);
+    params.delete('cluster_mode');
+    params.delete('cluster_scope');
+    params.delete('cluster_sort');
+    params.delete('cluster_target_id');
+    
+    let newSearch = params.toString();
+    let targetUrl = newSearch ? (window.location.pathname + '?' + newSearch) : (window.location.pathname || '/galleryout/');
+
+    setTimeout(function() {
+        window.location.replace(targetUrl);
+    }, 10);
+}
+
+function openClusterPromptModal(targetFileId = null) {
+    let promptText = "No prompt text found in this cluster.";
+    
+    if (targetFileId && typeof allFilesData !== 'undefined') {
+        const fileObj = allFilesData.find(f => f.id === targetFileId);
+        if (fileObj && fileObj.workflow_prompt) {
+            promptText = fileObj.workflow_prompt;
+        }
+    } else if (typeof allFilesData !== 'undefined' && allFilesData.length > 0) {
+        promptText = allFilesData[0].workflow_prompt || "No prompt text found in this cluster.";
+    }
+
+    const textEl = document.getElementById('cluster-prompt-modal-text');
+    if (textEl) textEl.textContent = promptText;
+
+    const overlay = document.getElementById('cluster-prompt-modal-overlay');
+    if (overlay) {
+        overlay.classList.add('visible');
+        document.body.classList.add('modal-open');
+    }
+}
+
+function closeClusterPromptModal() {
+    const overlay = document.getElementById('cluster-prompt-modal-overlay');
+    if (overlay) {
+        overlay.classList.remove('visible');
+        if (!document.getElementById('clustering-modal-overlay')?.classList.contains('visible')) {
+            document.body.classList.remove('modal-open');
+        }
+    }
+}
+
+function copyClusterPromptToClipboard() {
+    const textEl = document.getElementById('cluster-prompt-modal-text');
+    if (!textEl) return;
+    const text = textEl.textContent.trim();
+    if (!text) return;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text)
+            .then(() => {
+                if (typeof showNotification === 'function') showNotification('📋 Prompt copied to clipboard!', 'success');
+            })
+            .catch(() => fallbackCopyPrompt(text));
+    } else {
+        fallbackCopyPrompt(text);
+    }
+}
+
+function fallbackCopyPrompt(text) {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-9999px";
+    textArea.style.top = "0";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+        const successful = document.execCommand('copy');
+        if (successful && typeof showNotification === 'function') {
+            showNotification('📋 Prompt copied to clipboard!', 'success');
+        }
+    } catch (err) {
+        if (typeof showNotification === 'function') showNotification('Failed to copy to clipboard.', 'error');
+    }
+    document.body.removeChild(textArea);
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+
+    if (e.shiftKey && (e.key === 'C' || e.key === 'c')) {
+        if (e.ctrlKey || e.metaKey) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (document.body.classList.contains('lightbox-open') && typeof currentLightboxFile !== 'undefined' && currentLightboxFile) {
+            openClusteringModal(currentLightboxFile.id);
+        } else if (typeof focusedItemIndex !== 'undefined' && focusedItemIndex !== -1 && typeof galleryItems !== 'undefined' && galleryItems[focusedItemIndex]) {
+            openClusteringModal(galleryItems[focusedItemIndex].dataset.fileId);
+        } else if (typeof selectedFiles !== 'undefined' && selectedFiles.size > 0) {
+            openClusteringModal(Array.from(selectedFiles)[0]);
+        } else {
+            openClusteringModal();
+        }
+    }
+});
+
+function initClusteringBanner() {
+    const params = new URLSearchParams(window.location.search);
+    const clusterMode = params.get('cluster_mode');
+    const clusterScope = params.get('cluster_scope') || 'global';
+    const targetId = params.get('cluster_target_id');
+    const banner = document.getElementById('clustering-active-banner');
+    const bannerText = document.getElementById('cluster-banner-text');
+
+    if (clusterMode && banner && bannerText) {
+        const basisLabel = clusterMode === 'prompt' ? 'Same Prompt Text' : 'Same Workflow Architecture';
+        const scopeLabel = clusterScope === 'current' ? 'Current Context' : 'Global Scope';
+        const totalCount = (typeof totalFiles !== 'undefined') ? totalFiles : (typeof galleryItems !== 'undefined' ? galleryItems.length : 0);
+        const countLabel = `<span style="background:rgba(255,255,255,0.15); padding:2px 8px; border-radius:12px; font-size:0.8rem; margin-left:6px; color:#fff;">${totalCount} Assets</span>`;
+
+        let promptBtn = '';
+        if (targetId && clusterMode === 'prompt') {
+            promptBtn = ` &nbsp;<button type="button" class="glass-btn dym-btn" onclick="openClusterPromptModal('${targetId}')" title="View Shared Prompt Text" style="padding:2px 8px !important; height:24px !important; font-size:0.75rem !important;">👁️ View Prompt</button>`;
+        }
+
+        bannerText.innerHTML = `<strong>CLUSTERING MODE ACTIVE</strong> &nbsp;|&nbsp; Basis: <span style="color:var(--ai-color,#ff00ff); font-weight:bold;">${basisLabel}</span> &nbsp;|&nbsp; <span style="color:#00ffff; font-weight:bold;">${scopeLabel}</span> ${countLabel}${promptBtn}`;
+        banner.setAttribute('style', 'display: flex !important; background: rgba(155, 48, 255, 0.2) !important; border: 2px solid var(--ai-color, #ff00ff) !important; box-shadow: 0 4px 20px rgba(255, 0, 255, 0.3) !important;');
+        document.body.classList.add('cluster-mode-active');
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener("DOMContentLoaded", initClusteringBanner);
+} else {
+    initClusteringBanner();
+}
+window.addEventListener("load", initClusteringBanner);
+</script>
+
+
+<!-- Self-Contained Cluster Info Inspector Modal Component -->
+<style>
+#cluster-info-modal-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(0, 0, 0, 0.85) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    z-index: 10000 !important;
+    display: none;
+    justify-content: center !important;
+    align-items: center !important;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease-out;
+}
+
+#cluster-info-modal-overlay.visible {
+    display: flex !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+.cluster-info-panel {
+    background: var(--surface-color, #18181c) !important;
+    border: 1px solid var(--ai-color, #ff00ff) !important;
+    border-radius: 16px !important;
+    width: 720px !important;
+    max-width: 92vw !important;
+    height: 80vh !important;
+    max-height: 700px !important;
+    box-shadow: 0 0 50px rgba(255, 0, 255, 0.25), 0 20px 60px rgba(0,0,0,0.9) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    transform: scale(0.95);
+    transition: transform 0.25s ease-out;
+}
+
+#cluster-info-modal-overlay.visible .cluster-info-panel {
+    transform: scale(1);
+}
+
+@media (max-width: 768px) {
+    .cluster-info-panel {
+        width: 95vw !important;
+        height: 88vh !important;
+        max-height: none !important;
+        border-radius: 14px !important;
+    }
+    .cluster-info-body {
+        padding: 12px !important;
+        gap: 12px !important;
+    }
+    .cluster-info-footer {
+        flex-direction: column-reverse !important;
+        gap: 8px !important;
+    }
+    .cluster-info-footer button {
+        width: 100% !important;
+    }
+}
+</style>
+
+<div id="cluster-info-modal-overlay" onclick="if(event.target === this) closeClusterInfoInspector();">
+    <div class="cluster-info-panel" onclick="event.stopPropagation();">
+        <div class="shortcuts-header" style="padding: 15px 20px; background: var(--surface-hover, #222); border-bottom: 1px solid var(--border-color, #333); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+            <h3 id="cluster-info-modal-title" style="margin:0; color:white; font-size:1.15rem; display:flex; align-items:center; gap:8px;">🧬 Cluster Inspector</h3>
+            <button type="button" class="close-btn" onclick="closeClusterInfoInspector()" style="background:none; border:none; color:var(--text-muted, #aaa); font-size:1.8rem; cursor:pointer; line-height:1;" title="Close (Esc)">&times;</button>
+        </div>
+        
+        <div id="cluster-info-modal-body" class="cluster-info-body" style="flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; background: rgba(0,0,0,0.3); -webkit-overflow-scrolling: touch;">
+            <div class="loader" style="margin: 40px auto;"></div>
+        </div>
+
+        <div class="cluster-info-footer" style="padding: 15px 20px; background: var(--surface-hover, #222); border-top: 1px solid var(--border-color, #333); display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-shrink: 0;">
+            <button type="button" id="cluster-info-action-btn" class="glass-btn active-fuxia" onclick="filterByCurrentClusterHash()">🚀 Clusterize Gallery by this Reference Asset</button>
+            <button type="button" class="glass-btn" onclick="closeClusterInfoInspector()">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentInspectedHash = null;
+let currentInspectedType = null;
+let currentInspectedSampleFileId = null;
+
+function openClusterInfoInspector(hashVal, hashType, fileId = null) {
+    if (!hashVal || !hashType) return;
+    currentInspectedHash = hashVal;
+    currentInspectedType = hashType;
+
+    const overlay = document.getElementById('cluster-info-modal-overlay');
+    const titleEl = document.getElementById('cluster-info-modal-title');
+    const bodyEl = document.getElementById('cluster-info-modal-body');
+
+    if (!overlay || !titleEl || !bodyEl) return;
+
+    const shortHash = hashVal.substring(0, 7).toUpperCase();
+    titleEl.innerHTML = (hashType === 'workflow') 
+        ? `🧬 Architecture Inspector <span style="background:rgba(255,0,255,0.2); border:1px solid var(--ai-color, #ff00ff); color:#fff; padding:2px 8px; border-radius:6px; font-size:0.8rem; font-family:monospace;">#${shortHash}</span>`
+        : `💬 Prompt Inspector <span style="background:rgba(0,255,255,0.2); border:1px solid #00ffff; color:#fff; padding:2px 8px; border-radius:6px; font-size:0.8rem; font-family:monospace;">#${shortHash}</span>`;
+
+    bodyEl.innerHTML = '<div class="loader" style="margin: 40px auto;"></div>';
+
+    overlay.classList.add('visible');
+    document.body.classList.add('modal-open');
+
+    let reqUrl = '/galleryout/api/cluster_info/' + hashType + '/' + hashVal;
+    if (fileId) reqUrl += '?file_id=' + encodeURIComponent(fileId);
+
+    fetch(reqUrl)
+        .then(r => {
+            if (!r.ok) throw new Error('HTTP Error ' + r.status);
+            return r.json();
+        })
+        .then(data => {
+            if (data.status === 'success') {
+                renderClusterInspectorContent(data);
+            } else {
+                bodyEl.innerHTML = '<div style="color:var(--danger-color, #dc3545); text-align:center; padding:20px;">Error: ' + (data.message || 'Failed to load details') + '</div>';
+            }
+        })
+        .catch(err => {
+            console.error("Cluster Inspector Fetch Error:", err);
+            bodyEl.innerHTML = '<div style="color:var(--danger-color, #dc3545); text-align:center; padding:20px;">Error loading cluster details (' + err.message + ')</div>';
+        });
+}
+
+function closeClusterInfoInspector() {
+    const overlay = document.getElementById('cluster-info-modal-overlay');
+    if (overlay) {
+        overlay.classList.remove('visible');
+    }
+    currentInspectedHash = null;
+    currentInspectedType = null;
+    currentInspectedSampleFileId = null;
+
+    if (!document.getElementById('clustering-modal-overlay')?.classList.contains('visible') &&
+        !document.getElementById('full-file-details-overlay')?.classList.contains('visible') &&
+        !document.getElementById('file-info-overlay')?.classList.contains('visible')) {
+        document.body.classList.remove('modal-open');
+    }
+}
+
+function renderClusterInspectorContent(data) {
+    const bodyEl = document.getElementById('cluster-info-modal-body');
+    const actionBtn = document.getElementById('cluster-info-action-btn');
+    if (!bodyEl) return;
+
+    const isWf = data.hash_type === 'workflow';
+    currentInspectedSampleFileId = data.sample_file ? data.sample_file.id : null;
+
+    if (actionBtn) {
+        actionBtn.innerHTML = isWf 
+            ? '🚀 Clusterize Gallery by this Architecture'
+            : '🚀 Clusterize Gallery by this Prompt';
+            
+        actionBtn.onclick = function() {
+            const targetId = currentInspectedSampleFileId;
+            const modeType = currentInspectedType;
+            closeClusterInfoInspector();
+            if (typeof closeLightbox === 'function') closeLightbox();
+            if (typeof openClusteringModal === 'function') {
+                openClusteringModal(targetId);
+                if (typeof selectClusterBasis === 'function') selectClusterBasis(modeType);
+            }
+        };
+    }
+
+    let pipelineHtml = '';
+    if (data.nodes_pipeline && data.nodes_pipeline.length > 0) {
+        pipelineHtml = data.nodes_pipeline.map(n => {
+            const nodeType = (typeof escapeHTML === 'function') ? escapeHTML(n.type) : n.type;
+            return `<span style="background:${n.color || 'rgba(255,255,255,0.1)'}; color:#fff; padding:4px 10px; border-radius:6px; font-size:0.8rem; font-weight:bold; display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 4px rgba(0,0,0,0.3); white-space:nowrap;">${nodeType}</span>`;
+        }).join(' <span style="color:var(--text-muted, #777); font-size:0.8rem;">➔</span> ');
+    } else {
+        pipelineHtml = '<span style="color:var(--text-muted, #aaa); font-style:italic;">No node structure available</span>';
+    }
+
+    let modelsHtml = '';
+    if (data.models_used && data.models_used.length > 0) {
+        modelsHtml = data.models_used.map(m => {
+            const modelName = (typeof escapeHTML === 'function') ? escapeHTML(m) : m;
+            return `<span class="fd-pill folder" style="font-size:0.8rem;">📦 ${modelName}</span>`;
+        }).join(' ');
+    } else {
+        modelsHtml = '<span style="color:var(--text-muted, #aaa); font-style:italic;">No model files detected</span>';
+    }
+
+    let promptContentHtml = '';
+    if (data.sample_prompt) {
+        const safePrompt = (typeof escapeHTML === 'function') ? escapeHTML(data.sample_prompt) : data.sample_prompt;
+        const promptTitle = isWf ? '💬 Asset Prompt Text (This File)' : '💬 Shared Cluster Prompt';
+
+        promptContentHtml = `
+            <div class="fd-section">
+                <div class="fd-section-title" style="display:flex; justify-content:space-between; align-items:center;">
+                    <span>${promptTitle}</span>
+                    <button type="button" class="glass-btn dym-btn" onclick="copyTextAndNotify(document.getElementById('cluster-insp-prompt-text').innerText.trim(), this)" style="padding:2px 8px !important; height:22px !important; font-size:0.7rem !important;">📋 Copy</button>
+                </div>
+                <div id="cluster-insp-prompt-text" class="fd-caption-box" style="max-height:140px; overflow-y:auto; border-color:var(--glass-border,#333); white-space:pre-wrap; word-break:break-word;">${safePrompt}</div>
+            </div>`;
+    }
+
+    const counterpartLabel = isWf ? 'Distinct Prompts Tested' : 'Distinct Architecture Pipeline Variants';
+
+    bodyEl.innerHTML = `
+        <div class="fd-stats-row" style="justify-content:space-around; background:rgba(255,255,255,0.03); padding:15px; border-radius:12px; border:1px solid var(--glass-border,#333);">
+            <div class="fd-stat-box">
+                <span class="fd-stat-num" style="color:var(--ai-color, #ff00ff);">${data.total_count}</span>
+                <span class="fd-stat-lbl">Matching Gallery Assets</span>
+            </div>
+            <div class="fd-stat-box">
+                <span class="fd-stat-num" style="color:#00ffff;">${data.distinct_counterparts}</span>
+                <span class="fd-stat-lbl">${counterpartLabel}</span>
+            </div>
+        </div>
+
+        <div class="fd-section">
+            <div class="fd-section-title">🧩 Node Pipeline Architecture</div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; background:rgba(0,0,0,0.3); padding:12px; border-radius:8px; border:1px solid var(--glass-border,#333); max-height:160px; overflow-y:auto;">
+                ${pipelineHtml}
+            </div>
+        </div>
+
+        <div class="fd-section">
+            <div class="fd-section-title">📦 Checkpoints & Models Loaded</div>
+            <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                ${modelsHtml}
+            </div>
+        </div>
+
+        ${promptContentHtml}
+    `;
+}
+
+function filterByCurrentClusterHash() {
+    if (!currentInspectedHash || !currentInspectedType) return;
+    const targetId = currentInspectedSampleFileId;
+    const modeType = currentInspectedType;
+    closeClusterInfoInspector();
+    if (typeof closeLightbox === 'function') closeLightbox();
+    if (typeof openClusteringModal === 'function') {
+        openClusteringModal(targetId);
+        if (typeof selectClusterBasis === 'function') selectClusterBasis(modeType);
+    }
+}
+</script>

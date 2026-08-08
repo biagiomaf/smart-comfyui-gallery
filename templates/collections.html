@@ -1,4 +1,4 @@
-<!-- Version: 2.16 - July 24, 2026 -->
+<!-- Version: 2.21 - August 08, 2026 -->
 <!-- TAGGING MODAL (MANAGER) -->
 <div id="tagging-overlay">
     <div class="tag-panel">
@@ -101,6 +101,49 @@ function expandNonEmptyCollectionPaths() {
     });
     localStorage.setItem('galleryColExpandedState', JSON.stringify([...colExpandedState]));
 }
+
+
+// --- UPLOAD COLLECTION NOTE LOGIC ---
+window.uploadCollectionNote = async function(inputElement, collId) {
+    if (!inputElement.files || inputElement.files.length === 0) return;
+    
+    if(typeof showNotification === 'function') showNotification(`Uploading ${inputElement.files.length} note(s)...`, "info");
+    
+    let successCount = 0;
+    for (let i = 0; i < inputElement.files.length; i++) {
+        const file = inputElement.files[i];
+        const ext = file.name.split('.').pop().toLowerCase();
+        
+        if (ext !== 'txt' && ext !== 'md') {
+            if(typeof showNotification === 'function') showNotification(`Skipped ${file.name}: Only .txt and .md allowed.`, "warning");
+            continue;
+        }
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('collection_id', collId);
+        
+        try {
+            const res = await fetch('/galleryout/api/collections/upload_note', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (data.status === 'success') successCount++;
+        } catch (e) {
+            console.error(e);
+        }
+    }
+    
+    inputElement.value = '';
+    if (successCount > 0) {
+        sessionStorage.setItem('gallery_notification', JSON.stringify({
+            message: `${successCount} Note(s) added successfully!`,
+            type: 'success'
+        }));
+        window.location.reload();
+    }
+};
 
 function loadCollections() {
     const requestId = ++collectionsRequestId;
@@ -253,13 +296,21 @@ function renderSidebarTreeHTML(parentId = '_root_', isSearching = false, visible
         let jsSafeName = c.name.replace(/'/g, "\\'").replace(/"/g, "&quot;");
         let toggleBtnText = c.is_public ? '🚫 Remove from Exhibition Ready Public' : '👁️ Set as Exhibition Ready Public';
 
+        // NOTE: the "Upload Note" trigger button and its hidden file input no longer use
+        // inline onclick/onchange attributes. Inline handlers required escaped quotes here
+        // because this markup is a template literal nested inside another template literal,
+        // and that escaping is fragile once this fragment gets serialized/embedded elsewhere
+        // (bundlers, extra templating layers, etc. can mangle the backslashes and silently
+        // truncate the attribute, which is why the button did nothing on click).
+        // Using data-attributes + delegated listeners (see bottom of this script) removes
+        // that whole class of bugs and also avoids relying on id-string uniqueness.
         html += `
         <li data-col-id="${c.id}" class="${isCollapsedClass} ${!hasChildren ? 'no-children' : ''}">
             <div class="folder-item col-item ${isActive}">
                 <span class="col-toggle-btn ${!hasChildren ? 'empty' : ''}"></span>
                 <a href="/galleryout/collection/${c.id}" class="folder-link navigation-link" style="display:flex; align-items:center; flex-grow:1;">
                     <span class="col-icon">📚</span>
-                    <span class="col-name" title="${c.name}">${escapeHTML(c.name)}</span>
+                    <span class="col-name" title="${c.name}" style="${c.note_count > 0 ? 'color:var(--favorite-color) !important; font-weight:bold;' : ''}">${escapeHTML(c.name)}</span>
                     ${Number(c.file_count) > 0 ? `<span class="collection-count" title="${c.file_count} directly tagged files">${c.file_count}</span>` : ''}
                     ${hasChildren && !isExpanded && Number(c.descendant_file_count) > 0 ? `<span class="collection-count collection-count-descendant" title="${c.descendant_file_count} unique files in sub-collections">+${c.descendant_file_count}</span>` : ''}
                     ${publicIcon}
@@ -269,6 +320,7 @@ function renderSidebarTreeHTML(parentId = '_root_', isSearching = false, visible
                     <div class="folder-dropdown">
                         <button onclick="createNewCollection(false, ${c.id})">➕ Add Sub-Collection</button>
                         <button onclick="renameCollection(event, ${c.id}, '${jsSafeName}')">✏️ Rename</button>
+                        ${c.type !== 'system_flag' ? `<button type="button" class="upload-note-trigger-btn" data-col-id="${c.id}">📤 Upload Note</button>` : ''}
                         ${typeof ENABLE_DAM_MODE !== 'undefined' && ENABLE_DAM_MODE ? `
                             <button onclick="toggleCollectionPublic(event, ${c.id})">${toggleBtnText}</button>
                             <button onclick="event.preventDefault(); event.stopPropagation(); openShareModal(event, ${c.id}, '${jsSafeName}'); return false;" style="color:var(--primary-color);">👥 Share / Permissions</button>
@@ -333,6 +385,43 @@ document.addEventListener('click', (e) => {
         }
     }
 }, true);
+
+// --- Delegated handler for the "Upload Note" trigger button ---
+// A single shared <input type="file"> is created once and attached directly to
+// document.body (see below) instead of living inside each .folder-dropdown.
+// Reason: .folder-dropdown gets display:none'd by the global "click outside
+// closes the menu" handler in index.html. If a per-row <input> lives inside
+// that dropdown, calling .click() on it right as (or just after) the dropdown
+// collapses can be silently ignored by the browser — no error, the file picker
+// simply never opens. An input under <body> is never affected by that.
+let pendingNoteUploadCollId = null;
+let globalNoteUploadInput = document.getElementById('global-note-upload-input');
+if (!globalNoteUploadInput) {
+    globalNoteUploadInput = document.createElement('input');
+    globalNoteUploadInput.type = 'file';
+    globalNoteUploadInput.id = 'global-note-upload-input';
+    globalNoteUploadInput.accept = '.txt,.md';
+    globalNoteUploadInput.multiple = true;
+    globalNoteUploadInput.style.display = 'none';
+    document.body.appendChild(globalNoteUploadInput);
+}
+
+document.addEventListener('click', (e) => {
+    const triggerBtn = e.target.closest('.upload-note-trigger-btn');
+    if (!triggerBtn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    pendingNoteUploadCollId = triggerBtn.dataset.colId;
+    // Reset value so selecting the same file twice in a row still fires 'change'.
+    globalNoteUploadInput.value = '';
+    globalNoteUploadInput.click();
+});
+
+globalNoteUploadInput.addEventListener('change', () => {
+    if (pendingNoteUploadCollId === null) return;
+    uploadCollectionNote(globalNoteUploadInput, pendingNoteUploadCollId);
+    pendingNoteUploadCollId = null;
+});
 
 function askCollectionVisibility(parentId) {
     return new Promise((resolve) => {
@@ -826,3 +915,11 @@ function updateColorStrips(results, collId) {
         <button id="btn-vis-cancel" class="col-vis-cancel">Cancel</button>
     </div>
 </div>
+
+<script>
+
+</script>
+
+
+</div>
+<style>#brief-editor-overlay.visible { display: flex !important; animation: popIn 0.2s ease-out; }</style>
