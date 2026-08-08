@@ -15,8 +15,8 @@
 </table>
 
 **The open source gallery and Digital Asset Manager built for ComfyUI.**  
-**Start with a better gallery. Grow into a professional AI production library.**
-**A gallery-centric hub for your work and decisions.**
+**Start with a better gallery. Grow into a professional AI production library.**  
+**A gallery-centric hub for your work and decisions.**  
 </div>
 
 ## Who is SmartGallery DAM for?
