@@ -54,3 +54,6 @@ buildkitd.toml
 compose-test.yaml
 SmartGallery
 temp
+assets/smart-comfyui-gallery.ico
+desktop.ini
+run_smart_gallery.bat
