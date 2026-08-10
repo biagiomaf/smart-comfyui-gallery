@@ -11,7 +11,6 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/collections.css', v='2.21') }}">
 
 <script>
-<script>
 // --- EARLY INSTANT ESC KEY LISTENER FOR CLUSTERING EXIT (MAC & SAFARI OPTIMIZED) ---
 (function() {
     if (window.location.search.indexOf('cluster_mode=') !== -1) {
@@ -487,6 +486,9 @@ function applyWfSuggestion(inputEl, menu, selectedText) {
                 <button class="sidebar-tab-btn active" onclick="switchSidebarTab('folders')" data-tab="folders" title="Physical Folders">
                     <span>📁</span> <span class="brand-info">Folders</span>
                 </button>
+                <button class="sidebar-tab-btn" onclick="switchSidebarTab('favorites')" data-tab="favorites" title="Favorite Folders">
+                    <span>⭐</span> <span class="brand-info">Favorites</span>
+                </button>
                 <button class="sidebar-tab-btn" onclick="switchSidebarTab('collections')" data-tab="collections" title="Virtual Collections">
                     <span>📚</span> <span class="brand-info">Collections</span>
                 </button>
@@ -507,12 +509,22 @@ function applyWfSuggestion(inputEl, menu, selectedText) {
                         <button class="sidebar-tool-btn" onclick="createFolder()" title="Create New Folder">➕</button>
                         <button class="sidebar-tool-btn" onclick="openMountModal()" title="Link External Folder (Mount)">🔗</button>
                     </div>
-                    <div class="folder-tree-container" style="border:none; padding:0; background:transparent; box-shadow:none;">
+                    <div class="folder-tree-container" id="folder-tree-scroll-container" style="border:none; padding:0; background:transparent; box-shadow:none;">
                         <ul class="folder-tree" id="folder-tree-nav"></ul>
                     </div>
                 </div>
 
-                <!-- TAB 2: COLLECTIONS -->
+                <!-- TAB 2: FAVORITES -->
+                <div id="tab-favorites" class="tab-content-pane">
+                    <div class="sidebar-toolbar" style="border-bottom:none; padding: 5px 0 10px 0; display: flex; gap: 5px;">
+                        <div style="flex-grow:1; color:var(--text-muted); font-size:0.85rem; padding: 6px 0;">Quick access to saved folders</div>
+                    </div>
+                    <div id="favorite-folders-list" style="overflow-y: auto; flex: 1; padding-bottom: 10px;">
+                        <!-- JS Populated -->
+                    </div>
+                </div>
+
+                <!-- TAB 3: COLLECTIONS -->
                 <div id="tab-collections" class="tab-content-pane">
                     <div class="sidebar-toolbar" style="border-bottom:none; padding: 5px 0 10px 0; display: flex; gap: 5px;">
                         <input type="search" class="search-input-compact" id="col-search-input" placeholder="🔍 Search collections..." style="flex-grow:1;">
@@ -2422,6 +2434,49 @@ function applyWfSuggestion(inputEl, menu, selectedText) {
         let totalFolderFiles = {{ total_folder_files }};
         const currentFolderKey = '{{ current_folder_key }}';
         const ancestorKeys = {{ ancestor_keys | tojson }};
+        const folderPanelScrollStorageKey = 'smartgallery_folder_panel_scroll';
+        const favoritePanelScrollStorageKey = 'smartgallery_favorite_panel_scroll';
+        let favoriteFolderKeys = {{ favorite_folder_keys | tojson }};
+        let favoriteFoldersData = {{ favorite_folders | tojson }};
+
+        // Save the folder sidebar's current scroll position before a full page navigation.
+        // This keeps the selected folder visible after the page reloads.
+        function saveFolderPanelScroll() {
+            const container = document.getElementById('folder-tree-scroll-container');
+            if (container) {
+                sessionStorage.setItem(folderPanelScrollStorageKey, String(container.scrollTop));
+            }
+        }
+
+        function saveFavoritePanelScroll() {
+            const container = document.getElementById('favorite-folders-list');
+            if (container) {
+                sessionStorage.setItem(favoritePanelScrollStorageKey, String(container.scrollTop));
+            }
+        }
+
+        // Restore the saved sidebar scroll position after the page finishes loading.
+        function restoreFolderPanelScroll() {
+            const container = document.getElementById('folder-tree-scroll-container');
+            const savedScroll = sessionStorage.getItem(folderPanelScrollStorageKey);
+            if (!container || savedScroll === null) return;
+
+            const scrollValue = parseInt(savedScroll, 10) || 0;
+            requestAnimationFrame(() => {
+                container.scrollTop = scrollValue;
+            });
+        }
+
+        function restoreFavoritePanelScroll() {
+            const container = document.getElementById('favorite-folders-list');
+            const savedScroll = sessionStorage.getItem(favoritePanelScrollStorageKey);
+            if (!container || savedScroll === null) return;
+
+            const scrollValue = parseInt(savedScroll, 10) || 0;
+            requestAnimationFrame(() => {
+                container.scrollTop = scrollValue;
+            });
+        }
         // --- IDENTITY LOGIC FOR RATING ---
         // Try to get ID from session template variable if available, otherwise fallback or gen new
         const SESSION_USER_ID = "{{ session.user_id if session.user_id else '' }}";
@@ -2817,6 +2872,46 @@ function applyWfSuggestion(inputEl, menu, selectedText) {
             });
         }
 
+        function switchSidebarTab(tabName) {
+            const targetPane = document.getElementById(`tab-${tabName}`);
+            const targetBtn = document.querySelector(`.sidebar-tab-btn[data-tab="${tabName}"]`);
+            if (!targetBtn) return;
+            const isAlreadyActive = targetBtn.classList.contains('active');
+            document.querySelectorAll('.sidebar-tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content-pane').forEach(pane => pane.classList.remove('active'));
+            if (isAlreadyActive && window.innerWidth <= 1024) {
+                localStorage.setItem('sidebarActiveTab', 'none');
+            } else {
+                targetBtn.classList.add('active');
+                if (targetPane) targetPane.classList.add('active');
+                localStorage.setItem('sidebarActiveTab', tabName);
+            }
+        }
+
+        function restoreSidebarTab() {
+            if (window.innerWidth <= 1024) {
+                document.querySelectorAll('.tab-content-pane').forEach(p => p.classList.remove('active'));
+                document.querySelectorAll('.sidebar-tab-btn').forEach(b => b.classList.remove('active'));
+                return;
+            }
+
+            const savedTab = localStorage.getItem('sidebarActiveTab');
+            const hasSavedTab = savedTab && document.querySelector(`.sidebar-tab-btn[data-tab="${savedTab}"]`);
+
+            if (typeof GLOBAL_VIEW_IS_COLLECTION !== 'undefined' && GLOBAL_VIEW_IS_COLLECTION) {
+                if (typeof GLOBAL_VIEW_COLL_TYPE !== 'undefined' && GLOBAL_VIEW_COLL_TYPE === 'system_flag') {
+                    switchSidebarTab('status');
+                } else {
+                    switchSidebarTab('collections');
+                }
+            } else if (hasSavedTab && savedTab === 'favorites') {
+                // Keep the Favorites tab active when a favorite folder was clicked.
+                switchSidebarTab('favorites');
+            } else {
+                switchSidebarTab('folders');
+            }
+        }
+
         function buildFolderTreeHTML(folderKey, isMovePanel = false) {
             const folder = foldersData[folderKey];
             if (!folder || folder.is_hidden) return '';
@@ -2840,6 +2935,7 @@ function applyWfSuggestion(inputEl, menu, selectedText) {
             
             // --- GLOBAL ICON LOGIC (Applies to both Sidebar and Move/Copy Panel) ---
             let folderIconHtml = '📁';
+            const isFavoriteFolder = Array.isArray(favoriteFolderKeys) && favoriteFolderKeys.includes(folderKey);
             
             if (folder.is_mount) {
                 // Case 1: External Link / Mount Point - Priority 1
@@ -2889,10 +2985,17 @@ function applyWfSuggestion(inputEl, menu, selectedText) {
                         deleteOption = `<button onclick="deleteFolder(event, '${folderKey}', '${folderDisplayName}')" style="color:#ff6b6b;">🗑️ Delete</button>`;
                     }
 
+                    const favoriteActionLabel = isFavoriteFolder ? 'Remove from Favorites' : 'Add to Favorites';
+                    const favoriteActionIcon = isFavoriteFolder ? '⭐' : '☆';
+                    const favoriteActionHandler = isFavoriteFolder
+                        ? `toggleFavoriteFolder(event, '${folderKey}', '${folderDisplayName}')`
+                        : `toggleFavoriteFolder(event, '${folderKey}', '${folderDisplayName}')`;
+
                     actionsHTML = `
                         <div class="folder-menu-container">
                             <button class="folder-menu-btn" onclick="event.stopPropagation(); toggleFolderMenu(this)">⋮</button>
                             <div class="folder-dropdown">
+                                <button onclick="${favoriteActionHandler}">${favoriteActionIcon} ${favoriteActionLabel}</button>
                                 <button onclick="showFolderInfo(event, '${folderKey}')">ℹ️ Info</button>
                                 ${aiBtn}
                                 ${!folder.is_mount ? `<button onclick="renameFolder(event, '${folderKey}', '${folderDisplayName}')">✏️ Rename</button>` : ''}
@@ -2906,7 +3009,7 @@ function applyWfSuggestion(inputEl, menu, selectedText) {
                 itemHTML = `
                     <div class="folder-item ${isActive ? 'active' : ''}">
                         <span class="toggle-btn ${!hasChildren ? 'empty' : ''}"></span>
-                        <span class="folder-link navigation-link" data-folder-url="/galleryout/view/${folderKey}" title="${tooltipText}">${folderIconHtml} ${folderDisplayName}</span>
+                        <span class="folder-link navigation-link" data-folder-url="/galleryout/view/${folderKey}" title="${tooltipText}">${folderIconHtml} ${folderDisplayName}${isFavoriteFolder ? ' <span title="Favorite folder">⭐</span>' : ''}</span>
                         ${actionsHTML}
                     </div>`;
             }
@@ -2923,6 +3026,94 @@ function applyWfSuggestion(inputEl, menu, selectedText) {
         function renderAllTrees() {
             document.getElementById('folder-tree-nav').innerHTML = buildFolderTreeHTML('_root_', false);
             filterTree('folder-tree-nav', currentSearch.nav, false);
+            renderFavoriteFoldersList();
+        }
+
+        function favEscapeHtml(s) {
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+        function favEscapeJs(s) {
+            return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        }
+
+        function buildFavoriteTreeHTML(folderKey, favoriteRootKeys) {
+            const folder = foldersData[folderKey];
+            if (!folder || folder.is_hidden) return '';
+
+            // Real subfolders only; hidden folders excluded; folders that are
+            // favorites themselves are excluded (they appear at the top level).
+            const children = (folder.children || []).filter(childKey => {
+                const childFolder = foldersData[childKey];
+                return !!childFolder && !childFolder.is_hidden && !favoriteRootKeys.has(childKey);
+            });
+            const hasChildren = children.length > 0;
+            const isManuallyExpanded = expandedFolderKeys.has(folderKey);
+            const isAncestor = ancestorKeys.includes(folderKey);
+            const isCollapsed = !isAncestor && !isManuallyExpanded;
+            const isCurrent = currentFolderKey && folderKey === currentFolderKey;
+            const folderDisplayName = folder.display_name || 'Untitled folder';
+            const isFavoriteRoot = favoriteRootKeys.has(folderKey);
+            const safeNameHtml = favEscapeHtml(folderDisplayName);
+            const safeNameJs = favEscapeJs(folderDisplayName);
+
+            let actionsHTML = '';
+            if (isFavoriteRoot && !protectedFolderKeys.includes(folderKey)) {
+                actionsHTML = `
+                    <div class="folder-menu-container">
+                        <button class="folder-menu-btn" onclick="event.stopPropagation(); toggleFolderMenu(this)">⋮</button>
+                        <div class="folder-dropdown">
+                            <button onclick="toggleFavoriteFolder(event, '${folderKey}', '${safeNameJs}')">⭐ Remove from Favorites</button>
+                            <button onclick="showFolderInfo(event, '${folderKey}')">ℹ️ Info</button>
+                            <hr style="border:0; border-top:1px solid rgba(255,255,255,0.1); margin:4px 0;">
+                            <button onclick="event.stopPropagation(); closeAllFolderMenus(event);" style="color:var(--text-muted); justify-content:center; font-weight:bold;">✕ Cancel</button>
+                        </div>
+                    </div>`;
+            }
+
+            const itemHTML = `
+                <div class="folder-item ${isCurrent ? 'active' : ''}">
+                    <span class="toggle-btn ${!hasChildren ? 'empty' : ''}"></span>
+                    <span class="folder-link navigation-link" data-folder-url="/galleryout/view/${folderKey}" title="${safeNameHtml}">📁 ${safeNameHtml}</span>
+                    ${actionsHTML}
+                </div>`;
+
+            return `
+                <li data-folder-key="${folderKey}" data-folder-name="${safeNameHtml.toLowerCase()}" class="${isCollapsed ? 'collapsed' : ''} ${!hasChildren ? 'no-children' : ''}">
+                    ${itemHTML}
+                    ${hasChildren ? `<ul>${children.map(childKey => buildFavoriteTreeHTML(childKey, favoriteRootKeys)).join('')}</ul>` : ''}
+                </li>`;
+        }
+
+        function renderFavoriteFoldersList() {
+            const listContainer = document.getElementById('favorite-folders-list');
+            if (!listContainer) return;
+
+            const favorites = Array.isArray(favoriteFoldersData) ? favoriteFoldersData : [];
+            if (!favorites.length) {
+                listContainer.innerHTML = '<div style="padding: 10px; color: var(--text-muted); font-size: 0.9rem;">No favorite folders yet</div>';
+                return;
+            }
+
+            // EVERY favorite is a top-level root. No favorite is ever nested.
+            const favoriteRootKeys = new Set(favorites.map(item => item && item.folder_key).filter(Boolean));
+            listContainer.innerHTML = `
+                <ul class="folder-tree" style="padding-left: 0; list-style: none;">
+                    ${favorites.map(item => buildFavoriteTreeHTML(item.folder_key, favoriteRootKeys)).join('')}
+                </ul>`;
+
+            const selectedItem = currentFolderKey ? Array.from(listContainer.querySelectorAll('li[data-folder-key]')).find(li => li.dataset.folderKey === currentFolderKey) : null;
+            if (selectedItem) {
+                requestAnimationFrame(() => {
+                    const targetScroll = Math.max(0, selectedItem.offsetTop - 28);
+                    listContainer.scrollTop = targetScroll;
+                });
+                return;
+            }
+
+            const savedScroll = sessionStorage.getItem(favoritePanelScrollStorageKey);
+            if (savedScroll !== null) {
+                listContainer.scrollTop = parseInt(savedScroll, 10) || 0;
+            }
         }
 
         function filterTree(treeId, searchTerm, saveState = true) {
@@ -6621,12 +6812,16 @@ function applyWfSuggestion(inputEl, menu, selectedText) {
             setupFolderControls('nav', 'folder-tree-nav');
             setupFolderControls('move', 'move-folder-tree');
             renderAllTrees();
+            restoreFolderPanelScroll();
             setupSidebarExpansion();
             setupSidebarMinify();
             appendFiles(initialFiles);
             startGlobalWorkerMonitor();
             loadCollections();
             restoreSidebarTab();
+            if (localStorage.getItem('sidebarActiveTab') === 'favorites') {
+                restoreFavoritePanelScroll();
+            }
             setInterval(syncSidebarState, 30000); // Sync every 30 seconds
             
             // --- DATE VALIDATION LOGIC ---
@@ -6831,6 +7026,18 @@ function applyWfSuggestion(inputEl, menu, selectedText) {
             // Preserves filters ONLY if navigating within the same context (Folder->Folder, Status->Status, etc.)
             function handleSeamlessNavigation(targetUrl, clickedElement = null) {
                 
+                // Save the folder panel scroll position before a full page navigation.
+                // This only applies when the click came from the left-side folders tree.
+                if (clickedElement && clickedElement.closest('#folder-tree-nav')) {
+                    saveFolderPanelScroll();
+                }
+
+                if (clickedElement && clickedElement.closest('#favorite-folders-list')) {
+                    saveFavoritePanelScroll();
+                    localStorage.setItem('sidebarActiveTab', 'favorites');
+                    switchSidebarTab('favorites');
+                }
+
                 // 1. If no filters are active, standard navigation is always clean
                 if (activeFiltersCount === 0) {
                     window.location.href = targetUrl;
@@ -9275,6 +9482,47 @@ function applyWfSuggestion(inputEl, menu, selectedText) {
         }
         // Variable to block any clicks for a few milliseconds after closing
         let isMenuClosing = false;
+
+        function toggleFavoriteFolder(event, folderKey, folderName) {
+            // Beginner-friendly comment: toggle the favorite state without a full page reload.
+            if (event) event.stopPropagation();
+            const isFavorite = Array.isArray(favoriteFolderKeys) && favoriteFolderKeys.includes(folderKey);
+            const endpoint = isFavorite ? '/galleryout/unfavorite_folder' : '/galleryout/favorite_folder';
+            const actionText = isFavorite ? 'Removing' : 'Adding';
+
+            fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ folder_key: folderKey })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    if (isFavorite) {
+                        favoriteFolderKeys = favoriteFolderKeys.filter(key => key !== folderKey);
+                    } else {
+                        favoriteFolderKeys.push(folderKey);
+                    }
+                    favoriteFoldersData = (Array.isArray(favoriteFoldersData) ? favoriteFoldersData : []).filter(item => item.folder_key !== folderKey);
+                    if (!isFavorite) {
+                        favoriteFoldersData.push({
+                            folder_key: folderKey,
+                            folder_path: '',
+                            display_name: folderName,
+                            parent_path: ''
+                        });
+                    }
+                    renderAllTrees();
+                    showNotification(data.message || `${actionText} favorite...`, 'success');
+                } else {
+                    showNotification(data.message || 'Could not update favorites.', 'error');
+                }
+            })
+            .catch(error => {
+                showNotification('Network error while updating favorites.', 'error');
+                console.error(error);
+            });
+        }
 
         function closeAllFolderMenus(e) {
             if (e) {

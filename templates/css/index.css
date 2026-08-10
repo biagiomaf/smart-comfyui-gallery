@@ -626,6 +626,14 @@ gap: 4px !important; /* Reduced gap between logo and title */
     padding-left: 0;
 }
 
+#favorite-folders-list > ul > li,
+#favorite-folders-list > ul > li > .folder-item {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+    text-indent: 0 !important;
+    transform: none !important;
+}
+
 .folder-item {
     display: flex;
     align-items: center;
@@ -703,6 +711,10 @@ gap: 4px !important; /* Reduced gap between logo and title */
     display: none;
 }
 
+#favorite-folders-list li.collapsed>ul {
+    display: none;
+}
+
 .folder-tree li.is-hidden {
     display: none;
 }
@@ -715,7 +727,19 @@ gap: 4px !important; /* Reduced gap between logo and title */
     content: '▸';
 }
 
+#favorite-folders-list li:not(.collapsed)>.folder-item>.toggle-btn::before {
+    content: '▾';
+}
+
+#favorite-folders-list li.collapsed>.folder-item>.toggle-btn::before {
+    content: '▸';
+}
+
 .folder-tree li.no-children>.folder-item>.toggle-btn {
+    visibility: hidden;
+}
+
+#favorite-folders-list li.no-children>.folder-item>.toggle-btn {
     visibility: hidden;
 }
 
@@ -7982,4 +8006,17 @@ body.sidebar-minimized .sidebar-user-row {
 }
 .fd-tab-pane.active {
     display: flex;
+}
+/* FIX FOR FAVORITES PANEL COLLAPSE BUG */
+#favorite-folders-list li.collapsed > ul {
+    display: none;
+}
+#favorite-folders-list li:not(.collapsed) > .folder-item > .toggle-btn::before {
+    content: '▾';
+}
+#favorite-folders-list li.collapsed > .folder-item > .toggle-btn::before {
+    content: '▸';
+}
+#favorite-folders-list li.no-children > .folder-item > .toggle-btn {
+    visibility: hidden;
 }

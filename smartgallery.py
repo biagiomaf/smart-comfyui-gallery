@@ -389,7 +389,7 @@ def key_to_path(key):
     except Exception: return None
 
 # --- DERIVED SETTINGS ---
-DB_SCHEMA_VERSION = 27 
+DB_SCHEMA_VERSION = 28 
 THUMBNAIL_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, THUMBNAIL_CACHE_FOLDER_NAME)
 SQLITE_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, SQLITE_CACHE_FOLDER_NAME)
 # Directory for metadata-stripped files (for client delivery)
@@ -2096,6 +2096,17 @@ def init_db(conn=None):
             CREATE TABLE IF NOT EXISTS mounted_folders (
                 path TEXT PRIMARY KEY,
                 target_source TEXT,
+                created_at REAL
+            );
+        ''')
+
+        # FAVORITE FOLDERS TABLE
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS favorite_folders (
+                folder_key TEXT PRIMARY KEY,
+                folder_path TEXT,
+                display_name TEXT,
+                parent_path TEXT,
                 created_at REAL
             );
         ''')
@@ -4141,6 +4152,110 @@ def process_clustering(current_files, cluster_mode, cluster_sort, cluster_target
     result_files.sort(key=lambda x: (x.get(primary_hash_key) or '', x.get('workflow_hash') or '', get_inner_sort_key(x)))
     return result_files
 
+@app.route('/galleryout/favorite_folder', methods=['POST'])
+@management_api_only
+def favorite_folder():
+    # Beginner-friendly comment: save a folder as a favorite using its stable folder key.
+    data = request.json or {}
+    folder_key = (data.get('folder_key') or '').strip()
+
+    if not folder_key:
+        return jsonify({'status': 'error', 'message': 'No folder selected.'}), 400
+
+    folders = get_dynamic_folder_config()
+    if folder_key not in folders:
+        return jsonify({'status': 'error', 'message': 'Folder not found.'}), 404
+
+    folder_info = folders[folder_key]
+    folder_path = folder_info.get('path') or ''
+    display_name = folder_info.get('display_name') or os.path.basename(folder_path) or folder_key
+    parent_path = ''
+
+    try:
+        rel_path = folder_info.get('relative_path') or ''
+        if rel_path:
+            parts = [part for part in rel_path.split('/') if part]
+            parent_parts = parts[:-1]
+            if parent_parts:
+                parent_path = ' / '.join(parent_parts)
+    except Exception:
+        parent_path = ''
+
+    try:
+        with get_db_connection() as conn:
+            conn.execute('''
+                INSERT INTO favorite_folders (folder_key, folder_path, display_name, parent_path, created_at)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(folder_key) DO UPDATE SET
+                    folder_path = excluded.folder_path,
+                    display_name = excluded.display_name,
+                    parent_path = excluded.parent_path,
+                    created_at = excluded.created_at
+            ''', (folder_key, folder_path, display_name, parent_path, time.time()))
+            conn.commit()
+
+        return jsonify({
+            'status': 'success',
+            'message': 'Folder added to favorites.',
+            'favorite': {
+                'folder_key': folder_key,
+                'folder_path': folder_path,
+                'display_name': display_name,
+                'parent_path': parent_path
+            }
+        })
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/galleryout/unfavorite_folder', methods=['POST'])
+@management_api_only
+def unfavorite_folder():
+    # Beginner-friendly comment: remove a favorite folder entry without touching the folder itself.
+    data = request.json or {}
+    folder_key = (data.get('folder_key') or '').strip()
+
+    if not folder_key:
+        return jsonify({'status': 'error', 'message': 'No folder selected.'}), 400
+
+    try:
+        with get_db_connection() as conn:
+            conn.execute('DELETE FROM favorite_folders WHERE folder_key = ?', (folder_key,))
+            conn.commit()
+        return jsonify({'status': 'success', 'message': 'Folder removed from favorites.'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/galleryout/favorite_folders')
+def favorite_folders():
+    # Beginner-friendly comment: return the current favorites list for the sidebar UI.
+    folders = get_dynamic_folder_config()
+
+    try:
+        with get_db_connection() as conn:
+            rows = conn.execute('''
+                SELECT folder_key, folder_path, display_name, parent_path, created_at
+                FROM favorite_folders
+                ORDER BY display_name COLLATE NOCASE, parent_path COLLATE NOCASE
+            ''').fetchall()
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+    favorite_list = []
+    for row in rows:
+        folder_key = row['folder_key']
+        if folder_key not in folders:
+            continue
+
+        folder_info = folders[folder_key]
+        favorite_list.append({
+            'folder_key': folder_key,
+            'folder_path': folder_info.get('path') or row['folder_path'] or '',
+            'display_name': folder_info.get('display_name') or row['display_name'] or folder_key,
+            'parent_path': row['parent_path'] or ''
+        })
+
+    return jsonify({'status': 'success', 'favorites': favorite_list})
+
 @app.route('/galleryout/view/<string:folder_key>')
 def gallery_view(folder_key):
     # 1. SECURITY LOCKDOWN CHECK
@@ -4684,6 +4799,31 @@ def gallery_view(folder_key):
         available_raters.insert(0, {'id': 'admin', 'name': 'System Admin'})
     
     breadcrumbs, ancestor_keys = [], set()
+    favorite_folder_keys = []
+    favorite_folders = []
+
+    try:
+        with get_db_connection() as conn:
+            favorite_rows = conn.execute('''
+                SELECT folder_key, folder_path, display_name, parent_path
+                FROM favorite_folders
+                ORDER BY display_name COLLATE NOCASE, parent_path COLLATE NOCASE
+            ''').fetchall()
+
+            for row in favorite_rows:
+                folder_key_value = row['folder_key']
+                if folder_key_value not in folders:
+                    continue
+                favorite_folder_keys.append(folder_key_value)
+                favorite_folders.append({
+                    'folder_key': folder_key_value,
+                    'folder_path': folders[folder_key_value].get('path') or row['folder_path'] or '',
+                    'display_name': folders[folder_key_value].get('display_name') or row['display_name'] or folder_key_value,
+                    'parent_path': row['parent_path'] or ''
+                })
+    except Exception:
+        favorite_folder_keys = []
+        favorite_folders = []
     
     # In Exhibition Mode, don't show full physical breadcrumbs
     if not IS_EXHIBITION_MODE:
@@ -4724,6 +4864,8 @@ def gallery_view(folder_key):
                            selected_prefixes=selected_prefixes,
                            available_raters=available_raters, selected_raters=selected_raters, selected_rating_ranges=selected_rating_ranges,
                            protected_folder_keys=list(PROTECTED_FOLDER_KEYS),
+                           favorite_folder_keys=favorite_folder_keys,
+                           favorite_folders=favorite_folders,
                            show_favorites=request.args.get('favorites', 'false').lower() == 'true',
                            generate_waveforms=GENERATE_WAVEFORMS, enable_ai_search=ENABLE_AI_SEARCH, is_ai_search=False, ai_query="", is_omniquery=is_omniquery, omniquery_sql=omniquery_sql, omniquery_dictionary=get_omniquery_dictionary(),
                            is_global_search=is_global_search, 
