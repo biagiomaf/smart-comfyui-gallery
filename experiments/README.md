@@ -5,8 +5,8 @@ Files in this folder are under active development and **may contain bugs or brea
 
 ---
 
-## 🟢 Status Update: Post-v2.21 Release
-The `experiments/` folder is **currently empty** as we have just officially released **Version 2.21**, integrating all previous stable improvements.
+## 🟢 Status Update: Post-v2.22 Release
+The `experiments/` folder is **currently empty** as we have just officially released **Version 2.22**, integrating all previous stable improvements.
 
 ### 👀 Check back soon!
 We are already working on the next set of features. Check this folder frequently over the coming days for:
