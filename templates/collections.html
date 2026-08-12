@@ -1,4 +1,4 @@
-<!-- Version: 2.21 - August 08, 2026 -->
+<!-- Version: 2.22 - August 12, 2026 -->
 <!-- TAGGING MODAL (MANAGER) -->
 <div id="tagging-overlay">
     <div class="tag-panel">
@@ -41,7 +41,7 @@
 // VIRTUAL COLLECTIONS HIERARCHICAL LOGIC
 // ==========================================
 
-let colSortState = { key: 'name', dir: 'asc' }; 
+let colSortState = JSON.parse(localStorage.getItem('galleryColSortState') || '{"key":"name","dir":"asc"}'); 
 let colSearchTerm = '';
 let colNonEmptyOnly = localStorage.getItem('galleryColNonEmptyOnly') === 'true';
 let collectionsData = { flags: [], albums: [], tree: {}, all_count: 0 };
@@ -66,12 +66,12 @@ function buildCollectionTreeData(albums) {
     return { tree, albumMap };
 }
 
-function sortCollections(albumArray) {
+function sortCollections(albumArray, sortState = colSortState) {
     return albumArray.sort((a, b) => {
-        let valA = colSortState.key === 'date' ? (a.created_at || 0) : a.name.toLowerCase();
-        let valB = colSortState.key === 'date' ? (b.created_at || 0) : b.name.toLowerCase();
-        if (valA < valB) return colSortState.dir === 'asc' ? -1 : 1;
-        if (valA > valB) return colSortState.dir === 'asc' ? 1 : -1;
+        let valA = sortState.key === 'date' ? (a.created_at || 0) : a.name.toLowerCase();
+        let valB = sortState.key === 'date' ? (b.created_at || 0) : b.name.toLowerCase();
+        if (valA < valB) return sortState.dir === 'asc' ? -1 : 1;
+        if (valA > valB) return sortState.dir === 'asc' ? 1 : -1;
         return 0;
     });
 }
@@ -169,11 +169,18 @@ function loadCollections() {
         
         if (sortBtn && !sortBtn.dataset.listening) {
             sortBtn.dataset.listening = "true";
+
+            if (colSortState.key === 'name' && colSortState.dir === 'asc') sortBtn.innerText = 'A-Z ↑';
+            else if (colSortState.key === 'name' && colSortState.dir === 'desc') sortBtn.innerText = 'Z-A ↓';
+            else if (colSortState.key === 'date' && colSortState.dir === 'desc') sortBtn.innerText = '📅 New ↓';
+            else if (colSortState.key === 'date' && colSortState.dir === 'asc') sortBtn.innerText = '📅 Old ↑';
+
             sortBtn.addEventListener('click', () => {
                 if (colSortState.key === 'name' && colSortState.dir === 'asc') { colSortState = { key: 'name', dir: 'desc' }; sortBtn.innerText = 'Z-A ↓'; }
                 else if (colSortState.key === 'name' && colSortState.dir === 'desc') { colSortState = { key: 'date', dir: 'desc' }; sortBtn.innerText = '📅 New ↓'; }
                 else if (colSortState.key === 'date' && colSortState.dir === 'desc') { colSortState = { key: 'date', dir: 'asc' }; sortBtn.innerText = '📅 Old ↑'; }
                 else { colSortState = { key: 'name', dir: 'asc' }; sortBtn.innerText = 'A-Z ↑'; }
+                localStorage.setItem('galleryColSortState', JSON.stringify(colSortState));
                 renderSidebarCollections();
             });
         }
@@ -339,6 +346,9 @@ function renderSidebarTreeHTML(parentId = '_root_', isSearching = false, visible
 
 function renderSidebarCollections() {
     const statusContainer = document.getElementById('status-tags-list');
+    const statusWrapper = statusContainer ? (statusContainer.closest('.status-scroll-container') || statusContainer.parentElement) : null;
+    const prevStatusScroll = statusWrapper ? statusWrapper.scrollTop : null;
+
     if (statusContainer) {
         statusContainer.innerHTML = collectionsData.flags.map((c, index) => {
             const shortcutBadge = (index < 5) ? `<span class="col-shortcut-hint">${index + 1}</span>` : '';
@@ -347,9 +357,15 @@ function renderSidebarCollections() {
                         <div class="col-dot" style="background-color:${c.color}"></div>${shortcutBadge}<span class="col-name">${c.name}</span>
                     </a>`;
         }).join('');
+
+        if (typeof restoreSidebarScrollPositions === 'function') {
+            restoreSidebarScrollPositions('status', prevStatusScroll);
+        }
     }
 
     const usrContainer = document.getElementById('user-collections-list');
+    const prevCollScroll = usrContainer ? usrContainer.scrollTop : null;
+
     if (usrContainer) {
         const isAllActive = (typeof currentFolderInfo !== 'undefined' && currentFolderInfo.collection_id === 'all');
         const visibleIds = getNonEmptyCollectionIds(collectionsData.albums);
@@ -364,6 +380,10 @@ function renderSidebarCollections() {
                 ${renderSidebarTreeHTML('_root_', colSearchTerm !== '', visibleIds)}
             </ul>`;
         usrContainer.innerHTML = allHeaderHtml;
+
+        if (typeof restoreSidebarScrollPositions === 'function') {
+            restoreSidebarScrollPositions('collections', prevCollScroll);
+        }
     }
 }
 
@@ -641,7 +661,7 @@ function renderTagManagerTreeHTML(parentId = '_root_', isSearching = false) {
         if (parentId === '_root_') children = collectionsData.albums.filter(c => c.name.toLowerCase().includes(tmState.search));
         else return ''; 
     }
-    let sortedChildren = sortCollections([...children]);
+    let sortedChildren = sortCollections([...children], { key: tmState.sort, dir: tmState.sortDir });
     let html = '';
 
     sortedChildren.forEach(c => {

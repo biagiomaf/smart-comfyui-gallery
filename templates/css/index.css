@@ -1,4 +1,4 @@
-/* Version: 2.21 - August 08, 2026 */
+/* Version: 2.22 - August 12, 2026 */
 :root {
     --bg-color: #0a0a0a;
     --surface-color: #1a1a1a;
@@ -6662,7 +6662,8 @@ overflow: visible !important;
 
 /* CRITICAL: Limit list height on mobile so they DON'T seize the screen */
 .folder-tree-container,
-#user-collections-list {
+#user-collections-list,
+.status-scroll-container {
 max-height: 30vh !important; /* Limit to 30% of screen height */
 overflow-y: auto !important;
 border: 1px solid var(--glass-border);
@@ -6690,7 +6691,8 @@ max-height: 70vh; /* from here */
 
 /* 4. SCROLLABLE AREAS (Capture wheel & touch) */
 .folder-tree-container,
-#user-collections-list {
+#user-collections-list,
+.status-scroll-container {
 flex: 1 1 auto;
 overflow-y: auto !important;
 overflow-x: hidden;
