@@ -3190,6 +3190,7 @@ function renderMarkdownText(text) {
     let currentFiles = [], currentIndex = 0;
     let theaterPollingInterval = null;
     let displayedCount = 0, focusedGridIndex = -1;
+    let pendingFocusedFileId = null;
     const CHUNK_SIZE = {{ page_size_from_backend | default(100) }};
     let allCollections = [], allCollectionsCount = 0, categorySearchTerm = '';
     let catNonEmptyOnly = localStorage.getItem('sg_exh_cat_nonempty_only') === 'true';
@@ -4242,10 +4243,10 @@ function renderMarkdownText(text) {
             if (data.status === 'success') {
                 file.avg_rating = data.new_average;
                 file.vote_count = data.vote_count;
+                file.my_rating = val;
                 
                 if (card) {
                     const starsInner = card.querySelector('.stars-inner');
-                    file.my_rating = val;
 
                     if (starsInner) {
 
@@ -4258,6 +4259,8 @@ function renderMarkdownText(text) {
                     const voteCountBadge = card.querySelector(`.vote-count[data-file-id="${file.id}"]`);
                     if (voteCountBadge) voteCountBadge.textContent = `${file.vote_count}`;
                 }
+
+                applyPersonalRatingPriority(file.id, false, val > 0);
             }
         } catch(e) {
             console.error('Rating failed:', e);
@@ -4299,7 +4302,38 @@ function renderMarkdownText(text) {
         }
     }
     
-    function renderNextChunk() {
+    function applyPersonalRatingPriority(activeFileId, keepTheaterFile, focusNextUnrated = false) {
+        const renderedTarget = Math.max(displayedCount, CHUNK_SIZE);
+
+        // review_sort_index is assigned before the server applies this partition,
+        // keeping immediate updates identical to a reload and preserving the
+        // selected sort inside both groups.
+        currentFiles.sort((left, right) => {
+            const ratingGroup = Number(Boolean(left.my_rating)) - Number(Boolean(right.my_rating));
+            if (ratingGroup !== 0) return ratingGroup;
+            return Number(left.review_sort_index ?? Number.MAX_SAFE_INTEGER)
+                - Number(right.review_sort_index ?? Number.MAX_SAFE_INTEGER);
+        });
+
+        const activeIndex = currentFiles.findIndex(file => file.id === activeFileId);
+        if (keepTheaterFile && activeIndex !== -1) {
+            currentIndex = activeIndex;
+            pendingFocusedFileId = null;
+        } else {
+            const nextIndex = focusNextUnrated
+                ? currentFiles.findIndex(file => !file.my_rating)
+                : activeIndex;
+            focusedGridIndex = nextIndex;
+            pendingFocusedFileId = nextIndex >= 0 ? currentFiles[nextIndex].id : null;
+        }
+
+        const grid = document.getElementById('gallery-grid');
+        grid.innerHTML = '';
+        displayedCount = 0;
+        renderNextChunk(renderedTarget);
+    }
+
+    function renderNextChunk(batchSize = CHUNK_SIZE) {
         const grid = document.getElementById('gallery-grid');
         let anchor = document.getElementById('load-more-anchor');
 
@@ -4318,7 +4352,7 @@ function renderMarkdownText(text) {
         }
 
         // 2. Prepare next batch
-        const nextBatch = currentFiles.slice(displayedCount, displayedCount + CHUNK_SIZE);
+        const nextBatch = currentFiles.slice(displayedCount, displayedCount + batchSize);
 
         if (nextBatch.length === 0) {
             anchor.style.display = 'none'; // No more files
@@ -4454,6 +4488,14 @@ function renderMarkdownText(text) {
             if (displayedCount >= currentFiles.length) {
                 anchor.style.display = 'none';
             }
+
+            if (pendingFocusedFileId) {
+                const focusedCard = document.getElementById(`card-${pendingFocusedFileId}`);
+                if (focusedCard) {
+                    focusedCard.classList.add('keyboard-focused', 'return-focus');
+                    pendingFocusedFileId = null;
+                }
+            }
         });
     }
     
@@ -4562,8 +4604,16 @@ function renderMarkdownText(text) {
     function navTheater(delta) { 
         // Stop previous polling
         stopTheaterPolling();
-        
-        currentIndex = (currentIndex + delta + currentFiles.length) % currentFiles.length; 
+
+        const currentFile = currentFiles[currentIndex];
+        if (delta > 0 && currentFile && currentFile.my_rating) {
+            const nextUnratedIndex = currentFiles.findIndex(file => !file.my_rating);
+            currentIndex = nextUnratedIndex !== -1
+                ? nextUnratedIndex
+                : (currentIndex + delta + currentFiles.length) % currentFiles.length;
+        } else {
+            currentIndex = (currentIndex + delta + currentFiles.length) % currentFiles.length;
+        }
         updateTheaterUI(); 
         
         // Start polling for new file
@@ -4822,6 +4872,7 @@ function renderMarkdownText(text) {
             if (currentFiles[currentIndex] && currentFiles[currentIndex].id === fileId) {
                 currentFiles[currentIndex].avg_rating = globalAvg;
                 currentFiles[currentIndex].vote_count = globalVotes;
+                currentFiles[currentIndex].my_rating = myRating;
                 currentFiles[currentIndex].comment_count = data.comments.length;
             }
             
@@ -5186,7 +5237,8 @@ function renderMarkdownText(text) {
             
             if (data.status === 'success') {
                 file.avg_rating = data.new_average;
-                file.vote_count = data.vote_count; 
+                file.vote_count = data.vote_count;
+                file.my_rating = val;
                 
                 // Update grid card stars
                 const card = document.getElementById(`card-${file.id}`); 
@@ -5203,6 +5255,11 @@ function renderMarkdownText(text) {
                     const voteCountBadge = card.querySelector(`.vote-count`);
                     if (voteCountBadge) voteCountBadge.textContent = `${file.vote_count}`;
                 }
+
+                // Reorder the grid behind the open Theater, but keep this file open.
+                // Because it is now last, the next navigation step wraps to the first
+                // still-unrated item. Clearing a vote returns it to the unrated group.
+                applyPersonalRatingPriority(file.id, true);
                 
                 // Refresh the theater UI panel to show new stats and button state
                 loadComments(file.id);

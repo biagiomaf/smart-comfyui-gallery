@@ -691,6 +691,31 @@ folder_config_cache = None
 FFPROBE_EXECUTABLE_PATH = None
 
 
+def resolve_rating_client_uuid(session_user_id, force_login, exhibition_mode):
+    """Return the identity used by ``file_ratings`` for the current request."""
+    if session_user_id is not None and str(session_user_id):
+        return str(session_user_id)
+    if not force_login and not exhibition_mode:
+        return "admin"
+    return ""
+
+
+def prioritize_personal_unrated(files):
+    """Stable-partition files so unrated items precede personally rated items."""
+    for index, item in enumerate(files):
+        item["review_sort_index"] = index
+    return sorted(files, key=lambda item: bool(item.get("my_rating")))
+
+
+def current_rating_client_uuid():
+    """Resolve the per-user rating identity used by both queries and writes."""
+    return resolve_rating_client_uuid(
+        session.get('user_id'),
+        FORCE_LOGIN,
+        IS_EXHIBITION_MODE,
+    )
+
+
 # Data structures for node categorization and analysis
 NODE_CATEGORIES_ORDER = ["input", "model", "processing", "output", "others"]
 NODE_CATEGORIES = {
@@ -4093,7 +4118,7 @@ def process_clustering(current_files, cluster_mode, cluster_sort, cluster_target
 
     if cluster_scope == 'global':
         with get_db_connection() as conn_target:
-            safe_uuid = str(session.get('user_id', '')).replace("'", "''")
+            safe_uuid = current_rating_client_uuid().replace("'", "''")
             user_role = session.get('role', 'GUEST')
             is_local_admin = (not FORCE_LOGIN and not IS_EXHIBITION_MODE)
             
@@ -4285,7 +4310,7 @@ def gallery_view(folder_key):
                 if session_info:
                     is_omniquery = True
                     omniquery_sql = session_info['raw_sql']
-                    safe_uuid = str(session.get('user_id', '')).replace("'", "''")
+                    safe_uuid = current_rating_client_uuid().replace("'", "''")
                     rows = conn.execute(f'''
                         SELECT f.*,
                         (SELECT c.color FROM collections c JOIN collection_files cf2 ON c.id = cf2.collection_id WHERE cf2.file_id = f.id AND c.type = 'system_flag' LIMIT 1) as status_color,
@@ -4347,8 +4372,13 @@ def gallery_view(folder_key):
                 if queue_info and queue_info['status'] == 'completed':
                     is_ai_search = True
                     ai_query_text = queue_info['query']
-                    rows = conn.execute('''
-                        SELECT f.*, r.score FROM ai_search_results r
+                    safe_uuid = current_rating_client_uuid().replace("'", "''")
+                    rows = conn.execute(f'''
+                        SELECT f.*, r.score,
+                        (SELECT AVG(rating) FROM file_ratings WHERE file_id = f.id) as avg_rating,
+                        (SELECT COUNT(*) FROM file_ratings WHERE file_id = f.id) as vote_count,
+                        (SELECT rating FROM file_ratings WHERE file_id = f.id AND client_uuid = '{safe_uuid}') as my_rating
+                        FROM ai_search_results r
                         JOIN files f ON r.file_id = f.id
                         WHERE r.session_id = ? ORDER BY r.score DESC
                     ''', (ai_session_id,)).fetchall()
@@ -4562,7 +4592,7 @@ def gallery_view(folder_key):
             
             # --- COMMENT VISIBILITY FILTER FOR SORTING ---
             user_role = session.get('role', 'GUEST')
-            safe_uuid = str(session.get('user_id', '')).replace("'", "''")
+            safe_uuid = current_rating_client_uuid().replace("'", "''")
             
             # Allow Local Admin (no force login) to see all comments during sort
             is_local_admin = (not FORCE_LOGIN and not IS_EXHIBITION_MODE)
@@ -4706,6 +4736,7 @@ def gallery_view(folder_key):
     cluster_scope = request.args.get('cluster_scope', 'global')
     
     gallery_view_cache = process_clustering(gallery_view_cache, cluster_mode, cluster_sort, cluster_target_id, cluster_scope, active_filters_count)
+    gallery_view_cache = prioritize_personal_unrated(gallery_view_cache)
 
     total_folder_files, _, _ = scan_folder_and_extract_options(folder_path, recursive=is_recursive)
     total_db_files = 0 
@@ -7828,7 +7859,7 @@ def collection_view(coll_id):
         if p_cond: conditions.append(f"({' OR '.join(p_cond)})")
 
     # --- SORTING LOGIC ---
-    safe_uuid = str(session.get('user_id', '')).replace("'", "''")
+    safe_uuid = current_rating_client_uuid().replace("'", "''")
     if req_sort_by == 'name':
         order_clause = f"f.name {req_sort_order}"
     elif req_sort_by == 'rating':
@@ -7919,7 +7950,7 @@ def collection_view(coll_id):
         
         # We use DISTINCT to avoid showing the same file twice if it's in multiple albums
         user_role = session.get('role', 'GUEST')
-        safe_uuid = str(session.get('user_id', '')).replace("'", "''")
+        safe_uuid = current_rating_client_uuid().replace("'", "''")
         
         # Allow Local Admin (no force login) to see all comments during sort
         is_local_admin = (not FORCE_LOGIN and not IS_EXHIBITION_MODE)
@@ -7964,6 +7995,7 @@ def collection_view(coll_id):
     cluster_scope = request.args.get('cluster_scope', 'global')
     
     final_files = process_clustering(final_files, cluster_mode, cluster_sort, cluster_target_id, cluster_scope, active_filters_count)
+    final_files = prioritize_personal_unrated(final_files)
     gallery_view_cache = final_files
     
     fake_folder_key = f"collection_{coll_id}"

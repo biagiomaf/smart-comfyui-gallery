@@ -1150,6 +1150,7 @@ Press `G` on any image to open Ratings & Comments.
 ![Ratings & Comments panel showing global rating 3.5, your vote, collections & status, comment count](assets/main_rating_comments_panel.png)
 
 - **Ratings:** Click ⭐ stars (1–5) to vote. Click 👁️ **Details** to see voter breakdown. Use `--blind-rating` to hide averages and prevent voting bias.
+- **Review queue:** Items you have not rated stay first. After your rating is saved, that item moves behind the unrated group without changing the selected sort order inside either group; clearing your rating returns it to the unrated group.
 - **Comments:** Threaded discussions with visibility controls (🌐 Public, 🔒 Internal/Staff Only, 👤 Direct Message).
 
 ---
