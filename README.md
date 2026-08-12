@@ -13,7 +13,7 @@
  
   <p>
     <a href="#21-installation"><b>🚀 Quick Install</b></a> •
-    <a href="#12-whats-new-in-v221"><b>✨ What's New (v2.21)</b></a> •
+    <a href="#12-whats-new-in-v222"><b>✨ What's New (v2.22)</b></a> •
     <a href="#-why-smartgallery-dam"><b>⚡ Core Features</b></a> •
     <a href="https://smartgallerydam.com"><b>🌐 Official Website</b></a> •
   </p>
@@ -51,6 +51,32 @@ Whether you're generating for fun, building a portfolio, or running a production
 
 ---
 
+## ⚡ Why SmartGallery DAM?
+
+| Feature | Why It Matters |
+| :--- | :--- |
+| 🗂️ **File Manager** | Rename, move, copy, delete, create folders in-browser |
+| 🧬 [**Smart Asset Clustering**](docs/Smart_Asset_Clustering_manual.md) | Group generations by node architecture or prompt text (`Shift+C`) using colorful `#HASH` badges for at-a-glance visual grouping - **NEW** |
+| 📋 [**Full Asset Details**](docs/Asset_Info_Panel_manual.md) | Instant 360° inspector for disk paths, symlink targets & node pipelines (`I`) - **NEW** |
+| 📝 [**Collection Notes & Briefs**](docs/Collection_Notes_manual.md) | Attach rich Markdown specs & checklists to virtual albums - **NEW** |
+| 🔍 **Instant Search** | Find by prompt, checkpoint, LoRA (with live autocomplete), date or comment |
+| 🧠 [**OmniQuery**](docs/OmniQuery.md) | Search your gallery in plain English, any criteria. Let AI write complex SQL queries to find hyper-specific cross-referenced media |
+| 🔗 **Any Folder & Drive Mounts** | Point at any ComfyUI output, NAS, symlink or network path |
+| 📤 **Magic Upload** | Drag & drop from PC/smartphone, auto-extract & index workflows |
+| 📑 **Grid & List Views** | Browse the way you prefer (with inline audio player in List View) |
+| 🪄 [**Remix Engine**](docs/remix_workflow_nodepad_lora_synergy_manual.pdf) | Generate without opening ComfyUI. A 3-tier workspace to extract workflows, build custom dashboards, edit raw JSON with live dictionary lookups, and queue directly |
+| 🔌 [**LoRA Synergy™**](docs/LORA_SYNERGY.md) | Fully offline matchmaker. Scans Safetensors to guarantee checkpoint compatibility (SD1.5, SDXL, Flux), surfaces trigger words, and auto-wires the workflow |
+| ⚖️ **Compare Generations** | A/B slider with automatic parameter diff |
+| 👥 **Team Ready** | Roles, per-image comments, star ratings |
+| 🗃️ **Nested Collections** | Virtual albums & tree hierarchies, zero duplication on disk |
+| 🏷️ **Status Tags** | Track approval status across the whole library |
+| 🛡️ **Client Portal & Filtering** | Share curated collections with clients; new filter overlay for Exhibition Mode |
+| 🎬 **Video & Audio** | Multimedia, transcoding included. Thumbnails, storyboard preview, dynamic audio waveforms, and on-the-fly FFmpeg transcoding |
+| 🌐 **Cross Platform** | Windows, macOS, Linux, Docker: everywhere |
+| ⚡ **Simple Installation** | Zero-config Portable App for Windows (unzip & run) and official Docker image |
+
+---
+
 ## 💡 ComfyUI-Aware. ComfyUI-Independent.
 
 SmartGallery DAM runs as a fully independent process, outside ComfyUI's environment. It keeps indexing and organizing your library whether ComfyUI is up, down, updating, or completely uninstalled. No custom node, no shared dependencies.
@@ -63,32 +89,6 @@ SmartGallery DAM is *ComfyUI-aware* (it reads workflows, extracts prompts, under
 - Run it alongside ComfyUI on the same machine on a different port. Or install it on a separate machine or laptop and just link the output folder over the network.
 - You switched tools entirely? SmartGallery works on *any* folder of media. It was never ComfyUI-only to begin with.
 
----
-
-## ⚡ Why SmartGallery DAM?
-
-| Feature | Why It Matters |
-| :--- | :--- |
-| 🗂️ **File Manager** | Rename, move, copy, delete, create folders in-browser |
-| 🧬 **Smart Asset Clustering** | Group generations by node architecture or prompt text (`Shift+C`) using colorful `#HASH` badges for at-a-glance visual grouping - **NEW** |
-| 📋 **Full Asset Details** | Instant 360° inspector for disk paths, symlink targets & node pipelines (`I`) - **NEW** |
-| 📝 **Collection Notes & Briefs** | Attach rich Markdown specs & checklists to virtual albums - **NEW** |
-| 🔍 **Instant Search** | Find by prompt, checkpoint, LoRA (with live autocomplete), date or comment |
-| 🧠 **OmniQuery** | Search your gallery in plain English, any criteria. Let AI write complex SQL queries to find hyper-specific cross-referenced media |
-| 🔗 **Any Folder & Drive Mounts** | Point at any ComfyUI output, NAS, symlink or network path |
-| 📤 **Magic Upload** | Drag & drop from PC/smartphone, auto-extract & index workflows |
-| 📑 **Grid & List Views** | Browse the way you prefer (with inline audio player in List View) |
-| 🪄 **Remix Engine** | Generate without opening ComfyUI. A 3-tier workspace to extract workflows, build custom dashboards, edit raw JSON with live dictionary lookups, and queue directly |
-| 🔌 **LoRA Synergy™** | Fully offline matchmaker. Scans Safetensors to guarantee checkpoint compatibility (SD1.5, SDXL, Flux), surfaces trigger words, and auto-wires the workflow |
-| ⚖️ **Compare Generations** | A/B slider with automatic parameter diff |
-| 👥 **Team Ready** | Roles, per-image comments, star ratings |
-| 🗃️ **Nested Collections** | Virtual albums & tree hierarchies, zero duplication on disk |
-| 🏷️ **Status Tags** | Track approval status across the whole library |
-| 🛡️ **Client Portal & Filtering** | Share curated collections with clients; new filter overlay for Exhibition Mode |
-| 🎬 **Video & Audio** | Multimedia, transcoding included. Thumbnails, storyboard preview, dynamic audio waveforms, and on-the-fly FFmpeg transcoding |
-| 🌐 **Cross Platform** | Windows, macOS, Linux, Docker: everywhere |
-| ⚡ **Simple Installation** | Zero-config Portable App for Windows (unzip & run) and official Docker image |
-
 ![SmartGallery DAM — main workspace](assets/infographic.png)
 
 ---
@@ -97,7 +97,7 @@ SmartGallery DAM is *ComfyUI-aware* (it reads workflows, extracts prompts, under
 
 1.  [**OVERVIEW & CONCEPTS**](#1-overview--concepts)
     *   [1.1 What is SmartGallery DAM?](#11-what-is-smartgallery-dam)
-    *   [1.2 What's New in v2.21](#12-whats-new-in-v221)
+    *   [1.2 What's New in v2.22](#12-whats-new-in-v222)
     *   [1.3 Core Features](#13-core-features)
     *   [1.4 Use Case Scenarios](#14-use-case-scenarios)
 2.  [**SETUP & CONFIGURATION**](#2-setup--configuration)
@@ -153,7 +153,13 @@ Evolve your workflow from a simple collection of files into a structured, search
 
 ---
 
-### 1.2 What's New in v2.21
+### 1.2 What's New in v2.22
+
+- 📁 **Folder File Count Badges & Dynamic Tree Collapse**: Folder navigation now features real-time file count badges across the entire directory tree in both the main sidebar and file management dialogs. 
+- **Direct & Subfolder File Counts:** Displays a badge for files directly contained within a folder. When a parent folder is collapsed, a secondary `+N` badge automatically appears to indicate the combined file count of all its nested subfolders.  
+- 🐛 **Bug Fixes & Stability**: Fixed Batch File Move & Copy Operations. Resolved a backend exception that in v2.21 caused file relocation and copying between folders to fail. 
+
+---
 
 - 🧬 [**Smart Asset Clustering & Visual Inspector (`Shift+C`)**](docs/Smart_Asset_Clustering_manual.md): Instantly group and compare media generated by identical ComfyUI graph architectures (`workflow_hash`) or identical positive prompts (`prompt_hash`). Click any colorful `#HASH` badge to open the interactive **Cluster Inspector** to view node pipeline chains, loaded model inventories, and launch one-click cluster searches. 👉 READ the **[Smart Asset Clustering Manual](docs/Smart_Asset_Clustering_manual.md)**.
 - 📋 [**Redesigned 'Full Asset Details' Panel (<kbd>I</kbd> Key)**](docs/Asset_Info_Panel_manual.md): Press <kbd>I</kbd> on any asset in the main workspace to open a high-density, two-tab diagnostic inspector. Tab 1 handles file metrics, Megapixel density, absolute disk paths vs. real symlink targets, and nested collection ancestry. Tab 2 visualizes the node execution pipeline, loaded checkpoints/LoRAs, prompt text with one-click copy, and one-click clustering launch. 👉 READ the **[Full Asset Details Manual](docs/Asset_Info_Panel_manual.md)**.
@@ -330,7 +336,7 @@ There are two ways to run SmartGallery on Windows: using the ready-to-use **Port
 This version includes a fully self-contained environment. You do not need to install Python or any dependencies on your system—it is **completely plug-and-play**.
 
 **1. Download & Extract**
-* **Direct Download:** [SmartGallery-v2.21-Windows-Portable.zip](https://github.com/biagiomaf/smart-comfyui-gallery/releases/download/2.21/SmartGallery-v2.21-Windows-Portable.zip)
+* **Direct Download:** [SmartGallery-v2.22-Windows-Portable.zip](https://github.com/biagiomaf/smart-comfyui-gallery/releases/download/2.22/SmartGallery-v2.22-Windows-Portable.zip)
 * **Releases Page:** Alternatively, view all builds on the [Releases page](https://github.com/biagiomaf/smart-comfyui-gallery/releases/latest).
 * Extract the archive into a folder of your choice.
 

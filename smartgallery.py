@@ -1,7 +1,7 @@
 # SmartGallery DAM for ComfyUI
 # Author: Biagio Maffettone © 2025-2026 — Free to use/modify with credit. Provided "as is". See license on GitHub.
 #
-# Version: 2.21 - August 08, 2026
+# Version: 2.22 - August 12, 2026
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -339,8 +339,8 @@ AI_MODELS_FOLDER_NAME = '.AImodels'
 ENABLE_DAM_MODE = True
 
 # --- APP INFO ---
-APP_VERSION = "2.21"
-APP_VERSION_DATE = "August 08, 2026"
+APP_VERSION = "2.22"
+APP_VERSION_DATE = "August 12, 2026"
 GITHUB_REPO_URL = "https://github.com/biagiomaf/smart-comfyui-gallery"
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/biagiomaf/smart-comfyui-gallery/main/smartgallery.py"
 
@@ -578,6 +578,11 @@ def get_standardized_path(filepath):
     except:
         return str(filepath)
 
+def _normalize_fuzzy_string(s):
+    """Strips non-alphanumeric characters and lowercases for fuzzy matching."""
+    if not s: return ""
+    return re.sub(r'[^a-zA-Z0-9]', '', str(s)).lower()
+
 def normalize_smart_path(path_str):
     """
     Normalizes a path string for search comparison:
@@ -599,13 +604,9 @@ def print_configuration():
     print_row("Server Port", SERVER_PORT)
     print_row("Base Output Path", BASE_OUTPUT_PATH, True)
     print_row("Base Input Path", BASE_INPUT_PATH, True)
-    print_row("LoRAs Path", LORAS_PATH, True)
-    print_row("Checkpoints Path", CHECKPOINTS_PATH, True)
-    print_row("UNET Path", UNET_PATH, True)
     print_row("SmartGallery Path", BASE_SMARTGALLERY_PATH, True)
     print_row("FFprobe Path", FFPROBE_MANUAL_PATH, True)
     print_row("Delete To (Trash)", DELETE_TO if DELETE_TO else "Disabled (Permanent Delete)", DELETE_TO is not None)
-    print_row("Thumbnail Width", f"{THUMBNAIL_WIDTH}px")
     print_row("WebP Animated FPS", WEBP_ANIMATED_FPS)
     print_row("Page Size", PAGE_SIZE)
     print_row("Stream Threshold", f"{STREAM_THRESHOLD_MB} MB")
@@ -645,7 +646,16 @@ def print_configuration():
         print_row("Audio Waveforms", "Enabled")
     
     print(f" {Colors.BOLD}{'CLI Parameters':<25}{Colors.RESET} : {Colors.YELLOW}{cli_display}{Colors.RESET}")
-    print(f"{Colors.HEADER}-----------------------------{Colors.RESET}\n")
+    print(f"{Colors.HEADER}-----------------------------{Colors.RESET}")
+
+    # LoRA Synergy Paths (Optional Feature)
+    print(f"\n{Colors.YELLOW}{Colors.BOLD}--- LoRA SYNERGY PATHS ---{Colors.RESET}")
+    def print_lora_row(key, value):
+        print(f" {Colors.BOLD}{key:<25}{Colors.RESET} : {Colors.YELLOW}{value}{Colors.RESET}")
+    print_lora_row("LoRAs Path", LORAS_PATH)
+    print_lora_row("Checkpoints Path", CHECKPOINTS_PATH)
+    print_lora_row("UNET Path", UNET_PATH)
+    print(f"{Colors.YELLOW}--------------------------{Colors.RESET}\n")
 
 def management_api_only(f):
     """
@@ -2292,7 +2302,9 @@ def get_dynamic_folder_config(force_refresh=False):
             'mtime': root_mtime,
             'is_watched': False,
             'is_explicitly_watched': False,
-            'is_mount': False # Root is never a mount
+            'is_mount': False, # Root is never a mount
+            'file_count': 0,
+            'descendant_file_count': 0
         }
     }
 
@@ -2377,11 +2389,40 @@ def get_dynamic_folder_config(force_refresh=False):
                 'is_watched': is_watched_folder,
                 'is_explicitly_watched': is_explicitly_watched,
                 'is_mount': is_mount,
-                'is_hidden': folder_data['display_name'] == '.collection_notes'
+                'is_hidden': folder_data['display_name'] == '.collection_notes',
+                'file_count': 0,
+                'descendant_file_count': 0
             }
     except FileNotFoundError:
         print(f"WARNING: The base directory '{BASE_OUTPUT_PATH}' was not found.")
     
+    # Calculate folder file counts from database
+    try:
+        with get_db_connection() as conn:
+            rows = conn.execute("SELECT path FROM files WHERE type != 'document' AND LOWER(name) NOT LIKE '%.txt' AND LOWER(name) NOT LIKE '%.md'").fetchall()
+            dir_counts = {}
+            for r in rows:
+                f_dir = os.path.normpath(os.path.dirname(r['path'])).replace('\\', '/').lower().rstrip('/')
+                dir_counts[f_dir] = dir_counts.get(f_dir, 0) + 1
+
+            for key, info in dynamic_config.items():
+                info_path_norm = os.path.normpath(info['path']).replace('\\', '/').lower().rstrip('/')
+                info['file_count'] = dir_counts.get(info_path_norm, 0)
+
+            def _calc_descendant_count(key):
+                info = dynamic_config[key]
+                sub_count = 0
+                for child_key in info.get('children', []):
+                    if child_key in dynamic_config:
+                        child_info = dynamic_config[child_key]
+                        sub_count += child_info.get('file_count', 0) + _calc_descendant_count(child_key)
+                info['descendant_file_count'] = sub_count
+                return sub_count
+
+            _calc_descendant_count('_root_')
+    except Exception as e:
+        print(f"Error calculating folder file counts: {e}")
+
     folder_config_cache = dynamic_config
     return dynamic_config
     
@@ -4354,13 +4395,13 @@ def gallery_view(folder_key):
                             cond_str = f"{col_expr} {'NOT LIKE' if is_not else 'LIKE'} ?"
                             param_val = f"% {normalize_smart_path(clean_s)} %"
                         else:
-                            norm_s = _normalize_fuzzy_string(s) if '_normalize_fuzzy_string' in globals() else normalize_smart_path(s)
+                            norm_s = _normalize_fuzzy_string(s)
                             if len(norm_s) >= 3:
-                                col_expr = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LOWER(workflow_files), ' ', ''), '.', ''), '_', ''), '-', ''), '/', '')"
+                                col_expr = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LOWER(f.workflow_files), ' ', ''), '.', ''), '_', ''), '-', ''), '/', ''), '\\', ''), '(', ''), ')', ''), '[', ''), ']', '')"
                                 cond_str = f"{col_expr} {'NOT LIKE' if is_not else 'LIKE'} ?"
                                 param_val = f"%{norm_s}%"
                             else:
-                                cond_str = f"workflow_files {'NOT LIKE' if is_not else 'LIKE'} ?"
+                                cond_str = f"f.workflow_files {'NOT LIKE' if is_not else 'LIKE'} ?"
                                 param_val = f"%{normalize_smart_path(s)}%"
                             
                         if is_not:
@@ -5486,11 +5527,13 @@ def move_batch():
                         workflow_hash, prompt_hash
                     FROM files WHERE id = ?
                 """
-                file_info = conn.execute(query_fetch, (file_id,)).fetchone()
+                file_info_row = conn.execute(query_fetch, (file_id,)).fetchone()
                 
-                if not file_info:
+                if not file_info_row:
                     failed_files.append(f"ID {file_id} not found in DB")
                     continue
+                
+                file_info = dict(file_info_row)
                 
                 source_path = file_info['path']
                 source_filename = file_info['name']
@@ -5612,8 +5655,9 @@ def copy_batch():
         for file_id in file_ids:
             try:
                 # 1. Fetch Source info
-                file_info = conn.execute("SELECT * FROM files WHERE id = ?", (file_id,)).fetchone()
-                if not file_info: continue
+                file_info_row = conn.execute("SELECT * FROM files WHERE id = ?", (file_id,)).fetchone()
+                if not file_info_row: continue
+                file_info = dict(file_info_row)
                 
                 source_path = file_info['path']
                 source_filename = file_info['name']
@@ -7602,9 +7646,9 @@ def collection_view(coll_id):
                     cond_str = f"{col_expr} {'NOT LIKE' if is_not else 'LIKE'} ?"
                     param_val = f"% {normalize_smart_path(clean_s)} %"
                 else:
-                    norm_s = _normalize_fuzzy_string(s) if '_normalize_fuzzy_string' in globals() else normalize_smart_path(s)
+                    norm_s = _normalize_fuzzy_string(s)
                     if len(norm_s) >= 3:
-                        col_expr = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LOWER(f.workflow_files), ' ', ''), '.', ''), '_', ''), '-', ''), '/', '')"
+                        col_expr = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LOWER(f.workflow_files), ' ', ''), '.', ''), '_', ''), '-', ''), '/', ''), '\\', ''), '(', ''), ')', ''), '[', ''), ']', '')"
                         cond_str = f"{col_expr} {'NOT LIKE' if is_not else 'LIKE'} ?"
                         param_val = f"%{norm_s}%"
                     else:
@@ -10202,11 +10246,6 @@ def upload_collection_note():
 # --- SMART WORKFLOW FILES SEARCH, SUGGESTIONS & CLUSTERING HASHES ---
 import difflib
 
-def _normalize_fuzzy_string(s):
-    """Strips non-alphanumeric characters and lowercases for fuzzy matching."""
-    if not s: return ""
-    return re.sub(r'[^a-zA-Z0-9]', '', str(s)).lower()
-
 def compute_workflow_hashes(filepath):
     """
     Computes workflow_hash (canonical structural architecture & models) and prompt_hash (positive prompt).
@@ -10520,6 +10559,12 @@ def api_workflow_files_suggestions():
     Returns unique model/LoRA filenames from DB and calculates 'Did you mean?'
     fuzzy suggestions using Python's native difflib without any external AI model.
     """
+    if (IS_EXHIBITION_MODE or FORCE_LOGIN) and not session.get('user_id'):
+        return jsonify({'status': 'error', 'message': 'Authentication required'}), 401
+
+    if should_strip_metadata():
+        return jsonify({'status': 'error', 'message': 'Security Policy: Access to workflow metadata is restricted for your role.'}), 403
+
     query = request.args.get('q', '').strip()
     with get_db_connection() as conn:
         rows = conn.execute("SELECT DISTINCT workflow_files FROM files WHERE workflow_files IS NOT NULL AND workflow_files != ''").fetchall()
