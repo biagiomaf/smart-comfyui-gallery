@@ -1,6 +1,39 @@
+import ast
 import unittest
+from pathlib import Path
 
-from rating_priority import prioritize_personal_unrated, resolve_rating_client_uuid
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SMARTGALLERY_PATH = PROJECT_ROOT / "smartgallery.py"
+FUNCTION_NAMES = {
+    "prioritize_personal_unrated",
+    "resolve_rating_client_uuid",
+}
+
+
+def load_rating_priority_functions():
+    """Load pure helpers without importing the application's runtime dependencies."""
+    tree = ast.parse(SMARTGALLERY_PATH.read_text(encoding="utf-8"))
+    functions = [
+        node
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef) and node.name in FUNCTION_NAMES
+    ]
+    namespace = {}
+    exec(
+        compile(
+            ast.Module(body=functions, type_ignores=[]),
+            str(SMARTGALLERY_PATH),
+            "exec",
+        ),
+        namespace,
+    )
+    return namespace
+
+
+HELPERS = load_rating_priority_functions()
+prioritize_personal_unrated = HELPERS["prioritize_personal_unrated"]
+resolve_rating_client_uuid = HELPERS["resolve_rating_client_uuid"]
 
 
 class RatingPriorityTests(unittest.TestCase):

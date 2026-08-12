@@ -92,7 +92,6 @@ RUN --mount=type=cache,target=/uv_cache,uid=1025,gid=1025,mode=0755 \
 ARG CHOOSEN_SMARTGALLERY_FILE
 ARG CHOOSEN_TEMPLATE_DIR
 COPY ${CHOOSEN_SMARTGALLERY_FILE} /app/smartgallery.py
-COPY rating_priority.py /app/rating_priority.py
 COPY ${CHOOSEN_TEMPLATE_DIR}/ /app/templates/
 
 USER root
