@@ -3465,7 +3465,33 @@ document.addEventListener('focusout', function(e) {
         }
         
         function formatBytes(bytes, decimals = 1) { if (!bytes) return '0 B'; const k = 1024; const dm = decimals < 0 ? 0 : decimals; const sizes = ['B', 'KB', 'MB', 'GB', 'TB']; const i = Math.floor(Math.log(bytes) / Math.log(k)); return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]; }
-        function appendFiles(files) { if (typeof resetClusterColorMap === 'function' && currentItemCount === 0) resetClusterColorMap(); if (!files || files.length === 0) { if (currentItemCount === 0) showEmptyState(); updateLoadMoreVisibility(); return; } const fragment = document.createDocumentFragment(); const newLazyElements = []; files.forEach(file => { allFilesData.push(file); const item = createGalleryItem(file); fragment.appendChild(item); galleryItems.push(item); const lazyEl = item.querySelector('.lazy'); if (lazyEl) newLazyElements.push(lazyEl); }); galleryContainer.appendChild(fragment); initializeLazyLoading(newLazyElements); currentItemCount += files.length; updateLoadMoreVisibility(); }
+        function applyPersonalRatingPriority() {
+            if (allFilesData.length < 2) return;
+
+            const focusedItem = galleryItems[focusedItemIndex] || null;
+            const hoveredItem = galleryItems[hoveredItemIndex] || null;
+            const itemById = new Map(galleryItems.map(item => [item.dataset.fileId, item]));
+
+            // review_sort_index is assigned before the server applies this partition,
+            // keeping immediate updates identical to a reload and preserving the
+            // selected sort inside both groups.
+            allFilesData.sort((left, right) => {
+                const ratingGroup = Number(Boolean(left.my_rating)) - Number(Boolean(right.my_rating));
+                if (ratingGroup !== 0) return ratingGroup;
+                return Number(left.review_sort_index ?? Number.MAX_SAFE_INTEGER)
+                    - Number(right.review_sort_index ?? Number.MAX_SAFE_INTEGER);
+            });
+            galleryItems = allFilesData.map(file => itemById.get(String(file.id))).filter(Boolean);
+            galleryItems.forEach(item => galleryContainer.appendChild(item));
+
+            focusedItemIndex = focusedItem ? galleryItems.indexOf(focusedItem) : -1;
+            hoveredItemIndex = hoveredItem ? galleryItems.indexOf(hoveredItem) : -1;
+            if (currentLightboxFile) {
+                currentLightboxIndex = allFilesData.findIndex(file => file.id === currentLightboxFile.id);
+            }
+        }
+
+        function appendFiles(files) { if (typeof resetClusterColorMap === 'function' && currentItemCount === 0) resetClusterColorMap(); if (!files || files.length === 0) { if (currentItemCount === 0) showEmptyState(); updateLoadMoreVisibility(); return; } const fragment = document.createDocumentFragment(); const newLazyElements = []; files.forEach(file => { allFilesData.push(file); const item = createGalleryItem(file); fragment.appendChild(item); galleryItems.push(item); const lazyEl = item.querySelector('.lazy'); if (lazyEl) newLazyElements.push(lazyEl); }); galleryContainer.appendChild(fragment); applyPersonalRatingPriority(); initializeLazyLoading(newLazyElements); currentItemCount += files.length; updateLoadMoreVisibility(); }
         function createGalleryItem(file) {
             const item = document.createElement('div');
             item.className = `gallery-item ${selectedFiles.has(file.id) ? 'selected' : ''}`;
@@ -5201,7 +5227,21 @@ document.addEventListener('focusout', function(e) {
             }
         }
         
-        function navigateLightbox(direction) { if (galleryItems.length === 0) return; currentLightboxIndex = (currentLightboxIndex + direction + galleryItems.length) % galleryItems.length; showItemAtIndex(currentLightboxIndex); }
+        function navigateLightbox(direction) {
+            if (galleryItems.length === 0) return;
+
+            if (direction > 0 && currentLightboxFile && currentLightboxFile.my_rating) {
+                const nextUnratedIndex = allFilesData.findIndex(file => !file.my_rating);
+                if (nextUnratedIndex !== -1) {
+                    currentLightboxIndex = nextUnratedIndex;
+                    showItemAtIndex(currentLightboxIndex);
+                    return;
+                }
+            }
+
+            currentLightboxIndex = (currentLightboxIndex + direction + galleryItems.length) % galleryItems.length;
+            showItemAtIndex(currentLightboxIndex);
+        }
         function zoomLightbox(amount) { const mediaEl = lightboxMedia.querySelector('img, video'); if (!mediaEl) return; currentZoom = Math.max(0.1, Math.min(10, currentZoom + amount)); panLightbox(0, 0); }
         function panLightbox(dx, dy) {
             const mediaEl = lightboxMedia.querySelector('img, video');
@@ -10417,6 +10457,13 @@ document.addEventListener('focusout', function(e) {
                     const votes = data.vote_count || 0;
                     const myRating = data.my_rating || 0;
 
+                    const fileData = allFilesData.find(f => f.id === fileId);
+                    if (fileData) {
+                        fileData.avg_rating = avg;
+                        fileData.vote_count = votes;
+                        fileData.my_rating = myRating;
+                    }
+
                     // Build Stars HTML
                     let starsHtml = '';
                     for(let i=1; i<=5; i++) {
@@ -10690,7 +10737,13 @@ document.addEventListener('focusout', function(e) {
                     if (fileData) {
                         fileData.avg_rating = data.new_average;
                         fileData.vote_count = data.vote_count;
+                        fileData.my_rating = val;
                     }
+
+                    // Move only after the server confirms that this personal rating is complete.
+                    // The open Lightbox keeps its current file and its next step wraps to the
+                    // first still-unrated item once the rated file reaches the end.
+                    applyPersonalRatingPriority();
                     
                     if (val === 0) showNotification("Rating removed.", "info");
                     else showNotification("Rating saved!", "success");
@@ -10883,6 +10936,7 @@ document.addEventListener('focusout', function(e) {
                         if (val === 0) {
                             fileData.vote_count = Math.max(0, (fileData.vote_count || 1) - 1);
                             if (fileData.vote_count === 0) fileData.avg_rating = 0;
+                            fileData.my_rating = 0;
                         } else {
                             fileData.vote_count = (fileData.vote_count || 0) + (fileData.my_rating ? 0 : 1);
                             fileData.my_rating = val; 
@@ -10904,6 +10958,8 @@ document.addEventListener('focusout', function(e) {
                         }
                     }
                 });
+
+                applyPersonalRatingPriority();
                 
             } else {
                 showNotification("Error: " + data.message, "error");
@@ -10911,12 +10967,6 @@ document.addEventListener('focusout', function(e) {
             
             closeBatchRatingModal();
             
-            // If the user is currently sorting by rating, the view needs to refresh to properly reorder
-            const params = new URLSearchParams(window.location.search);
-            if(params.get('sort_by') === 'rating') {
-                setTimeout(() => window.location.reload(), 500);
-            }
-
         } catch (e) {
             console.error("Batch rating error:", e);
             showNotification("Error applying batch rating.", "error");

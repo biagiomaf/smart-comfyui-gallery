@@ -1,0 +1,54 @@
+import unittest
+
+from rating_priority import prioritize_personal_unrated, resolve_rating_client_uuid
+
+
+class RatingPriorityTests(unittest.TestCase):
+    def test_unrated_files_come_first_without_changing_group_order(self):
+        files = [
+            {"id": "rated-a", "my_rating": 4},
+            {"id": "unrated-a", "my_rating": None},
+            {"id": "rated-b", "my_rating": 2},
+            {"id": "unrated-b", "my_rating": 0},
+        ]
+
+        result = prioritize_personal_unrated(files)
+
+        self.assertEqual(
+            [item["id"] for item in result],
+            ["unrated-a", "unrated-b", "rated-a", "rated-b"],
+        )
+
+    def test_cleared_rating_returns_to_unrated_group(self):
+        files = [
+            {"id": "still-rated", "my_rating": 5},
+            {"id": "cleared", "my_rating": 0},
+        ]
+
+        result = prioritize_personal_unrated(files)
+
+        self.assertEqual([item["id"] for item in result], ["cleared", "still-rated"])
+
+    def test_original_sort_index_supports_consistent_client_reordering(self):
+        files = [
+            {"id": "rated-a", "my_rating": 4},
+            {"id": "unrated-a", "my_rating": None},
+            {"id": "rated-b", "my_rating": 2},
+            {"id": "unrated-b", "my_rating": None},
+        ]
+
+        result = prioritize_personal_unrated(files)
+
+        self.assertEqual(
+            {item["id"]: item["review_sort_index"] for item in result},
+            {"rated-a": 0, "unrated-a": 1, "rated-b": 2, "unrated-b": 3},
+        )
+
+    def test_local_admin_uses_same_identity_as_browser_rating_requests(self):
+        self.assertEqual(resolve_rating_client_uuid(None, False, False), "admin")
+        self.assertEqual(resolve_rating_client_uuid("42", True, False), "42")
+        self.assertEqual(resolve_rating_client_uuid(None, True, False), "")
+
+
+if __name__ == "__main__":
+    unittest.main()
