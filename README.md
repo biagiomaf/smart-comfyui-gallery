@@ -6,7 +6,7 @@
   <p>
     <a href="LICENSE"><img src="https://img.shields.io/github/license/biagiomaf/smart-comfyui-gallery?color=yellow&style=flat-square" alt="License"></a>
     <img src="https://img.shields.io/badge/Python-3.10+-3776AB.svg?style=flat-square&logo=python&logoColor=white" alt="Python">
-    <a href="https://hub.docker.com/r/mmartial/smart-comfyui-gallery"><img src="https://img.shields.io/docker/pulls/mmartial/smart-comfyui-gallery?color=099cec&label=docker%20pulls&style=flat-square&logo=docker&logoColor=white" alt="Docker Pulls"></a>
+    <a href="https://hub.docker.com/r/mmartial/smart-comfyui-gallery"><img src="https://badgen.net/docker/pulls/mmartial/smart-comfyui-gallery?icon=docker&label=docker%20pulls&color=099cec" alt="Docker Pulls"></a>
     <a href="https://github.com/biagiomaf/smart-comfyui-gallery/stargazers"><img src="https://img.shields.io/github/stars/biagiomaf/smart-comfyui-gallery?style=flat-square&logo=github" alt="Stars"></a>
     <a href="https://github.com/biagiomaf/smart-comfyui-gallery/releases/latest"><img src="https://img.shields.io/github/v/release/biagiomaf/smart-comfyui-gallery?color=emerald&style=flat-square" alt="Latest Release"></a>
   </p>
@@ -336,7 +336,7 @@ There are two ways to run SmartGallery on Windows: using the ready-to-use **Port
 This version includes a fully self-contained environment. You do not need to install Python or any dependencies on your system—it is **completely plug-and-play**.
 
 **1. Download & Extract**
-* **Direct Download:** [SmartGallery-v2.22-Windows-Portable.zip](https://github.com/biagiomaf/smart-comfyui-gallery/releases/download/2.22/SmartGallery-v2.22-Windows-Portable.zip)
+* **Direct Download:** [SmartGallery-v2.22.1-Windows-Portable.zip](https://github.com/biagiomaf/smart-comfyui-gallery/releases/download/2.22.1/SmartGallery-v2.22.1-Windows-Portable.zip)
 * **Releases Page:** Alternatively, view all builds on the [Releases page](https://github.com/biagiomaf/smart-comfyui-gallery/releases/latest).
 * Extract the archive into a folder of your choice.
 

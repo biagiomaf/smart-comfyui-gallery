@@ -1,5 +1,13 @@
 # Changelog
 
+### **[2.22.1] - 2026-08-18**
+
+### 🐛 Bug Fixes 
+
+* **Fixed prompt hashing for clustering malfunctioning on newly generated files during active work sessions.
+
+---
+
 ### **[2.22] - 2026-08-12**
 
 ### 📁 Folder File Count Badges & Dynamic Tree Collapse
