@@ -1224,8 +1224,10 @@ Expose Exhibition (port 8190) remotely using Nginx, Apache, or tunnels like ngro
 | `E` | Generate Video Storyboard |
 | `G` | Open Ratings & Comments panel |
 | `Shift+R` | Batch Rate modal |
-| `1`–`5` / `0` | Assign / Clear Status Tag |
+| `1`–`5` / `0` | Grid: Assign / Clear Status Tag. Lightbox: Rate 1–5 stars / clear personal rating |
 | `Del` | Delete file |
+
+The desktop Lightbox also keeps the same actions visible as a compact star strip in the top toolbar. Number-row keys rate the current asset; numpad keys retain the existing pan and zoom-reset controls.
 
 **Selection & Batch Actions**
 

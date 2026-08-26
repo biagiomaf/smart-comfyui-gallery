@@ -1228,6 +1228,54 @@ document.addEventListener('focusout', function(e) {
                 <button id="lightbox-summary-btn" class="lb-hide-mobile" title="Node Summary">📝</button>
                 <button id="lightbox-remix-btn" class="lb-hide-mobile" title="Remix Workflow (B)" onclick="openRemixModal()" style="display:none; color:var(--favorite-color); border-color:var(--favorite-color);">🪄</button>
                 <button id="lightbox-comments-btn" class="dam-only lb-hide-mobile" title="Manage Ratings & Comments (G)" onclick="openFileInfoPanel(currentLightboxFile.id)" style="padding: 0 6px; letter-spacing: -1px;"><span style="font-size:0.9em;">⭐</span>💬</button>
+                <div id="lightbox-quick-rating" class="dam-only" role="group" aria-label="Quick rating">
+                    <button type="button"
+                            class="lightbox-rating-star"
+                            data-rating="1"
+                            aria-label="Rate 1 star"
+                            aria-keyshortcuts="1"
+                            aria-pressed="false"
+                            title="Rate 1 star (1)"
+                            onclick="submitLightboxRating(1)">★</button>
+                    <button type="button"
+                            class="lightbox-rating-star"
+                            data-rating="2"
+                            aria-label="Rate 2 stars"
+                            aria-keyshortcuts="2"
+                            aria-pressed="false"
+                            title="Rate 2 stars (2)"
+                            onclick="submitLightboxRating(2)">★</button>
+                    <button type="button"
+                            class="lightbox-rating-star"
+                            data-rating="3"
+                            aria-label="Rate 3 stars"
+                            aria-keyshortcuts="3"
+                            aria-pressed="false"
+                            title="Rate 3 stars (3)"
+                            onclick="submitLightboxRating(3)">★</button>
+                    <button type="button"
+                            class="lightbox-rating-star"
+                            data-rating="4"
+                            aria-label="Rate 4 stars"
+                            aria-keyshortcuts="4"
+                            aria-pressed="false"
+                            title="Rate 4 stars (4)"
+                            onclick="submitLightboxRating(4)">★</button>
+                    <button type="button"
+                            class="lightbox-rating-star"
+                            data-rating="5"
+                            aria-label="Rate 5 stars"
+                            aria-keyshortcuts="5"
+                            aria-pressed="false"
+                            title="Rate 5 stars (5)"
+                            onclick="submitLightboxRating(5)">★</button>
+                    <button type="button"
+                            class="lightbox-rating-clear"
+                            aria-label="Clear rating"
+                            aria-keyshortcuts="0"
+                            title="Clear rating (0)"
+                            onclick="submitLightboxRating(0)">×</button>
+                </div>
                 <button id="lightbox-caption-icon" class="lb-hide-mobile" title="View AI Caption" style="display:none;">🧠</button>
                 <a id="lightbox-workflow" href="#" class="workflow-btn lb-hide-mobile" title="Download Workflow">⚙️</a>
                 <button id="lightbox-filmstrip-btn" class="lb-hide-mobile" title="Generate Storyboard" onclick="openStoryboard(null)" style="display:none;">🎞️</button>
@@ -4877,6 +4925,7 @@ document.addEventListener('focusout', function(e) {
             
             currentLightboxFile = file;
             updateLightboxTitle();
+            updateLightboxQuickRatingUI(file);
             
             // Set Folder Name AND Resolution in Lightbox
             const lightboxFolderEl = document.getElementById('lightbox-folder-name');
@@ -7607,11 +7656,21 @@ document.addEventListener('focusout', function(e) {
                 if (document.getElementById('ai-options-modal') && document.getElementById('ai-options-modal').classList.contains('visible')) return;
 
                 const isLightboxOpen = document.body.classList.contains('lightbox-open');
-                
+
                 // --- 5. Lightbox Actions ---
                 if (isLightboxOpen) {
                     // Prevent interference with native browser shortcuts (Ctrl+C, Ctrl+S, etc.)
                     if ((e.ctrlKey || e.metaKey) && /^[a-zA-Z]$/.test(e.key)) return;
+
+                    // Match Exhibition's fast culling workflow: the number row rates the
+                    // current asset, while the numpad keeps its existing pan/reset controls.
+                    const isNumpadKey = e.location === KeyboardEvent.DOM_KEY_LOCATION_NUMPAD;
+                    if (ENABLE_DAM_MODE && !isNumpadKey && ['0', '1', '2', '3', '4', '5'].includes(e.key)) {
+                        e.preventDefault();
+                        submitLightboxRating(Number(e.key));
+                        return;
+                    }
+
                     switch (e.key) {
                         case 'ArrowLeft': navigateLightbox(-1); break;
                         case 'ArrowRight': navigateLightbox(1); break;
@@ -10417,6 +10476,16 @@ document.addEventListener('focusout', function(e) {
                     const votes = data.vote_count || 0;
                     const myRating = data.my_rating || 0;
 
+                    const fileData = allFilesData.find(f => f.id === fileId);
+                    if (fileData) {
+                        fileData.avg_rating = avg;
+                        fileData.vote_count = votes;
+                        fileData.my_rating = myRating;
+                    }
+                    if (currentLightboxFile && currentLightboxFile.id === fileId) {
+                        updateLightboxQuickRatingUI(fileData || currentLightboxFile);
+                    }
+
                     // Build Stars HTML
                     let starsHtml = '';
                     for(let i=1; i<=5; i++) {
@@ -10647,60 +10716,118 @@ document.addEventListener('focusout', function(e) {
             } catch (e) { showNotification("Delete failed", "error"); }
         }
         
-        // --- RATING ACTION ---
-        async function submitRating(val) {
-            // currentFiFileId is set globally when opening the panel
-            if (!currentFiFileId) return;
+        // --- RATING ACTIONS (shared by the side panel and Lightbox quick controls) ---
+        const ratingSaveInFlight = new Set();
 
-            // Optimistic UI Update (Optional, but makes it snappy)
-            // We find the stars and update classes immediately before fetch
+        function updateLightboxQuickRatingUI(file = currentLightboxFile) {
+            const control = document.getElementById('lightbox-quick-rating');
+            if (!control) return;
+
+            const myRating = file ? Number(file.my_rating || 0) : 0;
+            const isSaving = file ? ratingSaveInFlight.has(file.id) : false;
+            control.querySelectorAll('.lightbox-rating-star').forEach(star => {
+                const active = Number(star.dataset.rating) <= myRating;
+                star.classList.toggle('active', active);
+                star.setAttribute('aria-pressed', active ? 'true' : 'false');
+            });
+            control.querySelectorAll('button').forEach(button => { button.disabled = isSaving; });
+
+            control.classList.toggle('has-rating', myRating > 0);
+            control.classList.toggle('is-saving', isSaving);
+            control.setAttribute('aria-label', myRating > 0 ? `Quick rating, current vote ${myRating} of 5` : 'Quick rating, not rated');
+        }
+
+        function updateRatingDisplay(fileId, val, data) {
+            const fileData = allFilesData.find(f => f.id === fileId);
+            if (fileData) {
+                fileData.avg_rating = Number(data.new_average || 0);
+                fileData.vote_count = Number(data.vote_count || 0);
+                fileData.my_rating = val;
+            }
+
+            if (currentLightboxFile && currentLightboxFile.id === fileId) {
+                currentLightboxFile.avg_rating = Number(data.new_average || 0);
+                currentLightboxFile.vote_count = Number(data.vote_count || 0);
+                currentLightboxFile.my_rating = val;
+                updateLightboxQuickRatingUI(currentLightboxFile);
+            }
+
+            const card = galleryItems.find(item => item.dataset.fileId === fileId);
+            if (card) {
+                const thumbWrap = card.querySelector('.thumbnail-wrapper');
+                if (thumbWrap) {
+                    const oldBadge = Array.from(thumbWrap.querySelectorAll('.workflow-badge'))
+                        .find(badge => badge.textContent.includes('⭐'));
+                    if (oldBadge) oldBadge.remove();
+                    if (data.vote_count > 0) {
+                        thumbWrap.insertAdjacentHTML('beforeend', `<span class="workflow-badge" style="top:35px; background:rgba(0,0,0,0.7); color:var(--favorite-color); border:1px solid rgba(255,193,7,0.3);">⭐ ${Number(data.new_average).toFixed(1)}</span>`);
+                    }
+                }
+
+                const listRating = card.querySelector('.list-col-rating');
+                if (listRating) {
+                    listRating.textContent = data.vote_count > 0 ? `★ ${Number(data.new_average).toFixed(1)}` : '-';
+                }
+            }
+
+            if (typeof updateFocusStatusBar === 'function') updateFocusStatusBar();
+        }
+
+        async function submitRatingForFile(fileId, val) {
+            if (!fileId || !Number.isInteger(val) || val < 0 || val > 5) return;
+            if (ratingSaveInFlight.has(fileId)) return;
+
+            const fileData = allFilesData.find(f => f.id === fileId);
+            const previousRating = fileData ? Number(fileData.my_rating || 0) : 0;
+            ratingSaveInFlight.add(fileId);
+            if (fileData) fileData.my_rating = val;
+            if (currentLightboxFile && currentLightboxFile.id === fileId) {
+                currentLightboxFile.my_rating = val;
+                updateLightboxQuickRatingUI(currentLightboxFile);
+            }
+
             const ratingContainer = document.getElementById('fi-rating-container');
-            if(ratingContainer) {
+            if (currentFiFileId === fileId && ratingContainer) {
                 const stars = ratingContainer.querySelectorAll('.interactive-stars span');
-                stars.forEach((s, idx) => {
-                    if (idx < val) s.classList.add('active');
-                    else s.classList.remove('active');
-                });
+                stars.forEach((star, idx) => star.classList.toggle('active', idx < val));
             }
 
             try {
-                const res = await fetch('/galleryout/api/exhibition/rate', { 
-                    method: 'POST', 
-                    headers: {'Content-Type': 'application/json'}, 
-                    body: JSON.stringify({ 
-                        file_id: currentFiFileId, 
-                        client_uuid: clientUUID, 
-                        rating: val  
-                    }) 
+                const res = await fetch('/galleryout/api/exhibition/rate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({file_id: fileId, client_uuid: clientUUID, rating: val})
                 });
                 const data = await res.json();
-                
-                if (data.status === 'success') {
-                    // Refresh the panel to show updated averages and vote count
-                    loadFiMessages(currentFiFileId);
-                    
-                    // --- update badge in the tab ---
-                    const badge = document.getElementById('fi-rating-badge');
-                    if (badge) {
-                        badge.textContent = data.vote_count > 0 ? `★ ${data.new_average.toFixed(1)} (${data.vote_count})` : '';
-                    }
-                    
-                    // Also update the global file data cache so sorting works without reload
-                    const fileData = allFilesData.find(f => f.id === currentFiFileId);
-                    if (fileData) {
-                        fileData.avg_rating = data.new_average;
-                        fileData.vote_count = data.vote_count;
-                    }
-                    
-                    if (val === 0) showNotification("Rating removed.", "info");
-                    else showNotification("Rating saved!", "success");
-                } else {
-                    showNotification("Error saving rating", "error");
+                if (!res.ok || data.status !== 'success') throw new Error(data.message || 'Rating rejected');
+
+                updateRatingDisplay(fileId, val, data);
+                if (currentFiFileId === fileId) loadFiMessages(fileId);
+                showNotification(val === 0 ? 'Rating removed.' : `Rated ${val} star${val === 1 ? '' : 's'}.`, val === 0 ? 'info' : 'success');
+            } catch (error) {
+                console.error(error);
+                if (fileData) fileData.my_rating = previousRating;
+                if (currentLightboxFile && currentLightboxFile.id === fileId) {
+                    currentLightboxFile.my_rating = previousRating;
+                    updateLightboxQuickRatingUI(currentLightboxFile);
                 }
-            } catch(e) {
-                console.error(e);
-                showNotification("Network error", "error");
+                showNotification('Error saving rating', 'error');
+            } finally {
+                ratingSaveInFlight.delete(fileId);
+                if (currentLightboxFile && currentLightboxFile.id === fileId) {
+                    updateLightboxQuickRatingUI(currentLightboxFile);
+                }
             }
+        }
+
+        async function submitRating(val) {
+            if (!currentFiFileId) return;
+            return submitRatingForFile(currentFiFileId, val);
+        }
+
+        async function submitLightboxRating(val) {
+            if (!currentLightboxFile || !ENABLE_DAM_MODE) return;
+            return submitRatingForFile(currentLightboxFile.id, val);
         }
         
         // --- ADMIN EDIT LOGIC ---
