@@ -1,7 +1,7 @@
 # SmartGallery DAM for ComfyUI
 # Author: Biagio Maffettone © 2025-2026 — Free to use/modify with credit. Provided "as is". See license on GitHub.
 #
-# Version: 2.22 - August 12, 2026
+# Version: 2.22.1 - August 18, 2026
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -339,8 +339,8 @@ AI_MODELS_FOLDER_NAME = '.AImodels'
 ENABLE_DAM_MODE = True
 
 # --- APP INFO ---
-APP_VERSION = "2.22"
-APP_VERSION_DATE = "August 12, 2026"
+APP_VERSION = "2.22.1"
+APP_VERSION_DATE = "August 18, 2026"
 GITHUB_REPO_URL = "https://github.com/biagiomaf/smart-comfyui-gallery"
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/biagiomaf/smart-comfyui-gallery/main/smartgallery.py"
 
@@ -389,7 +389,7 @@ def key_to_path(key):
     except Exception: return None
 
 # --- DERIVED SETTINGS ---
-DB_SCHEMA_VERSION = 27 
+DB_SCHEMA_VERSION = 31 
 THUMBNAIL_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, THUMBNAIL_CACHE_FOLDER_NAME)
 SQLITE_CACHE_DIR = os.path.join(BASE_SMARTGALLERY_PATH, SQLITE_CACHE_FOLDER_NAME)
 # Directory for metadata-stripped files (for client delivery)
@@ -1940,8 +1940,8 @@ def extract_workflow_prompt_string(workflow_json_string):
 
                 found_texts.add(text)
 
-    # Join everything with a separator for the Database field
-    return " , ".join(list(found_texts))
+    # Join everything with a separator for the Database field (deterministic order)
+    return " , ".join(sorted(list(found_texts)))
     
 def process_single_file(filepath):
     """
@@ -1964,18 +1964,20 @@ def process_single_file(filepath):
         
         # Extract workflow data
         workflow_files_content = ""
-        workflow_prompt_content = "" 
+        workflow_prompt_content = ""
+        wf_hash = ""
+        pr_hash = ""
         
         if metadata['has_workflow']:
-            # UPDATED: Request 'api' format for indexing to get real execution values (seeds, clean prompts)
-            # If not found, extract_workflow will automatically fallback to 'ui'
             wf_json = extract_workflow(filepath, target_type='api')
+            if not wf_json:
+                wf_json = extract_workflow(filepath, target_type='ui')
             
             if wf_json:
                 workflow_files_content = extract_workflow_files_string(wf_json)
-                workflow_prompt_content = extract_workflow_prompt_string(wf_json) 
+                workflow_prompt_content = extract_workflow_prompt_string(wf_json)
+                wf_hash, pr_hash = compute_workflow_hashes(filepath, wf_json=wf_json)
         
-        wf_hash, pr_hash = compute_workflow_hashes(filepath) if metadata['has_workflow'] else ('', '')
         return (
             file_id, filepath, mtime, os.path.basename(filepath),
             metadata['type'], metadata['duration'], metadata['dimensions'], 
@@ -2259,16 +2261,8 @@ def init_db(conn=None):
                 except Exception as e:
                     print(f"WARNING: Could not add column {col_name}: {e}")
 
-        # 6. SCHEMA VERSION
-        try:
-            cur = conn.execute("PRAGMA user_version")
-            current_ver = cur.fetchone()[0]
-            
-            if current_ver != DB_SCHEMA_VERSION:
-                print(f"INFO: Updating Database Schema Version: {current_ver} -> {DB_SCHEMA_VERSION}")
-                conn.execute(f"PRAGMA user_version = {DB_SCHEMA_VERSION}")
-        except Exception as e:
-            print(f"WARNING: Could not update DB schema version: {e}")
+        # 6. SCHEMA VERSION (Managed in check_and_update_workflow_hashes)
+        pass
 
         conn.commit()
         
@@ -4085,7 +4079,11 @@ def process_clustering(current_files, cluster_mode, cluster_sort, cluster_target
         return current_files
 
     with get_db_connection() as conn_check:
-        unhashed_cnt = conn_check.execute("SELECT COUNT(*) FROM files WHERE has_workflow = 1 AND (workflow_hash IS NULL OR workflow_hash = '')").fetchone()[0]
+        unhashed_cnt = conn_check.execute("""
+            SELECT COUNT(*) FROM files 
+            WHERE has_workflow = 1 
+            AND (workflow_hash IS NULL OR workflow_hash = '')
+        """).fetchone()[0]
         if unhashed_cnt > 0:
             backfill_unhashed_workflows(conn_check)
 
@@ -4167,10 +4165,21 @@ def process_clustering(current_files, cluster_mode, cluster_sort, cluster_target
                 else:
                     result_files = []
 
-    result_files = [
-        f for f in result_files 
-        if f.get('has_workflow') and f.get('workflow_hash') and str(f.get('workflow_hash')).strip() != ''
-    ]
+    if cluster_mode == 'prompt':
+        result_files = [
+            f for f in result_files 
+            if f.get('has_workflow') and f.get('prompt_hash') and str(f.get('prompt_hash')).strip() != ''
+        ]
+    elif cluster_mode == 'combo':
+        result_files = [
+            f for f in result_files 
+            if f.get('has_workflow') and f.get('workflow_hash') and f.get('prompt_hash') and str(f.get('workflow_hash')).strip() != '' and str(f.get('prompt_hash')).strip() != ''
+        ]
+    else:
+        result_files = [
+            f for f in result_files 
+            if f.get('has_workflow') and f.get('workflow_hash') and str(f.get('workflow_hash')).strip() != ''
+        ]
 
     primary_hash_key = 'prompt_hash' if cluster_mode == 'prompt' else 'workflow_hash'
 
@@ -10246,23 +10255,28 @@ def upload_collection_note():
 # --- SMART WORKFLOW FILES SEARCH, SUGGESTIONS & CLUSTERING HASHES ---
 import difflib
 
-def compute_workflow_hashes(filepath):
+def compute_workflow_hashes(filepath, wf_json=None):
     """
     Computes workflow_hash (canonical structural architecture & models) and prompt_hash (positive prompt).
     Ignores folder paths, seeds, steps, CFG, prompts, and ephemeral widget values.
     """
-    if not filepath or not os.path.exists(filepath):
-        return '', ''
-    try:
-        wf_json = extract_workflow(filepath, target_type='api')
-        if not wf_json:
-            wf_json = extract_workflow(filepath, target_type='ui')
-        if not wf_json:
+    if not wf_json:
+        if not filepath or not os.path.exists(filepath):
+            return '', ''
+        try:
+            wf_json = extract_workflow(filepath, target_type='api')
+            if not wf_json:
+                wf_json = extract_workflow(filepath, target_type='ui')
+        except Exception:
             return '', ''
 
+    if not wf_json:
+        return '', ''
+
+    try:
         data = json.loads(wf_json)
         prompt_text = extract_workflow_prompt_string(wf_json)
-        prompt_hash = hashlib.md5(prompt_text.strip().lower().encode('utf-8')).hexdigest() if prompt_text else ''
+        prompt_hash = hashlib.md5(prompt_text.strip().lower().encode('utf-8')).hexdigest() if prompt_text and prompt_text.strip() else ''
 
         MODEL_EXTENSIONS = ('.safetensors', '.ckpt', '.pt', '.pth', '.bin', '.gguf', '.lora', '.sft', '.vae', '.onnx', '.engine')
         IGNORED_NODES = {'Note', 'NotePrimitive', 'Reroute', 'ShowText', 'Display Text', 'SaveImage', 'PreviewImage', 'VHS_VideoCombine', 'PrimitiveNode'}
@@ -10367,18 +10381,12 @@ def compute_workflow_hashes(filepath):
 
         node_descriptors.sort(key=lambda d: (d['type'], json.dumps(d['connections']), json.dumps(d['models'])))
 
-        if not node_descriptors:
-            return '', prompt_hash
-
         struct_str = json.dumps(node_descriptors, sort_keys=True)
         workflow_hash = hashlib.md5(struct_str.encode('utf-8')).hexdigest()
 
-        if not prompt_hash and workflow_hash:
-            prompt_hash = hashlib.md5((workflow_hash + "_prompt").encode('utf-8')).hexdigest()
-
         return workflow_hash, prompt_hash
     except Exception:
-        return '', '' 
+        return '',  
 
 def backfill_audio_durations(conn=None):
     """
@@ -10474,7 +10482,11 @@ def backfill_unhashed_workflows(conn=None, force_all=False):
         if force_all:
             rows = conn.execute("SELECT id, path FROM files WHERE has_workflow = 1").fetchall()
         else:
-            rows = conn.execute("SELECT id, path FROM files WHERE has_workflow = 1 AND (workflow_hash IS NULL OR workflow_hash = '')").fetchall()
+            rows = conn.execute("""
+                SELECT id, path FROM files 
+                WHERE has_workflow = 1 
+                AND (workflow_hash IS NULL OR workflow_hash = '')
+            """).fetchall()
             
         if not rows:
             if close_conn: conn.close()
@@ -10490,8 +10502,15 @@ def backfill_unhashed_workflows(conn=None, force_all=False):
 
         def _work(item):
             fid, fpath = item
-            wf_h, pr_h = compute_workflow_hashes(fpath)
-            return (wf_h, pr_h, fid)
+            wf_json = extract_workflow(fpath, target_type='api')
+            if not wf_json:
+                wf_json = extract_workflow(fpath, target_type='ui')
+            if not wf_json:
+                return ('', '', '', '', fid)
+            wf_files = extract_workflow_files_string(wf_json)
+            wf_prompt = extract_workflow_prompt_string(wf_json)
+            wf_h, pr_h = compute_workflow_hashes(fpath, wf_json=wf_json)
+            return (wf_files, wf_prompt, wf_h, pr_h, fid)
 
         results = []
         completed = 0
@@ -10503,7 +10522,7 @@ def backfill_unhashed_workflows(conn=None, force_all=False):
                 completed += 1
                 try:
                     res = future.result()
-                    if res and (res[0] or res[1]):
+                    if res:
                         results.append(res)
                 except Exception:
                     pass
@@ -10511,13 +10530,18 @@ def backfill_unhashed_workflows(conn=None, force_all=False):
                 pct = int((completed / total_unhashed) * 100)
                 if pct % 5 == 0 and pct != last_reported_pct:
                     last_reported_pct = pct
-                    print(f"\r   [Clustering Progress] Indexed {completed}/{total_unhashed} files ({pct}%)...", end="", flush=True)
+                    msg = f"[Clustering Progress] Indexed {completed}/{total_unhashed} files ({pct}%)..."
+                    print(chr(13) + "   " + msg, end="", flush=True)
 
         if results:
             batch_size = 500
             for i in range(0, len(results), batch_size):
                 batch = results[i:i + batch_size]
-                conn.executemany("UPDATE files SET workflow_hash = ?, prompt_hash = ? WHERE id = ?", batch)
+                conn.executemany("""
+                    UPDATE files 
+                    SET workflow_files = ?, workflow_prompt = ?, workflow_hash = ?, prompt_hash = ? 
+                    WHERE id = ?
+                """, batch)
                 conn.commit()
 
         print()
@@ -10532,25 +10556,25 @@ def backfill_unhashed_workflows(conn=None, force_all=False):
 
 def check_and_update_workflow_hashes(conn):
     """
-    Tests a few existing hashes against the current algorithm. 
-    If the algorithm was updated, it forces a complete recalculation of all hashes.
+    Checks PRAGMA user_version. If < 31, performs a one-time migration
+    recomputing workflow_hash and prompt_hash for all workflow files,
+    then sets PRAGMA user_version = 31.
     """
-    sample = conn.execute("SELECT id, path, workflow_hash FROM files WHERE has_workflow = 1 AND workflow_hash IS NOT NULL AND workflow_hash != '' LIMIT 3").fetchall()
-    
-    needs_update = False
-    for row in sample:
-        if os.path.exists(row['path']):
-            new_wf_hash, _ = compute_workflow_hashes(row['path'])
-            # If the newly computed hash differs from the one in the DB, the algorithm changed!
-            if new_wf_hash and new_wf_hash != row['workflow_hash']:
-                needs_update = True
-                break
-                
-    if needs_update:
-        print(f"{Colors.YELLOW}INFO: Workflow clustering algorithm updated. Re-indexing architectures...{Colors.RESET}")
-        backfill_unhashed_workflows(conn, force_all=True)
-    else:
-        # Standard check for newly added files that missed the hash
+    try:
+        cur = conn.execute("PRAGMA user_version")
+        current_ver = cur.fetchone()[0]
+        
+        if current_ver < DB_SCHEMA_VERSION:
+            print(f"{Colors.YELLOW}INFO: Database schema version ({current_ver}) < {DB_SCHEMA_VERSION}. Running one-time hash alignment migration...{Colors.RESET}")
+            backfill_unhashed_workflows(conn, force_all=True)
+            conn.execute(f"PRAGMA user_version = {DB_SCHEMA_VERSION}")
+            conn.commit()
+            print(f"{Colors.GREEN}INFO: Hash alignment complete. Database updated to schema version {DB_SCHEMA_VERSION}.{Colors.RESET}")
+        else:
+            # Normal startup: only process newly added files that lack hashes
+            backfill_unhashed_workflows(conn, force_all=False)
+    except Exception as e:
+        print(f"WARNING: Error checking DB user_version: {e}")
         backfill_unhashed_workflows(conn, force_all=False)
 
 @app.route('/galleryout/api/workflow_files_suggestions', methods=['GET'])
