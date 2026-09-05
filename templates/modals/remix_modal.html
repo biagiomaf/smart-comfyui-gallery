@@ -1,5 +1,5 @@
 <!-- REMIX OVERLAY MODULE -->
-<!-- Version: 2.22.1 - August 18, 2026 -->
+<!-- Version: 2.23 - September 05, 2026 -->
 <style>
     /* ── Raw Node Editor ─────────────────────────────────────────────── */
     .remix-node-item {
@@ -62,25 +62,55 @@
     .remix-footer {
         padding: 12px 16px; border-top: 1px solid var(--border-color);
         background: var(--surface-hover); flex-shrink: 0;
-        display: flex; flex-direction: column; gap: 8px;
+        display: flex; flex-direction: column; gap: 12px;
     }
     .remix-footer-row {
-        display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+        display: flex; gap: 8px; align-items: center;
     }
     .remix-footer-row.space-between { justify-content: space-between; }
     .remix-footer-row.end { justify-content: flex-end; }
+    #remix-manual-tools { display: flex; gap: 6px; width: 100%; }
+    #remix-manual-tools .glass-btn { flex: 1; justify-content: center; text-align: center; }
+
+    .btn-icon-mobile { display: none; }
+    .btn-text-desktop { display: inline; }
 
     #remix-mobile-help-btn { display: none; }
     @media (max-width: 480px) {
         #btn-view-raw { display: none !important; }
         .remix-panel { max-width: 100vw; max-height: 100vh; border-radius: 0; }
-        .remix-header h3 { font-size: 0.9rem; }
+        .remix-header { position: relative; padding-right: 44px; }
+        .remix-header h3 { font-size: 0.9rem; max-width: calc(100% - 10px); }
+        .remix-header .close-btn { position: absolute; top: 10px; right: 12px; z-index: 10; font-size: 1.6rem !important; color: #aaa; }
         #remix-how-it-works-btn { display: none; }
         #remix-mobile-help-btn { display: inline-block; }
-        .remix-footer-row { flex-wrap: wrap; }
-        #remix-gen-controls { flex-wrap: wrap; gap: 6px !important; }
-        #remix-gen-controls label { white-space: normal !important; font-size: 0.75rem; }
-        .glass-btn { padding: 6px 10px; font-size: 0.8rem; }
+
+        /* Mobile Footer: 2 clean, spaced rows */
+        .remix-footer { padding: 10px 10px 12px 10px; gap: 12px; }
+        
+        /* Row 1: Tools with equal flex and comfortable touch target */
+        #remix-manual-tools { width: 100%; display: flex; gap: 5px; }
+        #remix-manual-tools .glass-btn { flex: 1; padding: 7px 2px; font-size: 0.74rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        /* Row 2: Action row guaranteed on 1 line without wrapping */
+        #remix-action-row { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 4px; flex-wrap: nowrap !important; }
+        #remix-gen-controls { display: flex; align-items: center; gap: 5px !important; flex-shrink: 1; min-width: 0; }
+        #remix-gen-controls label { font-size: 0.71rem !important; white-space: nowrap !important; gap: 3px !important; }
+        #remix-gen-controls input[type="number"] { width: 34px !important; padding: 3px 2px !important; font-size: 0.78rem !important; }
+        .remix-gen-divider { margin: 0 1px !important; }
+
+        /* Buttons on Row 2 */
+        .remix-footer-row.end { display: flex; gap: 4px; align-items: center; flex-shrink: 0; margin-left: auto; }
+        #remix-submit-btn { padding: 6px 9px !important; font-size: 0.76rem !important; white-space: nowrap; }
+        
+        /* Close button on mobile becomes a compact red ✕ */
+        .btn-text-desktop { display: none !important; }
+        .btn-icon-mobile { display: inline !important; font-weight: bold; color: #ff6b6b; font-size: 0.85rem; }
+        .remix-btn-close {
+            padding: 6px 10px !important;
+            border-color: rgba(220, 53, 69, 0.4) !important;
+            background: rgba(220, 53, 69, 0.12) !important;
+        }
     }
     
     .remix-panel.raw-fullscreen { width: 98vw !important; height: 98vh !important; max-width: none !important; max-height: none !important; border-radius: 8px !important; transition: all 0.2s ease-in-out; }
@@ -267,7 +297,8 @@
             </h3>
             <div style="display:flex; gap:8px; align-items:center;">
                 <!-- <button id="remix-mobile-help-btn" class="glass-btn" onclick="toggleRemixInfo()" style="padding: 4px 8px; height:auto; min-height:0; font-size:0.8rem;">❓ Help</button> -->
-                <button class="glass-btn" onclick="openWorkflowLibrary()" style="padding: 4px 10px; height:auto; min-height:0; font-size:0.8rem; border-color:var(--favorite-color); color:var(--favorite-color);">📂 Library</button>
+                <button class="glass-btn" onclick="closeRemixModal(); if (typeof openComfyQueueModal === 'function') openComfyQueueModal(); else if (typeof showNotification === 'function') showNotification('ComfyUI Queue Deck module not loaded.', 'warning'); return false;" style="padding: 4px 10px; height:auto; min-height:0; font-size:0.8rem; border-color:#22d3ee; color:#22d3ee;" title="Close Remix and open ComfyUI Queue Deck">⚡ ComfyUI Queue Deck</button>
+<button class="glass-btn" onclick="openWorkflowLibrary()" style="padding: 4px 10px; height:auto; min-height:0; font-size:0.8rem; border-color:var(--favorite-color); color:var(--favorite-color);">📂 Library</button>
                 <button class="close-btn" onclick="closeRemixModal()" style="font-size: 1.5rem; background:none; border:none; color:#888; cursor:pointer;">×</button>
             </div>
         </div>
@@ -295,26 +326,35 @@
         
         <!-- FOOTER -->
         <div class="remix-footer">
-            <div class="remix-footer-row space-between">
-                <div class="remix-footer-row" id="remix-manual-tools">
-                    <button class="glass-btn" id="remix-dl-btn" onclick="submitRemix('download')">💾 Download</button>
-                    <button class="glass-btn" id="remix-copy-btn" onclick="submitRemix('copy')">📋 Copy</button>
-                    <button class="glass-btn" id="remix-save-tpl-btn" onclick="saveRemixTemplate()" style="color:var(--favorite-color); border-color:var(--favorite-color);">⭐ Save to Library</button>
-                </div>
-                <div class="remix-footer-row end">
-                    <button class="glass-btn" onclick="closeRemixModal()">Close</button>
-                    <button class="glass-btn active-blue" id="remix-submit-btn" onclick="submitRemix('api')" style="display:none;">🚀 Queue</button>
-                </div>
+            <!-- Row 1: Tools on a single clean row -->
+            <div class="remix-footer-row" id="remix-manual-tools">
+                <button class="glass-btn" id="remix-dl-btn" onclick="submitRemix('download')">💾 Download</button>
+                <button class="glass-btn" id="remix-copy-btn" onclick="submitRemix('copy')">📋 Copy</button>
+                <button class="glass-btn" id="remix-save-tpl-btn" onclick="saveRemixTemplate()" style="color:var(--favorite-color); border-color:var(--favorite-color);">⭐ Save to Library</button>
             </div>
-            <div id="remix-gen-controls" style="display:none; align-items:center; gap:12px; flex-wrap:wrap;">
-                <label style="display:flex; align-items:center; gap:5px; font-size:0.8rem; color:#aaa; cursor:pointer;">
-                    <input type="checkbox" id="remix-random-seed" checked onchange="checkMultiGenWarning()" style="cursor:pointer;">
-                    Random seed
-                </label>
-                <label style="font-size:0.8rem; color:#aaa;">Generations:</label>
-                <input type="number" id="remix-gen-count" min="1" max="100" value="1"
-                    style="width:60px; padding:4px 6px; background:#1a1a1a; border:1px solid var(--border-color); border-radius:6px; color:white; font-size:0.9rem; text-align:center;"
-                    oninput="checkMultiGenWarning()">
+
+            <!-- Row 2: Generation options & Submission (Single line layout) -->
+            <div class="remix-footer-row space-between" id="remix-action-row">
+                <div id="remix-gen-controls" style="display:none; align-items:center; gap:8px;">
+                    <label style="display:flex; align-items:center; gap:4px; font-size:0.8rem; color:#ddd; cursor:pointer; margin:0; white-space:nowrap;">
+                        <input type="checkbox" id="remix-random-seed" checked onchange="checkMultiGenWarning()" style="cursor:pointer; margin:0;">
+                        Random seed
+                    </label>
+                    <div class="remix-gen-divider" style="height:14px; width:1px; background:#444; margin:0 2px;"></div>
+                    <label style="font-size:0.8rem; color:#ddd; margin:0; display:flex; align-items:center; gap:4px; white-space:nowrap;">
+                        <span>Generations:</span>
+                        <input type="number" id="remix-gen-count" min="1" max="100" value="1"
+                            style="width:44px; padding:3px 4px; background:#1a1a1a; border:1px solid var(--border-color); border-radius:5px; color:white; font-size:0.85rem; text-align:center;"
+                            oninput="checkMultiGenWarning()">
+                    </label>
+                </div>
+                <div class="remix-footer-row end" style="gap:6px; margin-left:auto;">
+                    <button class="glass-btn active-blue" id="remix-submit-btn" onclick="submitRemix('api')" style="display:none;">🚀 Queue</button>
+                    <button class="glass-btn remix-btn-close" onclick="closeRemixModal()" title="Close">
+                        <span class="btn-text-desktop">Close</span>
+                        <span class="btn-icon-mobile">✕</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -624,7 +664,7 @@
     
     window.askToOpenComfyUI = async function() {
         const urlInput = document.getElementById('remix-comfy-url');
-        const targetUrl = urlInput ? urlInput.value.trim() : (window._remixServerDefaultUrl || 'http://127.0.0.1:8188');
+        const targetUrl = urlInput ? urlInput.value.trim() : (window._remixServerDefaultUrl || window.location.origin);
         const wantOpen = await window.sgDialog({
             type: 'confirm',
             title: 'Launch ComfyUI',
@@ -747,7 +787,7 @@
     
     window.askToOpenComfyUI = async function() {
         const urlInput = document.getElementById('remix-comfy-url');
-        const targetUrl = urlInput ? urlInput.value.trim() : (window._remixServerDefaultUrl || 'http://127.0.0.1:8188');
+        const targetUrl = urlInput ? urlInput.value.trim() : (window._remixServerDefaultUrl || window.location.origin);
         const wantOpen = await window.sgDialog({
             type: 'confirm',
             title: 'Launch ComfyUI',
@@ -1356,7 +1396,7 @@
                 window._remixRawUi  = currentRemixData.raw_ui_json  || "";
                 window._rawNodeEditorReady = false; 
                 window._remixObjectInfo = null; // Reset Dictionary cache
-                const serverDefaultUrl = currentRemixData.default_comfy_url || "http://127.0.0.1:8188";
+                const serverDefaultUrl = currentRemixData.default_comfy_url || window.location.origin;
                 window._remixServerDefaultUrl = serverDefaultUrl;
                 const savedUrl = localStorage.getItem('sg_comfy_url') || serverDefaultUrl;
                 html += `
@@ -1559,6 +1599,7 @@
                 
                 if (currentRemixData.images.length > 0) {
                     html += '<div class="remix-category-block"><div class="remix-section-title" style="margin-top:10px;">🖼️ Input Images</div>';
+                    const _comfyParam = (typeof savedUrl !== 'undefined' && savedUrl) ? `?target_url=${encodeURIComponent(savedUrl)}` : '';
                     currentRemixData.images.forEach((img, idx) => {
                         const nodeName = img.title ? img.title : (img.node_type || 'Unknown');
                         const safeImgName = encodeURIComponent(img.value);
@@ -1568,7 +1609,7 @@
                         html += `
                             <div class="${fClass}" style="margin-bottom: 10px; display: flex; gap: 15px; align-items: flex-start;">
                                 <div class="remix-image-preview">
-                                    <img src="/galleryout/input_file/${safeImgName}" style="width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\\'color:#555;font-size:2rem;\\'>?</span>'">
+                                    <img src="/galleryout/input_file/${safeImgName}${_comfyParam}" style="width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\\'color:#555;font-size:2rem;\\'>?</span>'">
                                 </div>
                                 <div style="flex-grow: 1;">
                                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
@@ -1900,7 +1941,10 @@
                     let mediaHtml = `<div style="width:50px; height:50px; background:#111; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; border: 1px dashed #52a1ff;">📁</div>`;
                     
                     if (currentFile) {
-                        const safeUrl = "/galleryout/input_file/" + encodeURIComponent(currentFile);
+                        const _npUrlInput = document.getElementById('remix-comfy-url');
+                        const _npTargetUrl = _npUrlInput ? _npUrlInput.value.trim() : (window._remixServerDefaultUrl || '');
+                        const _npParam = _npTargetUrl ? `?target_url=${encodeURIComponent(_npTargetUrl)}` : '';
+                        const safeUrl = "/galleryout/input_file/" + encodeURIComponent(currentFile) + _npParam;
                         if (mediaType === 'video') {
                             mediaHtml = `<video src="${safeUrl}" style="max-height: 50px; max-width: 80px; border-radius: 4px; border: 1px solid #444;" autoplay muted loop onerror="this.style.display='none'"></video>`;
                         } else if (mediaType === 'audio') {
@@ -2982,12 +3026,15 @@
             });
     }
 function closeRemixModal() {
-        document.getElementById('remix-overlay').classList.remove('visible');
-        if (!document.getElementById('node-summary-overlay').classList.contains('visible') && 
-            !document.getElementById('file-info-overlay').classList.contains('visible')) {
-            document.body.classList.remove('modal-open');
-        }
-    }
+// --- FIX: Bulletproof cleanup of Remix Monitor WebSocket and Interval to prevent connection leaks ---
+if (window._remixMonitorInterval) { clearInterval(window._remixMonitorInterval); window._remixMonitorInterval = null; }
+if (window._remixMonitorWs) { try { window._remixMonitorWs.onopen = null; window._remixMonitorWs.onmessage = null; window._remixMonitorWs.onerror = null; window._remixMonitorWs.onclose = null; window._remixMonitorWs.close(); } catch(e) {} window._remixMonitorWs = null; }
+document.getElementById('remix-overlay').classList.remove('visible');
+if (!document.getElementById('node-summary-overlay').classList.contains('visible') &&
+!document.getElementById('file-info-overlay').classList.contains('visible')) {
+document.body.classList.remove('modal-open');
+}
+}
     
     async function submitRemix(actionType) {
         let btn;
@@ -3269,11 +3316,8 @@ function closeRemixModal() {
                                     const prefix = window._remixFilePrefix || window._remixSavePrefix;
                                     successMsg += `<br><small style="color:#aaa;">📁 Output will be saved in <code>${folder}</code> with prefix <code>${prefix}</code></small>`;
                                 }
+                                successMsg += `<br><small style="margin-top:6px; display:inline-block;">Want to follow its progress? <a href="#" onclick="closeRemixModal(); if (typeof openComfyQueueModal === 'function') openComfyQueueModal(); else if (typeof showNotification === 'function') showNotification('ComfyUI Queue Deck module not loaded.', 'warning'); return false;" style="color:var(--primary-color); font-weight:bold; text-decoration:underline;">Open the ComfyUI Queue Deck ⚡</a></small>`;
                                 showRemixStatus(successMsg, true, true);
-                            }
-                            if (data.job_id && data.job_id !== 'Unknown') {
-                                const targetUrl = document.getElementById('remix-comfy-url') ? document.getElementById('remix-comfy-url').value.trim() : window._remixServerDefaultUrl;
-                                window.monitorComfyJob(data.job_id, targetUrl);
                             }
                         } else {
                             let stopMsg = genCount > 1 && i > 0
@@ -3363,11 +3407,9 @@ function closeRemixModal() {
             const res = await fetch('/galleryout/api/remix/autofix_apply', { method: 'POST', body: fd });
             const data = await res.json();
             if (data.status === 'success') {
-                showRemixStatus(data.message, true, true);
-                if (data.job_id && data.job_id !== 'Unknown') {
-                    const targetUrl = document.getElementById('remix-comfy-url') ? document.getElementById('remix-comfy-url').value.trim() : window._remixServerDefaultUrl;
-                    window.monitorComfyJob(data.job_id, targetUrl);
-                }
+                let successMsg = data.message;
+                successMsg += `<br><small style="margin-top:6px; display:inline-block;">Want to follow its progress? <a href="#" onclick="closeRemixModal(); if (typeof openComfyQueueModal === 'function') openComfyQueueModal(); else if (typeof showNotification === 'function') showNotification('ComfyUI Queue Deck module not loaded.', 'warning'); return false;" style="color:var(--primary-color); font-weight:bold; text-decoration:underline;">Open the ComfyUI Queue Deck ⚡</a></small>`;
+                showRemixStatus(successMsg, true, true);
             } else {
                 showRemixStatus('Apply failed: ' + data.message, false);
             }
@@ -3762,91 +3804,9 @@ function closeRemixModal() {
         window.sgDialog({title: 'LoRA Synergy™ Configuration', customHtml: helpHtml, okText: 'Got it!'});
     };
 
-    window.monitorComfyJob = function(jobId, targetUrl) {
-        let attempts = 0;
-        const maxAttempts = 300; 
-        let isDone = false;
-        let lastProgress = null;
-
-        let ws = null;
-        try {
-            const wsProtocol = targetUrl.startsWith('https') ? 'wss://' : 'ws://';
-            const cleanUrl = targetUrl.replace(/^https?:\/\//i, '').replace(/\/$/, '');
-            const clientId = Math.random().toString(36).substring(2, 15);
-            ws = new WebSocket(`${wsProtocol}${cleanUrl}/ws?clientId=${clientId}`);
-            
-            ws.onmessage = function(event) {
-                if (isDone) return;
-                if (typeof event.data === 'string') {
-                    try {
-                        const msg = JSON.parse(event.data);
-                        if (msg.type === 'progress') {
-                            if (!msg.data.prompt_id || msg.data.prompt_id === jobId) {
-                                const val = msg.data.value;
-                                const max = msg.data.max;
-                                if (max > 0) {
-                                    const pct = Math.round((val / max) * 100);
-                                    lastProgress = pct;
-                                    showRemixStatus(`⏳ <strong>Generation in progress... <span style="color:var(--primary-color);">${pct}%</span></strong><br><small>Job ${jobId} is executing.</small>`, null, true);
-                                }
-                            }
-                        } else if (msg.type === 'executing' && msg.data.node !== null) {
-                            if (!msg.data.prompt_id || msg.data.prompt_id === jobId) {
-                                if (lastProgress === null) {
-                                    showRemixStatus(`⏳ <strong>Generation in progress...</strong><br><small>Processing Node: ${msg.data.node}</small>`, null, true);
-                                }
-                            }
-                        }
-                    } catch(e) {}
-                }
-            };
-        } catch(e) {}
-
-        const interval = setInterval(async () => {
-            if (isDone) {
-                clearInterval(interval);
-                if (ws) ws.close();
-                return;
-            }
-            attempts++;
-            try {
-                const res = await fetch('/galleryout/api/remix/job_status/' + jobId, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({target_url: targetUrl})
-                });
-                const data = await res.json();
-                
-                if (data.status === 'error') {
-                    isDone = true;
-                    showRemixStatus(`❌ <strong>Execution Crashed:</strong><br><span style="color:#ffaaaa;">${data.message}</span>`, false, true);
-                } else if (data.status === 'completed') {
-                    isDone = true;
-                    showRemixStatus(`✅ <strong>Generation Completed!</strong><br><small>Job ${jobId} finished successfully.</small>`, true, true);
-                } else if (data.status === 'running') {
-                    if (lastProgress === null) {
-                        showRemixStatus(`⏳ <strong>Generation in progress...</strong><br><small>Job ${jobId} is currently executing in ComfyUI.</small>`, null, true);
-                    }
-                } else if (data.status === 'pending') {
-                    showRemixStatus(`⏳ <strong>Job Queued</strong><br><small>Waiting in line... (Position: ${data.position})</small>`, null, true);
-                } else if (data.status === 'vanished') {
-                    if (attempts > 3) {
-                        isDone = true;
-                        showRemixStatus(`⚠️ <strong>Job Vanished:</strong><br><span style="color:#ffaaaa;">Job ${jobId} is no longer in the queue or history. It may have been cleared.</span>`, false, true);
-                    }
-                }
-                
-                if (attempts >= maxAttempts && !isDone) {
-                    isDone = true;
-                    showRemixStatus(`⚠️ <strong>Monitoring Timeout:</strong><br><span style="color:#f39c12;">Taking a very long time. Please check ComfyUI directly.</span>`, false, true);
-                }
-            } catch(e) {
-                if (attempts >= maxAttempts) {
-                    isDone = true;
-                    if (ws) ws.close();
-                }
-            }
-        }, 2000);
-    };
+window.monitorComfyJob = function(jobId, targetUrl) {
+    // Sockets disabled in Remix modal; users follow generation progress via the ComfyUI Queue Deck
+};
 
     window.updateLoraActions = function() {
         const targetSel = document.getElementById('lora-target-select');

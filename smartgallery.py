@@ -1,7 +1,7 @@
 # SmartGallery DAM for ComfyUI
 # Author: Biagio Maffettone © 2025-2026 — Free to use/modify with credit. Provided "as is". See license on GitHub.
 #
-# Version: 2.22.1 - August 18, 2026
+# Version: 2.23 - September 05, 2026
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -339,8 +339,8 @@ AI_MODELS_FOLDER_NAME = '.AImodels'
 ENABLE_DAM_MODE = True
 
 # --- APP INFO ---
-APP_VERSION = "2.22.1"
-APP_VERSION_DATE = "August 18, 2026"
+APP_VERSION = "2.23"
+APP_VERSION_DATE = "September 05, 2026"
 GITHUB_REPO_URL = "https://github.com/biagiomaf/smart-comfyui-gallery"
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/biagiomaf/smart-comfyui-gallery/main/smartgallery.py"
 
@@ -508,6 +508,7 @@ def run_integrity_check():
         'templates/modals/user_manager_module.html',
         'templates/modals/remix_modal.html',
         'templates/modals/omniquery_modal.html',
+        'templates/modals/comfy_queue_manager.html',
         'templates/css/index.css',
         'templates/collections.html',
         'templates/list_view.html',
@@ -1643,18 +1644,21 @@ def create_waveform(filepath, file_hash, file_type, amp=1.0):
         pass # Silently fail if corrupted or timeout
     return None
 
-def create_thumbnail(filepath, file_hash, file_type):
+def create_thumbnail(filepath, file_hash, file_type, silent=True):
     Image.MAX_IMAGE_PIXELS = None 
+    if not os.path.exists(filepath): return None
+    try:
+        if os.path.getsize(filepath) == 0: return None
+    except OSError:
+        return None
     
     # --- IMAGES / ANIMATIONS ---
     if file_type in ['image', 'animated_image']:
         try:
             with Image.open(filepath) as img:
-                fmt = 'gif' if img.format == 'GIF' else 'webp' if img.format == 'WEBP' else 'jpeg'
-                cache_path = os.path.join(THUMBNAIL_CACHE_DIR, f"{file_hash}.{fmt}")
-                
-                # Handle Animations (Animated WebP / GIF)
                 if file_type == 'animated_image' and getattr(img, 'is_animated', False):
+                    fmt = 'gif' if img.format == 'GIF' else 'webp'
+                    cache_path = os.path.join(THUMBNAIL_CACHE_DIR, f"{file_hash}.{fmt}")
                     frames = [fr.copy() for fr in ImageSequence.Iterator(img)]
                     if frames:
                         for frame in frames: 
@@ -1671,63 +1675,66 @@ def create_thumbnail(filepath, file_hash, file_type):
                                 optimize=True
                             )
                             return cache_path
-                
-                # Handle Static Images
                 else:
+                    cache_path = os.path.join(THUMBNAIL_CACHE_DIR, f"{file_hash}.jpeg")
                     img.thumbnail((THUMBNAIL_WIDTH, THUMBNAIL_WIDTH * 2), Image.Resampling.LANCZOS)
                     if img.mode != 'RGB': img = img.convert('RGB')
                     img.save(cache_path, 'JPEG', quality=85)
                     return cache_path
                     
         except Exception as e: 
-            print(f"ERROR (Pillow): Thumbnail failed for {os.path.basename(filepath)}: {e}")
+            if not silent:
+                print(f"ERROR (Pillow): Thumbnail failed for {os.path.basename(filepath)}: {e}")
 
     # --- VIDEOS (MP4, MOV, MKV, AVI, etc.) ---
     elif file_type == 'video':
         cache_path = os.path.join(THUMBNAIL_CACHE_DIR, f"{file_hash}.jpeg")
         
-        # Method A: Try OpenCV first (Fastest)
+        # Method A: Try OpenCV first
         try:
             cap = cv2.VideoCapture(filepath)
             if cap.isOpened():
                 success, frame = cap.read()
                 cap.release()
-                if success:
+                if success and frame is not None and frame.size > 0:
                     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     img = Image.fromarray(frame_rgb)
                     img.thumbnail((THUMBNAIL_WIDTH, THUMBNAIL_WIDTH * 2), Image.Resampling.LANCZOS)
                     img.save(cache_path, 'JPEG', quality=80)
                     return cache_path
         except Exception: 
-            pass # Fallback silently to FFmpeg
+            pass
 
-        # Method B: Fallback to FFmpeg (Most Robust for MKV/AVI/ProRes)
-        if FFPROBE_EXECUTABLE_PATH:
-            try:
-                ffmpeg_name = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
-                ffmpeg_bin = os.path.join(os.path.dirname(FFPROBE_EXECUTABLE_PATH), ffmpeg_name)
-                if not os.path.exists(ffmpeg_bin): ffmpeg_bin = ffmpeg_name
-                
-                cmd = [
-                    ffmpeg_bin, '-y', 
-                    '-i', filepath, 
-                    '-ss', '00:00:00', # Seek to start
-                    '-vframes', '1',   # Grab 1 frame
-                    '-vf', f'scale={THUMBNAIL_WIDTH}:-1', # Resize directly
-                    '-q:v', '2',       # High Quality
-                    cache_path
-                ]
-                
-                creation_flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
-                subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True, creationflags=creation_flags)
-                
-                if os.path.exists(cache_path):
-                    return cache_path
-            except Exception as e:
+        # Method B: Dynamic FFmpeg discovery across worker processes
+        probe_bin = FFPROBE_EXECUTABLE_PATH or find_ffprobe_path()
+        base_dir = os.path.dirname(probe_bin) if probe_bin else ""
+        if not base_dir and FFPROBE_MANUAL_PATH and os.path.exists(FFPROBE_MANUAL_PATH):
+            base_dir = os.path.dirname(FFPROBE_MANUAL_PATH)
+
+        ffmpeg_name = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
+        ffmpeg_bin = os.path.join(base_dir, ffmpeg_name) if base_dir else ffmpeg_name
+        if not os.path.exists(ffmpeg_bin):
+            ffmpeg_bin = shutil.which("ffmpeg") or ("ffmpeg.exe" if sys.platform == "win32" else "ffmpeg")
+
+        try:
+            cmd = [
+                ffmpeg_bin, '-y', 
+                '-i', filepath, 
+                '-vframes', '1',
+                '-vf', f'scale={THUMBNAIL_WIDTH}:-2',
+                '-q:v', '2',
+                cache_path
+            ]
+            creation_flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+            subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True, creationflags=creation_flags)
+            if os.path.exists(cache_path) and os.path.getsize(cache_path) > 0:
+                return cache_path
+        except Exception as e:
+            if not silent:
                 print(f"ERROR (FFmpeg): Thumbnail failed for {os.path.basename(filepath)}: {e}")
 
     return None
-    
+
 def extract_workflow_files_string(workflow_json_string):
     """
     Parses workflow and returns a normalized string containing ONLY filenames 
@@ -1949,12 +1956,24 @@ def process_single_file(filepath):
     Designed to be run in a parallel process pool.
     """
     try:
+        if not os.path.exists(filepath): return None
+        try:
+            if os.path.getsize(filepath) == 0: return None
+        except OSError:
+            return None
+
         mtime = os.path.getmtime(filepath)
         metadata = analyze_file_metadata(filepath)
+        if metadata.get('type') == 'unknown':
+            return None
+
         file_hash_for_thumbnail = hashlib.md5((filepath + str(mtime)).encode()).hexdigest()
         
         if not glob.glob(os.path.join(THUMBNAIL_CACHE_DIR, f"{file_hash_for_thumbnail}.*")):
-            create_thumbnail(filepath, file_hash_for_thumbnail, metadata['type'])
+            thumb = create_thumbnail(filepath, file_hash_for_thumbnail, metadata['type'], silent=True)
+            if not thumb or not os.path.exists(thumb):
+                time.sleep(0.2)
+                thumb = create_thumbnail(filepath, file_hash_for_thumbnail, metadata['type'], silent=True)
         
         if GENERATE_WAVEFORMS and metadata['type'] in ['video', 'audio']:
             create_waveform(filepath, file_hash_for_thumbnail, metadata['type'])
@@ -1962,7 +1981,6 @@ def process_single_file(filepath):
         file_id = hashlib.md5(filepath.encode()).hexdigest()
         file_size = os.path.getsize(filepath)
         
-        # Extract workflow data
         workflow_files_content = ""
         workflow_prompt_content = ""
         wf_hash = ""
@@ -1986,10 +2004,9 @@ def process_single_file(filepath):
             workflow_prompt_content,
             wf_hash, pr_hash
         )
-    except Exception as e:
-        print(f"ERROR: Failed to process file {os.path.basename(filepath)} in worker: {e}")
+    except Exception:
         return None
-        
+
 def get_db_connection():
     # Timeout increased to 60s to be patient with the Indexer
     conn = sqlite3.connect(DATABASE_FILE, timeout=60)
@@ -2724,7 +2741,11 @@ def sync_folder_on_demand(folder_path):
                 for name in os.listdir(folder_path):
                     filepath = os.path.join(folder_path, name)
                     if os.path.isfile(filepath) and os.path.splitext(name)[1].lower() in valid_extensions:
-                        disk_files[filepath] = os.path.getmtime(filepath)
+                        try:
+                            if os.path.getsize(filepath) > 0:
+                                disk_files[filepath] = os.path.getmtime(filepath)
+                        except OSError:
+                            pass
             
             db_files_query = conn.execute("SELECT path, mtime FROM files WHERE path LIKE ?", (folder_path + os.sep + '%',)).fetchall()
             db_files = {row['path']: row['mtime'] for row in db_files_query if os.path.normpath(os.path.dirname(row['path'])) == os.path.normpath(folder_path)}
@@ -2741,90 +2762,76 @@ def sync_folder_on_demand(folder_path):
             files_to_process = list(files_to_add.union(files_to_update))
             total_files = len(files_to_process)
             
+            data_to_upsert = []
+            
             if total_files > 0:
                 yield f"data: {json.dumps({'message': f'Found {total_files} new/modified files. Processing...', 'current': 0, 'total': total_files})}\n\n"
                 
-                data_to_upsert = []
-                processed_count = 0
-
-                with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_PARALLEL_WORKERS) as executor:
-                    futures = {executor.submit(process_single_file, path): path for path in files_to_process}
+                pending_paths = list(files_to_process)
+                attempts = 0
+                max_attempts = 5
+                
+                while pending_paths and attempts < max_attempts:
+                    current_batch = list(pending_paths)
+                    pending_paths = []
+                    attempts += 1
                     
-                    for future in concurrent.futures.as_completed(futures):
-                        # --- FAULT TOLERANCE FIX FOR SYNC ---
-                        try:
-                            result = future.result()
-                            if result:
-                                data_to_upsert.append(result)
-                        except concurrent.futures.process.BrokenProcessPool as e:
-                            print(f"\nWARNING: A worker process crashed (likely due to a corrupted file). Recovering... Error: {e}")
-                        except Exception as e:
-                            file_path_failed = futures[future]
-                            print(f"\nWARNING: Unhandled error processing {os.path.basename(file_path_failed)}: {e}")
-                        
-                        processed_count += 1
-                        path = futures[future]
-                        progress_data = {
-                            'message': f'Processing: {os.path.basename(path)}',
-                            'current': processed_count,
-                            'total': total_files
-                        }
-                        yield f"data: {json.dumps(progress_data)}\n\n"
-
-                if data_to_upsert:
-                    conn.executemany("""
-                        INSERT INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned, workflow_files, workflow_prompt, workflow_hash, prompt_hash) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ON CONFLICT(id) DO UPDATE SET
-                            path = excluded.path,
-                            name = excluded.name,
-                            type = excluded.type,
-                            duration = excluded.duration,
-                            dimensions = excluded.dimensions,
-                            has_workflow = excluded.has_workflow,
-                            size = excluded.size,
-                            last_scanned = excluded.last_scanned,
-                            workflow_files = excluded.workflow_files,
-                            workflow_prompt = excluded.workflow_prompt,
-                            workflow_hash = excluded.workflow_hash,
-                            prompt_hash = excluded.prompt_hash,
-                        
-                            -- CONDITIONAL LOGIC:
-                            is_favorite = CASE 
-                                WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN 0  
-                                ELSE files.is_favorite                     
-                            END,
-                            
-                            ai_caption = CASE 
-                                WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN NULL 
-                                ELSE files.ai_caption                        
-                            END,
-                            
-                            ai_embedding = CASE 
-                                WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN NULL 
-                                ELSE files.ai_embedding 
-                            END,
-
-                            ai_last_scanned = CASE 
-                                WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN 0 
-                                ELSE files.ai_last_scanned 
-                            END,
-
-                            -- Update mtime at the end
-                            mtime = excluded.mtime
-                    """, data_to_upsert) 
+                    with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_PARALLEL_WORKERS) as executor:
+                        futures = {executor.submit(process_single_file, path): path for path in current_batch}
+                        for future in concurrent.futures.as_completed(futures):
+                            path = futures[future]
+                            try:
+                                res = future.result()
+                                if res:
+                                    data_to_upsert.append(res)
+                                else:
+                                    pending_paths.append(path)
+                            except Exception:
+                                pending_paths.append(path)
                     
+                    if not pending_paths:
+                        break
+                    time.sleep(0.8)
+
+            if data_to_upsert:
+                conn.executemany("""
+                    INSERT INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned, workflow_files, workflow_prompt, workflow_hash, prompt_hash) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(id) DO UPDATE SET
+                        path = excluded.path,
+                        name = excluded.name,
+                        type = excluded.type,
+                        duration = excluded.duration,
+                        dimensions = excluded.dimensions,
+                        has_workflow = excluded.has_workflow,
+                        size = excluded.size,
+                        last_scanned = excluded.last_scanned,
+                        workflow_files = excluded.workflow_files,
+                        workflow_prompt = excluded.workflow_prompt,
+                        workflow_hash = excluded.workflow_hash,
+                        prompt_hash = excluded.prompt_hash,
+                        is_favorite = CASE WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN 0 ELSE files.is_favorite END,
+                        ai_caption = CASE WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN NULL ELSE files.ai_caption END,
+                        ai_embedding = CASE WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN NULL ELSE files.ai_embedding END,
+                        ai_last_scanned = CASE WHEN ABS(files.mtime - excluded.mtime) > 0.1 THEN 0 ELSE files.ai_last_scanned END,
+                        mtime = excluded.mtime
+                """, data_to_upsert) 
+                
             if files_to_delete:
                 conn.executemany("DELETE FROM files WHERE path IN (?)", [(p,) for p in files_to_delete])
 
             conn.commit()
-            yield f"data: {json.dumps({'message': 'Sync complete. Reloading...', 'status': 'reloading', 'current': total_files, 'total': total_files})}\n\n"
+
+            if data_to_upsert or files_to_delete:
+                yield f"data: {json.dumps({'message': 'Sync complete. Reloading...', 'status': 'reloading', 'current': len(data_to_upsert), 'total': total_files})}\n\n"
+            else:
+                yield f"data: {json.dumps({'message': 'Folder is up-to-date.', 'status': 'no_changes', 'current': 0, 'total': total_files})}\n\n"
 
     except Exception as e:
         error_message = f"Error during sync: {e}"
         print(f"ERROR: {error_message}")
         yield f"data: {json.dumps({'message': error_message, 'current': 1, 'total': 1, 'error': True})}\n\n"
-        
+
 def scan_folder_and_extract_options(folder_path, recursive=False):
     """
     Scans the physical folder to count files and extract metadata.
@@ -4793,6 +4800,99 @@ def gallery_view(folder_key):
                            session_role=session.get('role'), 
                            session_full_name=session.get('full_name'), has_notes=False, note_files=[])
                            
+
+@app.route('/galleryout/api/comfy_proxy/<path:subpath>', methods=['GET', 'POST'])
+@management_api_only
+def api_comfy_proxy(subpath):
+    """
+    Security-Hardened Transparent Reverse Proxy to ComfyUI.
+    Streams media responses (including full animated WebP and MP4 videos) with proper MIME headers.
+    """
+    clean_subpath = subpath.strip().lstrip('/')
+    if '..' in clean_subpath or '\\' in clean_subpath or '\x00' in clean_subpath:
+        return jsonify({'status': 'error', 'message': 'Security Policy: Path traversal rejected.'}), 403
+
+    ALLOWED_EXACT = {'system_stats', 'queue', 'interrupt', 'prompt', 'object_info', 'history', 'crystools/monitor', 'crystools', 'view', 'loras'}
+    ALLOWED_PREFIXES = ('history/', 'view', 'embeddings', 'extensions', 'models', 'loras', 'api/', 'checkpoints', 'model_preview', 'recipes', 'crystools/')
+
+    is_allowed = (clean_subpath in ALLOWED_EXACT) or any(clean_subpath.startswith(pfx) for pfx in ALLOWED_PREFIXES)
+    if not is_allowed:
+        return jsonify({'status': 'error', 'message': f'Security Policy: Endpoint "{clean_subpath}" is not whitelisted for proxy access.'}), 403
+
+    target_comfy = request.args.get('target_url') or COMFYUI_SERVER_URL or 'http://127.0.0.1:8188'
+    target_comfy = target_comfy.strip().rstrip('/')
+
+    try:
+        parsed = urllib.parse.urlsplit(target_comfy)
+        if parsed.scheme.lower() not in ('http', 'https'):
+            return jsonify({'status': 'error', 'message': 'Security Policy: Only HTTP and HTTPS schemes are permitted.'}), 400
+        if not parsed.netloc:
+            return jsonify({'status': 'error', 'message': 'Security Policy: Invalid target host.'}), 400
+    except Exception:
+        return jsonify({'status': 'error', 'message': 'Security Policy: Malformed target URL.'}), 400
+
+    query_params = request.args.to_dict()
+    query_params.pop('target_url', None)
+    qs = urllib.parse.urlencode(query_params)
+    dest_url = f"{parsed.scheme}://{parsed.netloc}/{clean_subpath}" + (f"?{qs}" if qs else "")
+
+    try:
+        req_data = request.get_data() if request.method == 'POST' else None
+        req_headers = {
+            'User-Agent': 'SmartGallery-Proxy/2.23',
+            'Host': parsed.netloc,
+            'Origin': f"{parsed.scheme}://{parsed.netloc}",
+            'Referer': f"{parsed.scheme}://{parsed.netloc}/"
+        }
+        if request.method == 'POST':
+            req_headers['Content-Type'] = 'application/json'
+
+        proxy_req = urllib.request.Request(dest_url, data=req_data, headers=req_headers, method=request.method)
+
+        with urllib.request.urlopen(proxy_req, timeout=30) as resp:
+            content = resp.read()
+            
+            content_type = resp.headers.get('Content-Type')
+            if not content_type or content_type == 'application/octet-stream':
+                fn = request.args.get('filename', '').lower()
+                if fn.endswith('.webp'): content_type = 'image/webp'
+                elif fn.endswith('.png'): content_type = 'image/png'
+                elif fn.endswith(('.jpg', '.jpeg')): content_type = 'image/jpeg'
+                elif fn.endswith('.gif'): content_type = 'image/gif'
+                elif fn.endswith('.mp4'): content_type = 'video/mp4'
+                elif fn.endswith('.webm'): content_type = 'video/webm'
+                else: content_type = 'application/json'
+
+            flask_resp = Response(content, status=resp.status, mimetype=content_type)
+            flask_resp.headers['Access-Control-Allow-Origin'] = '*'
+            return flask_resp
+    except urllib.error.HTTPError as e:
+        err_body = e.read(65536)
+        return Response(err_body, status=e.code, mimetype='application/json')
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f'Proxy relay error: {str(e)}'}), 502
+
+@app.route('/galleryout/api/comfy_server_default')
+@management_api_only
+def api_comfy_server_default():
+    url = (COMFYUI_SERVER_URL or 'http://127.0.0.1:8188').strip()
+    if not re.match(r'^https?://[^\s]+$', url, re.IGNORECASE):
+        url = 'http://127.0.0.1:8188'
+    
+    lan_ip = None
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        lan_ip = s.getsockname()[0]
+        s.close()
+    except Exception:
+        pass
+
+    resp = jsonify({'status': 'success', 'url': url, 'lan_ip': lan_ip})
+    resp.headers['Cache-Control'] = 'no-store, max-age=0'
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    return resp
+
 @app.route('/galleryout/upload', methods=['POST'])
 @management_api_only
 def upload_files():
@@ -5865,11 +5965,12 @@ def rename_file(file_id):
                     workflow_hash, prompt_hash
                 FROM files WHERE id = ?
             """
-            file_info = conn.execute(query_fetch, (file_id,)).fetchone()
+            file_info_row = conn.execute(query_fetch, (file_id,)).fetchone()
             
-            if not file_info:
+            if not file_info_row:
                 return jsonify({'status': 'error', 'message': 'File not found.'}), 404
 
+            file_info = dict(file_info_row)
             old_path = file_info['path']
             old_name = file_info['name']
             
@@ -6686,6 +6787,371 @@ def serve_storyboard_frame(file_hash, filename):
     return send_from_directory(directory, safe_name)
 # Route to serve the cached frames
 
+
+import re
+
+def _is_inside_docker():
+    """Detects if SmartGallery is currently executing inside a Docker container."""
+    if os.path.exists('/.dockerenv'):
+        return True
+    try:
+        if os.path.exists('/proc/1/cgroup'):
+            with open('/proc/1/cgroup', 'r', errors='ignore') as f:
+                cgroup_text = f.read()
+                if 'docker' in cgroup_text or 'containerd' in cgroup_text or 'kubepods' in cgroup_text:
+                    return True
+    except Exception:
+        pass
+    return False
+
+
+def _get_local_ip_set():
+    """Returns a set of all IP addresses and hostnames belonging to the local system."""
+    local_set = {'127.0.0.1', 'localhost', '0.0.0.0', '::1'}
+    try:
+        host_name = socket.gethostname()
+        local_set.add(host_name.lower())
+        for addr_info in socket.getaddrinfo(host_name, None):
+            if addr_info[4] and addr_info[4][0]:
+                local_set.add(addr_info[4][0])
+    except Exception:
+        pass
+
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('8.8.8.8', 80))
+        local_set.add(s.getsockname()[0])
+        s.close()
+    except Exception:
+        pass
+
+    return local_set
+
+
+def _is_local_or_same_host(target_url):
+    """
+    Strictly verifies whether target_url runs on the exact same physical host.
+    Returns True ONLY for loopback (127.0.0.1, localhost), local network IPs assigned to this machine,
+    or Docker host gateways (host.docker.internal, 172.17.0.1) when running inside a container.
+    Returns False for distinct remote IP addresses across the LAN or WAN.
+    """
+    if not target_url:
+        return True
+    clean = target_url.strip().lower()
+    
+    if re.match(r'^https?://(127\.0\.0\.1|localhost|0\.0\.0\.0|::1)(:\d+)?(/.*)?$', clean):
+        return True
+
+    try:
+        parsed = urllib.parse.urlsplit(clean if clean.startswith(('http://', 'https://')) else f"http://{clean}")
+        hostname = (parsed.hostname or '').strip().lower()
+        if not hostname:
+            return True
+        if hostname in ('127.0.0.1', 'localhost', '0.0.0.0', '::1'):
+            return True
+
+        in_docker = _is_inside_docker()
+        if in_docker:
+            if hostname in ('host.docker.internal', 'gateway.docker.internal'):
+                return True
+            if hostname.startswith('172.') and hostname.endswith('.1'):
+                return True
+
+        target_ip = socket.gethostbyname(hostname)
+        if target_ip.startswith('127.'):
+            return True
+
+        if in_docker and target_ip.startswith('172.') and target_ip.endswith('.1'):
+            return True
+
+        local_ips = _get_local_ip_set()
+        if target_ip in local_ips or hostname in local_ips:
+            return True
+
+    except Exception:
+        pass
+
+    return False
+
+
+def _get_sys_ram():
+    """
+    Cross-platform system RAM fetcher (Windows, Linux, macOS, Docker).
+    Executed ONLY when SmartGallery runs on the same machine as ComfyUI.
+    """
+    # 1. Optional psutil if installed
+    try:
+        import psutil
+        v = psutil.virtual_memory()
+        return {
+            'used_pct': round(v.percent, 1),
+            'total_gb': round(v.total / (1024**3), 2),
+            'used_gb': round(v.used / (1024**3), 2)
+        }
+    except Exception:
+        pass
+
+    # 2. Windows ctypes API
+    try:
+        if sys.platform == 'win32':
+            import ctypes
+            class MEMORYSTATUSEX(ctypes.Structure):
+                _fields_ = [("dwLength", ctypes.c_ulong),
+                            ("dwMemoryLoad", ctypes.c_ulong),
+                            ("ullTotalPhys", ctypes.c_ulonglong),
+                            ("ullAvailPhys", ctypes.c_ulonglong),
+                            ("ullTotalPageFile", ctypes.c_ulonglong),
+                            ("ullAvailPageFile", ctypes.c_ulonglong),
+                            ("ullTotalVirtual", ctypes.c_ulonglong),
+                            ("ullAvailVirtual", ctypes.c_ulonglong),
+                            ("ullAvailExtendedVirtual", ctypes.c_ulonglong)]
+            ms = MEMORYSTATUSEX()
+            ms.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
+            if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(ms)):
+                total_b = ms.ullTotalPhys
+                avail_b = ms.ullAvailPhys
+                used_b = max(0, total_b - avail_b)
+                pct = round((used_b / total_b) * 100, 1) if total_b > 0 else ms.dwMemoryLoad
+                return {
+                    'used_pct': pct,
+                    'total_gb': round(total_b / (1024**3), 2),
+                    'used_gb': round(used_b / (1024**3), 2)
+                }
+    except Exception:
+        pass
+
+    # 3. Linux / Docker container / host meminfo
+    try:
+        if sys.platform.startswith('linux'):
+            if os.path.exists('/proc/meminfo'):
+                total = free = buffers = cached = available = 0
+                with open('/proc/meminfo', 'r') as f:
+                    for line in f:
+                        if line.startswith('MemTotal:'):
+                            total = int(line.split()[1]) * 1024
+                        elif line.startswith('MemFree:'):
+                            free = int(line.split()[1]) * 1024
+                        elif line.startswith('Buffers:'):
+                            buffers = int(line.split()[1]) * 1024
+                        elif line.startswith('Cached:'):
+                            cached = int(line.split()[1]) * 1024
+                        elif line.startswith('MemAvailable:'):
+                            available = int(line.split()[1]) * 1024
+                if total > 0:
+                    if available > 0:
+                        used = max(0, total - available)
+                    else:
+                        used = max(0, total - free - buffers - cached)
+                    return {
+                        'used_pct': round((used / total) * 100, 1),
+                        'total_gb': round(total / (1024**3), 2),
+                        'used_gb': round(used / (1024**3), 2)
+                    }
+    except Exception:
+        pass
+
+    # 4. macOS (Darwin sysctl & vm_stat)
+    try:
+        if sys.platform == 'darwin':
+            total_b = int(subprocess.check_output(['sysctl', '-n', 'hw.memsize']).decode('utf-8').strip())
+            vm = subprocess.check_output(['vm_stat']).decode('utf-8')
+            page_size = 4096
+            m_ps = re.search(r'page size of (\d+) bytes', vm)
+            if m_ps:
+                page_size = int(m_ps.group(1))
+
+            pages_active = int(re.search(r'Pages active:\s+(\d+)', vm).group(1))
+            pages_wired = int(re.search(r'Pages wired down:\s+(\d+)', vm).group(1))
+            pages_inactive = int(re.search(r'Pages inactive:\s+(\d+)', vm).group(1))
+
+            used_b = (pages_active + pages_wired + (pages_inactive // 2)) * page_size
+            used_pct = round((used_b / total_b) * 100, 1) if total_b > 0 else 0
+            return {
+                'used_pct': used_pct,
+                'total_gb': round(total_b / (1024**3), 2),
+                'used_gb': round(used_b / (1024**3), 2)
+            }
+    except Exception:
+        pass
+
+    return None
+
+
+def _query_nvidia_smi_gpu_stats():
+    """
+    Best-effort GPU compute utilization query via local nvidia-smi.
+    Returns a list of per-GPU dicts on success, or None if nvidia-smi is unavailable.
+    """
+    nvidia_smi = shutil.which('nvidia-smi')
+    if not nvidia_smi:
+        return None
+    try:
+        fields = 'index,name,utilization.gpu,utilization.memory,memory.used,memory.total,temperature.gpu'
+        output = subprocess.check_output(
+            [nvidia_smi, '--query-gpu=' + fields, '--format=csv,noheader,nounits'],
+            stderr=subprocess.STDOUT,
+            timeout=5,
+        )
+        text = output.decode('utf-8', errors='ignore').strip()
+        gpus = []
+        for line in text.splitlines():
+            parts = [p.strip() for p in line.split(',')]
+            if len(parts) < 7:
+                continue
+            def _num(v, cast=float):
+                try:
+                    return cast(v)
+                except (TypeError, ValueError):
+                    return None
+            gpus.append({
+                'index': _num(parts[0], int) or 0,
+                'name': parts[1],
+                'utilization_gpu': _num(parts[2]) or 0.0,
+                'utilization_memory': _num(parts[3]) or 0.0,
+                'memory_used_mb': _num(parts[4]) or 0.0,
+                'memory_total_mb': _num(parts[5]) or 0.0,
+                'temperature_c': _num(parts[6]),
+            })
+        return gpus if gpus else None
+    except Exception:
+        return None
+
+
+@app.route('/galleryout/api/gpu_stats')
+@management_api_only
+def api_gpu_stats():
+    """
+    System Telemetry for the Queue Manager modal (GPU compute + System RAM).
+    - If remote:
+      1. Tries remote Crystools monitor (/crystools/monitor).
+      2. If not found, tries remote native ComfyUI system stats (/system_stats) for RAM.
+      3. Never uses or leaks local host hardware counters.
+    - If local/same-host:
+      Fetches Crystools if present, or falls back to local OS hardware counters.
+    """
+    target_url = request.args.get('target_url', '').strip()
+    is_local_target = _is_local_or_same_host(target_url)
+
+    sys_ram = None
+    gpus_list = []
+    telemetry_source = None
+
+    if target_url:
+        # Step 1: Probe remote Crystools
+        try:
+            req_url = f"{target_url.rstrip('/')}/crystools/monitor"
+            req = urllib.request.Request(req_url, headers={
+                'User-Agent': 'SmartGallery-Proxy/2.23',
+                'Content-Type': 'application/json'
+            })
+            with urllib.request.urlopen(req, timeout=3) as r:
+                crystools_data = json.loads(r.read().decode('utf-8'))
+                if crystools_data and isinstance(crystools_data, dict):
+                    ram_data = crystools_data.get('ram')
+                    if not ram_data and ('ram_total' in crystools_data or 'ram_used_percent' in crystools_data or 'ram_used' in crystools_data):
+                        ram_data = {
+                            'total': crystools_data.get('ram_total'),
+                            'used': crystools_data.get('ram_used'),
+                            'used_percent': crystools_data.get('ram_used_percent')
+                        }
+
+                    if ram_data and isinstance(ram_data, dict):
+                        raw_total = ram_data.get('total') or ram_data.get('total_gb') or 0
+                        raw_used = ram_data.get('used') or ram_data.get('used_gb') or 0
+                        raw_pct = ram_data.get('used_percent') or ram_data.get('used_pct') or ram_data.get('percent')
+
+                        total_gb = (raw_total / (1024**3)) if raw_total > 1024*1024 else float(raw_total)
+                        used_gb = (raw_used / (1024**3)) if raw_used > 1024*1024 else float(raw_used)
+                        if raw_pct is not None:
+                            used_pct = float(raw_pct)
+                        elif total_gb > 0:
+                            used_pct = round((used_gb / total_gb) * 100, 1)
+                        else:
+                            used_pct = 0.0
+
+                        sys_ram = {
+                            'used_pct': round(used_pct, 1),
+                            'total_gb': round(total_gb, 1),
+                            'used_gb': round(used_gb, 1)
+                        }
+
+                    gpus_list = crystools_data.get('gpus', [])
+                    if gpus_list or sys_ram:
+                        telemetry_source = 'remote_crystools'
+        except Exception:
+            pass
+
+        # Step 2: If remote and Crystools was not present, query native ComfyUI /system_stats for remote RAM
+        if not sys_ram:
+            try:
+                stats_url = f"{target_url.rstrip('/')}/system_stats"
+                req_stats = urllib.request.Request(stats_url, headers={
+                    'User-Agent': 'SmartGallery-Proxy/2.23',
+                    'Content-Type': 'application/json'
+                })
+                with urllib.request.urlopen(req_stats, timeout=3) as r_stats:
+                    s_data = json.loads(r_stats.read().decode('utf-8'))
+                    if s_data and isinstance(s_data, dict) and 'system' in s_data:
+                        sys_block = s_data['system']
+                        r_tot = sys_block.get('ram_total')
+                        r_free = sys_block.get('ram_free')
+                        if r_tot and r_free is not None:
+                            r_used = max(0, r_tot - r_free)
+                            tot_gb = r_tot / (1024**3)
+                            used_gb = r_used / (1024**3)
+                            pct = round((r_used / r_tot) * 100, 1) if r_tot > 0 else 0.0
+                            sys_ram = {
+                                'used_pct': pct,
+                                'total_gb': round(tot_gb, 1),
+                                'used_gb': round(used_gb, 1)
+                            }
+                            telemetry_source = 'remote_native_comfyui'
+            except Exception:
+                pass
+
+        if telemetry_source:
+            if is_local_target and not sys_ram:
+                sys_ram = _get_sys_ram()
+            resp = jsonify({
+                'status': 'success',
+                'available': True,
+                'source': telemetry_source,
+                'gpus': gpus_list,
+                'ram': sys_ram
+            })
+            resp.headers['Cache-Control'] = 'no-store, max-age=0'
+            return resp
+
+    # Remote target with no telemetry: strictly return None for RAM and hide gauge
+    if not is_local_target:
+        resp = jsonify({
+            'status': 'success',
+            'available': False,
+            'source': 'remote_no_telemetry',
+            'gpus': [],
+            'ram': None
+        })
+        resp.headers['Cache-Control'] = 'no-store, max-age=0'
+        resp.headers['X-Content-Type-Options'] = 'nosniff'
+        return resp
+
+    # Local / same-host target: safe to use local OS telemetry fallback
+    gpus = _query_nvidia_smi_gpu_stats()
+    if not sys_ram:
+        sys_ram = _get_sys_ram()
+
+    resp = jsonify({
+        'status': 'success',
+        'available': gpus is not None,
+        'source': 'local_os',
+        'gpus': gpus or [],
+        'ram': sys_ram
+    })
+    resp.headers['Cache-Control'] = 'no-store, max-age=0'
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    return resp
+
+
 @app.route('/galleryout/api/remix/object_info', methods=['POST'])
 @management_api_only
 def api_remix_object_info():
@@ -6703,21 +7169,74 @@ def serve_input_file(filename):
     user_role = session.get('role', 'GUEST')
     if (IS_EXHIBITION_MODE or FORCE_LOGIN) and user_role not in ['ADMIN', 'MANAGER', 'STAFF']:
         abort(403, description="Access Denied.")
-    """Serves input files directly from the ComfyUI Input folder."""
+    """
+    Serves input files directly from local BASE_INPUT_PATH or transparently proxies
+    from ComfyUI /view endpoint when operating across different Docker/network hosts.
+    """
+    clean_filename = filename.replace('\\', '/').strip()
+    if '..' in clean_filename or '\x00' in clean_filename:
+        abort(403)
+
+    # 1. Try serving from local BASE_INPUT_PATH if available on local disk
     try:
-        # Prevent path traversal
-        filename = secure_filename(filename)
-        filepath = os.path.abspath(os.path.join(BASE_INPUT_PATH, filename))
-        if not filepath.startswith(os.path.abspath(BASE_INPUT_PATH)):
-            abort(403)
-        
-        # For webp, frocing the correct mimetype
-        if filename.lower().endswith('.webp'):
-            return send_from_directory(BASE_INPUT_PATH, filename, mimetype='image/webp', as_attachment=False)
-        
-        # For all the other files, I let Flask guessing the mimetype, but disable the attachment, just a lil trick
-        return send_from_directory(BASE_INPUT_PATH, filename, as_attachment=False)
-    except Exception as e:
+        sub_parts = [secure_filename(p) for p in clean_filename.split('/') if p and p != '.']
+        if sub_parts:
+            safe_rel_path = os.path.join(*sub_parts)
+            local_filepath = os.path.abspath(os.path.join(BASE_INPUT_PATH, safe_rel_path))
+            if local_filepath.startswith(os.path.abspath(BASE_INPUT_PATH)) and os.path.isfile(local_filepath):
+                if safe_rel_path.lower().endswith('.webp'):
+                    return send_from_directory(BASE_INPUT_PATH, safe_rel_path, mimetype='image/webp', as_attachment=False)
+                return send_from_directory(BASE_INPUT_PATH, safe_rel_path, as_attachment=False)
+    except Exception:
+        pass
+
+    # 2. Fallback: Proxy from ComfyUI /view endpoint (Handles remote host / Docker network)
+    target_comfy = request.args.get('target_url') or COMFYUI_SERVER_URL or 'http://127.0.0.1:8188'
+    target_comfy = target_comfy.strip().rstrip('/')
+
+    try:
+        parsed = urllib.parse.urlsplit(target_comfy)
+        if parsed.scheme.lower() not in ('http', 'https') or not parsed.netloc:
+            abort(400)
+
+        parts = clean_filename.split('/')
+        file_basename = parts[-1]
+        subfolder_part = '/'.join(parts[:-1]) if len(parts) > 1 else ''
+
+        params = {'filename': file_basename, 'type': 'input'}
+        if subfolder_part:
+            params['subfolder'] = subfolder_part
+
+        dest_url = f"{parsed.scheme}://{parsed.netloc}/view?{urllib.parse.urlencode(params)}"
+        req_headers = {
+            'User-Agent': 'SmartGallery-Proxy/2.23',
+            'Host': parsed.netloc,
+            'Origin': f"{parsed.scheme}://{parsed.netloc}",
+            'Referer': f"{parsed.scheme}://{parsed.netloc}/"
+        }
+        proxy_req = urllib.request.Request(dest_url, headers=req_headers, method='GET')
+
+        with urllib.request.urlopen(proxy_req, timeout=15) as resp:
+            content = resp.read()
+            content_type = resp.headers.get('Content-Type')
+            if not content_type or content_type == 'application/octet-stream':
+                fn = file_basename.lower()
+                if fn.endswith('.webp'): content_type = 'image/webp'
+                elif fn.endswith('.png'): content_type = 'image/png'
+                elif fn.endswith(('.jpg', '.jpeg')): content_type = 'image/jpeg'
+                elif fn.endswith('.gif'): content_type = 'image/gif'
+                elif fn.endswith('.mp4'): content_type = 'video/mp4'
+                elif fn.endswith('.webm'): content_type = 'video/webm'
+                elif fn.endswith(('.mp3', '.wav', '.ogg', '.flac', '.m4a')): content_type = 'audio/mpeg'
+                else: content_type = 'application/octet-stream'
+
+            flask_resp = Response(content, status=resp.status, mimetype=content_type)
+            flask_resp.headers['Access-Control-Allow-Origin'] = '*'
+            flask_resp.headers['Cache-Control'] = 'public, max-age=3600'
+            return flask_resp
+    except urllib.error.HTTPError as e:
+        abort(e.code)
+    except Exception:
         abort(404)
 
 @app.route('/galleryout/check_metadata/<string:file_id>')
@@ -10905,6 +11424,13 @@ if __name__ == '__main__':
         # threads=8 allows handling multiple concurrent requests (images/video thumbnails)
         # channel_timeout avoids drops during heavy video streaming
         print(f"{Colors.GREEN}INFO: Starting Production WSGI Server (Waitress)...{Colors.RESET}")
+        # Suppress noisy Waitress internal messages such as task queue depth warnings
+        import logging
+        for _cq_logger_name in ('waitress', 'waitress.server', 'waitress.channel', 'waitress.task_dispatcher', 'waitress.parser', 'waitress.wasyncore'):
+            _cq_logger = logging.getLogger(_cq_logger_name)
+            _cq_logger.setLevel(logging.CRITICAL)
+            _cq_logger.disabled = True
+            _cq_logger.propagate = False
         serve(app, host='0.0.0.0', port=SERVER_PORT, threads=8, connection_limit=150, channel_timeout=120, asyncore_use_poll=True, max_request_body_size=2147483648, _quiet=True)
     else:
         # DEVELOPMENT MODE: Falling back to Flask built-in server

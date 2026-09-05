@@ -1,5 +1,5 @@
 <!-- SMART ASSET CLUSTERING MODAL & PROMPT READER (MODULAR COMPONENT) -->
-<!-- Version: 2.22.1 - August 18, 2026 -->
+<!-- Version: 2.23 - September 05, 2026 -->
 
 <style>
 .clustering-modal-panel {
@@ -655,7 +655,7 @@ function renderClusterInspectorContent(data) {
     if (data.nodes_pipeline && data.nodes_pipeline.length > 0) {
         pipelineHtml = data.nodes_pipeline.map(n => {
             const nodeType = (typeof escapeHTML === 'function') ? escapeHTML(n.type) : n.type;
-            return `<span style="background:${n.color || 'rgba(255,255,255,0.1)'}; color:#fff; padding:4px 10px; border-radius:6px; font-size:0.8rem; font-weight:bold; display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 4px rgba(0,0,0,0.3); white-space:nowrap;">${nodeType}</span>`;
+            return `<button type="button" onclick="if(window.showClusterNodeJson) showClusterNodeJson('${String(n.id).replace(/[^a-zA-Z0-9:_-]/g, '')}')" title="Click to inspect node JSON" style="background:${n.color || 'rgba(255,255,255,0.1)'}; color:#fff; padding:4px 10px; border-radius:6px; font-size:0.8rem; font-weight:bold; display:inline-flex; align-items:center; gap:4px; box-shadow:0 2px 4px rgba(0,0,0,0.3); white-space:nowrap; cursor:pointer; border:none;">${nodeType}</button>`;
         }).join(' <span style="color:var(--text-muted, #777); font-size:0.8rem;">➔</span> ');
     } else {
         pipelineHtml = '<span style="color:var(--text-muted, #aaa); font-style:italic;">No node structure available</span>';

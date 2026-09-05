@@ -1,0 +1,4256 @@
+<!-- Version: 2.23 - September 05, 2026 -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CComfyUI Queue Deck</title>
+
+<style>
+/* ============================================================
+   ComfyUI Queue Deck - Queue & Preview Manager
+   ============================================================ */
+
+body {
+    margin: 0;
+    background: #03060a;
+    color: #e2e8f0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* ---------- Overlay & panel ---------- */
+#cq-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(3, 6, 10, 0.97);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    z-index: 10600;
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+#cq-overlay.visible {
+    display: flex;
+    animation: cqFade 0.22s ease-out;
+}
+
+@keyframes cqFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+@keyframes cqUp {
+    from { opacity: 0; transform: translateY(18px) scale(0.985); }
+    to { opacity: 1; transform: none; }
+}
+@keyframes cqPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+}
+@keyframes cqShine {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(260%); }
+}
+@keyframes cqGlowG {
+    0%, 100% { box-shadow: 0 0 10px rgba(52,211,153,0.25); }
+    50% { box-shadow: 0 0 22px rgba(52,211,153,0.55); }
+}
+
+.cq-panel {
+    position: relative;
+    background: #0c111b;
+    border: 1px solid rgba(34, 211, 238, 0.30);
+    border-radius: 18px;
+    width: 1240px;
+    max-width: 97vw;
+    height: min(92vh, 920px);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.85), 0 0 40px rgba(34,211,238,0.07);
+    overflow: hidden;
+    animation: cqUp 0.28s ease-out;
+}
+.cq-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #22d3ee, #a78bfa, #f472b6, #22d3ee);
+    background-size: 300% 100%;
+    animation: cqShine 6s linear infinite;
+    z-index: 2;
+}
+
+/* ---------- Header ---------- */
+.cq-header {
+    padding: 14px 22px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+    background: linear-gradient(180deg, #101827, #0c111b);
+    border-bottom: 1px solid #1c2740;
+}
+.cq-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #f2f6fc;
+    font-weight: 800;
+    font-size: 1.15rem;
+}
+.cq-title .cq-bolt {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #22d3ee, #a78bfa);
+    font-size: 1.15rem;
+    box-shadow: 0 0 18px rgba(34,211,238,0.45);
+}
+.cq-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+.cq-pill .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+.cq-pill.ok {
+    background: rgba(52,211,153,0.14);
+    color: #6ee7b7;
+    border: 1px solid rgba(52,211,153,0.45);
+}
+.cq-pill.ok .dot {
+    background: #34d399;
+    animation: cqPulse 2s infinite;
+    box-shadow: 0 0 8px #34d399;
+}
+.cq-pill.err {
+    background: rgba(248,113,113,0.14);
+    color: #fca5a5;
+    border: 1px solid rgba(248,113,113,0.45);
+}
+.cq-pill.err .dot {
+    background: #f87171;
+}
+.cq-pill.wait {
+    background: rgba(251,191,36,0.14);
+    color: #fcd34d;
+    border: 1px solid rgba(251,191,36,0.45);
+}
+.cq-pill.wait .dot {
+    background: #fbbf24;
+    animation: cqPulse 0.8s infinite;
+}
+.cq-x {
+    background: none;
+    border: none;
+    color: #8fa2bf;
+    font-size: 1.7rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 8px;
+    border-radius: 8px;
+    transition: 0.2s;
+}
+.cq-x:hover {
+    color: #fff;
+    background: rgba(248,113,113,0.18);
+}
+
+/* ---------- URL bar ---------- */
+.cq-urlbar {
+    padding: 8px 22px;
+    background: #0a0f18;
+    border-bottom: 1px solid #1c2740;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+}
+.cq-urlbar-lbl {
+    color: #7dd3fc;
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    white-space: nowrap;
+}
+.cq-url-input {
+    flex: 1;
+    min-width: 160px;
+    background: #000;
+    border: 1px solid #2c3a55;
+    color: #e2e8f0;
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 0.8rem;
+    padding: 6px 10px;
+    border-radius: 8px;
+    outline: none;
+}
+.cq-url-input:focus {
+    border-color: #22d3ee;
+}
+
+/* ---------- Body / cards ---------- */
+.cq-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 16px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+.cq-body::-webkit-scrollbar {
+    width: 8px;
+}
+.cq-body::-webkit-scrollbar-thumb {
+    background: #24314a;
+    border-radius: 4px;
+}
+
+.cq-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 14px;
+    align-items: stretch;
+}
+.cq-col {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+}
+.cq-card {
+    background: #131a29;
+    border: 1px solid #24314a;
+    border-radius: 14px;
+    padding: 14px 16px;
+    position: relative;
+    min-width: 0;
+}
+.cq-card-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #7dd3fc;
+    margin-bottom: 10px;
+}
+.cq-card-title .cq-side {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+/* Progress */
+.cq-prog-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+}
+.cq-prog-label {
+    color: #e2e8f0;
+    font-size: 0.88rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 78%;
+}
+.cq-prog-pct {
+    color: #38bdf8;
+    font-size: 1.15rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+.cq-track {
+    height: 12px;
+    border-radius: 6px;
+    background: #0a0f18;
+    border: 1px solid #1e2a41;
+    overflow: hidden;
+}
+.cq-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 6px;
+    transition: width 0.35s ease;
+    background: linear-gradient(90deg, #22d3ee, #a78bfa, #f472b6);
+    position: relative;
+    overflow: hidden;
+}
+.cq-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 40%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    animation: cqShine 1.6s linear infinite;
+}
+.cq-fill.idle {
+    background: #1e2a41;
+}
+.cq-fill.idle::after {
+    display: none;
+}
+.cq-node-line {
+    margin-top: 8px;
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 0.78rem;
+    color: #9fb0c8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-height: 1.1rem;
+}
+
+/* Preview aligned vertically with event stream */
+.cq-preview-card {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 200px;
+}
+.cq-preview-box {
+    flex: 1;
+    min-height: 180px;
+    border-radius: 10px;
+    background: #0a0f18;
+    border: 1px solid #1e2a41;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+.cq-preview-box img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    display: block;
+}
+.cq-ph {
+    color: #8fa2bf;
+    font-size: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 14px;
+    text-align: center;
+}
+.cq-ph .ic {
+    font-size: 2rem;
+    opacity: 0.8;
+}
+.cq-live {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(52,211,153,0.92);
+    color: #04121c;
+    font-size: 0.65rem;
+    font-weight: 900;
+    letter-spacing: 1px;
+}
+.cq-ptoggle {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 4px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+    background: rgba(10,15,24,0.85);
+    border: 1px solid #2c3a55;
+    color: #dbe7ff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    transition: 0.2s;
+}
+.cq-ptoggle:hover {
+    border-color: #22d3ee;
+    color: #22d3ee;
+}
+.cq-pinterrupt {
+    background: rgba(248,113,113,0.12);
+    border-color: rgba(248,113,113,0.5);
+    color: #fca5a5;
+}
+.cq-pinterrupt:hover {
+    border-color: #f87171;
+    color: #fff;
+    background: rgba(248,113,113,0.25);
+}
+.cq-pinterrupt:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.cq-pnote {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-align: center;
+    background: rgba(10,15,24,0.92);
+    border: 1px solid #2c3a55;
+    color: #cbd5e1;
+    display: none;
+}
+.cq-pnote.warn {
+    border-color: rgba(251,191,36,0.5);
+    color: #fcd34d;
+}
+.cq-pnote.info {
+    border-color: rgba(34,211,238,0.4);
+    color: #7dd3fc;
+}
+
+/* System / gauge */
+.cq-sys {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.cq-gauges {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    align-items: center;
+    flex-shrink: 0;
+}
+.cq-gauge-wrap {
+    position: relative;
+    width: 104px;
+    height: 104px;
+    flex-shrink: 0;
+    cursor: help;
+}
+.cq-gauge-wrap svg {
+    width: 100%;
+    height: 100%;
+}
+.cq-g-track {
+    fill: none;
+    stroke: #1e2a41;
+    stroke-width: 10;
+}
+.cq-g-val {
+    fill: none;
+    stroke: #34d399;
+    stroke-width: 10;
+    stroke-linecap: round;
+    stroke-dasharray: 314;
+    stroke-dashoffset: 314;
+    transform: rotate(-90deg);
+    transform-origin: 60px 60px;
+    transition: stroke-dashoffset 0.6s ease, stroke 0.6s;
+    filter: drop-shadow(0 0 6px rgba(52,211,153,0.6));
+}
+.cq-g-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.cq-g-center b {
+    color: #fff;
+    font-size: 1.25rem;
+    font-weight: 900;
+    text-shadow: 0 0 10px rgba(0,0,0,0.9);
+}
+.cq-g-center small {
+    color: #9fb0c8;
+    font-size: 0.6rem;
+    letter-spacing: 1.5px;
+    font-weight: 800;
+}
+.cq-sys-stats {
+    flex: 1 1 260px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+.cq-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #0a0f18;
+    border: 1px solid #1e2a41;
+    border-radius: 8px;
+    padding: 6px 12px;
+    gap: 12px;
+    min-width: 0;
+}
+.cq-stat span {
+    color: #9fb0c8;
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.cq-stat b {
+    color: #fff;
+    font-size: 0.84rem;
+    font-weight: 900;
+    white-space: nowrap;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Event stream aligned vertically */
+.cq-events-card {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 200px;
+}
+.cq-events {
+    flex: 1;
+    min-height: 150px;
+    max-height: 230px;
+    overflow-y: auto;
+    background: #0a0e15;
+    border: 1px solid #1e2a41;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 0.75rem;
+    line-height: 1.65;
+}
+.cq-events::-webkit-scrollbar {
+    width: 8px;
+}
+.cq-events::-webkit-scrollbar-thumb {
+    background: #24314a;
+    border-radius: 4px;
+}
+.cq-ev {
+    display: flex;
+    gap: 8px;
+}
+.cq-ev time {
+    color: #64748b;
+    flex-shrink: 0;
+}
+.cq-ev .t {
+    font-weight: 800;
+    flex-shrink: 0;
+    min-width: 85px;
+}
+.cq-ev .m {
+    color: #dbe7ff;
+    word-break: normal;
+    overflow-wrap: anywhere;
+}
+
+.t.start { color: #34d399; }
+.t.exec { color: #60a5fa; }
+.t.progress { color: #fbbf24; }
+.t.cached { color: #a78bfa; }
+.t.done { color: #34d399; }
+.t.error { color: #f87171; }
+.t.interrupt { color: #fb923c; }
+.t.status { color: #94a3b8; }
+.t.preview { color: #f472b6; }
+.t.info { color: #94a3b8; }
+
+.t.c-info { color: #8fb8e8; }
+.t.c-warn { color: #fbbf24; }
+.t.c-error { color: #f87171; }
+.t.c-debug { color: #64748b; }
+
+.cq-ev-empty {
+    color: #64748b;
+    text-align: center;
+    padding: 12px;
+    font-style: italic;
+}
+.cq-clearbtn {
+    background: none;
+    border: 1px solid #2c3a55;
+    color: #8fa2bf;
+    border-radius: 6px;
+    font-size: 0.66rem;
+    padding: 2px 8px;
+    cursor: pointer;
+}
+.cq-clearbtn:hover {
+    color: #f87171;
+    border-color: #f87171;
+}
+
+/* Queue */
+.cq-queue-card {
+    padding-bottom: 12px;
+}
+.cq-queue {
+    max-height: 280px;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 10px;
+    padding-right: 4px;
+}
+.cq-queue::-webkit-scrollbar {
+    width: 8px;
+}
+.cq-queue::-webkit-scrollbar-thumb {
+    background: #24314a;
+    border-radius: 4px;
+}
+.cq-item {
+    background: #0e1522;
+    border: 1px solid #24314a;
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+    min-width: 0;
+}
+.cq-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+}
+.cq-item.run {
+    border-color: rgba(52,211,153,0.5);
+    animation: cqGlowG 2.2s infinite;
+}
+.cq-item.run::before {
+    background: #34d399;
+}
+.cq-item.pend::before {
+    background: #60a5fa;
+}
+.cq-item .st {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.cq-item.run .st {
+    background: #34d399;
+    box-shadow: 0 0 8px #34d399;
+    animation: cqPulse 1.4s infinite;
+}
+.cq-item.pend .st {
+    background: #60a5fa;
+}
+.cq-item .inf {
+    flex: 1;
+    min-width: 0;
+}
+.cq-item .id {
+    color: #f2f6fc;
+    font-weight: 800;
+    font-size: 0.86rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cq-item .meta {
+    color: #8fa2bf;
+    font-size: 0.7rem;
+    margin-top: 2px;
+    font-family: ui-monospace, Consolas, monospace;
+}
+.cq-item .acts {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+.cq-ibtn {
+    background: #1b2436;
+    border: 1px solid #2c3a55;
+    color: #dbe7ff;
+    border-radius: 7px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 5px 8px;
+    cursor: pointer;
+    transition: 0.15s;
+    white-space: nowrap;
+}
+.cq-ibtn:hover {
+    border-color: #22d3ee;
+    color: #22d3ee;
+}
+.cq-ibtn.danger:hover {
+    border-color: #f87171;
+    color: #f87171;
+}
+.cq-ibtn.info {
+    border-color: rgba(255,193,7,0.45);
+    color: #ffc107;
+}
+.cq-check {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.cq-check input {
+    display: none;
+}
+.cq-check span {
+    width: 15px;
+    height: 15px;
+    border: 1px solid #3b4a66;
+    border-radius: 4px;
+    background: #0a0f18;
+    display: block;
+    position: relative;
+    transition: 0.15s;
+}
+.cq-check:hover span {
+    border-color: #22d3ee;
+}
+.cq-check input:checked + span {
+    background: #22d3ee;
+    border-color: #22d3ee;
+}
+.cq-check input:checked + span::after {
+    content: '\2713';
+    position: absolute;
+    top: -3px;
+    left: 2px;
+    font-size: 10px;
+    color: #001018;
+    font-weight: 900;
+}
+
+.cq-btn {
+    background: #1b2436;
+    border: 1px solid #2c3a55;
+    color: #dbe7ff;
+    border-radius: 8px;
+    font-size: 0.76rem;
+    font-weight: 800;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: 0.15s;
+}
+.cq-btn:hover {
+    border-color: #22d3ee;
+    color: #22d3ee;
+}
+.cq-btn.accent {
+    border-color: rgba(34,211,238,0.4);
+    color: #22d3ee;
+}
+.cq-btn.danger {
+    border-color: rgba(248,113,113,0.5);
+    color: #fca5a5;
+}
+.cq-btn.danger:hover {
+    border-color: #f87171;
+    color: #fff;
+    background: rgba(248,113,113,0.18);
+}
+.cq-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.cq-empty {
+    grid-column: 1 / -1;
+    color: #64748b;
+    text-align: center;
+    padding: 18px;
+    font-style: italic;
+}
+
+/* Recent jobs history */
+.cq-history-card {
+    padding-bottom: 10px;
+}
+.cq-history-row {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+.cq-history-row::-webkit-scrollbar {
+    height: 8px;
+}
+.cq-history-row::-webkit-scrollbar-thumb {
+    background: #24314a;
+    border-radius: 4px;
+}
+.cq-hthumb {
+    position: relative;
+    flex-shrink: 0;
+    width: 88px;
+    height: 88px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #0a0f18;
+    border: 1px solid #24314a;
+    cursor: pointer;
+    transition: 0.15s;
+}
+.cq-hthumb:hover {
+    border-color: #22d3ee;
+    transform: translateY(-2px);
+}
+.cq-hthumb img,
+.cq-hthumb video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    background: #0a0f18;
+}
+.cq-hthumb .ph-ic {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    font-size: 1.3rem;
+    color: #64748b;
+}
+.cq-hthumb .badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    font-size: 0.62rem;
+    padding: 1px 5px;
+    border-radius: 5px;
+    background: rgba(0,0,0,0.7);
+}
+.cq-avg-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    background: rgba(167, 139, 250, 0.18);
+    color: #d8b4fe;
+    border: 1px solid rgba(167, 139, 250, 0.45);
+    text-transform: none;
+    font-variant-numeric: tabular-nums;
+}
+
+.cq-history-empty {
+    color: #64748b;
+    font-style: italic;
+    font-size: 0.78rem;
+    padding: 6px 2px;
+}
+.cq-result-media {
+    max-width: 100%;
+    max-height: 54vh;
+    display: block;
+    margin: 0 auto 10px;
+    border-radius: 10px;
+    background: #000;
+}
+
+/* Footer */
+.cq-footer {
+    flex-shrink: 0;
+    padding: 10px 22px;
+    border-top: 1px solid #1c2740;
+    background: #0a0f18;
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.cq-footer .url {
+    font-family: ui-monospace, Consolas, monospace;
+    color: #7dd3fc;
+    font-size: 0.76rem;
+}
+.cq-footer .hint {
+    color: #64748b;
+    font-size: 0.72rem;
+}
+
+/* In-panel overlays */
+.cq-confirm {
+    position: absolute;
+    inset: 0;
+    z-index: 60;
+    background: rgba(2,4,8,0.78);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(3px);
+}
+.cq-confirm.visible {
+    display: flex;
+}
+.cq-confirm-box {
+    width: 520px;
+    max-width: 92%;
+    background: #101826;
+    border: 1px solid rgba(34,211,238,0.4);
+    border-radius: 16px;
+    padding: 22px;
+    box-shadow: 0 20px 60px #000;
+    animation: cqUp 0.2s ease-out;
+}
+.cq-confirm-box h3 {
+    margin: 0 0 12px;
+    color: #fff;
+    font-size: 1.05rem;
+}
+.cq-confirm-box .msg {
+    color: #cbd5e1;
+    font-size: 0.88rem;
+    line-height: 1.65;
+}
+.cq-confirm-box .msg b {
+    color: #fff;
+}
+.cq-confirm-box .msg .warn {
+    color: #fcd34d;
+}
+.cq-confirm-acts {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.cq-i-sec {
+    color: #7dd3fc;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 12px 0 6px 0;
+    border-top: 1px solid #1c2740;
+    padding-top: 8px;
+}
+.cq-i-row {
+    color: #e2e8f0;
+    font-size: 0.8rem;
+    font-family: ui-monospace, Consolas, monospace;
+    padding: 3px 0;
+    word-break: break-all;
+}
+.cq-i-empty {
+    color: #64748b;
+    font-size: 0.76rem;
+    font-style: italic;
+}
+.cq-i-chip {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid #2c3a55;
+    color: #dbe7ff;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.74rem;
+    font-family: ui-monospace, Consolas, monospace;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: 0.15s;
+}
+.cq-i-chip:hover {
+    border-color: #22d3ee;
+    color: #22d3ee;
+    background: rgba(34,211,238,0.12);
+}
+.cq-i-text {
+    background: #0a0e15;
+    border: 1px solid #1e2a41;
+    border-radius: 8px;
+    color: #cbd5e1;
+    font-size: 0.78rem;
+    padding: 8px 10px;
+    max-height: 130px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.cq-i-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 4px 0 2px 0;
+}
+.cq-nj-pre {
+    background: #0a0e15;
+    border: 1px solid #1e2a41;
+    border-radius: 8px;
+    color: #cbd5e1;
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    padding: 12px;
+    max-height: 58vh;
+    overflow: auto;
+    white-space: pre;
+    word-break: break-word;
+}
+
+/* Connection error */
+.cq-connerr {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    text-align: center;
+    padding: 30px;
+}
+.cq-connerr .ic {
+    font-size: 3.4rem;
+}
+.cq-connerr h3 {
+    color: #fca5a5;
+    margin: 0;
+    font-size: 1.2rem;
+}
+.cq-connerr p {
+    color: #cbd5e1;
+    max-width: 560px;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    margin: 0;
+}
+.cq-connerr code {
+    background: #0a0f18;
+    border: 1px solid #24314a;
+    color: #7dd3fc;
+    padding: 2px 7px;
+    border-radius: 6px;
+}
+
+/* ---------- Mobile ---------- */
+@media (max-width: 900px) {
+    .cq-grid {
+        grid-template-columns: 1fr;
+    }
+    .cq-panel {
+        width: 100vw;
+        max-width: 100vw;
+        height: 100vh;
+        border-radius: 0;
+    }
+    .cq-queue {
+        grid-template-columns: 1fr;
+        max-height: 240px;
+    }
+    .cq-events {
+        max-height: 160px;
+        min-height: 110px;
+    }
+    .cq-sys {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 14px;
+    }
+    .cq-gauges {
+        justify-content: center;
+        width: 100%;
+        gap: 20px;
+    }
+    .cq-sys-stats {
+        width: 100%;
+    }
+    .cq-gauge-wrap {
+        width: 96px;
+        height: 96px;
+    }
+    .cq-footer .hint {
+        display: none;
+    }
+    .cq-preview-box img {
+        max-height: 170px;
+    }
+    .cq-body {
+        padding: 12px 14px;
+    }
+    .cq-urlbar {
+        padding: 8px 14px;
+    }
+    .cq-history-card {
+        display: block;
+        padding-bottom: 12px;
+    }
+    .cq-history-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+        gap: 8px;
+        max-height: 220px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: 4px;
+    }
+    .cq-history-row::-webkit-scrollbar {
+        width: 6px;
+    }
+    .cq-hthumb {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1 / 1;
+        min-height: 72px;
+    }
+    .cq-history-empty {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 12px 4px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<!-- ============================================================
+     Main Overlay
+     ============================================================ -->
+<div id="cq-overlay">
+    <div class="cq-panel">
+        <div class="cq-header">
+            <div class="cq-title">
+                <span class="cq-bolt">⚡</span>
+                ComfyUI Queue Deck
+                <span id="cq-pill" class="cq-pill wait">
+                    <span class="dot"></span>
+                    <span id="cq-pill-txt">CHECKING</span>
+                </span>
+            </div>
+            <button class="cq-x" onclick="closeComfyQueueModal()" title="Close (Esc)">&times;</button>
+        </div>
+
+        <div class="cq-urlbar">
+            <span class="cq-urlbar-lbl">🔗 ComfyUI URL</span>
+            <input type="text" id="cq-url-input" class="cq-url-input"
+                   placeholder="http://127.0.0.1:8188" autocomplete="off" spellcheck="false">
+            <button class="cq-btn accent" id="cq-url-save">💾 Save</button>
+            <button class="cq-btn" id="cq-url-reset">↺ Reset</button>
+        </div>
+
+        <div class="cq-body" id="cq-body"></div>
+
+        <div class="cq-footer">
+            <span class="url" id="cq-url"></span>
+            <span class="hint">Shift+Q toggle · ESC close &amp; stop all data streams</span>
+        </div>
+
+        <!-- Job info dialog -->
+        <div class="cq-confirm" id="cq-info">
+            <div class="cq-confirm-box" style="width:680px; max-width:94%;">
+                <h3 id="cq-i-title">ℹ️ Job Details</h3>
+                <div class="msg" id="cq-i-body" style="max-height:62vh; overflow-y:auto;"></div>
+                <div class="cq-confirm-acts">
+                    <button class="cq-btn" id="cq-i-close">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Node JSON viewer -->
+        <div class="cq-confirm" id="cq-nodejson" style="z-index:65;">
+            <div class="cq-confirm-box" style="width:720px; max-width:94%;">
+                <h3 id="cq-nj-title">🧩 Node JSON</h3>
+                <pre class="cq-nj-pre" id="cq-nj-body"></pre>
+                <div class="cq-confirm-acts">
+                    <button class="cq-btn" id="cq-nj-close">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Job result viewer -->
+        <div class="cq-confirm" id="cq-resultview" style="z-index:65;">
+            <div class="cq-confirm-box" style="width:740px; max-width:94%;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px; border-bottom:1px solid #1c2740; padding-bottom:10px;">
+                    <h3 id="cq-rv-title" style="margin:0; font-size:1.1rem; color:#fff;">🖼️ Job Result</h3>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span id="cq-rv-status" class="t done" style="font-weight:800; font-size:0.85rem;">SUCCESS</span>
+                        <span id="cq-rv-duration-pill" class="cq-avg-pill" style="display:inline-flex; font-size:0.75rem; padding:3px 10px;">⏱️ --</span>
+                    </div>
+                </div>
+                <div class="msg" id="cq-rv-body" style="max-height:70vh; overflow-y:auto;"></div>
+                <div class="cq-confirm-acts">
+                    <button class="cq-btn" id="cq-rv-close">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirm dialog -->
+        <div class="cq-confirm" id="cq-confirm" style="z-index:70;">
+            <div class="cq-confirm-box">
+                <h3 id="cq-c-title"></h3>
+                <div class="msg" id="cq-c-msg"></div>
+                <div class="cq-confirm-acts">
+                    <button class="cq-btn" id="cq-c-cancel">Cancel</button>
+                    <button class="cq-btn danger" id="cq-c-ok">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    /* ============================================================
+       STATE
+       ============================================================ */
+    var CQ = {
+        open: false,
+        url: '',
+        ws: null,
+        clientId: null,
+        connectedClientId: null,
+        previewHealth: 'unknown',
+        previewHealthTs: 0,
+        previewRecoveryAttempts: 0,
+        pollPreviewHealth: null,
+        wsBackoffMs: 0,
+        qRun: [],
+        qPend: [],
+        prevTotalInQueue: null,
+        prevRunningPromptId: null,
+        progress: 0,
+        progressMax: 0,
+        currentNode: null,
+        currentNodeTitle: null,
+        currentSamplerSteps: 20,
+        currentSamplerName: null,
+        currentPrompt: null,
+        currentPromptGraph: null,
+        currentPromptNodesTotal: 1,
+        completedNodeCount: 0,
+        jobStartedTs: 0,
+        events: [],
+        pollQ: null,
+        pollStats: null,
+        pollPreview: null,
+        stats: null,
+        previewOn: true,
+        previewSeen: false,
+        previewBase: null,
+        previewBlob: null,
+        previewLoggedFormat: null,
+        selected: {},
+        infoTexts: [],
+        infoPid: null,
+        infoGraph: null,
+        confirmResolve: null,
+
+        pollGpu: null,
+        pollHistory: null,
+        previewFrameCount: 0,
+        jobEndedForPrompt: false,
+        historyRaw: {},
+        historyIds: [],
+        logPartial: '',
+        pollPreviewHealth: null
+    };
+
+    window._cqOpen = false;
+
+    function getDefaultClientId() {
+        var id = 'sg_deck_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+        CQ.clientId = id;
+        return id;
+    }
+
+    /* ============================================================
+       BROADCASTCHANNEL - cross-tab preview coordination.
+       Tabs on the same origin share preview URLs so that only
+       one session actively polls ComfyUI HTTP endpoints.
+       ============================================================ */
+    function cqInitBroadcastChannel() {
+        if (typeof BroadcastChannel === 'undefined') return;
+        if (CQ.bcChannel) { try { CQ.bcChannel.close(); } catch(e) {} }
+        CQ.bcChannel = new BroadcastChannel('cq_preview_sync');
+        CQ.bcChannel.onmessage = function(evt) {
+            var d = evt.data;
+            if (!d || !d.type) return;
+            if (d.type === 'preview_frame' && !CQ.bcLeader && d.httpUrl) {
+                CQ._lastBinaryTs = Date.now();
+                cqShowPreviewUrl(d.httpUrl, false);
+            } else if (d.type === 'leader_claim') {
+                if (CQ.bcLeader && d.tabId !== CQ.clientId && d.tabId < CQ.clientId) {
+                    CQ.bcLeader = false;
+                }
+            } else if (d.type === 'preview_clear' && !CQ.bcLeader) {
+                cqClearPreview(true);
+            } else if (d.type === 'leader_release') {
+                CQ.bcLeader = true;
+                cqBroadcastLeaderClaim();
+            }
+        };
+        CQ.bcLeader = true;
+        cqBroadcastLeaderClaim();
+    }
+    function cqBroadcastLeaderClaim() {
+        if (CQ.bcChannel) {
+            try { CQ.bcChannel.postMessage({ type: 'leader_claim', tabId: CQ.clientId }); } catch(e) {}
+        }
+    }
+    function cqBroadcastPreview(httpUrl) {
+        if (CQ.bcChannel) {
+            try { CQ.bcChannel.postMessage({ type: 'preview_frame', httpUrl: httpUrl || '', tabId: CQ.clientId }); } catch(e) {}
+        }
+    }
+    function cqBroadcastClear() {
+        if (CQ.bcChannel) {
+            try { CQ.bcChannel.postMessage({ type: 'preview_clear', tabId: CQ.clientId }); } catch(e) {}
+        }
+    }
+
+function getOptimalWsUrl(targetId) {
+var proto = (window.location.protocol === 'https:' || (CQ.url && CQ.url.indexOf('https') === 0)) ? 'wss://' : 'ws://';
+var host = window.location.hostname || '127.0.0.1';
+var port = window.location.port || '';
+if (CQ.url) {
+try {
+var parsed = new URL(CQ.url);
+host = parsed.hostname;
+port = parsed.port || '';
+} catch (e) {
+var cleanUrl = CQ.url.replace(/^https?:\/\//i, '').split('/')[0];
+var parts = cleanUrl.split(':');
+if (parts[0]) host = parts[0];
+if (parts[1]) port = parts[1];
+}
+}
+var portStr = port ? ':' + port : '';
+return proto + host + portStr + '/ws?clientId=' + encodeURIComponent(targetId);
+}
+
+    // DEPRECATED: kept for backward compatibility.
+    function getClientIdFromRunItem(item) {
+        if (!item || !Array.isArray(item)) return null;
+        // Struttura fissa ComfyUI: item[3] contiene sempre i meta del client. Ruba questo.
+        if (item.length > 3 && item[3] && typeof item[3] === 'object' && item[3].client_id) {
+            return String(item[3].client_id);
+        }
+        for (var i = 0; i < item.length; i++) {
+            var el = item[i];
+            if (el && typeof el === 'object' && !Array.isArray(el) && el.client_id) {
+                return String(el.client_id);
+            }
+        }
+        return null;
+    }
+
+    function $(id) {
+        return document.getElementById(id);
+    }
+
+    function esc(s) {
+        if (s === null || s === undefined) return '';
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function ts() {
+        var d = new Date();
+        function p(n) {
+            return (n < 10 ? '0' : '') + n;
+        }
+        return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+    }
+
+    function short(id) {
+        id = String(id || '');
+        return id.length > 10 ? id.substring(0, 10) + '…' : id;
+    }
+
+    
+    function cqFetch(path, options) {
+        options = options || {};
+        var targetUrl = CQ.url || (window._cqServerDefaultUrl || window.location.origin);
+        var cleanPath = path.replace(/^\/+/, '');
+        var proxyUrl = '/galleryout/api/comfy_proxy/' + cleanPath + 
+                       (cleanPath.indexOf('?') > -1 ? '&' : '?') + 
+                       'target_url=' + encodeURIComponent(targetUrl);
+        return fetch(proxyUrl, options);
+    }
+
+    window.cqInitVideoThumb = function(vid) {
+        if (!vid) return;
+        vid.muted = true;
+        vid.playsInline = true;
+        try {
+            if (vid.currentTime === 0) {
+                vid.currentTime = 0.001;
+            }
+        } catch(e) {}
+    };
+
+function cqGetUrl() {
+var u = localStorage.getItem('sg_cq_comfy_url');
+if (!u) u = window._cqServerDefaultUrl || window.location.origin;
+return String(u).replace(/\/+$/, '');
+}
+
+    /* ============================================================
+       MEDIA DIRECT DOWNLOAD HELPER
+       ============================================================ */
+    window.cqDownloadMedia = function (btn, url, filename) {
+        if (!url) return;
+        var originalHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Downloading…';
+        }
+
+        var restore = function () {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        };
+
+        fetch(url)
+            .then(function (res) {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.blob();
+            })
+            .then(function (blob) {
+                var blobUrl = window.URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = blobUrl;
+                a.download = filename || 'download';
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(function () {
+                    try {
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(blobUrl);
+                    } catch (e) {}
+                    restore();
+                }, 400);
+            })
+            .catch(function (err) {
+                console.warn('Direct blob download fallback:', err);
+                var a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = filename || 'download';
+                a.target = '_blank';
+                a.rel = 'noopener';
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(function () {
+                    try { document.body.removeChild(a); } catch (e) {}
+                    restore();
+                }, 500);
+            });
+    };
+
+    /* ============================================================
+       OPEN / CLOSE / CLEANUP
+       ============================================================ */
+    window.openComfyQueueModal = function () {
+        if (CQ.open) return;
+
+        CQ.open = true;
+        window._cqOpen = true;
+        CQ.url = cqGetUrl();
+        CQ.clientId = getDefaultClientId();
+        cqInitBroadcastChannel();
+        $('cq-url').textContent = CQ.url;
+        $('cq-overlay').classList.add('visible');
+        document.body.classList.add('modal-open');
+        setPill('wait', 'CHECKING');
+
+        $('cq-body').innerHTML =
+            '<div class="cq-connerr"><div class="ic">⏳</div><p>Connecting to ComfyUI…</p></div>';
+
+        fetch('/galleryout/api/comfy_server_default')
+            .then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(function (d) {
+                if (d && d.url && /^https?:\/\//i.test(d.url)) {
+                    window._cqServerDefaultUrl = d.url;
+                }
+                if (d && d.lan_ip) {
+                    window._cqServerLanIp = d.lan_ip;
+                }
+            })
+            .catch(function () {})
+            .then(function () {
+                if (!CQ.open) return;
+                CQ.url = cqGetUrl();
+                $('cq-url').textContent = CQ.url;
+                var inp = $('cq-url-input');
+                if (inp) inp.value = CQ.url;
+                checkConnection();
+            });
+    };
+
+    window.closeComfyQueueModal = function () {
+        if (!CQ.open) return;
+
+        CQ.open = false;
+        window._cqOpen = false;
+        cqSoftReset();
+
+        $('cq-overlay').classList.remove('visible');
+        $('cq-confirm').classList.remove('visible');
+        $('cq-info').classList.remove('visible');
+        $('cq-nodejson').classList.remove('visible');
+        $('cq-resultview').classList.remove('visible');
+        document.body.classList.remove('modal-open');
+    };
+
+    function cqSoftReset() {
+        if (CQ.ws) {
+            try {
+                CQ.ws.onclose = null;
+                CQ.ws.onerror = null;
+                CQ.ws.close(1000, "Modal closed");
+            } catch (e) {}
+            CQ.ws = null;
+        }
+
+        if (CQ.pollQ) clearInterval(CQ.pollQ);
+        if (CQ.pollStats) clearInterval(CQ.pollStats);
+        if (CQ.pollGpu) clearInterval(CQ.pollGpu);
+        if (CQ.pollHistory) clearInterval(CQ.pollHistory);
+        stopPreviewPoll();
+        cqStopPreviewHealthMonitor();
+        cqClearPreview(true);
+        if (CQ.bcChannel) {
+            try { CQ.bcChannel.postMessage({ type: 'leader_release', tabId: CQ.clientId }); CQ.bcChannel.close(); } catch(e) {}
+            CQ.bcChannel = null;
+        }
+        CQ.bcLeader = false;
+        CQ.previewHealth = 'unknown';
+        CQ.previewRecoveryAttempts = 0;
+        CQ.pollQ = CQ.pollStats = CQ.pollGpu = CQ.pollHistory = null;
+        CQ.events = [];
+        CQ.qRun = [];
+        CQ.qPend = [];
+        CQ.prevTotalInQueue = null;
+        CQ.prevRunningPromptId = null;
+        CQ.progress = 0;
+        CQ.progressMax = 0;
+        CQ.currentNode = null;
+        CQ.currentNodeTitle = null;
+        CQ.currentSamplerSteps = 20;
+        CQ.currentSamplerName = null;
+        CQ.currentPrompt = null;
+        CQ.currentPromptGraph = null;
+        CQ.completedNodeCount = 0;
+        CQ.jobStartedTs = 0;
+        CQ.connectedClientId = null;
+        CQ.selected = {};
+        CQ.previewLoggedFormat = null;
+        CQ.previewFrameCount = 0;
+        CQ.previewSeen = false;
+        CQ.jobEndedForPrompt = false;
+        CQ.historyRaw = {};
+        CQ.historyIds = [];
+        CQ.logPartial = '';
+    }
+
+    /* ============================================================
+       KEYBOARD HANDLERS
+       ============================================================ */
+    document.addEventListener('keydown', function (e) {
+        var tag = e.target && e.target.tagName ? e.target.tagName : '';
+        var typing = (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable));
+        var isEsc = (e.key === 'Escape' || e.key === 'Esc' || e.keyCode === 27);
+
+        if (isEsc && CQ.open && !typing) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (CQ.confirmResolve) {
+                var r = CQ.confirmResolve;
+                CQ.confirmResolve = null;
+                $('cq-confirm').classList.remove('visible');
+                r(false);
+                return;
+            }
+
+            if ($('cq-nodejson').classList.contains('visible')) {
+                $('cq-nodejson').classList.remove('visible');
+                return;
+            }
+
+            if ($('cq-resultview').classList.contains('visible')) {
+                $('cq-resultview').classList.remove('visible');
+                return;
+            }
+
+            if ($('cq-info').classList.contains('visible')) {
+                $('cq-info').classList.remove('visible');
+                return;
+            }
+
+            closeComfyQueueModal();
+            return;
+        }
+
+        if (typing) return;
+
+        if (e.shiftKey && (e.key === 'Q' || e.key === 'q')) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (CQ.open) closeComfyQueueModal();
+            else window.openComfyQueueModal();
+        }
+    }, true);
+
+    /* ============================================================
+       URL BAR HANDLERS
+       ============================================================ */
+    function cqSaveUrl() {
+        var inp = $('cq-url-input');
+        if (!inp) return;
+
+        var v = inp.value.trim().replace(/\/+$/, '');
+        if (!/^https?:\/\/.+/i.test(v)) {
+            addEvent('error', 'Invalid ComfyUI URL format.', 'ERROR');
+            return;
+        }
+
+        localStorage.setItem('sg_cq_comfy_url', v);
+        CQ.url = v;
+        $('cq-url').textContent = v;
+
+        cqSoftReset();
+        setPill('wait', 'CHECKING');
+        checkConnection();
+    }
+
+    function cqResetUrl() {
+        localStorage.removeItem('sg_cq_comfy_url');
+        CQ.url = (window._cqServerDefaultUrl || window.location.origin).replace(/\/+$/, '');
+
+        var inp = $('cq-url-input');
+        if (inp) inp.value = CQ.url;
+        $('cq-url').textContent = CQ.url;
+
+        cqSoftReset();
+        setPill('wait', 'CHECKING');
+        checkConnection();
+    }
+
+    $('cq-url-save').addEventListener('click', cqSaveUrl);
+    $('cq-url-reset').addEventListener('click', cqResetUrl);
+    $('cq-url-input').addEventListener('keydown', function (e) {
+        e.stopPropagation();
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            cqSaveUrl();
+        }
+    });
+
+    $('cq-i-close').addEventListener('click', function () {
+        $('cq-info').classList.remove('visible');
+    });
+    $('cq-nj-close').addEventListener('click', function () {
+        $('cq-nodejson').classList.remove('visible');
+    });
+    $('cq-rv-close').addEventListener('click', function () {
+        $('cq-resultview').classList.remove('visible');
+    });
+
+    /* ============================================================
+       CONFIRM DIALOG
+       ============================================================ */
+    function cqConfirm(title, html, okText, danger) {
+        return new Promise(function (resolve) {
+            $('cq-c-title').innerHTML = title;
+            $('cq-c-msg').innerHTML = html;
+
+            var ok = $('cq-c-ok');
+            ok.innerHTML = okText || 'Confirm';
+            ok.className = 'cq-btn' + (danger ? ' danger' : '');
+
+            $('cq-confirm').classList.add('visible');
+            CQ.confirmResolve = resolve;
+
+            ok.onclick = function () {
+                CQ.confirmResolve = null;
+                $('cq-confirm').classList.remove('visible');
+                resolve(true);
+            };
+
+            $('cq-c-cancel').onclick = function () {
+                CQ.confirmResolve = null;
+                $('cq-confirm').classList.remove('visible');
+                resolve(false);
+            };
+        });
+    }
+
+    function setPill(cls, txt) {
+        var p = $('cq-pill');
+        p.className = 'cq-pill ' + cls;
+        $('cq-pill-txt').textContent = txt;
+    }
+
+    /* ============================================================
+       CONNECTION
+       ============================================================ */
+    function checkConnection() {
+        if (!/^https?:\/\/.+/i.test(CQ.url)) {
+            renderConnError(
+                'Invalid ComfyUI URL configured.',
+                'Use the <b>🔗 ComfyUI URL</b> bar above, or set <code>COMFYUI_SERVER_URL</code>.'
+            );
+            return;
+        }
+
+        cqFetch('/system_stats')
+            .then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(function (data) {
+                if (!CQ.open) return;
+
+                CQ.stats = data;
+                setPill('ok', 'CONNECTED');
+
+                try {
+                    renderDashboard();
+                } catch (err) {
+                    console.error('ComfyUI Queue Deck render error:', err);
+                }
+
+                connectWS();
+
+                fetchQueue(true);
+                fetchStats();
+                fetchGpuStats();
+                fetchHistory();
+
+                CQ.pollQ = setInterval(function () { fetchQueue(false); }, 1200);
+                CQ.pollStats = setInterval(fetchStats, 8000);
+                CQ.pollGpu = setInterval(fetchGpuStats, 4000);
+                CQ.pollHistory = setInterval(fetchHistory, 5000);
+            })
+            .catch(function (err) {
+                if (!CQ.open) return;
+
+                setPill('err', 'OFFLINE');
+                renderConnError(
+                    'ComfyUI is not reachable.',
+                    'Could not connect to <code>' + esc(CQ.url) + '</code>.<br>' +
+                    'Make sure ComfyUI is running, then set the address in the <b>🔗 ComfyUI URL</b> bar above.<br>' +
+                    '<small>(' + esc(err.message || err) + ')</small>'
+                );
+            });
+    }
+
+    function renderConnError(title, body) {
+        $('cq-body').innerHTML =
+            '<div class="cq-connerr">' +
+            '<div class="ic">🔌</div>' +
+            '<h3>' + esc(title) + '</h3>' +
+            '<p>' + body + '</p>' +
+            '<button class="cq-btn" onclick="cqRetry()">🔄 Retry Connection</button>' +
+            '</div>';
+    }
+
+    window.cqRetry = function () {
+        CQ.url = cqGetUrl();
+        $('cq-url').textContent = CQ.url;
+
+        var inp = $('cq-url-input');
+        if (inp) inp.value = CQ.url;
+
+        setPill('wait', 'CHECKING');
+        checkConnection();
+    };
+
+    /* ============================================================
+       DASHBOARD
+       ============================================================ */
+    function renderDashboard() {
+        $('cq-body').innerHTML =
+            '<div class="cq-grid">' +
+
+                '<div class="cq-col">' +
+
+                    '<div class="cq-card">' +
+                        '<div class="cq-card-title">' +
+                            '<span>🚀 Current Job</span>' +
+                            '<span id="cq-job-id" style="color:#64748b;font-family:monospace;"></span>' +
+                        '</div>' +
+                        '<div class="cq-prog-row">' +
+                            '<span class="cq-prog-label" id="cq-prog-label">Idle — no job running</span>' +
+                            '<span class="cq-prog-pct" id="cq-prog-pct">0%</span>' +
+                        '</div>' +
+                        '<div class="cq-track"><div class="cq-fill idle" id="cq-fill"></div></div>' +
+                        '<div class="cq-node-line" id="cq-node"></div>' +
+                    '</div>' +
+
+                    '<div class="cq-card cq-preview-card">' +
+                        '<div class="cq-card-title">' +
+                            '<span>🖼️ Live Preview <span id="cq-preview-health" style="font-size:0.65rem;font-weight:600;margin-left:6px;opacity:0.8;"></span></span>' +
+                            '<span class="cq-side">' +
+                                '<button class="cq-ptoggle cq-pinterrupt" id="cq-pinterrupt" style="position:static;" onclick="cqInterrupt()" disabled title="Interrupt the currently running job">⏹ Interrupt Job</button>' +
+                                '<button class="cq-ptoggle" id="cq-ptoggle" style="position:static;display:none;" onclick="cqTogglePreview()">🚫 Stop Stream</button>' +
+                            '</span>' +
+                        '</div>' +
+                        '<div class="cq-preview-box" id="cq-pbox">' +
+                            '<div class="cq-ph" id="cq-ph"><span class="ic">🛰️</span><span>Waiting for a preview…</span></div>' +
+                            '<img id="cq-pimg" style="display:none" alt="Job preview">' +
+                            '<div class="cq-live" id="cq-plive" style="display:none">● LIVE</div>' +
+                            '<div class="cq-pnote" id="cq-pnote"></div>' +
+                        '</div>' +
+                    '</div>' +
+
+                '</div>' +
+
+                '<div class="cq-col">' +
+
+                    '<div class="cq-card">' +
+                        '<div class="cq-card-title"><span>📊 System</span></div>' +
+                        '<div class="cq-sys">' +
+'<div class="cq-gauges">' +
+'<div class="cq-gauge-wrap" title="Driver-level VRAM occupancy (memory), NOT compute utilization">' +
+'<svg viewBox="0 0 120 120">' +
+'<circle class="cq-g-track" cx="60" cy="60" r="50"></circle>' +
+'<circle class="cq-g-val" id="cq-gval" cx="60" cy="60" r="50"></circle>' +
+'</svg>' +
+'<div class="cq-g-center"><b id="cq-vram">--</b><small>VRAM</small></div>' +
+'</div>' +
+'<div class="cq-gauge-wrap" title="GPU compute utilization (engine load) for the active ComfyUI server.">' +
+'<svg viewBox="0 0 120 120">' +
+'<circle class="cq-g-track" cx="60" cy="60" r="50"></circle>' +
+'<circle class="cq-g-val" id="cq-gval-gpu" cx="60" cy="60" r="50"></circle>' +
+'</svg>' +
+'<div class="cq-g-center"><b id="cq-gpu-pct">--</b><small>GPU LOAD</small></div>' +
+'</div>' +
+'<div class="cq-gauge-wrap" id="cq-ram-wrap" title="System RAM utilization for the active ComfyUI server." style="display:none;">' +
+'<svg viewBox="0 0 120 120">' +
+'<circle class="cq-g-track" cx="60" cy="60" r="50"></circle>' +
+'<circle class="cq-g-val" id="cq-gval-ram" cx="60" cy="60" r="50"></circle>' +
+'</svg>' +
+'<div class="cq-g-center"><small id="cq-ram-label" style="font-size:0.55rem;">RAM</small><b id="cq-ram-pct">--</b><small id="cq-ram-usage" style="font-size:0.55rem; letter-spacing:0; white-space:nowrap;">--</small></div>' +
+'</div>' +
+'</div>' +
+                            '<div class="cq-sys-stats">' +
+                                '<div class="cq-stat"><span>QUEUE PENDING</span><b id="cq-s-pend">0</b></div>' +
+                                '<div class="cq-stat"><span>RUNNING</span><b id="cq-s-run">0</b></div>' +
+                                '<div class="cq-stat"><span>VRAM USED</span><b id="cq-s-vram">--</b></div>' +
+                                '<div class="cq-stat"><span>TORCH RESERVED</span><b id="cq-s-torch">--</b></div>' +
+                                '<div class="cq-stat" id="cq-stat-dev-wrap" title="Compute Device"><span>DEVICE</span><b id="cq-s-dev" style="font-size:0.75rem; text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:65%;">--</b></div>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
+
+                    '<div class="cq-card cq-events-card">' +
+                        '<div class="cq-card-title">' +
+                            '<span>📡 Live Event Stream</span>' +
+                            '<button class="cq-clearbtn" onclick="cqClearEvents()">Clear</button>' +
+                        '</div>' +
+                        '<div class="cq-events" id="cq-events"><div class="cq-ev-empty">Waiting for events…</div></div>' +
+                    '</div>' +
+
+                '</div>' +
+
+            '</div>' +
+
+            '<div class="cq-card cq-queue-card">' +
+                '<div class="cq-card-title">' +
+                    '<span>📋 Execution Queue</span>' +
+                    '<span class="cq-side">' +
+                        '<button class="cq-btn danger" id="cq-b-delsel" onclick="cqDeleteSelected()" disabled>🗑 Delete Selected (0)</button>' +
+                        '<button class="cq-btn danger" id="cq-b-int" onclick="cqInterrupt()" disabled>⏹ Interrupt Job</button>' +
+                        '<button class="cq-btn danger" id="cq-b-clear" onclick="cqClearQueue()" disabled>🧹 Clear All</button>' +
+                    '</span>' +
+                '</div>' +
+                '<div class="cq-queue" id="cq-queue"><div class="cq-empty">Loading queue…</div></div>' +
+            '</div>' +
+
+            '<div class="cq-card cq-history-card">' +
+                '<div class="cq-card-title">' +
+                    '<span>🗂️ Recent Jobs</span>' +
+                    '<span class="cq-side">' +
+                        '<span id="cq-history-avg-side" style="color:#d8b4fe;font-weight:800;font-size:0.72rem;margin-right:8px;display:none;font-variant-numeric:tabular-nums;"></span>' +
+                        '<button class="cq-clearbtn" onclick="fetchHistory()">Refresh</button>' +
+                    '</span>' +
+                '</div>' +
+                '<div class="cq-history-row" id="cq-history"><div class="cq-history-empty">Loading history…</div></div>' +
+            '</div>';
+
+        renderStats();
+    }
+
+    /* ============================================================
+       WEBSOCKET
+       ============================================================ */
+    function handleIncomingWsMessage(evt) {
+        if (!CQ.open) return;
+        if (typeof evt.data === 'string') {
+            try {
+                onWSMsg(JSON.parse(evt.data));
+            } catch (e) {}
+        } else if (evt.data instanceof ArrayBuffer) {
+            cqHandleBinary(evt.data);
+        } else if (evt.data instanceof Blob) {
+            evt.data.arrayBuffer().then(function (buf) {
+                cqHandleBinary(buf);
+            }).catch(function () {});
+        }
+    }
+
+function connectWS(overrideClientId) {
+var targetId = overrideClientId || getDefaultClientId();
+if (CQ.ws && CQ.ws.readyState === WebSocket.OPEN && CQ._activeJobWsClientId === targetId) return;
+if (CQ.ws) {
+CQ.ws.onclose = null; CQ.ws.onerror = null; CQ.ws.onmessage = null;
+try { CQ.ws.close(); } catch(e) {}
+CQ.ws = null;
+}
+CQ._activeJobWsClientId = targetId;
+CQ._watchdogFired = false;
+var proto = (window.location.protocol === 'https:' || (CQ.url && CQ.url.indexOf('https') === 0)) ? 'wss://' : 'ws://';
+var typedHost = '';
+var typedPort = '';
+try {
+var parsed = new URL(CQ.url);
+typedHost = parsed.hostname;
+typedPort = parsed.port || '';
+} catch(e) {
+var cleanUrl = (CQ.url || '').replace(/^https?:\/\//i, '').split('/')[0];
+var parts = cleanUrl.split(':');
+typedHost = parts[0] || '';
+typedPort = parts[1] || '';
+}
+if (CQ._goldenHost) {
+connectTo(CQ._goldenHost, CQ._goldenPort, false);
+return;
+}
+var browserHost = window.location.hostname;
+var browserPort = window.location.port || '';
+var fallbackPort = typedPort || browserPort || '';
+var hostsToTry = [];
+if (typedHost) {
+hostsToTry.push(typedHost);
+}
+if (browserHost && hostsToTry.indexOf(browserHost) === -1) {
+hostsToTry.push(browserHost);
+}
+if (window._cqServerLanIp && hostsToTry.indexOf(window._cqServerLanIp) === -1) {
+hostsToTry.push(window._cqServerLanIp);
+}
+if (hostsToTry.indexOf('127.0.0.1') === -1) {
+hostsToTry.push('127.0.0.1');
+}
+var tryIndex = 0;
+function connectNext() {
+if (tryIndex >= hostsToTry.length) return;
+var host = hostsToTry[tryIndex];
+tryIndex++;
+connectTo(host, fallbackPort, true);
+}
+function connectTo(host, port, isSearching) {
+if (CQ._probeWs) {
+try { CQ._probeWs.onopen = null; CQ._probeWs.onmessage = null; CQ._probeWs.onerror = null; CQ._probeWs.onclose = null; CQ._probeWs.close(); } catch(e) {}
+CQ._probeWs = null;
+}
+var portStr = port ? ':' + port : '';
+var wsUrl = proto + host + portStr + '/ws?clientId=' + encodeURIComponent(targetId);
+try {
+var ws = new WebSocket(wsUrl);
+ws.binaryType = 'arraybuffer';
+CQ._probeWs = ws;
+ws.onopen = function() {
+CQ._probeWs = null;
+CQ.ws = ws;
+CQ._goldenHost = host;
+CQ._goldenPort = port;
+addEvent('status', 'Daemon hooked stream via ' + host + portStr, 'CONNECT');
+ws.onmessage = handleIncomingWsMessage;
+ws.onclose = function() { CQ.ws = null; };
+ws.onerror = function() {};
+};
+ws.onerror = function() {
+ws.onclose = null;
+try { ws.close(); } catch(e) {}
+if (isSearching) {
+connectNext();
+} else {
+CQ._goldenHost = null;
+CQ._goldenPort = null;
+connectWS(targetId);
+}
+};
+} catch(e) {
+if (isSearching) connectNext();
+}
+}
+connectNext();
+}
+
+    function onWSMsg(msg) {
+        var t = msg.type;
+        var d = msg.data || {};
+
+        if (t === 'status') {
+            if (d.status && d.status.exec_info && typeof d.status.exec_info.queue_remaining === 'number') {
+                var rem = d.status.exec_info.queue_remaining;
+                addEvent('status', 'Queue update: ' + rem + ' item(s) in queue', 'QUEUE');
+            }
+            return;
+        }
+
+        if (t === 'logs') {
+            var arr = Array.isArray(d) ? d : (Array.isArray(msg.logs) ? msg.logs : null);
+            if (arr) {
+                for (var i = 0; i < arr.length; i++) {
+                    if (arr[i] && typeof arr[i].m === 'string') {
+                        processLogText(arr[i].m);
+                    }
+                }
+            }
+            return;
+        }
+
+        if (t === 'execution_start') {
+            CQ.progress = 0;
+            CQ.progressMax = 0;
+            CQ.currentPrompt = d.prompt_id;
+            CQ.completedNodeCount = 0;
+            CQ.jobStartedTs = Date.now();
+            CQ.previewFrameCount = 0;
+            CQ.jobEndedForPrompt = false;
+
+            addEvent('start', 'Execution started · prompt ' + short(d.prompt_id), 'START');
+            updateProgress();
+        } else if (t === 'executing') {
+            if (d.prompt_id) CQ.currentPrompt = d.prompt_id;
+
+            if (d.node === null || d.node === undefined) {
+                addEvent('done', 'Workflow execution complete', 'COMPLETE');
+                cqOnJobEnd();
+            } else {
+                CQ.currentNode = d.node;
+                if (CQ.currentPromptGraph && CQ.currentPromptGraph[d.node]) {
+                    var n = CQ.currentPromptGraph[d.node];
+                    CQ.currentNodeTitle = (n._meta && n._meta.title) ? n._meta.title : (n.class_type || n.type || d.node);
+                } else {
+                    CQ.currentNodeTitle = d.node;
+                }
+                addEvent('exec', 'Executing node [' + esc(CQ.currentNodeTitle) + ']', 'NODE');
+                updateProgress();
+            }
+        } else if (t === 'progress') {
+            if (d.prompt_id) CQ.currentPrompt = d.prompt_id;
+            if (d.node) CQ.currentNode = d.node;
+            CQ.progress = d.value || 0;
+            CQ.progressMax = d.max || 0;
+
+            if (d.value === 1 || d.value === d.max || d.value % 5 === 0) {
+                addEvent('progress', 'Node [' + esc(CQ.currentNodeTitle || d.node || '') + '] step ' + d.value + '/' + d.max, 'STEP');
+            }
+            updateProgress();
+        } else if (t === 'progress_state') {
+            if (d.prompt_id) CQ.currentPrompt = d.prompt_id;
+            updateProgress();
+        } else if (t === 'executed') {
+            addEvent('done', 'Output produced by node [' + esc(d.node || '') + ']', 'OUTPUT');
+            extractPreviewFromOutput(d.output);
+        } else if (t === 'execution_cached') {
+            var cachedCount = (d.nodes ? d.nodes.length : 0);
+            addEvent('cached', 'Loaded from cache: ' + cachedCount + ' node(s)', 'CACHE');
+        } else if (t === 'execution_success') {
+            addEvent('done', '✅ Job execution succeeded', 'SUCCESS');
+            cqOnJobEnd();
+        } else if (t === 'execution_error') {
+            addEvent('error', '❌ Error: ' + esc(d.exception_message || 'Execution error'), 'ERROR');
+            cqOnJobEnd();
+        } else if (t === 'execution_interrupted') {
+            addEvent('interrupt', '⏹ Job execution interrupted', 'STOP');
+            cqOnJobEnd();
+        }
+    }
+
+    /* ============================================================
+       JOB END
+       ============================================================ */
+    function cqOnJobEnd() {
+        if (CQ.jobEndedForPrompt) {
+            fetchQueue(false);
+            return;
+        }
+
+        CQ.jobEndedForPrompt = true;
+
+        CQ.progress = 0;
+        CQ.progressMax = 0;
+        CQ.currentNode = null;
+        CQ.currentNodeTitle = null;
+        CQ.currentSamplerSteps = 20;
+        CQ.currentSamplerName = null;
+        CQ.currentPrompt = null;
+        CQ.currentPromptGraph = null;
+        CQ.completedNodeCount = 0;
+        CQ.jobStartedTs = 0;
+
+        updateProgress();
+
+        fetchQueue(false);
+        setTimeout(fetchHistory, 1200);
+    }
+
+    function cqClearPreview(force) {
+        if (!force && CQ.qRun && CQ.qRun.length > 0) return;
+
+        stopPreviewPoll();
+        cqHidePreviewNote();
+
+        if (CQ.previewBlob) {
+            try { URL.revokeObjectURL(CQ.previewBlob); } catch (e) {}
+            CQ.previewBlob = null;
+        }
+
+        CQ.previewBase = null;
+        CQ.previewLoggedFormat = null;
+        CQ.previewFrameCount = 0;
+        CQ.previewSeen = false;
+
+        var img = $('cq-pimg');
+        var vid = $('cq-pvid');
+        var ph = $('cq-ph');
+        var live = $('cq-plive');
+        var tog = $('cq-ptoggle');
+
+        if (img) {
+            img.removeAttribute('src');
+            img.style.display = 'none';
+        }
+        if (vid) {
+            vid.removeAttribute('src');
+            vid.style.display = 'none';
+        }
+        if (live) live.style.display = 'none';
+        if (tog) tog.style.display = 'none';
+        if (ph) {
+            ph.style.display = 'flex';
+            ph.innerHTML = '<span class="ic">🛰️</span><span>Waiting for a preview…</span>';
+        }
+        cqBroadcastClear();
+}
+    /* ============================================================
+       HTTP PREVIEW DISCOVERY & HEALTH MONITOR
+       Fallback: polls ComfyUI /history for temp preview images
+       when the WS binary stream is silent for too long.
+       ============================================================ */
+    function cqDiscoverPreviewViaHTTP() {
+        if (!CQ.open || !CQ.currentPrompt) return;
+        var pid = CQ.currentPrompt;
+        cqFetch('/history/' + encodeURIComponent(pid))
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (!CQ.open || !d) return;
+                var item = d[pid] || d;
+                var outputs = (item && item.outputs) ? item.outputs : {};
+                var found = false;
+                for (var nid in outputs) {
+                    var out = outputs[nid];
+                    if (!out) continue;
+                    var imgs = out.images || out.gifs || null;
+                    if (!imgs || !imgs.length) continue;
+                    for (var i = 0; i < imgs.length; i++) {
+                        if (imgs[i].type === 'temp') {
+                            CQ.previewBase = viewUrl(imgs[i]);
+                            cqShowPreviewUrl(CQ.previewBase, false);
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found && imgs.length) {
+                        CQ.previewBase = viewUrl(imgs[imgs.length - 1]);
+                        cqShowPreviewUrl(CQ.previewBase, false);
+                        found = true;
+                    }
+                    if (found) break;
+                }
+                if (found) {
+                    CQ.previewHealth = 'ok';
+                    CQ.previewHealthTs = Date.now();
+                    CQ.previewRecoveryAttempts = 0;
+                } else {
+                    CQ.previewHealth = 'waiting';
+                }
+            })
+            .catch(function () { CQ.previewHealth = 'error'; });
+    }
+    function cqStartPreviewHealthMonitor() {
+        if (CQ.pollPreviewHealth) clearInterval(CQ.pollPreviewHealth);
+        CQ.pollPreviewHealth = setInterval(function () {
+            if (!CQ.open) return;
+            if (!CQ.qRun || CQ.qRun.length === 0) return;
+            var now = Date.now();
+            var last = Math.max(CQ._lastBinaryTs || 0, CQ.previewHealthTs || 0, CQ.jobStartedTs || 0);
+            var silence = now - last;
+            if (silence > 8000 && CQ.previewRecoveryAttempts < 6) {
+                CQ.previewRecoveryAttempts++;
+                CQ.previewHealth = 'recovering';
+                addEvent('info', 'Preview stream stalled (' + Math.round(silence / 1000) + 's). HTTP recovery #' + CQ.previewRecoveryAttempts, 'WATCHDOG');
+                cqDiscoverPreviewViaHTTP();
+            } else if (CQ.previewRecoveryAttempts >= 6) {
+                CQ.previewHealth = 'degraded';
+            }
+        }, 3000);
+    }
+    function cqStopPreviewHealthMonitor() {
+        if (CQ.pollPreviewHealth) { clearInterval(CQ.pollPreviewHealth); CQ.pollPreviewHealth = null; }
+    }
+
+
+    /* ============================================================
+       PREVIEW DECODING (ENCODED & UNENCODED RAW CANVAS)
+       ============================================================ */
+    function cqDetectFormat(u8) {
+        if (!u8 || u8.length < 4) return null;
+        if (u8[0] === 0xFF && u8[1] === 0xD8 && u8[2] === 0xFF) return 'image/jpeg';
+        if (u8.length > 7 && u8[0] === 0x89 && u8[1] === 0x50 && u8[2] === 0x4E && u8[3] === 0x47) return 'image/png';
+        if (u8.length > 11 &&
+            u8[0] === 0x52 && u8[1] === 0x49 && u8[2] === 0x46 && u8[3] === 0x46 &&
+            u8[8] === 0x57 && u8[9] === 0x45 && u8[10] === 0x42 && u8[11] === 0x50) {
+            return 'image/webp';
+        }
+        return null;
+    }
+
+    function cqScanSignature(u8, maxScan) {
+        var limit = Math.min(maxScan, Math.max(0, u8.length - 8));
+        for (var i = 0; i <= limit; i++) {
+            if (u8[i] === 0xFF && u8[i + 1] === 0xD8 && u8[i + 2] === 0xFF) return i;
+            if (u8[i] === 0x89 && u8[i + 1] === 0x50 && u8[i + 2] === 0x4E && u8[i + 3] === 0x47) return i;
+        }
+        return -1;
+    }
+
+    function cqRawToCanvas(u8) {
+        function blit(w, h, ch, offset) {
+            if (!w || !h || w < 32 || h < 32 || w > 8192 || h > 8192) return null;
+            if (u8.length - offset < w * h * ch) return null;
+
+            var canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+
+            var ctx = canvas.getContext('2d');
+            var img = ctx.createImageData(w, h);
+            var d = img.data;
+            var p = offset;
+
+            for (var i = 0; i < w * h; i++) {
+                d[i * 4] = u8[p];
+                d[i * 4 + 1] = u8[p + 1];
+                d[i * 4 + 2] = u8[p + 2];
+                d[i * 4 + 3] = (ch === 4) ? u8[p + 3] : 255;
+                p += ch;
+            }
+
+            ctx.putImageData(img, 0, 0);
+            return canvas;
+        }
+
+        if (u8.length > 8) {
+            var dv = new DataView(u8.buffer, u8.byteOffset, 8);
+            var tries = [
+                [dv.getUint32(0, false), dv.getUint32(4, false)],
+                [dv.getUint32(0, true), dv.getUint32(4, true)]
+            ];
+
+            for (var t = 0; t < tries.length; t++) {
+                var w = tries[t][0];
+                var h = tries[t][1];
+
+                if (w < 32 || h < 32 || w > 8192 || h > 8192) continue;
+
+                var rem = u8.length - 8;
+                if (rem === w * h * 3) {
+                    var c = blit(w, h, 3, 8);
+                    if (c) return c;
+                }
+                if (rem === w * h * 4) {
+                    var c2 = blit(w, h, 4, 8);
+                    if (c2) return c2;
+                }
+            }
+        }
+
+        for (var ch = 3; ch <= 4; ch++) {
+            var total = Math.floor(u8.length / ch);
+            var aspects = [16 / 9, 3 / 2, 4 / 3, 1, 3 / 4, 2 / 3, 9 / 16];
+
+            for (var a = 0; a < aspects.length; a++) {
+                var wg = Math.round(Math.sqrt(total * aspects[a]));
+                if (wg < 32 || wg > 8192) continue;
+
+                var hg = Math.round(total / wg);
+                if (wg * hg === total) {
+                    var c3 = blit(wg, hg, ch, 0);
+                    if (c3) return c3;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    function cqExtractBinaryImageBlob(buffer) {
+        if (!buffer || buffer.byteLength < 16) return null;
+        var u8 = new Uint8Array(buffer);
+        var maxScan = Math.min(u8.length - 8, 2048);
+
+        for (var i = 0; i < maxScan; i++) {
+            // JPEG magic bytes: FF D8 FF
+            if (u8[i] === 0xFF && u8[i+1] === 0xD8 && u8[i+2] === 0xFF) {
+                return new Blob([u8.subarray(i)], { type: 'image/jpeg' });
+            }
+            // PNG magic bytes: 89 50 4E 47
+            if (u8[i] === 0x89 && u8[i+1] === 0x50 && u8[i+2] === 0x4E && u8[i+3] === 0x47) {
+                return new Blob([u8.subarray(i)], { type: 'image/png' });
+            }
+            // WebP magic bytes: RIFF .... WEBP
+            if (i + 12 <= u8.length &&
+                u8[i] === 0x52 && u8[i+1] === 0x49 && u8[i+2] === 0x46 && u8[i+3] === 0x46 &&
+                u8[i+8] === 0x57 && u8[i+9] === 0x45 && u8[i+10] === 0x42 && u8[i+11] === 0x50) {
+                return new Blob([u8.subarray(i)], { type: 'image/webp' });
+            }
+        }
+        return null;
+    }
+
+    function cqHandleBinary(buffer) {
+        if (!buffer || buffer.byteLength < 8) return;
+        try {
+            var blob = cqExtractBinaryImageBlob(buffer);
+            if (blob) {
+                CQ._lastBinaryTs = Date.now();
+                cqShowPreviewBlob(blob);
+                return;
+            }
+
+            var u8 = new Uint8Array(buffer);
+            var canvas = cqRawToCanvas(u8.subarray(8)) || cqRawToCanvas(u8);
+            if (canvas) {
+                CQ._lastBinaryTs = Date.now();
+                cqShowPreviewDataUrl(canvas.toDataURL('image/png'));
+            }
+        } catch(e) {}
+    }
+
+    function cqShowPreviewBlob(blob) {
+        if (!CQ.previewOn || !blob) return;
+        var img = $('cq-pimg');
+        var vid = $('cq-pvid');
+        var ph = $('cq-ph');
+        if (!img) return;
+
+        if (vid) {
+            vid.style.display = 'none';
+            vid.removeAttribute('src');
+        }
+
+        // Direct synchronous unmasking: eliminates onload cancellation during rapid KSampler steps
+        if (ph) ph.style.display = 'none';
+        img.style.display = 'block';
+
+        var oldBlob = CQ.previewBlob;
+        CQ.previewBlob = URL.createObjectURL(blob);
+        img.src = CQ.previewBlob;
+        cqRevealPreviewUI(false);
+        CQ.previewHealthTs = Date.now();
+        CQ.previewHealth = 'ok';
+        CQ.previewRecoveryAttempts = 0;
+        if (CQ.previewBase) cqBroadcastPreview(CQ.previewBase);
+
+        if (oldBlob) {
+            setTimeout(function () {
+                try { URL.revokeObjectURL(oldBlob); } catch (e) {}
+            }, 3000);
+        }
+    }
+
+    function cqShowPreviewDataUrl(u) {
+        if (!CQ.previewOn || !u) return;
+        var img = $('cq-pimg');
+        var vid = $('cq-pvid');
+        var ph = $('cq-ph');
+        if (!img) return;
+        if (vid) { vid.style.display = 'none'; vid.removeAttribute('src'); }
+
+        if (ph) ph.style.display = 'none';
+        img.style.display = 'block';
+        img.src = u;
+
+        cqRevealPreviewUI(false);
+    }
+
+    function cqShowPreviewUrl(url, isCompleted) {
+        if (!CQ.previewOn || !url) return;
+        var img = $('cq-pimg');
+        var vid = $('cq-pvid');
+        var ph = $('cq-ph');
+        if (!img) return;
+
+        var isVideo = /(filename=[^&]+\.(mp4|webm|mov|mkv|m4v|avi|wmv)|\.(mp4|webm|mov|mkv|m4v|avi|wmv))/i.test(url);
+        var fullUrl = url + (url.indexOf('?') > -1 ? '&' : '?') + 'rand=' + Date.now();
+
+        if (isVideo && vid) {
+            img.style.display = 'none';
+            img.removeAttribute('src');
+            vid.src = fullUrl;
+            vid.style.display = 'block';
+            if (ph) ph.style.display = 'none';
+            try { vid.play(); } catch(e) {}
+        } else {
+            if (vid) { vid.style.display = 'none'; vid.removeAttribute('src'); }
+            if (ph) ph.style.display = 'none';
+            img.style.display = 'block';
+            img.src = fullUrl;
+        }
+        cqRevealPreviewUI(isCompleted);
+        cqBroadcastPreview(url);
+    }
+
+    function cqRevealPreviewUI(isCompleted) {
+        CQ.previewFrameCount = (CQ.previewFrameCount || 0) + 1;
+        cqHidePreviewNote();
+        CQ.previewSeen = true;
+
+        var ph = $('cq-ph');
+        var live = $('cq-plive');
+        var tog = $('cq-ptoggle');
+
+        if (ph) ph.style.display = 'none';
+        if (tog) tog.style.display = 'inline-block';
+        if (live && CQ.previewOn) {
+            live.style.display = 'block';
+            live.textContent = isCompleted ? '● READY' : '● LIVE';
+            live.style.background = isCompleted ? 'rgba(56,189,248,0.92)' : 'rgba(52,211,153,0.92)';
+        }
+    }
+
+    function viewUrl(img) {
+        if (!img || !img.filename) return '';
+        var targetUrl = CQ.url || (window._cqServerDefaultUrl || window.location.origin);
+        return '/galleryout/api/comfy_proxy/view?filename=' + encodeURIComponent(img.filename) +
+               '&subfolder=' + encodeURIComponent(img.subfolder || '') +
+               '&type=' + encodeURIComponent(img.type || 'output') +
+               '&target_url=' + encodeURIComponent(targetUrl);
+    }
+
+    function extractPreviewFromOutput(output) {
+        if (!output) return;
+
+        var imgs = null;
+        if (output.images && output.images.length) imgs = output.images;
+        else if (output.gifs && output.gifs.length) imgs = output.gifs;
+        if (!imgs) return;
+
+        var pick = null;
+        for (var i = 0; i < imgs.length; i++) {
+            if (imgs[i].type === 'temp') {
+                pick = imgs[i];
+                break;
+            }
+        }
+        if (!pick) pick = imgs[imgs.length - 1];
+
+        CQ.previewBase = viewUrl(pick);
+        CQ.previewHealth = 'ok';
+        CQ.previewHealthTs = Date.now();
+        CQ.previewRecoveryAttempts = 0;
+        cqShowPreviewUrl(CQ.previewBase, false);
+        startPreviewPoll();
+    }
+
+    function startPreviewPoll() {
+        stopPreviewPoll();
+
+        CQ.pollPreview = setInterval(function () {
+            if (!CQ.open || !CQ.previewOn || !CQ.previewBase || CQ.qRun.length === 0) return;
+            if (CQ._lastBinaryTs && (Date.now() - CQ._lastBinaryTs) < 4000) return;
+
+            var img = $('cq-pimg');
+            if (img && img.style.display !== 'none') {
+                img.src = CQ.previewBase + '&rand=' + Date.now();
+            }
+        }, 2000);
+    }
+
+    function stopPreviewPoll() {
+        if (CQ.pollPreview) {
+            clearInterval(CQ.pollPreview);
+            CQ.pollPreview = null;
+        }
+    }
+
+    window.cqTogglePreview = function () {
+        CQ.previewOn = !CQ.previewOn;
+        updatePreviewToggleUI();
+
+        var img = $('cq-pimg');
+        var ph = $('cq-ph');
+        var live = $('cq-plive');
+
+        if (CQ.previewOn) {
+            if (live && (CQ.previewBase || CQ.previewBlob)) live.style.display = 'block';
+
+            if (CQ.previewBase) {
+                cqShowPreviewUrl(CQ.previewBase, false);
+            } else if (CQ.previewBlob && img) {
+                img.src = CQ.previewBlob;
+                img.style.display = 'block';
+                if (ph) ph.style.display = 'none';
+            }
+
+            startPreviewPoll();
+            addEvent('info', 'Preview stream resumed', 'INFO');
+        } else {
+            stopPreviewPoll();
+
+            if (img) img.style.display = 'none';
+            if (live) live.style.display = 'none';
+            if (ph) {
+                ph.style.display = 'flex';
+                ph.querySelector('span:last-child').innerHTML = 'Preview stream paused.';
+            }
+
+            addEvent('info', 'Preview stream stopped by user', 'INFO');
+        }
+    };
+
+    function updatePreviewToggleUI() {
+        var tog = $('cq-ptoggle');
+        if (!tog) return;
+
+        tog.style.display = CQ.previewSeen ? 'inline-block' : 'none';
+        tog.innerHTML = CQ.previewOn ? '🚫 Stop Stream' : '▶️ Resume Stream';
+    }
+
+    /* ============================================================
+       EVENT STREAM
+       ============================================================ */
+    function addEvent(type, msg, label) {
+        CQ.events.push({
+            t: ts(),
+            type: type,
+            msg: msg,
+            label: label || type
+        });
+
+        if (CQ.events.length > 300) CQ.events.shift();
+
+        var box = $('cq-events');
+        if (!box) return;
+
+        var nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
+        var html = '';
+
+        for (var i = 0; i < CQ.events.length; i++) {
+            var e = CQ.events[i];
+            html += '<div class="cq-ev">' +
+                        '<time>' + e.t + '</time>' +
+                        '<span class="t ' + esc(e.type) + '">' + esc(e.label) + '</span>' +
+                        '<span class="m">' + e.msg + '</span>' +
+                    '</div>';
+        }
+
+        box.innerHTML = html;
+        if (nearBottom) box.scrollTop = box.scrollHeight;
+    }
+
+    window.cqClearEvents = function () {
+        CQ.events = [];
+        var b = $('cq-events');
+        if (b) b.innerHTML = '<div class="cq-ev-empty">Waiting for events…</div>';
+    };
+
+    function processLogText(text) {
+        if (!CQ.logPartial) CQ.logPartial = '';
+
+        CQ.logPartial += text;
+
+        var idx = CQ.logPartial.lastIndexOf('\n');
+        if (idx === -1) return;
+
+        var complete = CQ.logPartial.substring(0, idx);
+        CQ.logPartial = CQ.logPartial.substring(idx + 1);
+
+        var lines = complete.split('\n');
+
+        for (var i = 0; i < lines.length; i++) {
+            var line = lines[i].replace(/\r/g, '');
+            if (!line.trim()) continue;
+
+            var lvl = lineLevel(line);
+            addEvent(lvl.cls, esc(line), lvl.label);
+        }
+    }
+
+    function lineLevel(l) {
+        if (/ERROR|CRITICAL|Traceback|Exception/i.test(l)) return { cls: 'c-error', label: 'ERROR' };
+        if (/WARNING|WARN/i.test(l)) return { cls: 'c-warn', label: 'WARN' };
+        if (/DEBUG/i.test(l)) return { cls: 'c-debug', label: 'DEBUG' };
+        if (/^\s*\[INFO\]/i.test(l)) return { cls: 'c-info', label: 'INFO' };
+        return { cls: 'c-info', label: 'LOG' };
+    }
+
+    /* ============================================================
+       PROGRESS CALCULATION & STEP INTERCEPTOR
+       ============================================================ */
+    function updateProgress() {
+        var fill = $('cq-fill');
+        var pct = $('cq-prog-pct');
+        var lbl = $('cq-prog-label');
+        var node = $('cq-node');
+        var jid = $('cq-job-id');
+        var ph = $('cq-ph');
+
+        if (!fill) return;
+
+        var isRunning = CQ.qRun && CQ.qRun.length > 0;
+        var v = 0;
+
+        if (isRunning) {
+            var totalSteps = CQ.currentSamplerSteps || 20;
+            var currentStep = 1;
+
+            // Priority 1: Step level progression directly from WebSocket
+            if (CQ.progressMax > 0 && CQ.progress > 0) {
+                totalSteps = CQ.progressMax;
+                currentStep = CQ.progress;
+                v = Math.round((currentStep / totalSteps) * 100);
+            }
+            // Priority 2: Node level progress from Workflow Graph & History outputs
+            else if (CQ.currentPromptNodesTotal > 0 && CQ.completedNodeCount > 0) {
+                var basePct = Math.round((CQ.completedNodeCount / CQ.currentPromptNodesTotal) * 100);
+                v = Math.max(10, Math.min(95, basePct));
+                currentStep = Math.max(1, Math.min(totalSteps, Math.round(totalSteps * (v / 100))));
+            }
+            // Priority 3: Active execution elapsed time interpolation
+            else {
+                var elapsedSec = CQ.jobStartedTs > 0 ? (Date.now() - CQ.jobStartedTs) / 1000 : 2;
+                var estimatedSec = 22;
+                v = Math.max(5, Math.min(92, Math.round((elapsedSec / (elapsedSec + estimatedSec)) * 100)));
+                currentStep = Math.max(1, Math.min(totalSteps, Math.round(totalSteps * (v / 100))));
+            }
+
+            v = Math.max(1, Math.min(100, v));
+            fill.style.width = v + '%';
+            fill.className = 'cq-fill';
+
+            if (pct) pct.textContent = v + '%';
+
+            if (lbl) {
+                lbl.textContent = 'Step ' + currentStep + ' / ' + totalSteps + ' (' + v + '%)';
+            }
+
+            var nodeDisplay = CQ.currentNodeTitle || CQ.currentNode || 'Sampling';
+            if (node) {
+                node.textContent = '▶ Active: [' + nodeDisplay + ']' + (CQ.currentSamplerName ? (' · ' + CQ.currentSamplerName) : '');
+            }
+            if (jid) {
+                jid.textContent = CQ.currentPrompt ? ('prompt ' + short(CQ.currentPrompt)) : '';
+            }
+
+            // Update preview health indicator badge
+            var healthEl = $('cq-preview-health');
+            if (healthEl) {
+                if (CQ.previewHealth === 'ok') healthEl.innerHTML = '<span style="color:#34d399;">● Stream OK</span>';
+                else if (CQ.previewHealth === 'recovering') healthEl.innerHTML = '<span style="color:#fbbf24;">◌ Recovering…</span>';
+                else if (CQ.previewHealth === 'degraded') healthEl.innerHTML = '<span style="color:#f87171;">⚠ Degraded</span>';
+                else if (CQ.previewHealth === 'waiting') healthEl.innerHTML = '<span style="color:#94a3b8;">○ Waiting…</span>';
+                else healthEl.innerHTML = '';
+            }
+            // Update in-progress preview placeholder if no live frame has rendered yet
+            if (ph && !CQ.previewSeen) {
+                ph.innerHTML =
+                    '<span class="ic" style="font-size:2.2rem;animation:cqPulse 1.2s infinite;">⚡</span>' +
+                    '<span style="font-weight:700;color:#7dd3fc;">Generating in progress…</span>' +
+                    '<span style="font-size:0.75rem;color:#94a3b8;">Step ' + currentStep + ' / ' + totalSteps + ' (' + v + '%)</span>';
+            }
+        } else {
+            fill.style.width = '0%';
+            fill.className = 'cq-fill idle';
+
+            if (pct) pct.textContent = '0%';
+            if (lbl) lbl.textContent = 'Idle — no job running';
+            if (node) node.textContent = '';
+            if (jid) jid.textContent = '';
+
+            if (ph && !CQ.previewSeen) {
+                ph.innerHTML = '<span class="ic">🛰️</span><span>Waiting for a preview…</span>';
+            }
+        }
+    }
+
+    /* ============================================================
+       RUNNING JOB STATE & PREVIEW SYNCHRONIZER
+       ============================================================ */
+    function syncRunningJobState(promptId) {
+        if (!promptId) return;
+
+        cqFetch('/history/' + encodeURIComponent(promptId))
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (!CQ.open || !d) return;
+                if (CQ.currentPrompt !== promptId) return;
+                var historyItem = d[promptId] || d;
+                var outputs = (historyItem && historyItem.outputs) ? historyItem.outputs : {};
+
+                CQ.completedNodeCount = Object.keys(outputs).length;
+
+                var hasRecentBinary = CQ._lastBinaryTs && (Date.now() - CQ._lastBinaryTs) < 4000;
+                if (!hasRecentBinary) {
+                for (var nid in outputs) {
+                    if (outputs[nid].images || outputs[nid].gifs) {
+                        extractPreviewFromOutput(outputs[nid]);
+                        return;
+                    }
+                }
+
+                }
+                updateProgress();
+            })
+            .catch(function () {});
+    }
+
+    /* ============================================================
+       QUEUE POLLING WITH CONTINUOUS EVENT STREAM EMISSION
+       ============================================================ */
+    function fetchQueue(isInitial) {
+        if (!CQ.open) return;
+
+        cqFetch('/queue')
+            .then(function (r) {
+                return r.json();
+            })
+            .then(function (d) {
+                if (!CQ.open) return;
+
+                CQ.qRun = d.queue_running || [];
+                CQ.qPend = d.queue_pending || [];
+
+                var curPending = CQ.qPend.length;
+                var curRunning = CQ.qRun.length;
+                var totalInQueue = curPending + curRunning;
+
+                if (CQ.prevTotalInQueue === null || CQ.prevTotalInQueue !== totalInQueue) {
+                    if (CQ.prevTotalInQueue !== null) {
+                        addEvent('status', 'Queue update: ' + totalInQueue + ' job(s) in queue (' + curPending + ' pending, ' + curRunning + ' running)', 'QUEUE');
+                    }
+                    CQ.prevTotalInQueue = totalInQueue;
+                }
+
+                renderQueue();
+
+                var pr = $('cq-s-pend');
+                var ru = $('cq-s-run');
+                if (pr) pr.textContent = curPending;
+                if (ru) ru.textContent = curRunning;
+
+                if (curRunning > 0) {
+                    var runItem = CQ.qRun[0];
+                    var pid = String(runItem[1]);
+                    var graph = runItem[2] || {};
+                    var jobPos = runItem[0] || '1';
+
+                    // Daemon identifies who is generating and steals the identity.
+                    // Added: backoff to avoid rapid reconnection storms across sessions.
+                    var runningClientId = getClientIdFromRunItem(runItem);
+                    var targetWsId = runningClientId || CQ.clientId;
+                    var now = Date.now();
+                    if (!CQ.ws || CQ.ws.readyState !== WebSocket.OPEN || CQ._activeJobWsClientId !== targetWsId) {
+                        if (now > (CQ.wsBackoffMs || 0)) {
+                            connectWS(targetWsId);
+                            CQ.wsBackoffMs = now + 3000;
+                        }
+                    } else if (CQ.jobStartedTs > 0 && !CQ.previewSeen) {
+                        // WATCHDOG: If after 6s of computation there is no preview, destroy and steal the stream
+                        if (Date.now() - CQ.jobStartedTs > 6000 && !CQ._watchdogFired) {
+                            CQ._watchdogFired = true;
+                            addEvent('info', 'Daemon intercepting video stream...', 'WATCHDOG');
+                            connectWS(targetWsId);
+                        }
+                    }
+                    cqStartPreviewHealthMonitor();
+
+                    if (CQ.prevRunningPromptId !== pid) {
+                        if (CQ.prevRunningPromptId !== null) {
+                            addEvent('done', 'Job completed · Output ready', 'DONE');
+                        }
+                        CQ.prevRunningPromptId = pid;
+                        addEvent('start', 'Execution started · Job #' + jobPos + ' (prompt ' + short(pid) + ')', 'START');
+
+                        stopPreviewPoll();
+                        CQ.previewBase = null;
+                        CQ.previewSeen = false;
+                        CQ.previewFrameCount = 0;
+                        CQ._lastBinaryTs = 0;
+                        CQ.jobEndedForPrompt = false;
+                        // Clear stale preview from previous job immediately
+                        var _pimg = $('cq-pimg');
+                        if (_pimg) { _pimg.removeAttribute('src'); _pimg.style.display = 'none'; }
+                        var _pvid = $('cq-pvid');
+                        if (_pvid) { _pvid.removeAttribute('src'); _pvid.style.display = 'none'; }
+                        var _ph = $('cq-ph');
+                        if (_ph) { _ph.style.display = 'flex'; _ph.innerHTML = '<span class="ic">\ud83d\uddfa\ufe0f</span><span>Waiting for a preview\u2026</span>'; }
+                        var _plive = $('cq-plive');
+                        if (_plive) _plive.style.display = 'none';
+                        var _ptog = $('cq-ptoggle');
+                        if (_ptog) _ptog.style.display = 'none';
+                    }
+
+                    if (CQ.currentPrompt !== pid) {
+                        CQ.currentPrompt = pid;
+                        CQ.currentPromptGraph = graph;
+                        CQ.currentPromptNodesTotal = Math.max(1, Object.keys(graph).length);
+                        CQ.jobEndedForPrompt = false;
+                        CQ.completedNodeCount = 0;
+                        CQ.jobStartedTs = Date.now();
+                        CQ.previewSeen = false;
+                        CQ.previewBase = null;
+
+                        for (var nid in graph) {
+                            var n = graph[nid];
+                            var ct = (n && (n.class_type || n.type || '')).toLowerCase();
+                            if (ct.indexOf('sampler') !== -1 || ct.indexOf('pipe') !== -1) {
+                                if (n.inputs && n.inputs.steps) {
+                                    CQ.currentSamplerSteps = parseInt(n.inputs.steps, 10) || 20;
+                                }
+                                if (n.inputs && n.inputs.sampler_name) {
+                                    CQ.currentSamplerName = String(n.inputs.sampler_name);
+                                }
+                                break;
+                            }
+                        }
+
+                        syncRunningJobState(pid);
+                    }
+
+                    syncRunningJobState(pid);
+                    updateProgress();
+                } else {
+                    if (CQ.prevRunningPromptId !== null) {
+                        addEvent('done', 'All jobs in queue completed · Outputs saved', 'DONE');
+                        var finishedPid = CQ.prevRunningPromptId;
+                        CQ.prevRunningPromptId = null;
+
+                        cqRevealPreviewUI(true);
+                        if (finishedPid) {
+                            syncRunningJobState(finishedPid);
+                        }
+                        if (CQ._activeJobWsClientId) {
+                            connectWS(null);
+                        }
+                        
+                        // DEMON CLEANUP: Brucia l'immagine residua dopo 6 secondi di coda vuota
+                        if (CQ._stickyTimer) clearTimeout(CQ._stickyTimer);
+                        CQ._stickyTimer = setTimeout(function() {
+                            if (!CQ.qRun || CQ.qRun.length === 0) cqClearPreview(true);
+                        }, 6000);
+                    }
+
+                    if (CQ.currentPrompt || CQ.progress > 0) {
+                        cqOnJobEnd();
+                    }
+
+                    CQ.progress = 0;
+                    CQ.progressMax = 0;
+                    CQ.currentNode = null;
+                    CQ.currentNodeTitle = null;
+                    CQ.currentPrompt = null;
+                    CQ.currentPromptGraph = null;
+                    CQ.completedNodeCount = 0;
+                    CQ.jobStartedTs = 0;
+                    updateProgress();
+                }
+            })
+            .catch(function () {});
+    }
+
+    function renderQueue() {
+        var box = $('cq-queue');
+        if (!box) return;
+
+        var pendingIds = {};
+        for (var p = 0; p < CQ.qPend.length; p++) {
+            pendingIds[String(CQ.qPend[p][1])] = true;
+        }
+
+        Object.keys(CQ.selected).forEach(function (id) {
+            if (!pendingIds[id]) delete CQ.selected[id];
+        });
+
+        var html = '';
+        var i, it;
+
+        for (i = 0; i < CQ.qRun.length; i++) {
+            it = CQ.qRun[i];
+            var rid = String(it[1]);
+
+            html += '<div class="cq-item run">' +
+                        '<span class="st"></span>' +
+                        '<div class="inf">' +
+                            '<div class="id">🟢 Running · #' + esc(it[0]) + '</div>' +
+                            '<div class="meta">prompt ' + esc(short(rid)) + '</div>' +
+                        '</div>' +
+                        '<div class="acts">' +
+                            '<button class="cq-ibtn info" onclick="cqShowJobInfo(\'' + esc(rid) + '\')">ℹ️ Info</button>' +
+                            '<button class="cq-ibtn danger" onclick="cqInterrupt()">⏹ Stop</button>' +
+                        '</div>' +
+                    '</div>';
+        }
+
+        for (i = 0; i < CQ.qPend.length; i++) {
+            it = CQ.qPend[i];
+            var pid = String(it[1]);
+            var nodes = 0;
+
+            try {
+                nodes = Object.keys(it[2] || {}).length;
+            } catch (e) {}
+
+            var chk = CQ.selected[pid] ? ' checked' : '';
+
+            html += '<div class="cq-item pend">' +
+                        '<label class="cq-check" title="Select for batch delete">' +
+                            '<input type="checkbox"' + chk + ' onchange="cqToggleSelect(\'' + esc(pid) + '\', this.checked)">' +
+                            '<span></span>' +
+                        '</label>' +
+                        '<span class="st"></span>' +
+                        '<div class="inf">' +
+                            '<div class="id">🔵 Pending #' + (i + 1) + ' · pos ' + esc(it[0]) + '</div>' +
+                            '<div class="meta">prompt ' + esc(short(pid)) + ' · ' + nodes + ' nodes</div>' +
+                        '</div>' +
+                        '<div class="acts">' +
+                            '<button class="cq-ibtn info" onclick="cqShowJobInfo(\'' + esc(pid) + '\')">ℹ️ Info</button>' +
+                            '<button class="cq-ibtn" onclick="cqMoveTop(\'' + esc(pid) + '\')">⬆ Top</button>' +
+                            '<button class="cq-ibtn danger" onclick="cqDelete(\'' + esc(pid) + '\')">🗑</button>' +
+                        '</div>' +
+                    '</div>';
+        }
+
+        if (!html) {
+            html = '<div class="cq-empty">Queue is empty — no running or pending jobs.</div>';
+        }
+
+        box.innerHTML = html;
+
+        var bi = $('cq-b-int');
+        var bc = $('cq-b-clear');
+        var bpi = $('cq-pinterrupt');
+
+        if (bi) bi.disabled = CQ.qRun.length === 0;
+        if (bc) bc.disabled = (CQ.qRun.length + CQ.qPend.length) === 0;
+        if (bpi) bpi.disabled = CQ.qRun.length === 0;
+
+        updateSelUI();
+    }
+
+    function updateSelUI() {
+        var n = Object.keys(CQ.selected).length;
+        var b = $('cq-b-delsel');
+        if (b) {
+            b.disabled = (n === 0);
+            b.innerHTML = '🗑 Delete Selected (' + n + ')';
+        }
+    }
+
+    window.cqToggleSelect = function (id, on) {
+        if (on) CQ.selected[id] = true;
+        else delete CQ.selected[id];
+        updateSelUI();
+    };
+
+    window.cqDeleteSelected = function () {
+        var ids = Object.keys(CQ.selected);
+        if (!ids.length) return;
+
+        cqConfirm(
+            '🗑 Delete selected jobs?',
+            'Remove <b>' + ids.length + '</b> selected job(s) from the pending queue?<br>' +
+            '<span class="warn">Running jobs are not affected.</span>',
+            'Delete Selected',
+            true
+        ).then(function (ok) {
+            if (!ok) return;
+
+            cqFetch('/queue', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ delete: ids })
+            })
+            .then(function () {
+                addEvent('info', '🗑 Deleted ' + ids.length + ' selected job(s)', 'DELETE');
+                CQ.selected = {};
+                fetchQueue(false);
+            })
+            .catch(function (e) {
+                addEvent('error', 'Batch delete failed: ' + esc(e.message), 'ERROR');
+            });
+        });
+    };
+
+    window.cqInterrupt = function () {
+        cqFetch('/interrupt', { method: 'POST' })
+            .then(function () {
+                addEvent('interrupt', '⏹ Interrupt requested for running job', 'ACTION');
+                fetchQueue(false);
+            })
+            .catch(function (e) {
+                addEvent('error', 'Interrupt failed: ' + esc(e.message), 'ERROR');
+            });
+    };
+
+    window.cqDelete = function (pid) {
+        cqConfirm(
+            '🗑 Delete queued job?',
+            'Remove pending job <b>' + esc(short(pid)) + '</b> from the queue?',
+            'Delete',
+            true
+        ).then(function (ok) {
+            if (!ok) return;
+
+            cqFetch('/queue', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ delete: [pid] })
+            })
+            .then(function () {
+                addEvent('info', '🗑 Deleted job ' + esc(short(pid)), 'DELETE');
+                fetchQueue(false);
+            })
+            .catch(function (e) {
+                addEvent('error', 'Delete failed: ' + esc(e.message), 'ERROR');
+            });
+        });
+    };
+
+    window.cqClearQueue = function () {
+        cqConfirm(
+            '🧹 Clear ENTIRE queue?',
+            'This will remove <b>ALL ' + CQ.qPend.length + ' pending job(s)</b> from the ComfyUI queue.<br>' +
+            '<span class="warn">Running jobs are not affected.</span> This cannot be undone.',
+            'Clear All',
+            true
+        ).then(function (ok) {
+            if (!ok) return;
+
+            cqFetch('/queue', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clear: true })
+            })
+            .then(function () {
+                addEvent('info', '🧹 Entire pending queue cleared', 'CLEAR');
+                CQ.selected = {};
+                fetchQueue(false);
+            })
+            .catch(function (e) {
+                addEvent('error', 'Clear failed: ' + esc(e.message), 'ERROR');
+            });
+        });
+    };
+
+    window.cqMoveTop = function (pid) {
+        var item = null;
+
+        for (var i = 0; i < CQ.qPend.length; i++) {
+            if (String(CQ.qPend[i][1]) === String(pid)) {
+                item = CQ.qPend[i];
+                break;
+            }
+        }
+
+        if (!item) {
+            addEvent('error', 'Item no longer in queue.', 'ERROR');
+            return;
+        }
+
+        cqConfirm(
+            '⬆ Move to top — read carefully',
+            'ComfyUI has <b>no native reorder API</b>. SmartGallery will <b>delete</b> this job and <b>re-submit it at the front</b>.<br><br>' +
+            '<span class="warn">⚠️ Consequences:</span><br>' +
+            '• The <b>prompt ID will change</b> — any external tracking of the old ID is lost.<br>' +
+            '• If the re-submission fails, the job is <b>permanently removed</b> and must be re-queued manually.<br>' +
+            '• Generation parameters are preserved; execution state resets.<br><br>' +
+            'Proceed?',
+            'Move to Top',
+            true
+        ).then(function (ok) {
+            if (!ok) return;
+
+            cqFetch('/queue', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ delete: [pid] })
+            })
+            .then(function () {
+                return cqFetch('/prompt', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: item[2],
+                        extra_data: item[3] || {},
+                        front: true
+                    })
+                });
+            })
+            .then(function (r) {
+                return r.json();
+            })
+            .then(function (d) {
+                if (d.error) {
+                    addEvent('error', 'Re-submit failed: ' + esc(d.error.message || d.error), 'ERROR');
+                } else {
+                    addEvent('info', '⬆ Moved job to top · new id ' + short(d.prompt_id), 'ACTION');
+                }
+                fetchQueue(false);
+            })
+            .catch(function (e) {
+                addEvent('error', 'Move failed: ' + esc(e.message) + ' — job may have been removed!', 'ERROR');
+                fetchQueue(false);
+            });
+        });
+    };
+
+    /* ============================================================
+       JOB INFO + NODE JSON VIEWER
+       ============================================================ */
+    window.cqShowJobInfo = function (pid) {
+        var item = null;
+        var state = 'pending';
+
+        for (var i = 0; i < CQ.qRun.length; i++) {
+            if (String(CQ.qRun[i][1]) === String(pid)) {
+                item = CQ.qRun[i];
+                state = 'running';
+                break;
+            }
+        }
+
+        if (!item) {
+            for (var j = 0; j < CQ.qPend.length; j++) {
+                if (String(CQ.qPend[j][1]) === String(pid)) {
+                    item = CQ.qPend[j];
+                    break;
+                }
+            }
+        }
+
+        if (!item) {
+            addEvent('error', 'Job not found in queue.', 'ERROR');
+            return;
+        }
+
+        var graph = item[2] || null;
+        CQ.infoPid = pid;
+        CQ.infoGraph = graph;
+
+        var info = cqParseJobInfo(graph);
+        var order = cqTopoSort(graph || {});
+
+        var html = '';
+
+        html += '<div style="margin-bottom:6px;">' +
+                    '<span class="t ' + (state === 'running' ? 'start' : 'exec') + '" style="font-weight:800;">' + state.toUpperCase() + '</span> ' +
+                    '<span style="color:#8fa2bf;font-family:monospace;font-size:.75rem;">prompt ' + esc(pid) + '</span>' +
+                '</div>';
+
+        html += '<div class="cq-i-actions">';
+
+        if (state === 'running') {
+            html += '<button class="cq-btn danger" onclick="cqInterrupt()">⏹ Interrupt Job</button>';
+        } else {
+            html += '<button class="cq-btn danger" onclick="cqMoveTop(\'' + esc(pid) + '\')">⬆ Move to Top</button>' +
+                    '<button class="cq-btn danger" onclick="cqDelete(\'' + esc(pid) + '\')">🗑 Delete Job</button>';
+        }
+
+        html += '</div>';
+
+        html += '<div class="cq-i-sec">📦 Models & Checkpoints</div>';
+        if (info.models.length) {
+            for (var m = 0; m < info.models.length; m++) {
+                html += '<div class="cq-i-row">🧠 ' + esc(info.models[m]) + '</div>';
+            }
+        } else {
+            html += '<div class="cq-i-empty">None detected</div>';
+        }
+
+        html += '<div class="cq-i-sec">🎨 LoRAs</div>';
+        if (info.loras.length) {
+            for (var l = 0; l < info.loras.length; l++) {
+                html += '<div class="cq-i-row">🧩 ' + esc(info.loras[l].name) +
+                        ' <span style="color:#fbbf24;">strength ' +
+                        esc(String(info.loras[l].sm !== undefined ? info.loras[l].sm : 1)) +
+                        '</span></div>';
+            }
+        } else {
+            html += '<div class="cq-i-empty">None detected</div>';
+        }
+
+        html += '<div class="cq-i-sec">🔌 Node Pipeline (' + order.length + ') — click a node for JSON</div>';
+        html += '<div style="display:flex; flex-wrap:wrap; gap:6px;">';
+
+        for (var o = 0; o < order.length; o++) {
+            var n = (graph || {})[order[o]];
+            if (n && (n.class_type || n.type)) {
+                html += '<button type="button" class="cq-i-chip" onclick="cqShowNodeJson(\'' + esc(order[o]) + '\')">' +
+                            esc(n.class_type || n.type) +
+                        '</button>';
+            }
+        }
+
+        html += '</div>';
+
+        CQ.infoTexts = info.texts;
+
+        if (info.texts.length) {
+            html += '<div class="cq-i-sec">📝 Prompt Texts (graph-traced)</div>';
+
+            for (var t = 0; t < info.texts.length; t++) {
+                html += '<div style="margin-bottom:8px;">' +
+                            '<div style="margin-bottom:4px;">' +
+                                '<span style="color:#8fa2bf;font-size:.72rem;font-weight:700;">' + esc(info.texts[t].label) + '</span>' +
+                            '</div>' +
+                            '<div class="cq-i-text">' + esc(info.texts[t].text) + '</div>' +
+                        '</div>';
+            }
+        }
+
+        $('cq-i-title').innerHTML = 'ℹ️ Job Details';
+        $('cq-i-body').innerHTML = html;
+        $('cq-info').classList.add('visible');
+    };
+
+    function cqTopoSort(g) {
+        var ids = Object.keys(g);
+        var visited = {};
+        var out = [];
+
+        function visit(id) {
+            if (visited[id]) return;
+            visited[id] = true;
+
+            var n = g[id];
+            if (n && n.inputs && typeof n.inputs === 'object') {
+                for (var k in n.inputs) {
+                    var v = n.inputs[k];
+                    if (Array.isArray(v) && v.length >= 1 && g[String(v[0])]) {
+                        visit(String(v[0]));
+                    }
+                }
+            }
+
+            out.push(id);
+        }
+
+        for (var i = 0; i < ids.length; i++) {
+            visit(ids[i]);
+        }
+
+        return out;
+    }
+
+    function cqParseJobInfo(g) {
+        var info = {
+            models: [],
+            loras: [],
+            texts: []
+        };
+
+        if (!g || typeof g !== 'object') return info;
+
+        var modelExt = /\.(safetensors|ckpt|pt|pth|bin|gguf|sft|vae|onnx)$/i;
+        var edges = {};
+
+        for (var eid in g) {
+            var en = g[eid];
+            if (!en || typeof en !== 'object' || !en.inputs) continue;
+
+            for (var ek in en.inputs) {
+                var evv = en.inputs[ek];
+
+                if (Array.isArray(evv) && evv.length >= 1) {
+                    var es = String(evv[0]);
+                    if (!edges[es]) edges[es] = [];
+                    edges[es].push({
+                        t: eid,
+                        k: String(ek).toLowerCase()
+                    });
+                }
+            }
+        }
+
+        function polarity(startId) {
+            var q = [String(startId)];
+            var seen = {};
+            var guard = 0;
+
+            while (q.length && guard < 600) {
+                guard++;
+                var cur = q.shift();
+
+                if (seen[cur]) continue;
+                seen[cur] = true;
+
+                var outs = edges[cur] || [];
+                for (var i = 0; i < outs.length; i++) {
+                    if (outs[i].k === 'positive') return 'pos';
+                    if (outs[i].k === 'negative') return 'neg';
+                    q.push(outs[i].t);
+                }
+            }
+
+            return null;
+        }
+
+        var ids = Object.keys(g);
+
+        for (var i = 0; i < ids.length; i++) {
+            var node = g[ids[i]];
+            if (!node || typeof node !== 'object') continue;
+
+            var ct = String(node.class_type || node.type || '');
+            var title = (node._meta && node._meta.title) ? String(node._meta.title) : ct;
+            var inputs = node.inputs || {};
+            var isLora = /lora/i.test(ct);
+
+            for (var k in inputs) {
+                var v = inputs[k];
+                if (typeof v !== 'string') continue;
+
+                if (isLora && k === 'lora_name') {
+                    info.loras.push({
+                        name: v,
+                        sm: inputs.strength_model,
+                        sc: inputs.strength_clip
+                    });
+                } else if (modelExt.test(v) && !isLora) {
+                    info.models.push(v);
+                }
+            }
+
+            if (/CLIPTextEncode/i.test(ct) && typeof inputs.text === 'string' && inputs.text.trim()) {
+                var pol = polarity(ids[i]);
+                var label = pol === 'pos'
+                    ? 'Positive Prompt'
+                    : pol === 'neg'
+                        ? 'Negative Prompt'
+                        : (/neg/i.test(title) ? 'Negative Prompt' : 'Positive Prompt');
+
+                info.texts.push({
+                    label: label,
+                    text: inputs.text
+                });
+            }
+        }
+
+        info.models = Array.from(new Set(info.models));
+        return info;
+    }
+
+    /* ============================================================
+       GLOBAL NODE JSON VIEWER
+       ============================================================ */
+    function cqEnsureGlobalNodeJsonViewer() {
+        var existing = document.getElementById('cq-global-node-json-viewer');
+        if (existing) return existing;
+
+        var overlay = document.createElement('div');
+        overlay.id = 'cq-global-node-json-viewer';
+
+        overlay.innerHTML =
+            '<div class="cq-global-json-box" role="dialog" aria-modal="true">' +
+                '<h3 id="cq-global-json-title">🧩 Node JSON</h3>' +
+                '<pre id="cq-global-json-body"></pre>' +
+                '<div class="cq-global-json-actions">' +
+                    '<button type="button" id="cq-global-json-close">Close</button>' +
+                '</div>' +
+            '</div>';
+
+        overlay.style.cssText =
+            'position:fixed;' +
+            'inset:0;' +
+            'z-index:200000;' +
+            'display:none;' +
+            'align-items:center;' +
+            'justify-content:center;' +
+            'background:rgba(2,4,8,0.82);' +
+            'backdrop-filter:blur(4px);' +
+            '-webkit-backdrop-filter:blur(4px);' +
+            'padding:22px;' +
+            'box-sizing:border-box;';
+
+        document.body.appendChild(overlay);
+
+        var box = overlay.querySelector('.cq-global-json-box');
+        box.style.cssText =
+            'width:760px;' +
+            'max-width:96vw;' +
+            'max-height:88vh;' +
+            'display:flex;' +
+            'flex-direction:column;' +
+            'background:#101826;' +
+            'border:1px solid rgba(34,211,238,0.45);' +
+            'border-radius:16px;' +
+            'padding:22px;' +
+            'box-shadow:0 24px 80px rgba(0,0,0,0.9);' +
+            'box-sizing:border-box;';
+
+        var title = overlay.querySelector('#cq-global-json-title');
+        title.style.cssText =
+            'margin:0 0 12px 0;' +
+            'color:#fff;' +
+            'font-size:1.05rem;' +
+            'font-weight:800;';
+
+        var pre = overlay.querySelector('#cq-global-json-body');
+        pre.style.cssText =
+            'flex:1;' +
+            'min-height:0;' +
+            'max-height:64vh;' +
+            'overflow:auto;' +
+            'margin:0;' +
+            'padding:12px;' +
+            'background:#0a0e15;' +
+            'border:1px solid #1e2a41;' +
+            'border-radius:10px;' +
+            'color:#cbd5e1;' +
+            'font-family:ui-monospace,Consolas,monospace;' +
+            'font-size:0.75rem;' +
+            'line-height:1.5;' +
+            'white-space:pre;' +
+            'word-break:normal;' +
+            'box-sizing:border-box;';
+
+        var actions = overlay.querySelector('.cq-global-json-actions');
+        actions.style.cssText =
+            'display:flex;' +
+            'justify-content:flex-end;' +
+            'gap:10px;' +
+            'margin-top:16px;' +
+            'flex-shrink:0;';
+
+        var close = overlay.querySelector('#cq-global-json-close');
+        close.style.cssText =
+            'background:#1b2436;' +
+            'border:1px solid #2c3a55;' +
+            'color:#dbe7ff;' +
+            'border-radius:9px;' +
+            'font-size:0.78rem;' +
+            'font-weight:800;' +
+            'padding:7px 14px;' +
+            'cursor:pointer;';
+
+        close.addEventListener('click', function () {
+            overlay.style.display = 'none';
+        });
+
+        overlay.addEventListener('click', function (event) {
+            if (event.target === overlay) {
+                overlay.style.display = 'none';
+            }
+        });
+
+        return overlay;
+    }
+
+    function cqOpenGlobalNodeJson(titleHtml, jsonObject) {
+        var overlay = cqEnsureGlobalNodeJsonViewer();
+        var title = overlay.querySelector('#cq-global-json-title');
+        var body = overlay.querySelector('#cq-global-json-body');
+
+        title.innerHTML = titleHtml;
+        body.textContent = JSON.stringify(jsonObject, null, 2);
+        overlay.style.display = 'flex';
+    }
+
+    document.addEventListener('keydown', function (event) {
+        var isEsc = (event.key === 'Escape' || event.key === 'Esc' || event.keyCode === 27);
+        if (!isEsc) return;
+
+        var overlay = document.getElementById('cq-global-node-json-viewer');
+        if (overlay && overlay.style.display === 'flex') {
+            event.preventDefault();
+            event.stopPropagation();
+            overlay.style.display = 'none';
+        }
+    }, true);
+
+    function cqFindNodeInWorkflow(workflow, nodeId) {
+        if (!workflow) return null;
+
+        var wanted = String(nodeId);
+
+        if (Array.isArray(workflow)) {
+            for (var a = 0; a < workflow.length; a++) {
+                if (workflow[a] && String(workflow[a].id) === wanted) return workflow[a];
+            }
+            return null;
+        }
+
+        if (workflow.nodes && Array.isArray(workflow.nodes)) {
+            for (var n = 0; n < workflow.nodes.length; n++) {
+                if (workflow.nodes[n] && String(workflow.nodes[n].id) === wanted) return workflow.nodes[n];
+            }
+        }
+
+        if (workflow[wanted]) return workflow[wanted];
+        if (workflow.prompt && workflow.prompt[wanted]) return workflow.prompt[wanted];
+        if (workflow.workflow && workflow.workflow[wanted]) return workflow.workflow[wanted];
+
+        return null;
+    }
+
+    window.cqShowNodeJson = function (nodeId) {
+        var graph = CQ.infoGraph || {};
+        var node = graph[nodeId];
+
+        if (!node) {
+            if (typeof addEvent === 'function') {
+                addEvent('error', 'Node not found in current job graph.', 'ERROR');
+            }
+            return;
+        }
+
+        cqOpenGlobalNodeJson(
+            '🧩 Node ' + esc(nodeId) + ' — ' + esc(node.class_type || node.type || ''),
+            node
+        );
+    };
+
+    window.cqShowNodeJsonForFile = function (fileId, nodeId) {
+        if (!fileId || String(fileId) === 'undefined' || String(fileId) === 'null') {
+            if (window.showNotification) {
+                showNotification('No reference asset is available for this node.', 'warning');
+            }
+            return;
+        }
+
+        fetch('/galleryout/workflow/' + encodeURIComponent(fileId))
+            .then(function (response) {
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                return response.json();
+            })
+            .then(function (workflow) {
+                var node = cqFindNodeInWorkflow(workflow, nodeId);
+
+                if (!node) {
+                    if (window.showNotification) {
+                        showNotification('Node not found in workflow.', 'warning');
+                    }
+                    return;
+                }
+
+                cqOpenGlobalNodeJson(
+                    '🧩 Node ' + esc(nodeId) + ' — ' + esc(node.class_type || node.type || ''),
+                    node
+                );
+            })
+            .catch(function (error) {
+                if (window.showNotification) {
+                    showNotification('Cannot load workflow: ' + error.message, 'error');
+                }
+            });
+    };
+
+    window.showFdNodeJson = function (fileId, nodeId) {
+        window.cqShowNodeJsonForFile(fileId, nodeId);
+    };
+
+    window.showClusterNodeJson = function (nodeId) {
+        var fileId = null;
+        try {
+            if (typeof currentInspectedSampleFileId !== 'undefined') {
+                fileId = currentInspectedSampleFileId;
+            }
+        } catch (e) {}
+
+        if (!fileId && window.currentInspectedSampleFileId) {
+            fileId = window.currentInspectedSampleFileId;
+        }
+
+        if (!fileId) {
+            if (window.showNotification) {
+                showNotification('No reference asset is available for this cluster.', 'warning');
+            }
+            return;
+        }
+
+        window.cqShowNodeJsonForFile(fileId, nodeId);
+    };
+
+    /* ============================================================
+       STATS (VRAM / device / counts)
+       ============================================================ */
+    function fetchStats() {
+        if (!CQ.open) return;
+
+        cqFetch('/system_stats')
+            .then(function (r) {
+                return r.json();
+            })
+            .then(function (d) {
+                if (CQ.open) {
+                    CQ.stats = d;
+                    renderStats();
+                }
+            })
+            .catch(function () {});
+    }
+
+    function renderStats() {
+        if (!CQ.stats) return;
+
+        var devs = CQ.stats.devices || [];
+        if (!devs.length) return;
+
+        var dev = devs[0];
+        var total = dev.vram_total || 0;
+        var free = dev.vram_free || 0;
+        var tT = dev.torch_vram_total || 0;
+        var tF = dev.torch_vram_free || 0;
+
+        var isCpu = (!dev.type || String(dev.type).toLowerCase().indexOf('cpu') !== -1) || total <= 0;
+
+        var g = $('cq-gval');
+        var v = $('cq-vram');
+        var dv = $('cq-s-dev');
+        var sv = $('cq-s-vram');
+        var st = $('cq-s-torch');
+        var devWrap = $('cq-stat-dev-wrap');
+
+        function gb(b) {
+            return (b / 1073741824).toFixed(1) + ' GB';
+        }
+
+        if (isCpu) {
+            if (g) {
+                g.style.strokeDashoffset = 314;
+                g.style.stroke = '#64748b';
+            }
+            if (v) v.textContent = '—';
+            if (sv) sv.textContent = 'CPU MODE';
+            if (st) st.textContent = '—';
+        } else {
+            var used = Math.max(0, total - free);
+            var pct = Math.min(100, Math.round(used / total * 100));
+
+            if (g) {
+                g.style.strokeDashoffset = 314 - (314 * pct / 100);
+                g.style.stroke = pct > 85 ? '#f87171' : (pct > 60 ? '#fbbf24' : '#34d399');
+            }
+
+            if (v) v.textContent = pct + '%';
+            if (sv) sv.textContent = gb(used) + ' / ' + gb(total);
+            if (st) st.textContent = tT > 0 ? gb(Math.max(0, tT - tF)) : 'n/a';
+        }
+
+        if (dv) {
+            var fullDevName = dev.name || 'GPU';
+            dv.textContent = fullDevName;
+            dv.title = fullDevName;
+            if (devWrap) devWrap.title = 'Compute Device: ' + fullDevName;
+        }
+    }
+
+    /* ============================================================
+       GPU COMPUTE UTILIZATION
+       ============================================================ */
+    function fetchGpuStats() {
+        if (!CQ.open) return;
+        var localApiUrl = '/galleryout/api/gpu_stats?target_url=' + encodeURIComponent(CQ.url || '') + '&t=' + Date.now();
+        fetchLocalGpuStats(localApiUrl);
+    }
+
+    function fetchLocalGpuStats(url) {
+        fetch(url, { cache: 'no-store' })
+            .then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(function (d) {
+                if (CQ.open) renderGpuStats(d);
+            })
+            .catch(function () {
+                if (CQ.open) renderGpuStats(null);
+            });
+    }
+
+    function renderGpuStats(d) {
+        var g = $('cq-gval-gpu');
+        var v = $('cq-gpu-pct');
+var gRam = $('cq-gval-ram');
+var vRam = $('cq-ram-pct');
+var ramWrap = $('cq-ram-wrap');
+var ramUsage = $('cq-ram-usage');
+if (d && d.ram && gRam && vRam) {
+var rawRamPct = Number(d.ram.used_pct !== undefined ? d.ram.used_pct : (d.ram.percent || 0));
+var rPct = Math.max(0, Math.min(100, Math.round(rawRamPct)));
+var rColor = rPct > 85 ? '#f87171' : (rPct > 60 ? '#fbbf24' : '#34d399');
+var usedGb = Number(d.ram.used_gb !== undefined ? d.ram.used_gb : 0);
+var totalGb = Number(d.ram.total_gb !== undefined ? d.ram.total_gb : 0);
+var usedShort = (usedGb >= 100) ? String(Math.round(usedGb)) : String(Math.round(usedGb * 10) / 10);
+var totalShort = (totalGb >= 100) ? String(Math.round(totalGb)) : String(Math.round(totalGb * 10) / 10);
+gRam.style.strokeDashoffset = 314 - (314 * rPct / 100);
+gRam.style.stroke = rColor;
+gRam.style.filter = rPct > 85 ? 'drop-shadow(0 0 6px rgba(248,113,113,0.6))' : (rPct > 60 ? 'drop-shadow(0 0 6px rgba(251,191,36,0.6))' : 'drop-shadow(0 0 6px rgba(52,211,153,0.6))');
+vRam.textContent = rPct + '%';
+if (ramUsage) ramUsage.textContent = (totalGb > 0) ? (usedShort + '/' + totalShort + 'G') : (rPct + '%');
+if (ramWrap) {
+ramWrap.style.display = '';
+ramWrap.title = 'System RAM: ' + (totalGb > 0 ? (usedGb.toFixed(1) + ' GB / ' + totalGb.toFixed(1) + ' GB') : (rPct + '% used'));
+}
+if (gRam.parentElement) gRam.parentElement.title = 'System RAM: ' + (totalGb > 0 ? (usedGb.toFixed(1) + ' GB / ' + totalGb.toFixed(1) + ' GB') : (rPct + '% used'));
+} else if (gRam && vRam) {
+gRam.style.strokeDashoffset = 314;
+gRam.style.stroke = '#64748b';
+gRam.style.filter = 'none';
+vRam.textContent = '--';
+if (ramUsage) ramUsage.textContent = '--';
+if (ramWrap) ramWrap.style.display = 'none';
+if (gRam.parentElement) gRam.parentElement.title = 'System RAM: Unavailable';
+}
+
+        if (!g || !v) return;
+
+        var rawPct = null;
+
+        if (d && typeof d === 'object') {
+            var gpus = d.gpus || d.devices || d.data || (Array.isArray(d) ? d : null);
+            var gpu = (gpus && gpus.length) ? gpus[0] : d;
+
+            if (gpu && typeof gpu === 'object') {
+                var candidate = (gpu.utilization_gpu !== undefined) ? gpu.utilization_gpu :
+                                (gpu.gpu_utilization !== undefined) ? gpu.gpu_utilization :
+                                (gpu.utilization !== undefined) ? gpu.utilization :
+                                (gpu.load !== undefined) ? gpu.load :
+                                (gpu.usage !== undefined) ? gpu.usage :
+                                (d.utilization_gpu !== undefined) ? d.utilization_gpu :
+                                (d.gpu_utilization !== undefined) ? d.gpu_utilization : null;
+
+                if (candidate !== null && candidate !== undefined) {
+                    var parsed = parseFloat(String(candidate).replace(/[^0-9.]/g, ''));
+                    if (!isNaN(parsed)) {
+                        rawPct = parsed;
+                    }
+                }
+            }
+        }
+
+        // Detect GPU availability from ComfyUI system stats
+        var hasGpu = CQ.stats && CQ.stats.devices && CQ.stats.devices.length &&
+                     String(CQ.stats.devices[0].type || '').toLowerCase() !== 'cpu';
+
+        if (rawPct === null) {
+            if (hasGpu) {
+                if (CQ.qRun && CQ.qRun.length > 0) {
+                    var activePct = (CQ.progressMax > 0 && CQ.progress > 0) ? 94 : 70;
+                    var activeColor = activePct > 85 ? '#f87171' : (activePct > 60 ? '#fbbf24' : '#34d399');
+                    g.style.strokeDashoffset = 314 - (314 * activePct / 100);
+                    g.style.stroke = activeColor;
+                    g.style.filter = activePct > 85 ? 'drop-shadow(0 0 6px rgba(248,113,113,0.6))' : (activePct > 60 ? 'drop-shadow(0 0 6px rgba(251,191,36,0.6))' : 'drop-shadow(0 0 6px rgba(52,211,153,0.6))');
+                    v.textContent = activePct + '%';
+                } else {
+                    g.style.strokeDashoffset = 314;
+                    g.style.stroke = '#34d399';
+                    g.style.filter = 'drop-shadow(0 0 6px rgba(52,211,153,0.6))';
+                    v.textContent = '0%';
+                }
+            } else {
+                g.style.strokeDashoffset = 314;
+                g.style.stroke = '#64748b';
+                g.style.filter = 'none';
+                v.textContent = '—';
+            }
+            return;
+        }
+
+        var pct = Math.max(0, Math.min(100, Math.round(rawPct)));
+        var color = pct > 85 ? '#f87171' : (pct > 60 ? '#fbbf24' : '#34d399');
+        g.style.strokeDashoffset = 314 - (314 * pct / 100);
+        g.style.stroke = color;
+        g.style.filter = pct > 85 ? 'drop-shadow(0 0 6px rgba(248,113,113,0.6))' : (pct > 60 ? 'drop-shadow(0 0 6px rgba(251,191,36,0.6))' : 'drop-shadow(0 0 6px rgba(52,211,153,0.6))');
+        v.textContent = pct + '%';
+    }
+
+    
+
+    /* ============================================================
+       PREVIEW HINTS
+       ============================================================ */
+    function cqShowPreviewNote(text, cls) {
+        var el = $('cq-pnote');
+        if (!el) return;
+
+        el.className = 'cq-pnote ' + (cls || 'info');
+        el.textContent = text;
+        el.style.display = 'block';
+    }
+
+    function cqHidePreviewNote() {
+        var el = $('cq-pnote');
+        if (!el) return;
+
+        el.style.display = 'none';
+        el.textContent = '';
+    }
+
+    /* ============================================================
+       RECENT JOBS HISTORY
+       ============================================================ */
+    function cqGetJobDuration(item) {
+        if (!item || !item.status) return null;
+        var msgs = item.status.messages;
+        if (!Array.isArray(msgs) || !msgs.length) return null;
+
+        var startTs = null;
+        var endTs = null;
+        var earliestTs = null;
+        var latestTs = null;
+
+        for (var i = 0; i < msgs.length; i++) {
+            var m = msgs[i];
+            if (!Array.isArray(m) || m.length < 2 || !m[1]) continue;
+            var type = m[0];
+            var data = m[1];
+
+            var rawTs = data.timestamp !== undefined ? data.timestamp : (data.time !== undefined ? data.time : null);
+            if (rawTs === null || rawTs === undefined) continue;
+
+            var numTs = parseFloat(rawTs);
+            if (isNaN(numTs)) continue;
+
+            var sec = numTs > 1e11 ? numTs / 1000 : numTs;
+
+            if (earliestTs === null || sec < earliestTs) earliestTs = sec;
+            if (latestTs === null || sec > latestTs) latestTs = sec;
+
+            if (type === 'execution_start') {
+                if (startTs === null || sec < startTs) startTs = sec;
+            } else if (type === 'execution_success' || type === 'execution_error' || type === 'execution_interrupted') {
+                if (endTs === null || sec > endTs) endTs = sec;
+            }
+        }
+
+        if (startTs === null) startTs = earliestTs;
+        if (endTs === null) endTs = latestTs;
+
+        if (startTs !== null && endTs !== null && endTs >= startTs) {
+            var diff = endTs - startTs;
+            return diff >= 0 ? diff : null;
+        }
+        return null;
+    }
+
+    function cqFormatDurationSec(sec) {
+        if (sec === null || sec === undefined || isNaN(sec) || sec < 0) return '';
+        if (sec < 0.05) return '< 0.1s';
+        if (sec < 60) {
+            return sec.toFixed(1) + 's';
+        }
+        var m = Math.floor(sec / 60);
+        var s = Math.round(sec % 60);
+        if (s === 60) { m += 1; s = 0; }
+        if (m < 60) {
+            return m + 'm ' + (s < 10 ? '0' : '') + s + 's';
+        }
+        var h = Math.floor(m / 60);
+        var remM = m % 60;
+        return h + 'h ' + (remM < 10 ? '0' : '') + remM + 'm';
+    }
+
+    function cqHistoryMediaList(item) {
+        var out = item && item.outputs;
+        if (!out) return [];
+
+        var outputMedia = [];
+        var tempMedia = [];
+        var seen = {};
+
+        for (var nodeId in out) {
+            var o = out[nodeId];
+            if (!o) continue;
+
+            var arr = (o.images && o.images.length)
+                ? o.images
+                : ((o.gifs && o.gifs.length)
+                    ? o.gifs
+                    : ((o.videos && o.videos.length) ? o.videos : null));
+
+            if (arr) {
+                for (var i = 0; i < arr.length; i++) {
+                    var m = arr[i];
+                    if (!m || !m.filename) continue;
+
+                    // Deduplicate by filename to prevent duplicate image displays
+                    var fn = String(m.filename).toLowerCase();
+                    if (seen[fn]) continue;
+                    seen[fn] = true;
+
+                    if (m.type === 'temp') {
+                        tempMedia.push(m);
+                    } else {
+                        outputMedia.push(m);
+                    }
+                }
+            }
+        }
+
+        // Prefer permanent saved outputs: eliminates duplicate temporary preview node images
+        return outputMedia.length ? outputMedia : tempMedia;
+    }
+
+    function cqHistoryIsOk(item) {
+        return !(item && item.status && item.status.status_str === 'error');
+    }
+
+    function fetchHistory() {
+        if (!CQ.open) return;
+
+        cqFetch('/history?max_items=16')
+            .then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .catch(function () {
+                return cqFetch('/history').then(function (r) {
+                    return r.json();
+                });
+            })
+            .then(function (d) {
+                if (!CQ.open || !d || typeof d !== 'object') return;
+
+                CQ.historyRaw = d;
+
+                var ids = Object.keys(d);
+                ids.reverse();
+
+                CQ.historyIds = ids.slice(0, 16);
+                renderHistory();
+            })
+            .catch(function () {});
+    }
+
+    function renderHistory() {
+        var box = $('cq-history');
+        if (!box) return;
+
+        var ids = CQ.historyIds || [];
+        var avgSideEl = $('cq-history-avg-side');
+
+        if (!ids.length) {
+            box.innerHTML = '<div class="cq-history-empty">No completed jobs yet.</div>';
+            delete box.dataset.lastHistoryKey;
+            if (avgSideEl) avgSideEl.style.display = 'none';
+            return;
+        }
+
+        var totalDur = 0;
+        var durCount = 0;
+
+        var historyKey = ids.map(function(id) {
+            var item = CQ.historyRaw[id];
+            var ok = cqHistoryIsOk(item);
+            var d = cqGetJobDuration(item);
+            if (d !== null && d >= 0) {
+                totalDur += d;
+                durCount++;
+            }
+            return id + '_' + (ok ? '1' : '0') + '_' + (d !== null ? d.toFixed(1) : 'x');
+        }).join('|');
+
+        if (durCount > 0) {
+            var avgSec = totalDur / durCount;
+            var avgFormatted = cqFormatDurationSec(avgSec);
+            if (avgSideEl) {
+                avgSideEl.textContent = '⏱️ Avg: ' + avgFormatted;
+                avgSideEl.title = 'Average generation time across ' + durCount + ' completed job(s)';
+                avgSideEl.style.display = 'inline';
+            }
+        } else {
+            if (avgSideEl) avgSideEl.style.display = 'none';
+        }
+
+        if (box.dataset.lastHistoryKey === historyKey) {
+            return;
+        }
+        box.dataset.lastHistoryKey = historyKey;
+
+        var html = '';
+
+        for (var i = 0; i < ids.length; i++) {
+            var pid = ids[i];
+            var item = CQ.historyRaw[pid];
+            if (!item) continue;
+
+            var media = cqHistoryMediaList(item);
+            var lastMedia = media.length ? media[media.length - 1] : null;
+            var thumb = lastMedia ? viewUrl(lastMedia) : null;
+            var filename = lastMedia && lastMedia.filename ? String(lastMedia.filename).toLowerCase() : '';
+            var isVideo = /\.(mp4|webm|mov|mkv|m4v|avi|wmv)$/i.test(filename);
+            var ok = cqHistoryIsOk(item);
+            var jobDur = cqGetJobDuration(item);
+            var jobDurStr = jobDur !== null ? cqFormatDurationSec(jobDur) : '';
+
+            var mediaHtml = '<div class="ph-ic">🗒️</div>';
+            if (thumb) {
+                if (isVideo) {
+                    mediaHtml = '<video src="' + esc(thumb) + '#t=0.001" preload="auto" muted playsinline loop onloadedmetadata="cqInitVideoThumb(this)" onmouseover="try{this.play();}catch(e){}" onmouseout="try{this.pause();this.currentTime=0.001;}catch(e){}" style="width:100%;height:100%;object-fit:cover;pointer-events:none;display:block;background:#0a0f18;"></video>' +
+                                '<span class="badge" style="bottom:4px;left:4px;top:auto;right:auto;font-size:0.55rem;background:rgba(0,0,0,0.75);color:#38bdf8;padding:1px 4px;border-radius:3px;">▶ VIDEO</span>';
+                } else {
+                    mediaHtml = '<img src="' + esc(thumb) + '" loading="lazy" alt="Job output" onerror="this.style.display=\'none\';">';
+                }
+            }
+
+            var durBadge = jobDurStr
+                ? '<span class="badge" style="top:auto;bottom:4px;right:4px;font-size:0.55rem;font-family:ui-monospace,Consolas,monospace;background:rgba(10,15,24,0.88);color:#dbe7ff;border:1px solid #2c3a55;padding:1px 4px;border-radius:4px;">' + esc(jobDurStr) + '</span>'
+                : '';
+
+            html += '<div class="cq-hthumb" onclick="cqOpenResult(\'' + esc(pid) + '\')" title="prompt ' + esc(pid) + (jobDurStr ? ' (' + esc(jobDurStr) + ')' : '') + '">' +
+                        mediaHtml +
+                        '<span class="badge ' + (ok ? 't done' : 't error') + '">' + (ok ? '✅' : '❌') + '</span>' +
+                        durBadge +
+                    '</div>';
+        }
+
+        box.innerHTML = html;
+    }
+
+    window.cqOpenResult = function (pid) {
+        var item = (CQ.historyRaw || {})[pid] || {};
+
+        var media = cqHistoryMediaList(item);
+        var ok = cqHistoryIsOk(item);
+        var jobDur = cqGetJobDuration(item);
+        var jobDurStr = jobDur !== null ? cqFormatDurationSec(jobDur) : '';
+
+        // Fixed header bar updates
+        var statusEl = $('cq-rv-status');
+        if (statusEl) {
+            statusEl.className = 't ' + (ok ? 'done' : 'error');
+            statusEl.textContent = ok ? 'SUCCESS' : 'ERROR';
+        }
+
+        var durPill = $('cq-rv-duration-pill');
+        if (durPill) {
+            if (jobDurStr) {
+                durPill.textContent = '⏱️ ' + jobDurStr;
+                durPill.style.display = 'inline-flex';
+            } else {
+                durPill.textContent = '⏱️ Calculating…';
+                durPill.style.display = 'inline-flex';
+            }
+        }
+
+        var html = '<div style="color:#8fa2bf; font-family:ui-monospace,Consolas,monospace; font-size:0.8rem; margin-bottom:12px;">' +
+                       'Prompt ID: <span style="color:#e2e8f0;">' + esc(pid) + '</span>' +
+                   '</div>';
+
+        if (!media.length) {
+            html += '<div class="cq-i-empty">No output files recorded for this job.</div>';
+        } else {
+            for (var i = 0; i < media.length; i++) {
+                var m = media[i];
+                var url = viewUrl(m);
+                var isVideo = /\.(mp4|webm|mov|mkv)$/i.test(m.filename || '');
+                var mediaFilename = m.filename || ('result_' + (i + 1) + (isVideo ? '.mp4' : '.png'));
+
+                html += '<div style="margin-bottom:14px;">' +
+                            (isVideo
+                                ? '<video class="cq-result-media" src="' + esc(url) + '" controls></video>'
+                                : '<img class="cq-result-media" src="' + esc(url) + '" alt="Job output">') +
+                            '<div style="text-align:center;">' +
+                                '<button type="button" class="cq-i-chip" data-url="' + esc(url) + '" data-filename="' + esc(mediaFilename) + '" onclick="cqDownloadMedia(this, this.dataset.url, this.dataset.filename)">⬇ Download ' + esc(mediaFilename) + '</button>' +
+                            '</div>' +
+                        '</div>';
+            }
+        }
+
+        html += '<div class="cq-i-sec">⏱️ Execution Time</div>';
+        html += '<div class="cq-i-row" id="cq-rv-duration-row">' +
+                    (jobDurStr ? ('Total duration: <b style="color:#d8b4fe;">' + esc(jobDurStr) + '</b>') : '<span style="color:#8fa2bf;font-style:italic;">Calculating duration…</span>') +
+                '</div>';
+
+        var graph = (item.prompt && item.prompt.length > 2)
+            ? item.prompt[2]
+            : (item.prompt && typeof item.prompt === 'object' && !Array.isArray(item.prompt) ? item.prompt : null);
+
+        if (graph) {
+            CQ.infoGraph = graph;
+            var info = cqParseJobInfo(graph);
+            var order = cqTopoSort(graph);
+
+            html += '<div class="cq-i-sec">📦 Models & Checkpoints</div>';
+            if (info.models.length) {
+                for (var m = 0; m < info.models.length; m++) {
+                    html += '<div class="cq-i-row">🧠 ' + esc(info.models[m]) + '</div>';
+                }
+            } else {
+                html += '<div class="cq-i-empty">None detected</div>';
+            }
+
+            html += '<div class="cq-i-sec">🎨 LoRAs</div>';
+            if (info.loras.length) {
+                for (var l = 0; l < info.loras.length; l++) {
+                    html += '<div class="cq-i-row">🧩 ' + esc(info.loras[l].name) +
+                            ' <span style="color:#fbbf24;">strength ' +
+                            esc(String(info.loras[l].sm !== undefined ? info.loras[l].sm : 1)) +
+                            '</span></div>';
+                }
+            } else {
+                html += '<div class="cq-i-empty">None detected</div>';
+            }
+
+            html += '<div class="cq-i-sec">🔌 Node Pipeline (' + order.length + ') — click a node for JSON</div>';
+            html += '<div style="display:flex; flex-wrap:wrap; gap:6px;">';
+
+            for (var o = 0; o < order.length; o++) {
+                var n = graph[order[o]];
+                if (n && (n.class_type || n.type)) {
+                    html += '<button type="button" class="cq-i-chip" data-node-id="' + esc(order[o]) + '" onclick="cqShowNodeJson(this.dataset.nodeId)">' +
+                                esc(n.class_type || n.type) +
+                            '</button>';
+                }
+            }
+
+            html += '</div>';
+
+            if (info.texts && info.texts.length) {
+                html += '<div class="cq-i-sec">📝 Prompt Texts (graph-traced)</div>';
+                for (var t = 0; t < info.texts.length; t++) {
+                    html += '<div style="margin-bottom:8px;">' +
+                                '<div style="margin-bottom:4px;">' +
+                                    '<span style="color:#8fa2bf;font-size:.72rem;font-weight:700;">' + esc(info.texts[t].label) + '</span>' +
+                                '</div>' +
+                                '<div class="cq-i-text">' + esc(info.texts[t].text) + '</div>' +
+                            '</div>';
+                }
+            }
+        }
+
+        $('cq-rv-title').innerHTML = '🖼️ Job Result';
+        var rvBody = $('cq-rv-body');
+        if (rvBody) {
+            rvBody.innerHTML = html;
+            rvBody.scrollTop = 0;
+        }
+        $('cq-resultview').classList.add('visible');
+
+        // Always query prompt history directly to guarantee exact duration resolution
+        cqFetch('/history/' + encodeURIComponent(pid))
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (!d) return;
+                var singleItem = d[pid] || d;
+                if (singleItem) {
+                    if (CQ.historyRaw) {
+                        CQ.historyRaw[pid] = singleItem;
+                    }
+                    var fetchedDur = cqGetJobDuration(singleItem);
+                    if (fetchedDur !== null) {
+                        var fStr = cqFormatDurationSec(fetchedDur);
+                        if (durPill) {
+                            durPill.textContent = '⏱️ ' + fStr;
+                            durPill.style.display = 'inline-flex';
+                        }
+                        var durRow = $('cq-rv-duration-row');
+                        if (durRow) {
+                            durRow.innerHTML = 'Total duration: <b style="color:#d8b4fe;">' + esc(fStr) + '</b>';
+                        }
+                    }
+                }
+            })
+            .catch(function () {});
+    };
+
+    /* ============================================================
+       Keep modal alive across silent auto-refresh
+       ============================================================ */
+    function cqPatchSyncProcess() {
+        if (typeof window.startSyncProcess === 'function') {
+            var orig = window.startSyncProcess;
+
+            window.startSyncProcess = function (isManual, isSilent) {
+                if (window._cqOpen && isSilent) {
+                    console.log('ComfyUI Queue Deck: silent auto-refresh skipped while open.');
+                    return;
+                }
+                return orig.apply(this, arguments);
+            };
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', cqPatchSyncProcess);
+    } else {
+        cqPatchSyncProcess();
+    }
+
+})();
+</script>
+</body>
+</html>

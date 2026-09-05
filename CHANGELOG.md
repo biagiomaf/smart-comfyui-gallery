@@ -1,5 +1,26 @@
 # Changelog
 
+### **[2.23] - 2026-09-05**
+
+### ⚡ ComfyUI Queue Deck
+
+**What it does:**  
+Introduces **ComfyUI Queue Deck**, a real-time mission control center to inspect and manage generation queues, track progressive sampling steps, stream live previews, monitor driver-level VRAM and GPU compute loads, and inspect completed job graphs and metadata.
+
+**How to access:**
+* Press **`Shift+Q`** anywhere in the gallery for instant access.
+* Or open it from the top navigation bar via **`Tools` → `ComfyUI Queue Deck`**.
+
+### ✨ Improvements & Node Inspector
+
+* **Interactive Node JSON Chips:** All node chips across both the **Full Asset Details (Info panel)** and the **Cluster Inspector** are now interactive and clickable, opening a global viewer to inspect the raw JSON parameters and configuration for any individual node in the workflow.
+
+### 🐛 Bug Fixes & Resource Optimization
+
+* **Auto-Watch GPU Resource Leak:** Resolved an issue where enabling the "Auto-watch" feature caused disproportionate GPU compute usage on the client side even while idle.
+
+---
+
 ### **[2.22.1] - 2026-08-18**
 
 ### 🐛 Bug Fixes 
