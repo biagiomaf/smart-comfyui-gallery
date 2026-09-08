@@ -1,4 +1,4 @@
-<!-- Version: 2.23 - September 05, 2026 -->
+<!-- Version: 2.24 - September 08, 2026 -->
 <!-- TAGGING MODAL (MANAGER) -->
 <div id="tagging-overlay">
     <div class="tag-panel">
@@ -605,6 +605,7 @@ function openTaggingModal(mode = 'collection') {
     if (typeof selectedFiles !== 'undefined' && selectedFiles.size === 0 && typeof currentLightboxFile !== 'undefined' && !currentLightboxFile) {
         showNotification("No files selected.", "warning"); return;
     }
+    document.body.classList.add('modal-open');
     tmState.mode = mode;
     document.getElementById('tag-modal-title').innerHTML = mode === 'status' ? '🏷️ Set Status' : '📚 Manage Collections';
     document.getElementById('section-status').style.display = mode === 'status' ? 'block' : 'none';
@@ -653,7 +654,27 @@ function openTaggingModal(mode = 'collection') {
     initTagManagerListeners();
 }
 
-function closeTaggingModal() { document.getElementById('tagging-overlay').classList.remove('visible'); }
+function closeTaggingModal() {
+    const overlay = document.getElementById('tagging-overlay');
+    if (overlay) overlay.classList.remove('visible');
+    const isOtherModalOpen =
+        (document.getElementById('full-file-details-overlay') && document.getElementById('full-file-details-overlay').classList.contains('visible')) ||
+        (document.getElementById('file-info-overlay') && document.getElementById('file-info-overlay').classList.contains('visible') && !document.body.classList.contains('lb-info-docked')) ||
+        (document.getElementById('node-summary-overlay') && document.getElementById('node-summary-overlay').classList.contains('visible') && !document.body.classList.contains('lb-nodes-docked')) ||
+        (document.getElementById('shortcuts-help-overlay') && document.getElementById('shortcuts-help-overlay').classList.contains('visible')) ||
+        (document.getElementById('upload-overlay') && document.getElementById('upload-overlay').classList.contains('visible')) ||
+        (document.getElementById('ai-search-overlay') && document.getElementById('ai-search-overlay').classList.contains('visible')) ||
+        (document.getElementById('ai-manager-overlay') && document.getElementById('ai-manager-overlay').classList.contains('visible')) ||
+        (document.getElementById('ai-options-modal') && document.getElementById('ai-options-modal').classList.contains('visible')) ||
+        (document.getElementById('batch-rating-overlay') && document.getElementById('batch-rating-overlay').classList.contains('visible')) ||
+        (document.getElementById('clustering-modal-overlay') && document.getElementById('clustering-modal-overlay').classList.contains('visible')) ||
+        (document.getElementById('col-vis-overlay') && document.getElementById('col-vis-overlay').style.display === 'flex') ||
+        (document.getElementById('smart-dialog-overlay') && document.getElementById('smart-dialog-overlay').classList.contains('visible'));
+
+    if (!isOtherModalOpen && !document.body.classList.contains('lightbox-open')) {
+        document.body.classList.remove('modal-open');
+    }
+}
 
 function renderTagManagerTreeHTML(parentId = '_root_', isSearching = false) {
     let children = collectionsData.tree[parentId] || [];
@@ -677,6 +698,7 @@ function renderTagManagerTreeHTML(parentId = '_root_', isSearching = false) {
         else if (pendingAction === 'remove') { stateClass = 'state-remove'; remActive = 'style="background:var(--danger-color); color:white; border-color:white;"'; }
         else if (isOriginal) { stateClass = 'state-original-hint'; }
 
+        let jsSafeName = c.name.replace(/'/g, "\\\'").replace(/"/g, "&quot;");
         html += `
         <li data-col-id="${c.id}" class="${isCollapsedClass} ${!hasChildren ? 'no-children' : ''}">
             <div class="tag-col-item folder-item ${stateClass}" style="margin-bottom:4px; padding:8px 12px; border-radius:8px;">
@@ -688,9 +710,10 @@ function renderTagManagerTreeHTML(parentId = '_root_', isSearching = false) {
                     ${Number(c.file_count) > 0 ? `<span class="collection-count" title="${c.file_count} directly tagged files">${c.file_count}</span>` : ''}
                     ${hasChildren && !isExpanded && Number(c.descendant_file_count) > 0 ? `<span class="collection-count collection-count-descendant" title="${c.descendant_file_count} unique files in sub-collections">+${c.descendant_file_count}</span>` : ''}
                 </div>
-                <div style="display:flex; gap:5px; z-index:10;">
-                    <button class="tag-action-btn btn-tag-add" ${addActive} onclick="setTagAction(${c.id}, 'add')" style="padding:4px 8px; font-size:0.8rem;">➕ Add</button>
-                    <button class="tag-action-btn btn-tag-remove" ${remActive} onclick="setTagAction(${c.id}, 'remove')" style="padding:4px 8px; font-size:0.8rem;">🗑️</button>
+                <div style="display:flex; gap:5px; z-index:10; align-items:center;">
+                    <button type="button" class="tag-action-btn" onclick="event.stopPropagation(); createNewCollection(true, ${c.id})" title="Create Sub-Collection under '${jsSafeName}'" style="padding:4px 6px; font-size:0.75rem; background:rgba(255,255,255,0.06); color:#eee; border:1px solid rgba(255,255,255,0.15); border-radius:6px; cursor:pointer;">📁+</button>
+                    <button type="button" class="tag-action-btn btn-tag-add" ${addActive} onclick="setTagAction(${c.id}, 'add')" style="padding:4px 8px; font-size:0.8rem;">➕ Add</button>
+                    <button type="button" class="tag-action-btn btn-tag-remove" ${remActive} onclick="setTagAction(${c.id}, 'remove')" style="padding:4px 8px; font-size:0.8rem;">🗑️</button>
                 </div>
             </div>
             ${hasChildren ? `<ul style="list-style:none;">${renderTagManagerTreeHTML(c.id, false)}</ul>` : ''}
@@ -923,7 +946,7 @@ function updateColorStrips(results, collId) {
 </script>
 
 <!-- VISIBILITY MODAL -->
-<div id="col-vis-overlay">
+<div id="col-vis-overlay" style="z-index: 10005 !important;">
     <div class="col-vis-panel">
         <h3>🌐 Exhibition Visibility</h3>
         <p>Choose the access level for this collection in the Exhibition Portal:</p>

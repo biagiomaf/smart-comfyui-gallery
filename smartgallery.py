@@ -1,7 +1,7 @@
 # SmartGallery DAM for ComfyUI
 # Author: Biagio Maffettone © 2025-2026 — Free to use/modify with credit. Provided "as is". See license on GitHub.
 #
-# Version: 2.23 - September 05, 2026
+# Version: 2.24 - September 08, 2026
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -339,8 +339,8 @@ AI_MODELS_FOLDER_NAME = '.AImodels'
 ENABLE_DAM_MODE = True
 
 # --- APP INFO ---
-APP_VERSION = "2.23"
-APP_VERSION_DATE = "September 05, 2026"
+APP_VERSION = "2.24"
+APP_VERSION_DATE = "September 08, 2026"
 GITHUB_REPO_URL = "https://github.com/biagiomaf/smart-comfyui-gallery"
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/biagiomaf/smart-comfyui-gallery/main/smartgallery.py"
 
@@ -4703,8 +4703,8 @@ def gallery_view(folder_key):
     if wf_files: active_filters_count += 1
     if wf_prompt: active_filters_count += 1
     if request.args.get('comment_search', '').strip(): active_filters_count += 1
-    
-    
+    if start_date: active_filters_count += 1
+    if end_date: active_filters_count += 1
     if selected_exts: active_filters_count += 1
     if selected_prefixes: active_filters_count += 1
     if selected_raters: active_filters_count += 1
@@ -4861,6 +4861,12 @@ def api_comfy_proxy(subpath):
                 elif fn.endswith('.gif'): content_type = 'image/gif'
                 elif fn.endswith('.mp4'): content_type = 'video/mp4'
                 elif fn.endswith('.webm'): content_type = 'video/webm'
+                elif fn.endswith('.mp3'): content_type = 'audio/mpeg'
+                elif fn.endswith('.wav'): content_type = 'audio/wav'
+                elif fn.endswith('.ogg'): content_type = 'audio/ogg'
+                elif fn.endswith('.flac'): content_type = 'audio/flac'
+                elif fn.endswith(('.m4a', '.aac')): content_type = 'audio/mp4'
+                elif fn.endswith('.opus'): content_type = 'audio/opus'
                 else: content_type = 'application/json'
 
             flask_resp = Response(content, status=resp.status, mimetype=content_type)

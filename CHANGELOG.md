@@ -1,5 +1,26 @@
 # Changelog
 
+### **[2.24] - 2026-09-08**
+
+### 🔍 ComfyUI Queue Deck: Infinite Lightbox & Enhanced Job Inspector
+
+* **Infinite Canvas Fullscreen Viewer:** Introduced an unconstrained, borderless fullscreen lightbox for output media with free-floating 360° drag & pan, zoom up to 1500% (15x), intelligent zoom-to-cursor via mouse wheel, keyboard zoom shortcuts (`+`, `-`, `0` to reset), and double-click zoom toggle (100% / 250%).
+* **Real-Time Resolution & Megapixel Telemetry:** Added automatic extraction and display of natural pixel dimensions and calculated Megapixels (e.g., `1024 × 1024 (1.05 MP)`) in both the job details panel and the fullscreen lightbox.
+* **Side-Arrow Navigation & Zero-Latency Counter:** Replaced header buttons with floating side navigation arrows (`<` and `>`) overlaid directly on the media canvas, synchronized with a real-time `1/N` counter that updates instantly (0ms latency).
+* **Keyboard Navigation & Isolated Escape Exit:** Full keyboard support using `ArrowLeft` / `ArrowRight` to browse between recent jobs while preserving fullscreen mode, and isolated `Escape` handling to exit fullscreen back to the job details view without dismissing the main modal.
+
+### 📚 Sub-Collections in Tag Manager
+* **In-Modal Sub-Collection Creation:** Added a dedicated `📁+` action button directly on each row of the Tagging / Collections modal tree, allowing users to create nested sub-collections on the fly with full inheritance and Exhibition visibility configuration.
+
+### 🌐 System-Locale Aware Date Formatting
+* **Universal Date Localization:** Converted all date and time displays to use native browser/system regional preferences (`toLocaleString`), ensuring seamless date conventions across all regions (e.g. US `MM/DD/YY` vs European `DD/MM/YY`).
+
+### 🐛 Bug Fixes & Stability
+* **Date Filter Badge Counter:** Fixed an issue in the backend where applying `start_date` and `end_date` filters was omitted from the active filter badge count on the main filter button.
+* **Modal Navigation & Scroll Freeze:** Resolved an issue where creating collections from the tagging modal left the `modal-open` state active on the document body and retained keydown event listeners, preventing mouse scrolling and keyboard gallery navigation.
+
+---
+
 ### **[2.23] - 2026-09-05**
 
 ### ⚡ ComfyUI Queue Deck

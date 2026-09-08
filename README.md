@@ -13,7 +13,7 @@
  
   <p>
     <a href="#21-installation"><b>🚀 Quick Install</b></a> •
-    <a href="#12-whats-new-in-v223"><b>✨ What's New (v2.23)</b></a> •
+    <a href="#12-whats-new-in-v224"><b>✨ What's New (v2.24)</b></a> •
     <a href="#-why-smartgallery-dam"><b>⚡ Core Features</b></a> •
     <a href="https://smartgallerydam.com"><b>🌐 Official Website</b></a> •
   </p>
@@ -99,7 +99,7 @@ SmartGallery DAM is *ComfyUI-aware* (it reads workflows, extracts prompts, under
 
 1.  [**OVERVIEW & CONCEPTS**](#1-overview--concepts)
     *   [1.1 What is SmartGallery DAM?](#11-what-is-smartgallery-dam)
-    *   [1.2 What's New in v2.23](#12-whats-new-in-v223)
+    *   [1.2 What's New in v2.24](#12-whats-new-in-v224)
     *   [1.3 Core Features](#13-core-features)
     *   [1.4 Use Case Scenarios](#14-use-case-scenarios)
 2.  [**SETUP & CONFIGURATION**](#2-setup--configuration)
@@ -156,7 +156,7 @@ Evolve your workflow from a simple collection of files into a structured, search
 
 ---
 
-### 1.2 What's New in v2.23
+### 1.2 What's New in v2.24
 
 - ⚡ [**ComfyUI Queue Deck (`Shift+Q`)**](docs/ComfyUI_Queue_Deck_manual.md): Introduces a unified mission control dashboard to monitor live progressive sampling steps (`Step X / Y (Z%)`), stream live video/image previews during generation, track driver-level VRAM & GPU compute loads (`nvidia-smi`), manage the execution queue (reorder, interrupt, delete, clear all), and inspect recent completed job graphs and metadata. Access it instantly via <kbd>Shift</kbd>+<kbd>Q</kbd> or from the **Tools** menu. 👉 READ the **[ComfyUI Queue Deck Manual](docs/ComfyUI_Queue_Deck_manual.md)** [**▶️ Look at the Video**](https://smartgallerydam.com/ComfyUI_Queue_Deck.mp4).
 - ✨ **Interactive Node JSON Inspector:** All node chips across both the **Full Asset Details Panel** (<kbd>I</kbd>) and the **Cluster Inspector** (<kbd>Shift</kbd>+<kbd>C</kbd>) are now interactive and clickable, opening a global viewer to inspect the raw JSON parameters and configuration for any individual node in the workflow.
@@ -337,7 +337,7 @@ There are two ways to run SmartGallery on Windows: using the ready-to-use **Port
 This version includes a fully self-contained environment. You do not need to install Python or any dependencies on your system—it is **completely plug-and-play**.
 
 **1. Download & Extract**
-* **Direct Download:** [SmartGallery-v2.23-Windows-Portable.zip](https://github.com/biagiomaf/smart-comfyui-gallery/releases/download/2.23/SmartGallery-v2.23-Windows-Portable.zip)
+* **Direct Download:** [SmartGallery-v2.24-Windows-Portable.zip](https://github.com/biagiomaf/smart-comfyui-gallery/releases/download/2.24/SmartGallery-v2.24-Windows-Portable.zip)
 * **Releases Page:** Alternatively, view all builds on the [Releases page](https://github.com/biagiomaf/smart-comfyui-gallery/releases/latest).
 * Extract the archive into a folder of your choice.
 

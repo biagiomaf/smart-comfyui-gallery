@@ -1,4 +1,4 @@
-<!-- Version: 2.23 - September 05, 2026 -->
+<!-- Version: 2.24 - September 08, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -1073,8 +1073,232 @@ body {
     border-radius: 6px;
 }
 
+
+/* Media Container with Side Floating Arrows */
+.cq-rv-media-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin: 0 auto 10px;
+    background: #060a12;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #1e2a41;
+}
+.cq-rv-media-container .cq-result-media {
+    max-width: 100%;
+    max-height: 52vh;
+    display: block;
+    margin: 0 auto;
+    border-radius: 0;
+    background: #000;
+}
+.cq-rv-side-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(10, 15, 24, 0.82);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    color: #e2e8f0;
+    font-size: 1.35rem;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: 0.18s;
+    z-index: 10;
+    user-select: none;
+    backdrop-filter: blur(4px);
+}
+.cq-rv-side-arrow:hover:not(:disabled) {
+    background: #22d3ee;
+    color: #04121c;
+    box-shadow: 0 0 16px rgba(34, 211, 238, 0.65);
+    transform: translateY(-50%) scale(1.08);
+}
+.cq-rv-side-arrow:disabled {
+    opacity: 0.15;
+    cursor: not-allowed;
+    border-color: #24314a;
+}
+.cq-rv-side-arrow.left { left: 10px; }
+.cq-rv-side-arrow.right { right: 10px; }
+
+/* Infinite Canvas Fullscreen Lightbox for Job Result */
+#cq-rv-fullscreen {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(2, 5, 10, 0.98);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    z-index: 10700;
+    display: none;
+    overflow: hidden;
+    animation: cqFade 0.2s ease-out;
+}
+#cq-rv-fullscreen.visible {
+    display: block;
+}
+.cq-rv-fs-header {
+    position: absolute;
+    top: 14px;
+    left: 18px;
+    right: 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    z-index: 30;
+    pointer-events: none;
+    flex-wrap: wrap;
+}
+.cq-rv-fs-header > * {
+    pointer-events: auto;
+}
+.cq-rv-fs-stage {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    cursor: grab;
+    user-select: none;
+    z-index: 10;
+}
+.cq-rv-fs-stage.dragging {
+    cursor: grabbing !important;
+}
+.cq-rv-fs-media-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+.cq-rv-fs-media {
+    max-width: 92vw;
+    max-height: 86vh;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.95), 0 0 30px rgba(34, 211, 238, 0.15);
+    display: block;
+    background: #000;
+    transform-origin: center center;
+    will-change: transform;
+    pointer-events: auto;
+}
+.cq-rv-fs-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(16, 24, 39, 0.88);
+    border: 1px solid rgba(56, 189, 248, 0.45);
+    color: #e2e8f0;
+    font-size: 1.6rem;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: 0.18s;
+    z-index: 25;
+    user-select: none;
+    pointer-events: auto;
+    backdrop-filter: blur(6px);
+}
+.cq-rv-fs-arrow:hover:not(:disabled) {
+    background: #22d3ee;
+    color: #04121c;
+    box-shadow: 0 0 18px rgba(34, 211, 238, 0.7);
+    transform: translateY(-50%) scale(1.08);
+}
+.cq-rv-fs-arrow:disabled {
+    opacity: 0.2;
+    cursor: not-allowed;
+    border-color: #24314a;
+}
+.cq-rv-fs-arrow.left { left: 16px; }
+.cq-rv-fs-arrow.right { right: 16px; }
+.cq-rv-fs-footer {
+    position: absolute;
+    bottom: 14px;
+    left: 18px;
+    right: 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    z-index: 30;
+    pointer-events: none;
+    flex-wrap: wrap;
+}
+.cq-rv-fs-footer > * {
+    pointer-events: auto;
+}
+.cq-dim-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    background: rgba(34, 211, 238, 0.14);
+    color: #7dd3fc;
+    border: 1px solid rgba(34, 211, 238, 0.45);
+    font-variant-numeric: tabular-nums;
+    text-transform: none;
+    backdrop-filter: blur(6px);
+}
+.cq-zoom-bar {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(10, 15, 24, 0.88);
+    border: 1px solid #1e2a41;
+    border-radius: 8px;
+    padding: 2px 6px;
+    backdrop-filter: blur(6px);
+}
+
 /* ---------- Mobile ---------- */
 @media (max-width: 900px) {
+
+    .cq-rv-side-arrow {
+        width: 34px;
+        height: 34px;
+        font-size: 1.1rem;
+    }
+    .cq-rv-side-arrow.left { left: 6px; }
+    .cq-rv-side-arrow.right { right: 6px; }
+    .cq-rv-fs-arrow {
+        width: 38px;
+        height: 38px;
+        font-size: 1.2rem;
+    }
+    .cq-rv-fs-arrow.left { left: 6px; }
+    .cq-rv-fs-arrow.right { right: 6px; }
+    .cq-rv-fs-media {
+        max-width: 98vw;
+        max-height: 80vh;
+    }
+    .cq-rv-fs-header, .cq-rv-fs-footer {
+        left: 10px;
+        right: 10px;
+    }
+
     .cq-grid {
         grid-template-columns: 1fr;
     }
@@ -1212,7 +1436,10 @@ body {
         <div class="cq-confirm" id="cq-resultview" style="z-index:65;">
             <div class="cq-confirm-box" style="width:740px; max-width:94%;">
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px; border-bottom:1px solid #1c2740; padding-bottom:10px;">
-                    <h3 id="cq-rv-title" style="margin:0; font-size:1.1rem; color:#fff;">🖼️ Job Result</h3>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <h3 id="cq-rv-title" style="margin:0; font-size:1.1rem; color:#fff;">🖼️ Job Result</h3>
+                        <span id="cq-rv-counter" class="cq-avg-pill" style="display:inline-flex; font-size:0.72rem; padding:2px 8px;">1 / 1</span>
+                    </div>
                     <div style="display:flex; align-items:center; gap:8px;">
                         <span id="cq-rv-status" class="t done" style="font-weight:800; font-size:0.85rem;">SUCCESS</span>
                         <span id="cq-rv-duration-pill" class="cq-avg-pill" style="display:inline-flex; font-size:0.75rem; padding:3px 10px;">⏱️ --</span>
@@ -1222,6 +1449,42 @@ body {
                 <div class="cq-confirm-acts">
                     <button class="cq-btn" id="cq-rv-close">Close</button>
                 </div>
+            </div>
+        </div>
+
+        
+        <!-- Fullscreen Media Infinite Canvas Lightbox with Zoom & Pan -->
+        <div id="cq-rv-fullscreen" role="dialog" aria-modal="true">
+            <div class="cq-rv-fs-header">
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <span style="font-weight:800; color:#fff; font-size:0.95rem; text-shadow: 0 2px 8px rgba(0,0,0,0.8);">🖼️ Result Preview</span>
+                    <span id="cq-rv-fs-counter" class="cq-avg-pill" style="display:inline-flex; font-size:0.72rem; padding:2px 8px;">1 / 1</span>
+                    <span id="cq-rv-fs-dim" class="cq-dim-pill" style="display:none;">📐 Calculating…</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <div class="cq-zoom-bar">
+                        <button type="button" class="cq-btn" onclick="cqChangeFsZoom(-0.25)" title="Zoom Out (-)" style="padding:2px 8px; font-size:0.75rem;">−</button>
+                        <span id="cq-rv-fs-zoom-level" style="font-family:ui-monospace,Consolas,monospace; font-size:0.75rem; font-weight:800; color:#7dd3fc; min-width:44px; text-align:center;">100%</span>
+                        <button type="button" class="cq-btn" onclick="cqChangeFsZoom(0.25)" title="Zoom In (+)" style="padding:2px 8px; font-size:0.75rem;">+</button>
+                        <button type="button" class="cq-btn" onclick="cqResetFsZoom()" title="Reset Zoom (0)" style="padding:2px 8px; font-size:0.72rem;">Reset</button>
+                    </div>
+                    <button type="button" class="cq-btn" onclick="cqCloseResultFullscreen()" title="Exit Fullscreen (Esc)">⤓ Exit Fullscreen</button>
+                </div>
+            </div>
+
+            <div class="cq-rv-fs-stage" id="cq-rv-fs-stage" 
+                 onwheel="cqOnFsWheel(event)" 
+                 onmousedown="cqOnFsMouseDown(event)" 
+                 ondblclick="cqOnFsDblClick(event)">
+                <div class="cq-rv-fs-media-wrap" id="cq-rv-fs-media-wrap"></div>
+            </div>
+
+            <button type="button" class="cq-rv-fs-arrow left" id="cq-rv-fs-prev" onclick="cqNavigateResult(-1)" title="Previous Job (Left Arrow)">&lt;</button>
+            <button type="button" class="cq-rv-fs-arrow right" id="cq-rv-fs-next" onclick="cqNavigateResult(1)" title="Next Job (Right Arrow)">&gt;</button>
+
+            <div class="cq-rv-fs-footer">
+                <span class="hint" style="font-size:0.72rem; color:#94a3b8; text-shadow: 0 2px 8px rgba(0,0,0,0.9);">Wheel / +/- to Zoom · Drag to Pan · Double-click to Toggle · ← / → to Navigate · S to Download · ESC to Exit</span>
+                <button type="button" class="cq-btn accent" id="cq-rv-fs-btn-dl" onclick="cqDownloadCurrentMedia(this)">⬇ Download Output</button>
             </div>
         </div>
 
@@ -1294,7 +1557,20 @@ body {
         jobEndedForPrompt: false,
         historyRaw: {},
         historyIds: [],
+        historyEntries: [],
+        currentResultKey: null,
         logPartial: '',
+        currentResultPid: null,
+        rvFullscreenOpen: false,
+        rvZoomScale: 1.0,
+        rvPanX: 0,
+        rvPanY: 0,
+        rvIsDragging: false,
+        rvDragStartX: 0,
+        rvDragStartY: 0,
+        currentResultMediaUrl: null,
+        currentResultFilename: null,
+        currentResultIsVideo: false,
         pollPreviewHealth: null
     };
 
@@ -1604,7 +1880,19 @@ return String(u).replace(/\/+$/, '');
         CQ.jobEndedForPrompt = false;
         CQ.historyRaw = {};
         CQ.historyIds = [];
+        CQ.historyEntries = [];
+        CQ.currentResultKey = null;
         CQ.logPartial = '';
+        CQ.currentResultPid = null;
+        CQ.rvFullscreenOpen = false;
+        CQ.rvZoomScale = 1.0;
+        CQ.rvPanX = 0;
+        CQ.rvPanY = 0;
+        CQ.rvIsDragging = false;
+        CQ.currentResultMediaUrl = null;
+        CQ.currentResultFilename = null;
+        CQ.currentResultIsVideo = false;
+        if ($('cq-rv-fullscreen')) $('cq-rv-fullscreen').classList.remove('visible');
     }
 
     /* ============================================================
@@ -1618,6 +1906,12 @@ return String(u).replace(/\/+$/, '');
         if (isEsc && CQ.open && !typing) {
             e.preventDefault();
             e.stopPropagation();
+
+            // Priority 1: Exit Fullscreen lightbox only (keeps result details dialog open)
+            if (CQ.rvFullscreenOpen || ($('cq-rv-fullscreen') && $('cq-rv-fullscreen').classList.contains('visible'))) {
+                window.cqCloseResultFullscreen();
+                return;
+            }
 
             if (CQ.confirmResolve) {
                 var r = CQ.confirmResolve;
@@ -1647,6 +1941,59 @@ return String(u).replace(/\/+$/, '');
         }
 
         if (typing) return;
+
+                // Fullscreen interactive Zoom controls (+ / - / 0)
+        if (CQ.rvFullscreenOpen && !typing) {
+            if (e.key === '+' || e.key === '=' || e.code === 'NumpadAdd') {
+                e.preventDefault();
+                e.stopPropagation();
+                window.cqChangeFsZoom(0.25);
+                return;
+            }
+            if (e.key === '-' || e.key === '_' || e.code === 'NumpadSubtract') {
+                e.preventDefault();
+                e.stopPropagation();
+                window.cqChangeFsZoom(-0.25);
+                return;
+            }
+            if (e.key === '0' || e.code === 'Numpad0') {
+                e.preventDefault();
+                e.stopPropagation();
+                window.cqResetFsZoom();
+                return;
+            }
+        }
+
+        // Download shortcut 'S' / 's' when result view or fullscreen is active
+        var isResultOpen = ($('cq-resultview') && $('cq-resultview').classList.contains('visible'));
+        if ((CQ.rvFullscreenOpen || isResultOpen) && !typing) {
+            if (e.key === 's' || e.key === 'S' || e.code === 'KeyS') {
+                if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (CQ.currentResultMediaUrl) {
+                        var activeBtn = CQ.rvFullscreenOpen ? $('cq-rv-fs-btn-dl') : null;
+                        window.cqDownloadCurrentMedia(activeBtn);
+                    }
+                    return;
+                }
+            }
+        }
+
+        // Arrow navigation across recent jobs in both details dialog and fullscreen
+        if (!typing && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+            var isResultOpen = ($('cq-resultview') && $('cq-resultview').classList.contains('visible'));
+            if (CQ.rvFullscreenOpen || isResultOpen) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (e.key === 'ArrowLeft') {
+                    window.cqNavigateResult(-1);
+                } else {
+                    window.cqNavigateResult(1);
+                }
+                return;
+            }
+        }
 
         if (e.shiftKey && (e.key === 'Q' || e.key === 'q')) {
             e.preventDefault();
@@ -2211,7 +2558,7 @@ connectNext();
                 for (var nid in outputs) {
                     var out = outputs[nid];
                     if (!out) continue;
-                    var imgs = out.images || out.gifs || null;
+                    var imgs = out.images || out.gifs || out.audio || out.audios || null;
                     if (!imgs || !imgs.length) continue;
                     for (var i = 0; i < imgs.length; i++) {
                         if (imgs[i].type === 'temp') {
@@ -2505,6 +2852,8 @@ connectNext();
         var imgs = null;
         if (output.images && output.images.length) imgs = output.images;
         else if (output.gifs && output.gifs.length) imgs = output.gifs;
+        else if (output.audio && output.audio.length) imgs = output.audio;
+        else if (output.audios && output.audios.length) imgs = output.audios;
         if (!imgs) return;
 
         var pick = null;
@@ -2628,6 +2977,16 @@ connectNext();
 
     function processLogText(text) {
         if (!CQ.logPartial) CQ.logPartial = '';
+        CQ.currentResultPid = null;
+        CQ.rvFullscreenOpen = false;
+        CQ.rvZoomScale = 1.0;
+        CQ.rvPanX = 0;
+        CQ.rvPanY = 0;
+        CQ.rvIsDragging = false;
+        CQ.currentResultMediaUrl = null;
+        CQ.currentResultFilename = null;
+        CQ.currentResultIsVideo = false;
+        if ($('cq-rv-fullscreen')) $('cq-rv-fullscreen').classList.remove('visible');
 
         CQ.logPartial += text;
 
@@ -3939,7 +4298,11 @@ if (gRam.parentElement) gRam.parentElement.title = 'System RAM: Unavailable';
                 ? o.images
                 : ((o.gifs && o.gifs.length)
                     ? o.gifs
-                    : ((o.videos && o.videos.length) ? o.videos : null));
+                    : ((o.videos && o.videos.length)
+                        ? o.videos
+                        : ((o.audio && o.audio.length)
+                            ? o.audio
+                            : ((o.audios && o.audios.length) ? o.audios : null))));
 
             if (arr) {
                 for (var i = 0; i < arr.length; i++) {
@@ -3968,10 +4331,48 @@ if (gRam.parentElement) gRam.parentElement.title = 'System RAM: Unavailable';
         return !(item && item.status && item.status.status_str === 'error');
     }
 
+    function cqBuildHistoryEntries(historyObj) {
+        var entries = [];
+        if (!historyObj || typeof historyObj !== 'object') return entries;
+        var pids = Object.keys(historyObj);
+        pids.reverse();
+        var maxJobs = 20;
+        var slicedPids = pids.slice(0, maxJobs);
+
+        for (var i = 0; i < slicedPids.length; i++) {
+            var pid = String(slicedPids[i]);
+            var item = historyObj[pid];
+            if (!item) continue;
+            var mediaList = cqHistoryMediaList(item);
+            if (mediaList.length > 0) {
+                for (var m = 0; m < mediaList.length; m++) {
+                    entries.push({
+                        key: pid + '::' + m,
+                        pid: pid,
+                        mediaIdx: m,
+                        mediaTotal: mediaList.length,
+                        media: mediaList[m],
+                        item: item
+                    });
+                }
+            } else {
+                entries.push({
+                    key: pid + '::0',
+                    pid: pid,
+                    mediaIdx: 0,
+                    mediaTotal: 0,
+                    media: null,
+                    item: item
+                });
+            }
+        }
+        return entries;
+    }
+
     function fetchHistory() {
         if (!CQ.open) return;
 
-        cqFetch('/history?max_items=16')
+        cqFetch('/history?max_items=20')
             .then(function (r) {
                 if (!r.ok) throw new Error('HTTP ' + r.status);
                 return r.json();
@@ -3985,12 +4386,11 @@ if (gRam.parentElement) gRam.parentElement.title = 'System RAM: Unavailable';
                 if (!CQ.open || !d || typeof d !== 'object') return;
 
                 CQ.historyRaw = d;
-
-                var ids = Object.keys(d);
-                ids.reverse();
-
-                CQ.historyIds = ids.slice(0, 16);
+                CQ.historyEntries = cqBuildHistoryEntries(d);
                 renderHistory();
+                if ($('cq-resultview') && $('cq-resultview').classList.contains('visible')) {
+                    cqUpdateResultNavState();
+                }
             })
             .catch(function () {});
     }
@@ -3999,10 +4399,10 @@ if (gRam.parentElement) gRam.parentElement.title = 'System RAM: Unavailable';
         var box = $('cq-history');
         if (!box) return;
 
-        var ids = CQ.historyIds || [];
+        var entries = CQ.historyEntries || [];
         var avgSideEl = $('cq-history-avg-side');
 
-        if (!ids.length) {
+        if (!entries.length) {
             box.innerHTML = '<div class="cq-history-empty">No completed jobs yet.</div>';
             delete box.dataset.lastHistoryKey;
             if (avgSideEl) avgSideEl.style.display = 'none';
@@ -4011,16 +4411,18 @@ if (gRam.parentElement) gRam.parentElement.title = 'System RAM: Unavailable';
 
         var totalDur = 0;
         var durCount = 0;
+        var calculatedPids = {};
 
-        var historyKey = ids.map(function(id) {
-            var item = CQ.historyRaw[id];
+        var historyKey = entries.map(function(e) {
+            var item = e.item;
             var ok = cqHistoryIsOk(item);
             var d = cqGetJobDuration(item);
-            if (d !== null && d >= 0) {
+            if (d !== null && d >= 0 && !calculatedPids[e.pid]) {
+                calculatedPids[e.pid] = true;
                 totalDur += d;
                 durCount++;
             }
-            return id + '_' + (ok ? '1' : '0') + '_' + (d !== null ? d.toFixed(1) : 'x');
+            return e.key + '_' + (ok ? '1' : '0') + '_' + (d !== null ? d.toFixed(1) : 'x');
         }).join('|');
 
         if (durCount > 0) {
@@ -4042,16 +4444,15 @@ if (gRam.parentElement) gRam.parentElement.title = 'System RAM: Unavailable';
 
         var html = '';
 
-        for (var i = 0; i < ids.length; i++) {
-            var pid = ids[i];
-            var item = CQ.historyRaw[pid];
-            if (!item) continue;
-
-            var media = cqHistoryMediaList(item);
-            var lastMedia = media.length ? media[media.length - 1] : null;
-            var thumb = lastMedia ? viewUrl(lastMedia) : null;
-            var filename = lastMedia && lastMedia.filename ? String(lastMedia.filename).toLowerCase() : '';
+        for (var i = 0; i < entries.length; i++) {
+            var entry = entries[i];
+            var pid = entry.pid;
+            var item = entry.item;
+            var m = entry.media;
+            var thumb = m ? viewUrl(m) : null;
+            var filename = m && m.filename ? String(m.filename).toLowerCase() : '';
             var isVideo = /\.(mp4|webm|mov|mkv|m4v|avi|wmv)$/i.test(filename);
+            var isAudio = /\.(mp3|wav|ogg|flac|m4a|aac|opus|wma)$/i.test(filename);
             var ok = cqHistoryIsOk(item);
             var jobDur = cqGetJobDuration(item);
             var jobDurStr = jobDur !== null ? cqFormatDurationSec(jobDur) : '';
@@ -4061,6 +4462,9 @@ if (gRam.parentElement) gRam.parentElement.title = 'System RAM: Unavailable';
                 if (isVideo) {
                     mediaHtml = '<video src="' + esc(thumb) + '#t=0.001" preload="auto" muted playsinline loop onloadedmetadata="cqInitVideoThumb(this)" onmouseover="try{this.play();}catch(e){}" onmouseout="try{this.pause();this.currentTime=0.001;}catch(e){}" style="width:100%;height:100%;object-fit:cover;pointer-events:none;display:block;background:#0a0f18;"></video>' +
                                 '<span class="badge" style="bottom:4px;left:4px;top:auto;right:auto;font-size:0.55rem;background:rgba(0,0,0,0.75);color:#38bdf8;padding:1px 4px;border-radius:3px;">▶ VIDEO</span>';
+                } else if (isAudio) {
+                    mediaHtml = '<div class="ph-ic" style="font-size:1.9rem;color:#a78bfa;background:radial-gradient(circle, rgba(167,139,250,0.2) 0%, rgba(10,15,24,0.95) 75%);width:100%;height:100%;display:flex;align-items:center;justify-content:center;">🎵</div>' +
+                                '<span class="badge" style="bottom:4px;left:4px;top:auto;right:auto;font-size:0.55rem;background:rgba(0,0,0,0.75);color:#c084fc;padding:1px 4px;border-radius:3px;">🎵 AUDIO</span>';
                 } else {
                     mediaHtml = '<img src="' + esc(thumb) + '" loading="lazy" alt="Job output" onerror="this.style.display=\'none\';">';
                 }
@@ -4070,9 +4474,14 @@ if (gRam.parentElement) gRam.parentElement.title = 'System RAM: Unavailable';
                 ? '<span class="badge" style="top:auto;bottom:4px;right:4px;font-size:0.55rem;font-family:ui-monospace,Consolas,monospace;background:rgba(10,15,24,0.88);color:#dbe7ff;border:1px solid #2c3a55;padding:1px 4px;border-radius:4px;">' + esc(jobDurStr) + '</span>'
                 : '';
 
-            html += '<div class="cq-hthumb" onclick="cqOpenResult(\'' + esc(pid) + '\')" title="prompt ' + esc(pid) + (jobDurStr ? ' (' + esc(jobDurStr) + ')' : '') + '">' +
+            var batchBadge = (entry.mediaTotal > 1)
+                ? '<span class="badge" style="top:4px;left:4px;right:auto;font-size:0.55rem;background:rgba(34,211,238,0.88);color:#021019;font-weight:800;padding:1px 5px;border-radius:4px;letter-spacing:0.2px;">' + (entry.mediaIdx + 1) + '/' + entry.mediaTotal + '</span>'
+                : '';
+
+            html += '<div class="cq-hthumb" onclick="cqOpenResult(\'' + esc(pid) + '\', ' + entry.mediaIdx + ')" title="prompt ' + esc(pid) + (entry.mediaTotal > 1 ? (' · batch ' + (entry.mediaIdx + 1) + '/' + entry.mediaTotal) : '') + (jobDurStr ? ' (' + esc(jobDurStr) + ')' : '') + '">' +
                         mediaHtml +
-                        '<span class="badge ' + (ok ? 't done' : 't error') + '">' + (ok ? '✅' : '❌') + '</span>' +
+                        batchBadge +
+                        '<span class="badge ' + (ok ? 't done' : 't error') + '" style="' + (entry.mediaTotal > 1 ? 'top:4px;right:4px;' : '') + '">' + (ok ? '✅' : '❌') + '</span>' +
                         durBadge +
                     '</div>';
         }
@@ -4080,10 +4489,251 @@ if (gRam.parentElement) gRam.parentElement.title = 'System RAM: Unavailable';
         box.innerHTML = html;
     }
 
-    window.cqOpenResult = function (pid) {
+    /* ============================================================
+       MEDIA DIMENSIONS & INFINITE FULLSCREEN LIGHTBOX CONTROLLERS
+       ============================================================ */
+    function cqFormatDimensions(w, h) {
+        if (!w || !h || isNaN(w) || isNaN(h)) return '';
+        var mp = (w * h) / 1000000;
+        var mpFormatted = (mp >= 10) ? mp.toFixed(1) : mp.toFixed(2);
+        return w + ' × ' + h + ' (' + mpFormatted + ' MP)';
+    }
+
+    window.cqOnMediaLoaded = function (el) {
+        if (!el) return;
+        var w = el.naturalWidth || el.videoWidth || 0;
+        var h = el.naturalHeight || el.videoHeight || 0;
+        if (w > 0 && h > 0) {
+            var dimText = cqFormatDimensions(w, h);
+            var parent = el.closest ? el.closest('.cq-rv-media-section') : el.parentElement;
+            if (parent) {
+                var pill = parent.querySelector('.cq-dim-pill');
+                if (pill) {
+                    pill.textContent = '📐 ' + dimText;
+                    pill.title = 'Resolution: ' + w + 'x' + h + ' pixels (' + dimText + ')';
+                    pill.style.display = 'inline-flex';
+                }
+            }
+            var fsDim = $('cq-rv-fs-dim');
+            if (fsDim && CQ.rvFullscreenOpen) {
+                fsDim.textContent = '📐 ' + dimText;
+                fsDim.title = 'Resolution: ' + w + 'x' + h + ' pixels (' + dimText + ')';
+                fsDim.style.display = 'inline-flex';
+            }
+        }
+    };
+
+    window.cqNavigateResult = function (direction) {
+        var entries = CQ.historyEntries || [];
+        if (!entries.length || !CQ.currentResultKey) return;
+        var curIdx = -1;
+        for (var i = 0; i < entries.length; i++) {
+            if (entries[i].key === CQ.currentResultKey) {
+                curIdx = i;
+                break;
+            }
+        }
+        if (curIdx === -1) curIdx = 0;
+        var nextIdx = curIdx + direction;
+        if (nextIdx >= 0 && nextIdx < entries.length) {
+            var nextEntry = entries[nextIdx];
+            CQ.currentResultKey = nextEntry.key;
+            CQ.currentResultPid = nextEntry.pid;
+            cqUpdateResultNavState();
+            window.cqOpenResult(nextEntry.pid, nextEntry.mediaIdx);
+        }
+    };
+
+    function cqUpdateResultNavState() {
+        var entries = CQ.historyEntries || [];
+        var curIdx = -1;
+        for (var i = 0; i < entries.length; i++) {
+            if (entries[i].key === CQ.currentResultKey) {
+                curIdx = i;
+                break;
+            }
+        }
+        var total = entries.length || 1;
+        var pos = (curIdx !== -1) ? (curIdx + 1) : 1;
+        var counterText = pos + ' / ' + total;
+
+        var c1 = $('cq-rv-counter');
+        var c2 = $('cq-rv-fs-counter');
+        if (c1) c1.textContent = counterText;
+        if (c2) c2.textContent = counterText;
+
+        var hasPrev = (curIdx > 0);
+        var hasNext = (curIdx !== -1 && curIdx < total - 1);
+
+        // Side floating arrows in details dialog
+        var sidePrev = $('cq-rv-side-prev');
+        var sideNext = $('cq-rv-side-next');
+        if (sidePrev) sidePrev.disabled = !hasPrev;
+        if (sideNext) sideNext.disabled = !hasNext;
+
+        // Side arrows in fullscreen lightbox
+        var fsArrowPrev = $('cq-rv-fs-prev');
+        var fsArrowNext = $('cq-rv-fs-next');
+        if (fsArrowPrev) fsArrowPrev.disabled = !hasPrev;
+        if (fsArrowNext) fsArrowNext.disabled = !hasNext;
+    }
+
+    /* Infinite Canvas Zoom and Pan Engine */
+    window.cqResetFsZoom = function () {
+        CQ.rvZoomScale = 1.0;
+        CQ.rvPanX = 0;
+        CQ.rvPanY = 0;
+        cqApplyFsTransform();
+    };
+
+    window.cqChangeFsZoom = function (delta, focalX, focalY) {
+        var oldScale = CQ.rvZoomScale || 1.0;
+        var newScale = Math.max(0.2, Math.min(16.0, oldScale + delta));
+        newScale = Math.round(newScale * 100) / 100;
+        if (newScale === oldScale) return;
+
+        if (focalX !== undefined && focalY !== undefined) {
+            var cX = window.innerWidth / 2;
+            var cY = window.innerHeight / 2;
+            CQ.rvPanX = focalX - (focalX - cX - CQ.rvPanX) * (newScale / oldScale) - cX;
+            CQ.rvPanY = focalY - (focalY - cY - CQ.rvPanY) * (newScale / oldScale) - cY;
+        } else if (newScale <= 1.0) {
+            CQ.rvPanX = 0;
+            CQ.rvPanY = 0;
+        }
+
+        CQ.rvZoomScale = newScale;
+        cqApplyFsTransform();
+    };
+
+    function cqApplyFsTransform() {
+        var mediaEl = document.querySelector('.cq-rv-fs-media');
+        var zoomLvlEl = $('cq-rv-fs-zoom-level');
+        if (zoomLvlEl) {
+            zoomLvlEl.textContent = Math.round(CQ.rvZoomScale * 100) + '%';
+        }
+        if (mediaEl) {
+            mediaEl.style.transform = 'translate3d(' + CQ.rvPanX + 'px, ' + CQ.rvPanY + 'px, 0) scale(' + CQ.rvZoomScale + ')';
+        }
+    }
+
+    window.cqOnFsWheel = function (e) {
+        if (!CQ.rvFullscreenOpen) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        var zoomFactor = e.deltaY < 0 ? 0.20 : -0.20;
+        if (CQ.rvZoomScale >= 2.5) zoomFactor *= (CQ.rvZoomScale / 2.0);
+        
+        window.cqChangeFsZoom(zoomFactor, e.clientX, e.clientY);
+    };
+
+    window.cqOnFsMouseDown = function (e) {
+        if (!CQ.rvFullscreenOpen) return;
+        if (e.button !== 0) return;
+        if (e.target.closest && e.target.closest('button, .cq-zoom-bar, .cq-dim-pill')) return;
+
+        e.preventDefault();
+        CQ.rvIsDragging = true;
+        CQ.rvDragStartX = e.clientX - CQ.rvPanX;
+        CQ.rvDragStartY = e.clientY - CQ.rvPanY;
+
+        var stage = $('cq-rv-fs-stage');
+        if (stage) stage.classList.add('dragging');
+    };
+
+    window.cqOnFsMouseMove = function (e) {
+        if (!CQ.rvIsDragging) return;
+        e.preventDefault();
+        CQ.rvPanX = e.clientX - CQ.rvDragStartX;
+        CQ.rvPanY = e.clientY - CQ.rvDragStartY;
+        cqApplyFsTransform();
+    };
+
+    window.cqOnFsMouseUp = function () {
+        if (CQ.rvIsDragging) {
+            CQ.rvIsDragging = false;
+            var stage = $('cq-rv-fs-stage');
+            if (stage) stage.classList.remove('dragging');
+            cqApplyFsTransform();
+        }
+    };
+
+    window.cqOnFsDblClick = function (e) {
+        if (!CQ.rvFullscreenOpen) return;
+        if (e.target.closest && e.target.closest('button, .cq-zoom-bar')) return;
+        e.preventDefault();
+
+        if (CQ.rvZoomScale <= 1.05) {
+            window.cqChangeFsZoom(1.5, e.clientX, e.clientY);
+        } else {
+            window.cqResetFsZoom();
+        }
+    };
+
+    window.addEventListener('mousemove', function (e) {
+        if (CQ.rvFullscreenOpen && CQ.rvIsDragging) {
+            window.cqOnFsMouseMove(e);
+        }
+    });
+    window.addEventListener('mouseup', function () {
+        if (CQ.rvFullscreenOpen && CQ.rvIsDragging) {
+            window.cqOnFsMouseUp();
+        }
+    });
+
+    window.cqOpenResultFullscreen = function (url, isVideo, filename) {
+        if (!url) return;
+        CQ.rvFullscreenOpen = true;
+        CQ.currentResultMediaUrl = url;
+        CQ.currentResultFilename = filename || 'download';
+        CQ.currentResultIsVideo = !!isVideo;
+        CQ.rvZoomScale = 1.0;
+        CQ.rvPanX = 0;
+        CQ.rvPanY = 0;
+        CQ.rvIsDragging = false;
+
+        var wrap = $('cq-rv-fs-media-wrap');
+        var fsModal = $('cq-rv-fullscreen');
+        var fsDim = $('cq-rv-fs-dim');
+        if (fsDim) { fsDim.style.display = 'none'; fsDim.textContent = ''; }
+
+        if (wrap) {
+            if (isVideo) {
+                wrap.innerHTML = '<video class="cq-rv-fs-media" src="' + esc(url) + '" controls autoplay playsinline onloadedmetadata="cqOnMediaLoaded(this)"></video>';
+            } else {
+                wrap.innerHTML = '<img class="cq-rv-fs-media" src="' + esc(url) + '" alt="Full preview" onload="cqOnMediaLoaded(this)">';
+            }
+        }
+
+        if (fsModal) fsModal.classList.add('visible');
+        cqApplyFsTransform();
+        cqUpdateResultNavState();
+    };
+
+    window.cqCloseResultFullscreen = function () {
+        CQ.rvFullscreenOpen = false;
+        CQ.rvZoomScale = 1.0;
+        CQ.rvPanX = 0;
+        CQ.rvPanY = 0;
+        CQ.rvIsDragging = false;
+        var fsModal = $('cq-rv-fullscreen');
+        if (fsModal) fsModal.classList.remove('visible');
+        var wrap = $('cq-rv-fs-media-wrap');
+        if (wrap) wrap.innerHTML = '';
+    };
+
+    window.cqDownloadCurrentMedia = function (btn) {
+        if (CQ.currentResultMediaUrl) {
+            window.cqDownloadMedia(btn, CQ.currentResultMediaUrl, CQ.currentResultFilename);
+        }
+    };
+
+    window.cqOpenResult = function (pid, mediaIdx) {
+        mediaIdx = parseInt(mediaIdx, 10) || 0;
         var item = (CQ.historyRaw || {})[pid] || {};
 
-        var media = cqHistoryMediaList(item);
+        var mediaList = cqHistoryMediaList(item);
         var ok = cqHistoryIsOk(item);
         var jobDur = cqGetJobDuration(item);
         var jobDurStr = jobDur !== null ? cqFormatDurationSec(jobDur) : '';
@@ -4106,27 +4756,94 @@ if (gRam.parentElement) gRam.parentElement.title = 'System RAM: Unavailable';
             }
         }
 
-        var html = '<div style="color:#8fa2bf; font-family:ui-monospace,Consolas,monospace; font-size:0.8rem; margin-bottom:12px;">' +
-                       'Prompt ID: <span style="color:#e2e8f0;">' + esc(pid) + '</span>' +
-                   '</div>';
+        CQ.currentResultPid = String(pid);
+        CQ.currentResultKey = String(pid) + '::' + mediaIdx;
 
-        if (!media.length) {
+        // Ensure history entries exists
+        if (!CQ.historyEntries || !CQ.historyEntries.length) {
+            CQ.historyEntries = cqBuildHistoryEntries(CQ.historyRaw);
+        }
+
+        // Instantly update counter position and nav button states
+        cqUpdateResultNavState();
+
+        var html = '<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;">' +
+                       '<div style="color:#8fa2bf; font-family:ui-monospace,Consolas,monospace; font-size:0.8rem;">' +
+                           'Prompt ID: <span style="color:#e2e8f0;">' + esc(pid) + '</span>' +
+                       '</div>';
+
+        if (mediaList.length > 1) {
+            html += '<span class="cq-avg-pill" style="font-size:0.72rem; background:rgba(34,211,238,0.15); color:#38bdf8; border-color:rgba(56,189,248,0.45);">' +
+                        '📦 Batch item ' + (mediaIdx + 1) + ' of ' + mediaList.length +
+                    '</span>';
+        }
+
+        html += '</div>';
+
+        if (!mediaList.length) {
+            CQ.currentResultMediaUrl = null;
+            CQ.currentResultFilename = null;
+            CQ.currentResultIsVideo = false;
             html += '<div class="cq-i-empty">No output files recorded for this job.</div>';
+            if (CQ.rvFullscreenOpen) {
+                var fsWrap = $('cq-rv-fs-media-wrap');
+                if (fsWrap) fsWrap.innerHTML = '<div class="cq-ph"><span class="ic">🗒️</span><span>No preview media for this job.</span></div>';
+            }
         } else {
-            for (var i = 0; i < media.length; i++) {
-                var m = media[i];
-                var url = viewUrl(m);
-                var isVideo = /\.(mp4|webm|mov|mkv)$/i.test(m.filename || '');
-                var mediaFilename = m.filename || ('result_' + (i + 1) + (isVideo ? '.mp4' : '.png'));
+            var targetMedia = (mediaIdx < mediaList.length) ? mediaList[mediaIdx] : mediaList[0];
+            var url = viewUrl(targetMedia);
+            var fnLower = (targetMedia.filename || '').toLowerCase();
+            var isVideo = /\.(mp4|webm|mov|mkv|m4v|avi|wmv)$/i.test(fnLower);
+            var isAudio = /\.(mp3|wav|ogg|flac|m4a|aac|opus|wma)$/i.test(fnLower);
+            var defaultExt = isVideo ? '.mp4' : (isAudio ? '.mp3' : '.png');
+            var mediaFilename = targetMedia.filename || ('result_' + (mediaIdx + 1) + defaultExt);
 
-                html += '<div style="margin-bottom:14px;">' +
-                            (isVideo
-                                ? '<video class="cq-result-media" src="' + esc(url) + '" controls></video>'
-                                : '<img class="cq-result-media" src="' + esc(url) + '" alt="Job output">') +
-                            '<div style="text-align:center;">' +
-                                '<button type="button" class="cq-i-chip" data-url="' + esc(url) + '" data-filename="' + esc(mediaFilename) + '" onclick="cqDownloadMedia(this, this.dataset.url, this.dataset.filename)">⬇ Download ' + esc(mediaFilename) + '</button>' +
-                            '</div>' +
-                        '</div>';
+            CQ.currentResultMediaUrl = url;
+            CQ.currentResultIsVideo = isVideo;
+            CQ.currentResultFilename = mediaFilename;
+
+            var mediaDisplayHtml = '';
+            var fsBtnHtml = '';
+            var dimPillHtml = '';
+
+            if (isVideo) {
+                mediaDisplayHtml = '<div class="cq-rv-media-container">' +
+                                       '<button type="button" class="cq-rv-side-arrow left" id="cq-rv-side-prev" onclick="cqNavigateResult(-1)" title="Previous Media (Left Arrow)">&lt;</button>' +
+                                       '<video class="cq-result-media" src="' + esc(url) + '" controls onloadedmetadata="cqOnMediaLoaded(this)"></video>' +
+                                       '<button type="button" class="cq-rv-side-arrow right" id="cq-rv-side-next" onclick="cqNavigateResult(1)" title="Next Media (Right Arrow)">&gt;</button>' +
+                                   '</div>';
+                fsBtnHtml = '<button type="button" class="cq-i-chip" onclick="cqOpenResultFullscreen(\'' + esc(url) + '\', true, \'' + esc(mediaFilename) + '\')">🔍 Fullscreen</button>';
+                dimPillHtml = '<span class="cq-dim-pill" style="display:none;">📐 Calculating…</span>';
+            } else if (isAudio) {
+                mediaDisplayHtml = '<div style="background:#0a0e15; border:1px solid #1e2a41; border-radius:12px; padding:18px 16px; margin:0 auto 12px; display:flex; flex-direction:column; align-items:center; gap:12px; max-width:540px;">' +
+                                       '<div style="display:flex; align-items:center; gap:10px; color:#c084fc; font-weight:700; font-size:0.9rem;">' +
+                                           '<span style="font-size:1.8rem;">🎵</span>' +
+                                           '<span style="word-break:break-all;">' + esc(mediaFilename) + '</span>' +
+                                       '</div>' +
+                                       '<audio controls style="width:100%; border-radius:8px; outline:none;" src="' + esc(url) + '"></audio>' +
+                                   '</div>';
+            } else {
+                mediaDisplayHtml = '<div class="cq-rv-media-container">' +
+                                       '<button type="button" class="cq-rv-side-arrow left" id="cq-rv-side-prev" onclick="cqNavigateResult(-1)" title="Previous Media (Left Arrow)">&lt;</button>' +
+                                       '<img class="cq-result-media" src="' + esc(url) + '" alt="Job output" onload="cqOnMediaLoaded(this)" style="cursor:zoom-in;" onclick="cqOpenResultFullscreen(\'' + esc(url) + '\', false, \'' + esc(mediaFilename) + '\')">' +
+                                       '<button type="button" class="cq-rv-side-arrow right" id="cq-rv-side-next" onclick="cqNavigateResult(1)" title="Next Media (Right Arrow)">&gt;</button>' +
+                                   '</div>';
+                fsBtnHtml = '<button type="button" class="cq-i-chip" onclick="cqOpenResultFullscreen(\'' + esc(url) + '\', false, \'' + esc(mediaFilename) + '\')">🔍 Fullscreen</button>';
+                dimPillHtml = '<span class="cq-dim-pill" style="display:none;">📐 Calculating…</span>';
+            }
+
+            html += '<div class="cq-rv-media-section" style="margin-bottom:14px;">' +
+                        mediaDisplayHtml +
+                        '<div style="display:flex; justify-content:center; align-items:center; gap:8px; flex-wrap:wrap; margin-top:8px;">' +
+                            dimPillHtml +
+                            '<button type="button" class="cq-i-chip" data-url="' + esc(url) + '" data-filename="' + esc(mediaFilename) + '" onclick="cqDownloadMedia(this, this.dataset.url, this.dataset.filename)" title="Download (Shortcut: S)">⬇ Download ' + esc(mediaFilename) + ' <span style="opacity:0.6;font-size:0.65rem;">(S)</span></button>' +
+                            fsBtnHtml +
+                        '</div>' +
+                    '</div>';
+
+            // Seamlessly update fullscreen view if currently open
+            if (CQ.rvFullscreenOpen && url) {
+                window.cqOpenResultFullscreen(url, isVideo, mediaFilename);
             }
         }
 
