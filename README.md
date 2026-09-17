@@ -337,7 +337,7 @@ There are two ways to run SmartGallery on Windows: using the ready-to-use **Port
 This version includes a fully self-contained environment. You do not need to install Python or any dependencies on your system—it is **completely plug-and-play**.
 
 **1. Download & Extract**
-* **Direct Download:** [SmartGallery-v2.24-Windows-Portable.zip](https://github.com/biagiomaf/smart-comfyui-gallery/releases/download/2.24/SmartGallery-v2.24-Windows-Portable.zip)
+* **Direct Download:** [SmartGallery-v2.24.1-Windows-Portable.zip](https://github.com/biagiomaf/smart-comfyui-gallery/releases/download/2.24.1/SmartGallery-v2.24.1-Windows-Portable.zip)
 * **Releases Page:** Alternatively, view all builds on the [Releases page](https://github.com/biagiomaf/smart-comfyui-gallery/releases/latest).
 * Extract the archive into a folder of your choice.
 

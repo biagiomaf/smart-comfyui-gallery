@@ -1,6 +1,21 @@
-<!-- Version: 2.24 - September 08, 2026 -->
+<!-- Version: 2.24.1 - September 17, 2026 -->
 <script id="changelog-data" type="text/markdown">
 # Changelog
+
+### **[2.24.1] - 2026-09-17**
+
+### 🚀 Features & Enhancements
+* **Metadata Extraction:** Generalized the extraction of metadata across the application.
+* **Docker Base Image:** Updated the base Docker image to be based on Python 3.14.
+
+### 🐛 Bug Fixes & Stability
+* **Folder Refresh Freezes:** Fixed an issue where refreshing a folder (using the `L` key) could freeze the gallery on Linux, Docker, or multi-core systems.
+* **Stuck Video Previews:** Prevented the gallery from hanging indefinitely when generating thumbnails from corrupted, busy, or in-progress video files.
+* **Smoother Background Sync:** Fixed occasional gallery slowdowns and database lockups when browsing while folders are updating.
+* **Reliable Sync Popup:** The sync window now shows smooth real-time progress and will automatically recover instead of getting stuck on screen.
+* **Queue Deck & Keyboard Controls:** Fixed keyboard shortcuts and Sort buttons occasionally becoming unresponsive after opening or closing the Queue Deck (`Shift+Q` / `Esc`).
+
+---
 
 ### **[2.24] - 2026-09-08**
 

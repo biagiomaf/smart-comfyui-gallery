@@ -1,4 +1,4 @@
-<!-- Version: 2.24 - September 08, 2026 -->
+<!-- Version: 2.24.1 - September 17, 2026 -->
 <!doctype html>
 <html lang="en">
 <head>
@@ -31,9 +31,11 @@ body {
     display: none;
     justify-content: center;
     align-items: center;
+    pointer-events: none;
 }
 #cq-overlay.visible {
     display: flex;
+    pointer-events: auto;
     animation: cqFade 0.22s ease-out;
 }
 
@@ -1786,7 +1788,13 @@ return String(u).replace(/\/+$/, '');
         CQ.clientId = getDefaultClientId();
         cqInitBroadcastChannel();
         $('cq-url').textContent = CQ.url;
-        $('cq-overlay').classList.add('visible');
+
+        var overlay = $('cq-overlay');
+        if (overlay) {
+            overlay.style.display = '';
+            overlay.classList.add('visible');
+        }
+
         document.body.classList.add('modal-open');
         setPill('wait', 'CHECKING');
 
@@ -1818,18 +1826,42 @@ return String(u).replace(/\/+$/, '');
     };
 
     window.closeComfyQueueModal = function () {
-        if (!CQ.open) return;
-
         CQ.open = false;
         window._cqOpen = false;
         cqSoftReset();
 
-        $('cq-overlay').classList.remove('visible');
-        $('cq-confirm').classList.remove('visible');
-        $('cq-info').classList.remove('visible');
-        $('cq-nodejson').classList.remove('visible');
-        $('cq-resultview').classList.remove('visible');
+        var overlayIds = ['cq-overlay', 'cq-confirm', 'cq-info', 'cq-nodejson', 'cq-resultview', 'cq-rv-fullscreen'];
+        overlayIds.forEach(function (id) {
+            var el = $(id);
+            if (el) {
+                el.classList.remove('visible');
+                el.style.display = '';
+            }
+        });
+
+        var globalJson = document.getElementById('cq-global-node-json-viewer');
+        if (globalJson) {
+            globalJson.style.display = 'none';
+        }
+
         document.body.classList.remove('modal-open');
+
+        // Release focus trap immediately so keyboard shortcuts resume in the gallery
+        if (document.activeElement && typeof document.activeElement.blur === 'function') {
+            try { document.activeElement.blur(); } catch (e) {}
+        }
+        try { document.body.focus(); } catch (e) {}
+
+        // Restore focus to active gallery item if available
+        if (typeof window.focusedItemIndex !== 'undefined' && window.focusedItemIndex !== -1 && window.galleryItems && window.galleryItems[window.focusedItemIndex]) {
+            try {
+                var item = window.galleryItems[window.focusedItemIndex];
+                item.classList.add('focused');
+                if (typeof window.updateFocusStatusBar === 'function') {
+                    window.updateFocusStatusBar();
+                }
+            } catch (e) {}
+        }
     };
 
     function cqSoftReset() {
@@ -1900,12 +1932,41 @@ return String(u).replace(/\/+$/, '');
        ============================================================ */
     document.addEventListener('keydown', function (e) {
         var tag = e.target && e.target.tagName ? e.target.tagName : '';
+        var isCqUrlInput = (e.target && e.target.id === 'cq-url-input');
         var typing = (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable));
         var isEsc = (e.key === 'Escape' || e.key === 'Esc' || e.keyCode === 27);
 
-        if (isEsc && CQ.open && !typing) {
+        // Always handle Shift+Q toggle (whether Queue Deck is currently open or closed)
+        if (e.shiftKey && (e.key === 'Q' || e.key === 'q')) {
+            if (!typing || isCqUrlInput) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (CQ.open || window._cqOpen) {
+                    window.closeComfyQueueModal();
+                } else if (typeof window.openComfyQueueModal === 'function') {
+                    window.openComfyQueueModal();
+                }
+                return;
+            }
+        }
+
+        var globalJsonEl = document.getElementById('cq-global-node-json-viewer');
+        var isGlobalJsonOpen = globalJsonEl && globalJsonEl.style.display === 'flex';
+
+        // If Queue Deck is not open and no sub-viewer is open, do not intercept any other keys
+        if (!CQ.open && !window._cqOpen && !CQ.rvFullscreenOpen && !isGlobalJsonOpen) {
+            return;
+        }
+
+        // Handle Escape to close sub-modals or the main Queue Deck
+        if (isEsc && (CQ.open || window._cqOpen || CQ.rvFullscreenOpen || isGlobalJsonOpen)) {
             e.preventDefault();
             e.stopPropagation();
+
+            if (isGlobalJsonOpen) {
+                document.getElementById('cq-global-node-json-viewer').style.display = 'none';
+                return;
+            }
 
             // Priority 1: Exit Fullscreen lightbox only (keeps result details dialog open)
             if (CQ.rvFullscreenOpen || ($('cq-rv-fullscreen') && $('cq-rv-fullscreen').classList.contains('visible'))) {
@@ -1921,28 +1982,28 @@ return String(u).replace(/\/+$/, '');
                 return;
             }
 
-            if ($('cq-nodejson').classList.contains('visible')) {
+            if ($('cq-nodejson') && $('cq-nodejson').classList.contains('visible')) {
                 $('cq-nodejson').classList.remove('visible');
                 return;
             }
 
-            if ($('cq-resultview').classList.contains('visible')) {
+            if ($('cq-resultview') && $('cq-resultview').classList.contains('visible')) {
                 $('cq-resultview').classList.remove('visible');
                 return;
             }
 
-            if ($('cq-info').classList.contains('visible')) {
+            if ($('cq-info') && $('cq-info').classList.contains('visible')) {
                 $('cq-info').classList.remove('visible');
                 return;
             }
 
-            closeComfyQueueModal();
+            window.closeComfyQueueModal();
             return;
         }
 
         if (typing) return;
 
-                // Fullscreen interactive Zoom controls (+ / - / 0)
+        // Fullscreen interactive Zoom controls (+ / - / 0)
         if (CQ.rvFullscreenOpen && !typing) {
             if (e.key === '+' || e.key === '=' || e.code === 'NumpadAdd') {
                 e.preventDefault();
@@ -1994,13 +2055,6 @@ return String(u).replace(/\/+$/, '');
                 return;
             }
         }
-
-        if (e.shiftKey && (e.key === 'Q' || e.key === 'q')) {
-            e.preventDefault();
-            e.stopPropagation();
-            if (CQ.open) closeComfyQueueModal();
-            else window.openComfyQueueModal();
-        }
     }, true);
 
     /* ============================================================
@@ -2045,6 +2099,10 @@ return String(u).replace(/\/+$/, '');
         if (e.key === 'Enter') {
             e.preventDefault();
             cqSaveUrl();
+        } else if (e.key === 'Escape' || e.key === 'Esc' || e.keyCode === 27) {
+            e.preventDefault();
+            this.blur();
+            window.closeComfyQueueModal();
         }
     });
 

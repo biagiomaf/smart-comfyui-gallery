@@ -1,7 +1,7 @@
 # SmartGallery DAM for ComfyUI
 # Author: Biagio Maffettone © 2025-2026 — Free to use/modify with credit. Provided "as is". See license on GitHub.
 #
-# Version: 2.24 - September 08, 2026
+# Version: 2.24.1 - September 17, 2026
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -339,8 +339,8 @@ AI_MODELS_FOLDER_NAME = '.AImodels'
 ENABLE_DAM_MODE = True
 
 # --- APP INFO ---
-APP_VERSION = "2.24"
-APP_VERSION_DATE = "September 08, 2026"
+APP_VERSION = "2.24.1"
+APP_VERSION_DATE = "September 17, 2026"
 GITHUB_REPO_URL = "https://github.com/biagiomaf/smart-comfyui-gallery"
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/biagiomaf/smart-comfyui-gallery/main/smartgallery.py"
 
@@ -1322,7 +1322,7 @@ def extract_workflow(filepath, target_type='ui'):
         if current_ffprobe_path:
             try:
                 cmd = [current_ffprobe_path, '-v', 'quiet', '-print_format', 'json', '-show_format', filepath]
-                result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True, creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
+                result = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='ignore', check=True, timeout=10, creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0)
                 data = json.loads(result.stdout)
                 if 'format' in data and 'tags' in data['format']:
                     for value in data['format']['tags'].values():
@@ -1441,23 +1441,31 @@ def parse_webui_metadata(text, include_emojis=True):
     lines = text.strip().split('\n')
     positive_prompt = ""
     negative_prompt = ""
-    metadata_line = ""
+    metadata_lines = []
     section = "positive"
+    settings_pattern = re.compile(
+        r'^\s*(?:Steps|Sampler|CFG scale|Seed|Size|Model(?: hash)?|'
+        r'Denoising strength|Clip skip|Schedule type|Version)\s*:',
+        re.IGNORECASE,
+    )
 
     for line in lines:
         if line.startswith("Negative prompt:"):
             section = "negative"
             negative_prompt += line.replace("Negative prompt:", "").strip() + " "
-        elif re.search(r'Steps:\s*\d+', line):
-            metadata_line = line
+        elif settings_pattern.match(line):
+            metadata_lines.append(line.strip())
             section = "done"
         elif section == "positive":
             positive_prompt += line + " "
         elif section == "negative":
             negative_prompt += line + " "
+        elif section == "done":
+            metadata_lines.append(line.strip())
 
     positive_prompt = positive_prompt.strip()
     negative_prompt = negative_prompt.strip()
+    metadata_line = ", ".join(metadata_lines)
 
     model_name_display = "N/A"
     if metadata_line:
@@ -1726,7 +1734,7 @@ def create_thumbnail(filepath, file_hash, file_type, silent=True):
                 cache_path
             ]
             creation_flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
-            subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True, creationflags=creation_flags)
+            subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True, timeout=15, creationflags=creation_flags)
             if os.path.exists(cache_path) and os.path.getsize(cache_path) > 0:
                 return cache_path
         except Exception as e:
@@ -2735,64 +2743,59 @@ def sync_folder_on_demand(folder_path):
     yield f"data: {json.dumps({'message': 'Checking folder for changes...', 'current': 0, 'total': 1})}\n\n"
     
     try:
+        disk_files = {}
+        valid_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.mp4', '.mkv', '.webm', '.mov', '.avi', '.mp3', '.wav', '.ogg', '.flac', '.txt', '.md'}
+        if os.path.isdir(folder_path):
+            for name in os.listdir(folder_path):
+                filepath = os.path.join(folder_path, name)
+                if os.path.isfile(filepath) and os.path.splitext(name)[1].lower() in valid_extensions:
+                    try:
+                        if os.path.getsize(filepath) > 0:
+                            disk_files[filepath] = os.path.getmtime(filepath)
+                    except OSError:
+                        pass
+        
         with get_db_connection() as conn:
-            disk_files, valid_extensions = {}, {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.mp4', '.mkv', '.webm', '.mov', '.avi', '.mp3', '.wav', '.ogg', '.flac', '.txt', '.md'}
-            if os.path.isdir(folder_path):
-                for name in os.listdir(folder_path):
-                    filepath = os.path.join(folder_path, name)
-                    if os.path.isfile(filepath) and os.path.splitext(name)[1].lower() in valid_extensions:
-                        try:
-                            if os.path.getsize(filepath) > 0:
-                                disk_files[filepath] = os.path.getmtime(filepath)
-                        except OSError:
-                            pass
-            
             db_files_query = conn.execute("SELECT path, mtime FROM files WHERE path LIKE ?", (folder_path + os.sep + '%',)).fetchall()
             db_files = {row['path']: row['mtime'] for row in db_files_query if os.path.normpath(os.path.dirname(row['path'])) == os.path.normpath(folder_path)}
-            
-            disk_filepaths, db_filepaths = set(disk_files.keys()), set(db_files.keys())
-            files_to_add = disk_filepaths - db_filepaths
-            files_to_delete = db_filepaths - disk_filepaths
-            files_to_update = {path for path in (disk_filepaths & db_filepaths) if int(disk_files[path]) > int(db_files[path])}
-            
-            if not files_to_add and not files_to_update and not files_to_delete:
-                yield f"data: {json.dumps({'message': 'Folder is up-to-date.', 'status': 'no_changes', 'current': 1, 'total': 1})}\n\n"
-                return
+        
+        disk_filepaths = set(disk_files.keys())
+        db_filepaths = set(db_files.keys())
+        files_to_add = disk_filepaths - db_filepaths
+        files_to_delete = db_filepaths - disk_filepaths
+        files_to_update = {path for path in (disk_filepaths & db_filepaths) if int(disk_files[path]) > int(db_files[path])}
+        
+        if not files_to_add and not files_to_update and not files_to_delete:
+            yield f"data: {json.dumps({'message': 'Folder is up-to-date.', 'status': 'no_changes', 'current': 1, 'total': 1})}\n\n"
+            return
 
-            files_to_process = list(files_to_add.union(files_to_update))
-            total_files = len(files_to_process)
+        files_to_process = list(files_to_add.union(files_to_update))
+        total_files = len(files_to_process)
+        data_to_upsert = []
+        
+        if total_files > 0:
+            yield f"data: {json.dumps({'message': f'Found {total_files} new/modified file(s). Processing...', 'current': 0, 'total': total_files})}\n\n"
             
-            data_to_upsert = []
+            # Use ThreadPoolExecutor to prevent POSIX fork deadlocks inside Waitress WSGI threads
+            max_sync_workers = min(8, max(1, total_files))
+            processed_count = 0
             
-            if total_files > 0:
-                yield f"data: {json.dumps({'message': f'Found {total_files} new/modified files. Processing...', 'current': 0, 'total': total_files})}\n\n"
-                
-                pending_paths = list(files_to_process)
-                attempts = 0
-                max_attempts = 5
-                
-                while pending_paths and attempts < max_attempts:
-                    current_batch = list(pending_paths)
-                    pending_paths = []
-                    attempts += 1
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_sync_workers) as executor:
+                futures = {executor.submit(process_single_file, path): path for path in files_to_process}
+                for future in concurrent.futures.as_completed(futures):
+                    path = futures[future]
+                    processed_count += 1
+                    try:
+                        res = future.result(timeout=25)
+                        if res:
+                            data_to_upsert.append(res)
+                    except Exception as err:
+                        print(f"WARNING: Processing error on {os.path.basename(path)}: {err}")
                     
-                    with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_PARALLEL_WORKERS) as executor:
-                        futures = {executor.submit(process_single_file, path): path for path in current_batch}
-                        for future in concurrent.futures.as_completed(futures):
-                            path = futures[future]
-                            try:
-                                res = future.result()
-                                if res:
-                                    data_to_upsert.append(res)
-                                else:
-                                    pending_paths.append(path)
-                            except Exception:
-                                pending_paths.append(path)
-                    
-                    if not pending_paths:
-                        break
-                    time.sleep(0.8)
+                    # Real-time progressive feedback to the client
+                    yield f"data: {json.dumps({'message': f'Processing {processed_count}/{total_files}: {os.path.basename(path)}', 'current': processed_count, 'total': total_files})}\n\n"
 
+        with get_db_connection() as conn:
             if data_to_upsert:
                 conn.executemany("""
                     INSERT INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned, workflow_files, workflow_prompt, workflow_hash, prompt_hash) 
@@ -2818,14 +2821,15 @@ def sync_folder_on_demand(folder_path):
                 """, data_to_upsert) 
                 
             if files_to_delete:
-                conn.executemany("DELETE FROM files WHERE path IN (?)", [(p,) for p in files_to_delete])
+                del_placeholders = ','.join(['?'] * len(files_to_delete))
+                conn.execute(f"DELETE FROM files WHERE path IN ({del_placeholders})", list(files_to_delete))
 
             conn.commit()
 
-            if data_to_upsert or files_to_delete:
-                yield f"data: {json.dumps({'message': 'Sync complete. Reloading...', 'status': 'reloading', 'current': len(data_to_upsert), 'total': total_files})}\n\n"
-            else:
-                yield f"data: {json.dumps({'message': 'Folder is up-to-date.', 'status': 'no_changes', 'current': 0, 'total': total_files})}\n\n"
+        if data_to_upsert or files_to_delete:
+            yield f"data: {json.dumps({'message': 'Sync complete. Reloading...', 'status': 'reloading', 'current': total_files, 'total': total_files})}\n\n"
+        else:
+            yield f"data: {json.dumps({'message': 'Folder is up-to-date.', 'status': 'no_changes', 'current': total_files, 'total': total_files})}\n\n"
 
     except Exception as e:
         error_message = f"Error during sync: {e}"
