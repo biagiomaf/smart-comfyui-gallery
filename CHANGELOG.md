@@ -1,5 +1,14 @@
 # Changelog
 
+### **[2.24.2] - 2026-10-03**
+
+### 🚀 Features & Enhancements
+* **Generation Data Overlay (`Shift+M`):** Added a toggleable overlay (via shortcut `Shift+M` or the *Settings & Info* menu) that displays key generation parameters on focused thumbnails in Grid View and inside the Lightbox. Supports both **ComfyUI** and **AUTOMATIC1111 (A1111 / WebUI)** metadata formats.
+* **Full Asset Details:** Added a dedicated **"Generation data"** tab inspecting structured generation parameters for both ComfyUI and A1111 assets.
+* **Remix Workflow (Auto-Form):** Enhanced input image resolution management with instant dimension inheritance, zero-dimension aspect ratio preservation, integrated aspect ratio locking (`🔒`/`🔓`), quick scaling, and guidance to Nodepad when preset resolution nodes are detected.
+
+---
+
 ### **[2.24.1] - 2026-09-17**
 
 ### 🚀 Features & Enhancements

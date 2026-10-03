@@ -1,4 +1,4 @@
-/* Version: 2.24.1 - September 17, 2026 */
+/* Version: 2.24.2 - October 03, 2026 */
 :root {
     --bg-color: #0a0a0a;
     --surface-color: #1a1a1a;
@@ -7985,3 +7985,34 @@ body.sidebar-minimized .sidebar-user-row {
 .fd-tab-pane.active {
     display: flex;
 }
+
+/* Generation metadata inspector */
+#generation-metadata-toggle { position: fixed; bottom: 12px; right: 16px; z-index: 2010; padding: 8px 12px; border: 1px solid var(--border-color, #444); border-radius: 8px; background: var(--surface-color, #25262b); color: var(--text-color, #ddd); cursor: pointer; }
+#generation-metadata-toggle[aria-pressed="true"] { color: var(--primary-color, #69baff); }
+#generation-metadata-panel { position: fixed; z-index: 2011; box-sizing: border-box; max-height: calc(100dvh - 160px); overflow: auto; overscroll-behavior: contain; padding: 16px; border: 1px solid var(--border-color, #444); border-radius: 12px; background: var(--surface-color, #25262b); color: var(--text-color, #ddd); box-shadow: 0 8px 30px #0006; font-size: 13px; }
+#generation-metadata-panel[hidden], #generation-metadata-toggle[hidden] { display: none; }
+#generation-metadata-panel header { display: flex; align-items: center; gap: 10px; }
+#generation-metadata-panel header strong { flex: 1; font-size: 17px; }
+#generation-metadata-panel button { border: 0; background: transparent; color: var(--primary-color, #69baff); cursor: pointer; padding: 4px; font: inherit; }
+#generation-metadata-panel button:disabled { opacity: .4; cursor: default; }
+#generation-metadata-panel button:focus-visible { outline: 2px solid var(--primary-color, #69baff); }
+#generation-metadata-name { margin: 8px 0; overflow-wrap: anywhere; color: var(--text-muted, #aaa); }
+#generation-metadata-panel section { border-top: 1px solid var(--border-color, #444); margin-top: 12px; padding-top: 12px; }
+#generation-metadata-panel h3 { font-size: 14px; margin: 0 0 8px; display: flex; align-items: center; justify-content: space-between; }
+#generation-metadata-panel p { margin: 0; line-height: 1.5; overflow-wrap: anywhere; white-space: pre-wrap; }
+.gm-collapsed { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.gm-resource { display: flex; align-items: center; gap: 6px; margin: 6px 0; }
+.gm-resource > span:first-child { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.gm-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.gm-badge { display: inline-block; background: #3198d822; color: var(--primary-color, #69baff); border-radius: 4px; padding: 3px 6px; font-size: 11px; overflow-wrap: anywhere; }
+#generation-metadata-panel.gm-bottom { max-height: 32dvh; }
+body.gm-grid-docked { padding-bottom: var(--gm-dock-height, 280px); }
+body.gm-grid-docked .gallery-item { scroll-margin-bottom: var(--gm-dock-height, 280px); }
+body.gm-grid-docked #generation-metadata-toggle { bottom: calc(var(--gm-dock-height, 280px) + 4px); }
+@media (max-width: 600px) { #generation-metadata-panel { max-height: 55dvh; } }
+
+.gm-pin-controls { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+#generation-metadata-panel .gm-pin-controls button { border: 1px solid var(--border-color, #444); border-radius: 5px; padding: 4px 8px; }
+#generation-metadata-pin-status { color: var(--text-muted, #aaa); font-size: 12px; }
+#generation-metadata-panel [hidden] { display: none !important; }
+body.lightbox-open #generation-metadata-toggle { display: none; }

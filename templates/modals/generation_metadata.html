@@ -1,0 +1,221 @@
+<!-- Version: 2.24.2 - October 03, 2026 -->
+<aside id="generation-metadata-panel" aria-label="Generation data" hidden>
+    <header>
+        <div style="display:flex; align-items:center; gap:6px;">
+            <strong style="color:#fff; font-size:0.85rem;">⚙️ Generation Data</strong>
+            <span style="font-size:0.65rem; color:var(--text-muted); background:rgba(255,255,255,0.06); padding:1px 5px; border-radius:4px; border:1px solid rgba(255,255,255,0.1);">Shift+M</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+            <button type="button" id="generation-copy-all" class="glass-btn" style="padding:2px 8px !important; height:24px !important; font-size:0.75rem !important;" disabled>Copy all</button>
+            <button type="button" id="gm-panel-switch" onclick="toggleGenerationMetadata(false)" class="gm-switch-btn" title="Turn OFF inspector (Shortcut: Shift+M)">
+                <span class="gm-switch-dot">●</span>
+                <span class="gm-switch-label">ON</span>
+            </button>
+        </div>
+    </header>
+    
+    <!-- Pin Control Bar -->
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:8px;">
+        <button type="button" id="generation-metadata-pin" class="gm-pin-btn" onclick="toggleGenerationMetadataPin(true)" title="Pin/Lock overlay on this image (Shortcut: Alt+M)">
+            <span id="gm-pin-icon">📌</span> <span id="gm-pin-text">Pin Image</span> <kbd style="background:rgba(0,0,0,0.4); padding:1px 4px; border-radius:3px; font-size:0.65rem; border:1px solid rgba(255,255,255,0.15); margin-left:4px;">Alt+M</kbd>
+        </button>
+        <span id="generation-metadata-pin-status" style="font-size:0.7rem; color:var(--favorite-color,#ffc107); font-weight:bold; display:none;">🔒 PINNED</span>
+    </div>
+
+    <div id="generation-metadata-name" style="font-size:0.8rem; color:var(--primary-color); font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:4px;"></div>
+    <div id="generation-metadata-content" aria-live="polite"></div>
+</aside>
+
+<style>
+#generation-metadata-panel {
+    position: fixed;
+    z-index: 2600; /* Stays above Grid and Lightbox */
+    background: rgba(18, 18, 24, 0.94);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(100, 180, 255, 0.35);
+    border-radius: 12px;
+    padding: 12px 14px;
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.75), 0 0 15px rgba(0, 123, 255, 0.2);
+    overflow-y: auto;
+    font-size: 0.85rem;
+    color: #eee;
+    box-sizing: border-box;
+    transition: opacity 0.15s ease;
+    pointer-events: auto;
+}
+#generation-metadata-panel header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    cursor: grab;
+    user-select: none;
+}
+#generation-metadata-panel.is-dragging header {
+    cursor: grabbing;
+}
+#generation-metadata-panel.is-dragging {
+    user-select: none;
+    transition: none !important;
+}
+.gm-pin-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #ddd;
+    border-radius: 8px;
+    padding: 3px 10px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+}
+.gm-pin-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: var(--primary-color, #3399ff);
+    color: #fff;
+}
+.gm-pin-btn.is-pinned {
+    background: rgba(255, 193, 7, 0.2) !important;
+    border-color: var(--favorite-color, #ffc107) !important;
+    color: var(--favorite-color, #ffc107) !important;
+    box-shadow: 0 0 10px rgba(255, 193, 7, 0.25);
+}
+.gm-switch-btn {
+    background: rgba(40, 167, 69, 0.25);
+    border: 1px solid #28a745;
+    color: #28a745;
+    border-radius: 12px;
+    padding: 2px 8px;
+    font-size: 0.72rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+@media (min-width: 769px) {
+    .gm-switch-btn:hover {
+        background: rgba(220, 53, 69, 0.3);
+        border-color: #dc3545;
+        color: #ff6b6b;
+    }
+    .gm-switch-btn:hover .gm-switch-label {
+        display: none;
+    }
+    .gm-switch-btn:hover::after {
+        content: "TURN OFF";
+    }
+}
+@media (max-width: 768px) {
+    #generation-metadata-panel header {
+        cursor: default;
+    }
+    .gm-switch-btn {
+        background: rgba(220, 53, 69, 0.25) !important;
+        border-color: #dc3545 !important;
+        color: #ff6b6b !important;
+        padding: 3px 8px !important;
+    }
+    .gm-switch-btn .gm-switch-label {
+        display: none !important;
+    }
+    .gm-switch-btn::after {
+        content: "OFF" !important;
+        font-weight: bold;
+    }
+}
+.gm-resource {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 4px 8px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.gm-resource span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: #fff;
+}
+.gm-badge {
+    background: rgba(0, 123, 255, 0.2);
+    color: var(--primary-color, #3399ff);
+    border: 1px solid rgba(0, 123, 255, 0.4);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: bold;
+    white-space: nowrap;
+}
+.gm-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 4px;
+}
+.gm-prompt {
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    color: #ddd;
+    margin: 4px 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.gm-prompt.gm-collapsed {
+    max-height: 70px;
+    overflow: hidden;
+    position: relative;
+}
+.gm-prompt.gm-collapsed::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 30px;
+    background: linear-gradient(transparent, rgba(18, 18, 24, 0.95));
+}
+.gm-expand-btn {
+    background: transparent;
+    border: none;
+    color: var(--primary-color, #3399ff);
+    font-size: 0.72rem;
+    cursor: pointer;
+    padding: 2px 0;
+    text-decoration: underline;
+}
+.gm-copy-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.gm-copy-btn:hover {
+    background: var(--primary-color, #007bff);
+}
+/* Instant Focus Mode reactivity for Cluster Badges */
+body.focus-mode .cluster-setting-badge {
+    display: none !important;
+}
+</style>
+<script src="{{ url_for('static', filename='js/generation_metadata.js', v='2.24.2') }}"></script>

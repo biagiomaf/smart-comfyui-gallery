@@ -158,6 +158,12 @@ Evolve your workflow from a simple collection of files into a structured, search
 
 ### 1.2 What's New in v2.24
 
+### 🚀 Features & Enhancements [v2.24.2] - 2026-10-03
+* **Generation Data Overlay (`Shift+M`):** Added a toggleable overlay (via shortcut `Shift+M` or the *Settings & Info* menu) that displays key generation parameters on focused thumbnails in Grid View and inside the Lightbox. Supports both **ComfyUI** and **AUTOMATIC1111 (A1111 / WebUI)** metadata formats.
+* **Full Asset Details:** Added a dedicated **"Generation data"** tab inspecting structured generation parameters for both ComfyUI and A1111 assets.
+* **Remix Workflow (Auto-Form):** Enhanced input image resolution management with instant dimension inheritance, zero-dimension aspect ratio preservation, integrated aspect ratio locking (`🔒`/`🔓`), quick scaling, and guidance to Nodepad when preset resolution nodes are detected.  
+
+### [v2.24] - 2026-09-21
 - ⚡ [**ComfyUI Queue Deck (`Shift+Q`)**](docs/ComfyUI_Queue_Deck_manual.md): Introduces a unified mission control dashboard to monitor live progressive sampling steps (`Step X / Y (Z%)`), stream live video/image previews during generation, track driver-level VRAM & GPU compute loads (`nvidia-smi`), manage the execution queue (reorder, interrupt, delete, clear all), and inspect recent completed job graphs and metadata. Access it instantly via <kbd>Shift</kbd>+<kbd>Q</kbd> or from the **Tools** menu. 👉 READ the **[ComfyUI Queue Deck Manual](docs/ComfyUI_Queue_Deck_manual.md)** [**▶️ Look at the Video**](https://smartgallerydam.com/ComfyUI_Queue_Deck.mp4).
 - ✨ **Interactive Node JSON Inspector:** All node chips across both the **Full Asset Details Panel** (<kbd>I</kbd>) and the **Cluster Inspector** (<kbd>Shift</kbd>+<kbd>C</kbd>) are now interactive and clickable, opening a global viewer to inspect the raw JSON parameters and configuration for any individual node in the workflow.
 - 🐛 **Auto-Watch GPU Resource Optimization:** Resolved an issue where enabling the "Auto-watch" feature caused disproportionate GPU compute usage on the client side even while idle.
@@ -337,7 +343,7 @@ There are two ways to run SmartGallery on Windows: using the ready-to-use **Port
 This version includes a fully self-contained environment. You do not need to install Python or any dependencies on your system—it is **completely plug-and-play**.
 
 **1. Download & Extract**
-* **Direct Download:** [SmartGallery-v2.24.1-Windows-Portable.zip](https://github.com/biagiomaf/smart-comfyui-gallery/releases/download/2.24.1/SmartGallery-v2.24.1-Windows-Portable.zip)
+* **Direct Download:** [SmartGallery-v2.24.2-Windows-Portable.zip](https://github.com/biagiomaf/smart-comfyui-gallery/releases/download/2.24.2/SmartGallery-v2.24.2-Windows-Portable.zip)
 * **Releases Page:** Alternatively, view all builds on the [Releases page](https://github.com/biagiomaf/smart-comfyui-gallery/releases/latest).
 * Extract the archive into a folder of your choice.
 
@@ -1211,6 +1217,7 @@ Expose Exhibition (port 8190) remotely using Nginx, Apache, or tunnels like ngro
 |---|---|
 | `?` | Open Shortcuts Help panel |
 | `Shift+Q` | **Open ComfyUI Queue Deck (Live Queue & Step Monitor)** |
+| `Shift+M` | Generation Data Overlay |
 | `Q` | Toggle Focus Mode |
 | `T` | Scroll to Top and open Search/Filters |
 | `P` | Toggle Video Autoplay |

@@ -1,7 +1,7 @@
+# Version: 2.24.2 - October 03, 2026
 # SmartGallery DAM for ComfyUI
 # Author: Biagio Maffettone © 2025-2026 — Free to use/modify with credit. Provided "as is". See license on GitHub.
 #
-# Version: 2.24.1 - September 17, 2026
 # Check the GitHub repository for updates, bug fixes, and contributions.
 #
 # Contact: biagiomaf@gmail.com
@@ -339,8 +339,8 @@ AI_MODELS_FOLDER_NAME = '.AImodels'
 ENABLE_DAM_MODE = True
 
 # --- APP INFO ---
-APP_VERSION = "2.24.1"
-APP_VERSION_DATE = "September 17, 2026"
+APP_VERSION = "2.24.2"
+APP_VERSION_DATE = "October 03, 2026"
 GITHUB_REPO_URL = "https://github.com/biagiomaf/smart-comfyui-gallery"
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/biagiomaf/smart-comfyui-gallery/main/smartgallery.py"
 
@@ -509,6 +509,8 @@ def run_integrity_check():
         'templates/modals/remix_modal.html',
         'templates/modals/omniquery_modal.html',
         'templates/modals/comfy_queue_manager.html',
+        'templates/modals/generation_metadata.html',
+        'templates/js/generation_metadata.js',
         'templates/css/index.css',
         'templates/collections.html',
         'templates/list_view.html',
@@ -1422,22 +1424,10 @@ def extract_a1111_parameters(filepath):
     return None
 
 
-def parse_webui_metadata(text, include_emojis=True):
-    """
-    Formats a raw WebUI Forge/A1111 'parameters' string into a human-readable report.
-    Mirrors the extraction/formatting approach used by the ComfyUI-Simple_Readable_Metadata-SG
-    custom node (https://github.com/ShammiG/ComfyUI-Simple_Readable_Metadata-SG).
-    """
-    if not text or not isinstance(text, str):
+def parse_webui_metadata_fields(text):
+    """Parse A1111/Forge infotext without presentation markup; preserve numeric precision."""
+    if not isinstance(text, str) or not text.strip():
         return None
-
-    emoji_map = {
-        "sampling": "🎯", "dimensions": "📏", "prompts": "📝",
-        "models": "🧠", "lora": "🎨", "advanced": "⚙️"
-    } if include_emojis else {k: "" for k in ["sampling", "dimensions", "prompts", "models", "lora", "advanced"]}
-
-    output = ["=== WebUI Forge/A1111 Generation Parameters ===\n"]
-
     lines = text.strip().split('\n')
     positive_prompt = ""
     negative_prompt = ""
@@ -1467,11 +1457,52 @@ def parse_webui_metadata(text, include_emojis=True):
     negative_prompt = negative_prompt.strip()
     metadata_line = ", ".join(metadata_lines)
 
-    model_name_display = "N/A"
-    if metadata_line:
-        model_match = re.search(r'Model:\s*([^,\n]+)', metadata_line)
-        if model_match:
-            model_name_display = model_match.group(1).strip()
+    fields = {'source': 'A1111 / Forge', 'positive_prompt': positive_prompt,
+              'negative_prompt': negative_prompt, 'loras': []}
+    names = {'Steps': 'steps', 'Sampler': 'sampler', 'CFG scale': 'cfg',
+             'Seed': 'seed', 'Model': 'model', 'Model hash': 'model_hash',
+             'Denoising strength': 'denoise', 'Clip skip': 'clip_skip',
+             'Schedule type': 'scheduler', 'Version': 'version', 'Size': 'size'}
+    # Values may contain commas inside quoted extension settings.
+    pairs = re.finditer(r'(?:^|,\s*)([\w ]+):\s*("(?:[^"\\]|\\.)*"|[^,]*)', metadata_line)
+    for match in pairs:
+        key = next((v for k, v in names.items() if k.lower() == match[1].strip().lower()), None)
+        if key:
+            fields[key] = match[2].strip().strip('"')
+    size = re.fullmatch(r'(\d+)\s*[xX]\s*(\d+)', fields.get('size', ''))
+    if size:
+        fields['width'], fields['height'] = size.groups()
+    for name, strength in re.findall(r'<lora:([^:>]+):([+-]?(?:\d+(?:\.\d*)?|\.\d+))>', text, re.I):
+        lora = {'name': name, 'value': strength}
+        if lora not in fields['loras']:
+            fields['loras'].append(lora)
+    return fields
+
+
+def parse_webui_metadata(text, include_emojis=True):
+    """
+    Formats a raw WebUI Forge/A1111 'parameters' string into a human-readable report.
+    Mirrors the extraction/formatting approach used by the ComfyUI-Simple_Readable_Metadata-SG
+    custom node (https://github.com/ShammiG/ComfyUI-Simple_Readable_Metadata-SG).
+    """
+    if not text or not isinstance(text, str):
+        return None
+
+    emoji_map = {
+        "sampling": "🎯", "dimensions": "📏", "prompts": "📝",
+        "models": "🧠", "lora": "🎨", "advanced": "⚙️"
+    } if include_emojis else {k: "" for k in ["sampling", "dimensions", "prompts", "models", "lora", "advanced"]}
+
+    output = ["=== WebUI Forge/A1111 Generation Parameters ===\n"]
+
+    fields = parse_webui_metadata_fields(text)
+    if fields is None:
+        return None
+    positive_prompt = fields['positive_prompt']
+    negative_prompt = fields['negative_prompt']
+    has_settings = any(k not in ('source', 'positive_prompt', 'negative_prompt', 'loras') for k in fields)
+
+    model_name_display = fields.get('model', 'N/A')
 
     output.append(f"{emoji_map['models']} MODEL: {model_name_display}\n")
     output.append(f"{emoji_map['prompts']} PROMPTS: |If empty, Check fail-safe below|\n")
@@ -1480,25 +1511,9 @@ def parse_webui_metadata(text, include_emojis=True):
         output.append(f"  Negative:\n           {negative_prompt}")
     output.append("")
 
-    if metadata_line:
-        params = {}
-        patterns = {
-            'steps': r'Steps:\s*(\d+)',
-            'sampler': r'Sampler:\s*([^,]+)',
-            'cfg': r'CFG scale:\s*([\d.]+)',
-            'seed': r'Seed:\s*(\d+)',
-            'size': r'Size:\s*(\d+x\d+)',
-            'model': r'Model:\s*([^,]+)',
-            'model_hash': r'Model hash:\s*([^,]+)',
-            'denoising': r'Denoising strength:\s*([\d.]+)',
-            'clip_skip': r'Clip skip:\s*(\d+)',
-            'scheduler': r'Schedule type:\s*([^,]+)',
-            'version': r'Version:\s*([^,]+)',
-        }
-        for key, pattern in patterns.items():
-            match = re.search(pattern, metadata_line)
-            if match:
-                params[key] = match.group(1).strip()
+    if has_settings or fields['loras']:
+        params = dict(fields)
+        if 'denoise' in fields: params['denoising'] = fields['denoise']
 
         output.append(f"{emoji_map['sampling']} SAMPLING SETTINGS:")
         if 'seed' in params: output.append(f"  Seed: {params['seed']}")
@@ -1520,19 +1535,14 @@ def parse_webui_metadata(text, include_emojis=True):
             if 'model_hash' in params: output.append(f"  Model Hash: {params['model_hash']}")
             output.append("")
 
-        lora_pattern = r'<lora:([^:]+):([\d.]+)>'
-        lora_matches = re.findall(lora_pattern, text)
+        lora_matches = [(l['name'], l['value']) for l in fields['loras']]
         if lora_matches:
             output.append(f"{emoji_map['lora']} LORA MODELS:")
             for lora_name, lora_strength in lora_matches:
                 output.append(f"  {lora_name} (Strength: {lora_strength})")
             output.append("")
 
-        params_check = {}
-        adv_patterns = {'clip_skip': r'Clip skip:\s*(\d+)', 'version': r'Version:\s*([^,]+)'}
-        for key, pattern in adv_patterns.items():
-            match = re.search(pattern, metadata_line)
-            if match: params_check[key] = match.group(1).strip()
+        params_check = fields
         if 'clip_skip' in params_check or 'version' in params_check:
             output.append(f"{emoji_map['advanced']} ADVANCED SETTINGS:")
             if 'clip_skip' in params_check: output.append(f"  Clip Skip: {params_check['clip_skip']}")
@@ -7685,6 +7695,45 @@ def share_collection():
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+@app.route('/galleryout/api/generation_metadata/<string:file_id>')
+def get_generation_metadata(file_id):
+    if not is_file_accessible(file_id):
+        return jsonify({'message': 'Access denied.'}), 403
+    if should_strip_metadata():
+        return jsonify({'message': 'Generation metadata is restricted for your role.'}), 403
+    info = get_file_info_from_db(file_id)
+    if not info:
+        return jsonify({'message': 'File not found.'}), 404
+    try:
+        raw = extract_a1111_parameters(info['path'])
+        meta = parse_webui_metadata_fields(raw) if raw else None
+        if meta is None:
+            workflow = extract_workflow(info['path'], target_type='api')
+            if workflow:
+                data = json.loads(workflow)
+                # The graph tracer expects the API node map, not UI links/widgets.
+                if isinstance(data, dict) and 'nodes' not in data:
+                    meta = ComfyMetadataParser(data).parse()
+                    meta['source'] = 'ComfyUI'
+        if meta and not any(meta.get(k) is not None and meta.get(k) != '' and meta.get(k) != []
+                            for k in ('positive_prompt', 'negative_prompt', 'model', 'loras', 'seed', 'steps', 'sampler')):
+            meta = None
+        if meta:
+            # JavaScript numbers cannot represent all seeds exactly.
+            if meta.get('seed') is not None:
+                meta['seed'] = str(meta['seed'])
+            if not meta.get('width') or not meta.get('height'):
+                dims = re.fullmatch(r'(\d+)x(\d+)', info.get('dimensions') or '')
+                if dims:
+                    meta['width'], meta['height'] = dims.groups()
+        response = jsonify({'metadata': meta})
+        response.headers['Cache-Control'] = 'no-store'
+        return response
+    except Exception:
+        app.logger.exception('Generation metadata extraction failed for %s', file_id)
+        return jsonify({'message': 'Unable to read generation metadata.'}), 500
+
+
 @app.route('/galleryout/api/file_full_details/<string:file_id>')
 def get_file_full_details(file_id):
     if not is_file_accessible(file_id):
@@ -7718,6 +7767,34 @@ def get_file_full_details(file_id):
                 if raw_params:
                     generation_metadata_text = parse_webui_metadata(raw_params)
             file_data['generation_metadata'] = generation_metadata_text
+
+            # Extract structured generation metadata for Full Asset Details modal
+            structured_gen_metadata = None
+            if not should_strip_metadata():
+                try:
+                    raw_a1111 = extract_a1111_parameters(file_data['path'])
+                    structured_gen_metadata = parse_webui_metadata_fields(raw_a1111) if raw_a1111 else None
+                    if structured_gen_metadata is None and file_data.get('has_workflow'):
+                        workflow_api = extract_workflow(file_data['path'], target_type='api')
+                        if workflow_api:
+                            data_wf = json.loads(workflow_api)
+                            if isinstance(data_wf, dict) and 'nodes' not in data_wf:
+                                structured_gen_metadata = ComfyMetadataParser(data_wf).parse()
+                                structured_gen_metadata['source'] = 'ComfyUI'
+                    if structured_gen_metadata and not any(structured_gen_metadata.get(k) is not None and structured_gen_metadata.get(k) != '' and structured_gen_metadata.get(k) != []
+                                        for k in ('positive_prompt', 'negative_prompt', 'model', 'loras', 'seed', 'steps', 'sampler')):
+                        structured_gen_metadata = None
+                    if structured_gen_metadata:
+                        if structured_gen_metadata.get('seed') is not None:
+                            structured_gen_metadata['seed'] = str(structured_gen_metadata['seed'])
+                        if not structured_gen_metadata.get('width') or not structured_gen_metadata.get('height'):
+                            dims_match = re.fullmatch(r'(\d+)x(\d+)', file_data.get('dimensions') or '')
+                            if dims_match:
+                                structured_gen_metadata['width'], structured_gen_metadata['height'] = dims_match.groups()
+                except Exception as e:
+                    print(f"Full details structured metadata extraction notice: {e}")
+                    structured_gen_metadata = None
+            file_data['structured_gen_metadata'] = structured_gen_metadata
 
             folders_config = get_dynamic_folder_config()
             abs_path = file_data['path']
@@ -9660,12 +9737,13 @@ def _register_remix_routes_inline():
                     elif isinstance(val, bool):
                         is_target = is_app_field or any(x in key_l for x in ['enable', 'keep', 'save', 'preview'])
                         if is_target: extract['numbers'].append({'node_id': node_id, 'key': key, 'value': val, 'node_type': n_type, 'title': n_title, 'label': n_title if is_app_field else key.capitalize(), 'is_app_field': is_app_field, 'is_bool': True})
-                    elif ('seed' in key_l or 'seed' in type_title_lower) and isinstance(val, (int, float)) and not isinstance(val, bool):
-                        extract['seeds'].append({'node_id': node_id, 'key': key, 'value': val, 'node_type': n_type, 'title': n_title, 'is_app_field': is_app_field, 'label': n_title if is_app_field else 'Seed'})
+                    elif ((any(sk in key_l for sk in ['seed', 'noise_seed', 'rand_seed', 'noise_int']) or any(st in type_title_lower for st in ['seed', 'randomnoise'])) and not any(dim in key_l for dim in ['width', 'height', 'step', 'cfg', 'batch', 'frame', 'fps', 'denoise']) and ((isinstance(val, (int, float)) and not isinstance(val, bool)) or (isinstance(val, str) and val.strip().lstrip('-').isdigit() and len(val.strip()) > 0))):
+                        orig_t = 'string' if isinstance(val, str) else ('float' if isinstance(val, float) else 'int')
+                        extract['seeds'].append({'node_id': node_id, 'key': key, 'value': val, 'node_type': n_type, 'title': n_title, 'is_app_field': is_app_field, 'label': n_title if is_app_field else (key.replace('_', ' ').title() if 'seed' in key_l else 'Seed'), 'orig_type': orig_t})
                     elif isinstance(val, int) and not isinstance(val, bool) and val > 10000:
-                        if 'width' not in key_l and 'height' not in key_l and 'width' not in type_title_lower and 'height' not in type_title_lower:
+                        if not any(dim in key_l or dim in type_title_lower for dim in ['width', 'height', 'step', 'cfg', 'batch', 'frame', 'fps', 'denoise', 'dim', 'resolution']):
                             if not any(s['node_id'] == node_id and s['key'] == key for s in extract['seeds']):
-                                extract['seeds'].append({'node_id': node_id, 'key': key, 'value': val, 'node_type': n_type, 'title': n_title, 'is_app_field': is_app_field, 'label': n_title if is_app_field else 'Seed'})
+                                extract['seeds'].append({'node_id': node_id, 'key': key, 'value': val, 'node_type': n_type, 'title': n_title, 'is_app_field': is_app_field, 'label': n_title if is_app_field else 'Seed', 'orig_type': 'int'})
                     elif isinstance(val, (int, float)) and not isinstance(val, bool):
                         is_target = is_app_field or any(x in key_l or x in type_title_lower for x in ['step', 'cfg', 'guidance', 'denoise', 'width', 'height', 'batch', 'literal', 'scale', 'length', 'frame', 'total_second', 'num_frame', 'video_length', 'num_frames', 'fps', 'frame_rate', 'duration', 'second'])
                         if is_target:
@@ -9682,25 +9760,36 @@ def _register_remix_routes_inline():
                                 elif n_title and n_title != n_type: label = n_title
                             if not any(s['node_id'] == node_id and s['key'] == key for s in extract['seeds']): extract['numbers'].append({'node_id': node_id, 'key': key, 'value': val, 'node_type': n_type, 'title': n_title, 'label': label, 'is_app_field': is_app_field, 'orig_type': 'number'})
                     elif isinstance(val, str):
-                        num_keys = ['fps', 'frame_rate', 'steps', 'length', 'num_frames', 'width', 'height', 'seed', 'cfg', 'denoise', 'overlap', 'batch']
-                        if any(x in key_l for x in num_keys) and val.strip().lstrip('-').replace('.','',1).isdigit():
+                        num_keys = ['fps', 'frame_rate', 'steps', 'length', 'num_frames', 'width', 'height', 'cfg', 'denoise', 'overlap', 'batch']
+                        is_seed_key = any(sk in key_l for sk in ['seed', 'noise_seed', 'rand_seed'])
+                        if is_seed_key and val.strip().lstrip('-').isdigit():
+                            pass
+                        elif any(x in key_l for x in num_keys) and val.strip().lstrip('-').replace('.','',1).isdigit():
                             num_val = float(val) if '.' in val else int(val)
                             label = n_title if is_app_field else ("FPS" if any(x in key_l for x in ['fps', 'frame_rate']) else "Frames" if any(x in key_l for x in ['length', 'num_frames']) else "Steps" if 'step' in key_l else "Width" if 'width' in key_l else "Height" if 'height' in key_l else n_title if (n_title and n_title != n_type) else "Param")
                             if not any(s['node_id'] == node_id and s['key'] == key for s in extract['seeds']): extract['numbers'].append({'node_id': node_id, 'key': key, 'value': num_val, 'node_type': n_type, 'title': n_title, 'label': label, 'is_app_field': is_app_field, 'orig_type': 'string'})
                         else:
-                            is_explicit_prompt = any(x in type_title_lower or x in key_l for x in ['prompt', 'positive', 'negative'])
-                            if (is_app_field or is_explicit_prompt) and not val.endswith(('.ckpt', '.safetensors', '.pth', '.bin', '.gguf', '.pt', '.json')) and '|' not in val:
+                            is_text_key = any(x in key_l for x in ['prompt', 'positive', 'negative', 'text', 'caption', 'tags', 'string', 'value', 't5xxl', 'clip_l'])
+                            is_text_node = any(x in type_title_lower for x in ['cliptext', 'textencode', 'prompt', 'positive', 'negative', 'caption', 'textbox', 'string', 'wildcard'])
+                            is_media_file = any(val.lower().endswith(ext) for ext in [
+                                '.ckpt', '.safetensors', '.pth', '.bin', '.gguf', '.pt', '.json',
+                                '.png', '.jpg', '.jpeg', '.webp', '.gif', '.mp4', '.mov', '.webm',
+                                '.mkv', '.avi', '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.vae', '.onnx'
+                            ])
+                            if (is_app_field or is_text_key or is_text_node) and not is_media_file and '|' not in val:
                                 label = n_title if is_app_field else "Text"
                                 if not is_app_field:
                                     if 'positive' in type_title_lower or 'positive' in key_l: label = "Positive Prompt"
                                     elif 'negative' in type_title_lower or 'negative' in key_l: label = "Negative Prompt"
-                                    elif 'system' in type_title_lower: label = "System Prompt"
-                                    elif 'wildcard' in type_title_lower: label = "Wildcard Text"
+                                    elif 'system' in type_title_lower or 'system' in key_l: label = "System Prompt"
+                                    elif 'wildcard' in type_title_lower or 'wildcard' in key_l: label = "Wildcard Text"
+                                    elif 't5xxl' in key_l or 't5xxl' in type_title_lower: label = "T5XXL Prompt"
+                                    elif 'clip_l' in key_l or 'clip_l' in type_title_lower: label = "CLIP-L Prompt"
+                                    elif 'cliptext' in type_title_lower or 'textencode' in type_title_lower or 'prompt' in type_title_lower or 'prompt' in key_l:
+                                        label = n_title if (n_title and n_title != n_type) else "Prompt Text"
                                     elif n_title and n_title != n_type: label = n_title
                                 extract['texts'].append({'node_id': node_id, 'value': val, 'key': key, 'node_type': n_type, 'title': n_title, 'label': label, 'is_app_field': is_app_field})
         else:
-            # Use filter_enabled_nodes to exclude disabled/muted nodes (mode!=0)
-            # and Note/Reroute nodes — same filtering used elsewhere in the codebase.
             _filtered = filter_enabled_nodes(wf_data) if isinstance(wf_data, dict) else {'nodes': wf_data}
             nodes = _filtered.get('nodes', [])
             for node in nodes:
@@ -9724,8 +9813,14 @@ def _register_remix_routes_inline():
                     elif isinstance(w, bool):
                         is_target = is_app_field or any(x in type_title_lower for x in ['enable', 'keep', 'save', 'preview'])
                         if is_target: extract['numbers'].append({'node_id': n_id, 'key': k, 'value': w, 'widget_index': i, 'node_type': n_type, 'title': n_title, 'label': n_title if is_app_field else k.capitalize(), 'is_app_field': is_app_field, 'is_bool': True})
-                    elif isinstance(w, (int, float)) and not isinstance(w, bool) and (w > 10000 or (n_type.endswith('Looper') and i == 1) or 'seed' in type_title_lower):
-                        if not any(s['node_id'] == n_id for s in extract['seeds']): extract['seeds'].append({'node_id': n_id, 'key': k, 'value': w, 'widget_index': i, 'node_type': n_type, 'title': n_title, 'is_app_field': is_app_field, 'label': n_title if is_app_field else 'Seed'})
+                    elif (any(sk in w_name.lower() for sk in ['seed', 'noise_seed', 'rand_seed']) or (n_type.endswith('Looper') and i == 1) or any(st in type_title_lower for st in ['seed', 'randomnoise'])) and ((isinstance(w, (int, float)) and not isinstance(w, bool)) or (isinstance(w, str) and w.strip().lstrip('-').isdigit() and len(w.strip()) > 0)) and not any(dim in type_title_lower for dim in ['width', 'height', 'step', 'cfg', 'batch', 'frame', 'fps']):
+                        if not any(s['node_id'] == n_id and s.get('widget_index') == i for s in extract['seeds']):
+                            orig_t = 'string' if isinstance(w, str) else ('float' if isinstance(w, float) else 'int')
+                            extract['seeds'].append({'node_id': n_id, 'key': k, 'value': w, 'widget_index': i, 'node_type': n_type, 'title': n_title, 'is_app_field': is_app_field, 'label': n_title if is_app_field else (w_name.replace('_', ' ').title() if 'seed' in w_name.lower() else 'Seed'), 'orig_type': orig_t})
+                    elif isinstance(w, (int, float)) and not isinstance(w, bool) and (w > 10000 or 'seed' in type_title_lower):
+                        if not any(dim in type_title_lower or dim in n_type.lower() for dim in ['width', 'height', 'resolution', 'size']):
+                            if not any(s['node_id'] == n_id and s.get('widget_index') == i for s in extract['seeds']):
+                                extract['seeds'].append({'node_id': n_id, 'key': k, 'value': w, 'widget_index': i, 'node_type': n_type, 'title': n_title, 'is_app_field': is_app_field, 'label': n_title if is_app_field else 'Seed', 'orig_type': 'float' if isinstance(w, float) else 'int'})
                     elif isinstance(w, (int, float)) and not isinstance(w, bool):
                         is_target_param = is_app_field or any(x in type_title_lower or x in n_type.lower() for x in ['sampler', 'noise', 'step', 'cfg', 'guidance', 'detailer', 'scale', 'denoise', 'literal', 'width', 'height', 'resolution', 'video', 'latent', 'looper', 'wan', 'hunyuan', 'mochi', 'framepack', 'frame', 'vantage', 'i2v', 't2v', 'combine', 'fps'])
                         if is_target_param:
@@ -9739,18 +9834,32 @@ def _register_remix_routes_inline():
                                 elif any(x in n_type.lower() for x in ['combine', 'save']) and 1 <= w <= 240: label = "FPS"
                                 elif any(x in n_type.lower() for x in ['video', 'latent', 'looper', 'wan', 'hunyuan', 'mochi', 'framepack', 'vantage', 'i2v', 't2v']) and isinstance(w, int) and 1 < w < 10000: label = "Frames"
                                 elif n_title and n_title != n_type: label = n_title
-                            if not any(s['node_id'] == n_id and s['key'] == k for s in extract['seeds']): extract['numbers'].append({'node_id': n_id, 'key': k, 'value': w, 'widget_index': i, 'node_type': n_type, 'title': n_title, 'label': label, 'is_app_field': is_app_field, 'orig_type': 'number'})
+                            if not any(s['node_id'] == n_id and s.get('widget_index') == i for s in extract['seeds']): extract['numbers'].append({'node_id': n_id, 'key': k, 'value': w, 'widget_index': i, 'node_type': n_type, 'title': n_title, 'label': label, 'is_app_field': is_app_field, 'orig_type': 'number'})
                     elif isinstance(w, str):
-                        is_explicit_prompt = any(x in type_title_lower for x in ['prompt', 'positive', 'negative'])
-                        if (is_app_field or is_explicit_prompt) and not w.endswith(('.ckpt', '.safetensors', '.pth', '.bin', '.gguf', '.pt', '.json')) and '|' not in w:
-                            label = n_title if is_app_field else "Text"
-                            if not is_app_field:
-                                if 'positive' in type_title_lower: label = "Positive Prompt"
-                                elif 'negative' in type_title_lower: label = "Negative Prompt"
-                                elif 'system' in type_title_lower: label = "System Prompt"
-                                elif 'wildcard' in type_title_lower: label = "Wildcard Text"
-                                elif n_title and n_title != n_type: label = n_title
-                            extract['texts'].append({'node_id': n_id, 'value': w, 'widget_index': i, 'node_type': n_type, 'title': n_title, 'label': label, 'is_app_field': is_app_field})
+                        is_seed_key = any(sk in w_name.lower() for sk in ['seed', 'noise_seed', 'rand_seed'])
+                        if is_seed_key and w.strip().lstrip('-').isdigit():
+                            pass
+                        else:
+                            is_text_key = any(x in w_name.lower() for x in ['prompt', 'positive', 'negative', 'text', 'caption', 'tags', 'string', 'value', 't5xxl', 'clip_l'])
+                            is_text_node = any(x in type_title_lower for x in ['cliptext', 'textencode', 'prompt', 'positive', 'negative', 'caption', 'textbox', 'string', 'wildcard'])
+                            is_media_file = any(w.lower().endswith(ext) for ext in [
+                                '.ckpt', '.safetensors', '.pth', '.bin', '.gguf', '.pt', '.json',
+                                '.png', '.jpg', '.jpeg', '.webp', '.gif', '.mp4', '.mov', '.webm',
+                                '.mkv', '.avi', '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.vae', '.onnx'
+                            ])
+                            if (is_app_field or is_text_key or is_text_node) and not is_media_file and '|' not in w:
+                                label = n_title if is_app_field else "Text"
+                                if not is_app_field:
+                                    if 'positive' in type_title_lower or 'positive' in w_name.lower(): label = "Positive Prompt"
+                                    elif 'negative' in type_title_lower or 'negative' in w_name.lower(): label = "Negative Prompt"
+                                    elif 'system' in type_title_lower or 'system' in w_name.lower(): label = "System Prompt"
+                                    elif 'wildcard' in type_title_lower or 'wildcard' in w_name.lower(): label = "Wildcard Text"
+                                    elif 't5xxl' in w_name.lower() or 't5xxl' in type_title_lower: label = "T5XXL Prompt"
+                                    elif 'clip_l' in w_name.lower() or 'clip_l' in type_title_lower: label = "CLIP-L Prompt"
+                                    elif 'cliptext' in type_title_lower or 'textencode' in type_title_lower or 'prompt' in type_title_lower or 'prompt' in w_name.lower():
+                                        label = n_title if (n_title and n_title != n_type) else "Prompt Text"
+                                    elif n_title and n_title != n_type: label = n_title
+                                extract['texts'].append({'node_id': n_id, 'value': w, 'widget_index': i, 'node_type': n_type, 'title': n_title, 'label': label, 'is_app_field': is_app_field})
 
         # Sort app-flagged fields by their position in app_params (App Builder order)
         if app_params and extract.get('has_app_mode'):
@@ -9877,9 +9986,41 @@ def _register_remix_routes_inline():
                         try:
                             api_data = json.loads(raw_api)
                             for mod in modifications.get('texts', []):
-                                if mod['node_id'] in api_data: api_data[mod['node_id']]['inputs'][mod.get('key', 'text')] = mod['value']
-                            for mod in modifications.get('seeds', []) + modifications.get('numbers', []):
-                                if mod['node_id'] in api_data: api_data[mod['node_id']]['inputs'][mod['key']] = mod['value']
+                                nid = str(mod.get('node_id'))
+                                if nid in api_data and isinstance(api_data[nid], dict):
+                                    inputs = api_data[nid].setdefault('inputs', {})
+                                    k = mod.get('key')
+                                    if k and k in inputs:
+                                        inputs[k] = mod['value']
+                                    else:
+                                        text_keys = [ik for ik in inputs if any(tk in ik.lower() for tk in ['text', 'prompt', 'positive', 'negative', 'caption', 'string', 'value'])]
+                                        if text_keys: inputs[text_keys[0]] = mod['value']
+                                        elif 'text' in inputs: inputs['text'] = mod['value']
+                            for mod in modifications.get('seeds', []):
+                                nid = str(mod.get('node_id'))
+                                if nid in api_data and isinstance(api_data[nid], dict):
+                                    inputs = api_data[nid].setdefault('inputs', {})
+                                    val = mod.get('value')
+                                    if mod.get('orig_type') == 'string': val = str(val)
+                                    elif mod.get('orig_type') == 'int':
+                                        try: val = int(val)
+                                        except Exception: pass
+                                    elif mod.get('orig_type') == 'float':
+                                        try: val = float(val)
+                                        except Exception: pass
+                                    k = mod.get('key')
+                                    if k and k in inputs: inputs[k] = val
+                                    else:
+                                        seed_keys = [ik for ik in inputs if any(sk in ik.lower() for sk in ['seed', 'noise_seed', 'rand_seed', 'noise_int'])]
+                                        if seed_keys: inputs[seed_keys[0]] = val
+                            for mod in modifications.get('numbers', []):
+                                nid = str(mod.get('node_id'))
+                                if nid in api_data and isinstance(api_data[nid], dict):
+                                    inputs = api_data[nid].setdefault('inputs', {})
+                                    val = mod.get('value')
+                                    if mod.get('orig_type') == 'string': val = str(val)
+                                    k = mod.get('key')
+                                    if k and k in inputs: inputs[k] = val
                             raw_api = json.dumps(api_data)
                         except Exception as e: print(f"Save API mod error: {e}")
 
@@ -10436,9 +10577,60 @@ def _register_remix_routes_inline():
             
             if wf_type == 'api':
                 for mod in modifications.get('texts', []):
-                    if mod['node_id'] in wf_data: wf_data[mod['node_id']]['inputs'][mod.get('key', 'text')] = mod['value']
-                for mod in modifications.get('seeds', []) + modifications.get('numbers', []):
-                    if mod['node_id'] in wf_data: wf_data[mod['node_id']]['inputs'][mod['key']] = mod['value']
+                    nid = str(mod.get('node_id'))
+                    if nid in wf_data and isinstance(wf_data[nid], dict):
+                        inputs = wf_data[nid].setdefault('inputs', {})
+                        k = mod.get('key')
+                        if k and k in inputs:
+                            inputs[k] = mod['value']
+                        else:
+                            text_keys = [ik for ik in inputs if any(tk in ik.lower() for tk in ['text', 'prompt', 'positive', 'negative', 'caption', 'string', 'value'])]
+                            if text_keys:
+                                inputs[text_keys[0]] = mod['value']
+                            elif 'text' in inputs:
+                                inputs['text'] = mod['value']
+                            elif k and not str(k).startswith('widget_') and str(k) not in ('undefined', 'null'):
+                                inputs[k] = mod['value']
+                for mod in modifications.get('seeds', []):
+                    nid = str(mod.get('node_id'))
+                    if nid in wf_data and isinstance(wf_data[nid], dict):
+                        inputs = wf_data[nid].setdefault('inputs', {})
+                        val = mod.get('value')
+                        orig_t = mod.get('orig_type')
+                        if orig_t == 'string':
+                            val = str(val)
+                        elif orig_t == 'int':
+                            try: val = int(val)
+                            except Exception: pass
+                        elif orig_t == 'float':
+                            try: val = float(val)
+                            except Exception: pass
+                        else:
+                            try:
+                                if isinstance(val, (int, float)):
+                                    val = int(val) if isinstance(val, int) or float(val).is_integer() else float(val)
+                            except Exception: pass
+                        k = mod.get('key')
+                        if k and k in inputs:
+                            inputs[k] = val
+                        else:
+                            seed_keys = [ik for ik in inputs if any(sk in ik.lower() for sk in ['seed', 'noise_seed', 'rand_seed', 'noise_int'])]
+                            if seed_keys:
+                                inputs[seed_keys[0]] = val
+                            elif k and not str(k).startswith('widget_') and str(k) not in ('undefined', 'null'):
+                                inputs[k] = val
+                for mod in modifications.get('numbers', []):
+                    nid = str(mod.get('node_id'))
+                    if nid in wf_data and isinstance(wf_data[nid], dict):
+                        inputs = wf_data[nid].setdefault('inputs', {})
+                        val = mod.get('value')
+                        if mod.get('orig_type') == 'string':
+                            val = str(val)
+                        k = mod.get('key')
+                        if k and k in inputs:
+                            inputs[k] = val
+                        elif k and not str(k).startswith('widget_') and str(k) not in ('undefined', 'null'):
+                            inputs[k] = val
                 if 'image_upload' in request.files and modifications.get('image_node_id'):
                     img_file = request.files['image_upload']
                     if img_file.filename:

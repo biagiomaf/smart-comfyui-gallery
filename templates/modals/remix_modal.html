@@ -1,5 +1,5 @@
+<!-- Version: 2.24.2 - October 03, 2026 -->
 <!-- REMIX OVERLAY MODULE -->
-<!-- Version: 2.24.1 - September 17, 2026 -->
 <style>
     /* ── Raw Node Editor ─────────────────────────────────────────────── */
     .remix-node-item {
@@ -675,6 +675,32 @@
         if(wantOpen) {
             window.open(targetUrl, '_blank');
         }
+    };
+
+    window.generateRandomSeedValue = function(origVal, origType) {
+        const origStr = String(origVal !== undefined && origVal !== null ? origVal : '').trim();
+        const cleanDigits = origStr.replace(/[^0-9]/g, '');
+        const numDigits = cleanDigits.length;
+
+        let randomNum;
+        if (numDigits >= 2 && numDigits <= 15) {
+            const min = Math.pow(10, numDigits - 1);
+            const max = Math.pow(10, numDigits) - 1;
+            randomNum = Math.floor(Math.random() * (max - min + 1)) + min;
+        } else if (numDigits === 1) {
+            const min = 100000000;
+            const max = 999999999;
+            randomNum = Math.floor(Math.random() * (max - min + 1)) + min;
+        } else {
+            const min = 100000000;
+            const max = 99999999999999;
+            randomNum = Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        if (origType === 'string' || (typeof origVal === 'string' && !origType && isNaN(Number(origVal)))) {
+            return String(randomNum);
+        }
+        return randomNum;
     };
 
     window._savedTriggers = new Set();
@@ -1544,14 +1570,15 @@
                         const nodeName = s.title ? s.title : (s.node_type || 'Unknown');
                         const fClass = getFieldClass(s.is_app_field, s.is_custom_field);
                         const badge = getBadges(s.is_app_field, s.is_custom_field);
+                        const origType = s.orig_type || 'int';
 
                         html += `
                             <div class="${fClass}" style="display:flex; gap:10px; align-items:center; margin-bottom: 10px;">
                                 <div style="flex:1;">
                                     <label style="font-size:0.75rem; color:#888;">${badge}<span class="lbl-text" style="color:var(--text-color); font-weight:bold;">${s.label || 'Seed'}</span> | Node ${s.node_id} (${nodeName})</label>
-                                    <input type="number" class="remix-input remix-seed-field" data-node-id="${s.node_id}" data-key="${s.key}" data-orig-val="${s.value}" data-widget-idx="${s.widget_index !== undefined ? s.widget_index : ''}" value="${s.value}">
+                                    <input type="${origType === 'string' ? 'text' : 'number'}" class="remix-input remix-seed-field" data-node-id="${s.node_id}" data-key="${s.key}" data-orig-val="${escapeHTML(String(s.value))}" data-orig-type="${origType}" data-widget-idx="${s.widget_index !== undefined ? s.widget_index : ''}" value="${escapeHTML(String(s.value))}">
                                 </div>
-                                <button class="glass-btn" onclick="this.previousElementSibling.querySelector('input').value = Math.floor(Math.random() * 999999999999999)" style="padding: 8px; margin-top:15px;">🎲 Random</button>
+                                <button class="glass-btn" onclick="(function(btn){ const inp = btn.previousElementSibling.querySelector('input'); if (!inp) return; const origVal = inp.dataset.origVal || inp.value; const origType = inp.dataset.origType || (typeof origVal === 'string' && isNaN(Number(origVal)) ? 'string' : 'number'); inp.value = window.generateRandomSeedValue(origVal, origType); })(this)" style="padding: 8px; margin-top:15px;" title="Generate Random Seed with same digit length">🎲 Random</button>
                                 ${getPinBtn(s.is_custom_field, s.node_id, s.key, s.widget_index, s.label || 'Seed')}
                             </div>
                         `;
@@ -1598,7 +1625,7 @@
                 }
                 
                 if (currentRemixData.images.length > 0) {
-                    html += '<div class="remix-category-block"><div class="remix-section-title" style="margin-top:10px;">🖼️ Input Images</div>';
+                    html += '<div class="remix-category-block"><div class="remix-section-title" style="margin-top:10px;">🖼️ Input Images & Resolution Hub</div>';
                     const _comfyParam = (typeof savedUrl !== 'undefined' && savedUrl) ? `?target_url=${encodeURIComponent(savedUrl)}` : '';
                     currentRemixData.images.forEach((img, idx) => {
                         const nodeName = img.title ? img.title : (img.node_type || 'Unknown');
@@ -1607,18 +1634,66 @@
                         const badge = getBadges(img.is_app_field, img.is_custom_field);
 
                         html += `
-                            <div class="${fClass}" style="margin-bottom: 10px; display: flex; gap: 15px; align-items: flex-start;">
-                                <div class="remix-image-preview">
-                                    <img src="/galleryout/input_file/${safeImgName}${_comfyParam}" style="width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\\'color:#555;font-size:2rem;\\'>?</span>'">
+                            <div class="${fClass}" style="margin-bottom: 12px; background: rgba(0,0,0,0.25); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 10px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <label style="font-size:0.75rem; color:#888; margin:0;">
+                                        ${badge}<span class="lbl-text" style="color:var(--text-color); font-weight:bold;">${img.label || 'Image'}</span> | Node ${img.node_id} (${nodeName})
+                                    </label>
+                                    ${getPinBtn(img.is_custom_field, img.node_id, img.key, img.widget_index, img.label || 'Image')}
                                 </div>
-                                <div style="flex-grow: 1;">
-                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                                        <label style="font-size:0.75rem; color:#888;">${badge}<span class="lbl-text" style="color:var(--text-color); font-weight:bold;">${img.label || 'Image'}</span> | Node ${img.node_id} (${nodeName})</label>
-                                        ${getPinBtn(img.is_custom_field, img.node_id, img.key, img.widget_index, img.label || 'Image')}
+                                <div style="display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap;">
+                                    <div class="remix-image-preview" style="position: relative; width: 84px; height: 84px; flex-shrink: 0;">
+                                        <img src="/galleryout/input_file/${safeImgName}${_comfyParam}" style="width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'; this.parentElement.innerHTML='<span style=\'color:#555;font-size:2rem;\'>?</span>'" onload="if(this.naturalWidth && this.naturalHeight) window.registerReferenceImageDimensions(this.naturalWidth, this.naturalHeight, false, ${idx});">
                                     </div>
-                                    <input type="file" id="remix-image-upload-${idx}" class="remix-input remix-img-field" accept="image/*" data-node-id="${img.node_id}" data-key="${img.key || 'image'}" data-orig-val="${escapeHTML(String(img.value))}" data-widget-idx="${img.widget_index !== undefined ? img.widget_index : ''}"
-                                        onchange="(function(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=function(e){const preview=inp.closest('div[style]').parentElement.querySelector('.remix-image-preview img');if(preview)preview.src=e.target.result;};r.readAsDataURL(f);})(this)">
-                                    <div style="font-size:0.7rem; color:#666; margin-top:4px; word-break: break-all;">Current: ${img.value}</div>
+                                    <div style="flex-grow: 1; min-width: 240px; display: flex; flex-direction: column; gap: 8px;">
+                                        <input type="file" id="remix-image-upload-${idx}" class="remix-input remix-img-field" accept="image/*" data-node-id="${img.node_id}" data-key="${img.key || 'image'}" data-orig-val="${escapeHTML(String(img.value))}" data-widget-idx="${img.widget_index !== undefined ? img.widget_index : ''}"
+                                            onchange="window.handleRemixImageSelected(this, ${idx});">
+                                        <div id="remix-img-hub-${idx}" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px;">
+                                            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+                                                <div style="font-size:0.75rem; color:#aaa;">
+                                                    <span>Current: <code style="color:#ddd; font-size:0.72rem;">${escapeHTML(img.value)}</code></span>
+                                                </div>
+                                                <div id="remix-img-dim-badge-${idx}" style="font-size:0.75rem; color:var(--primary-color); font-family:monospace; font-weight:bold; display:none;">
+                                                    📐 Detecting...
+                                                </div>
+                                            </div>
+                                            <!-- Numeric Dimension Controls (When width/height exist in form) -->
+                                            <div id="remix-img-dim-controls-${idx}" style="display:none; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; padding-top:6px; border-top:1px dashed rgba(255,255,255,0.1);">
+                                                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                                                    <button type="button" id="btn-lock-aspect-ratio-${idx}" class="glass-btn active-blue" onclick="window.toggleAspectRatioLock(${idx})" style="padding: 2px 7px; font-size: 0.72rem; height: 24px; min-height: 0;" title="Lock/Unlock aspect ratio when resizing width or height">
+                                                        🔒 Lock Ratio
+                                                    </button>
+                                                    <button type="button" id="btn-match-image-dim-${idx}" class="glass-btn" onclick="window.matchReferenceImageDimensions(${idx})" style="padding: 2px 7px; font-size: 0.72rem; height: 24px; min-height: 0; color: var(--primary-color); border-color: var(--primary-color);" title="Force form dimension fields to match this image's natural resolution">
+                                                        📐 Match Image
+                                                    </button>
+                                                    <span id="remix-aspect-ratio-label-${idx}" style="font-size: 0.72rem; color: #888; font-family: monospace;"></span>
+                                                </div>
+                                                <div style="display:flex; align-items:center; gap:3px;">
+                                                    <span style="font-size: 0.7rem; color: #666; margin-right: 2px;">Scale:</span>
+                                                    <button type="button" class="glass-btn" onclick="window.scaleDimensions(0.5, ${idx})" style="padding: 1px 5px; font-size: 0.68rem; height: 20px; min-height: 0;">0.5x</button>
+                                                    <button type="button" class="glass-btn" onclick="window.scaleDimensions(0.75, ${idx})" style="padding: 1px 5px; font-size: 0.68rem; height: 20px; min-height: 0;">0.75x</button>
+                                                    <button type="button" class="glass-btn" onclick="window.scaleDimensions(1.0, ${idx})" style="padding: 1px 5px; font-size: 0.68rem; height: 20px; min-height: 0;">1x</button>
+                                                    <button type="button" class="glass-btn" onclick="window.scaleDimensions(1.5, ${idx})" style="padding: 1px 5px; font-size: 0.68rem; height: 20px; min-height: 0;">1.5x</button>
+                                                    <button type="button" class="glass-btn" onclick="window.scaleDimensions(2.0, ${idx})" style="padding: 1px 5px; font-size: 0.68rem; height: 20px; min-height: 0;">2x</button>
+                                                </div>
+                                            </div>
+                                            <!-- Discrete Inline Notice (When NO numeric resolution fields exist in form) -->
+                                            <div id="remix-no-dim-notice-${idx}" style="display:none; flex-direction:column; gap:6px; padding:8px 10px; background:rgba(230, 126, 34, 0.1); border:1px solid rgba(230, 126, 34, 0.3); border-left:3px solid #e67e22; border-radius:4px; margin-top:4px;">
+                                                <div style="font-size:0.75rem; color:#f39c12; font-weight:bold; display:flex; align-items:center; gap:5px;">
+                                                    <span>ℹ️ Resolution parameters not in Auto-Form</span>
+                                                </div>
+                                                <div style="font-size:0.72rem; color:#ccc; line-height:1.4;">
+                                                    This workflow may use preset string resolution nodes (e.g. <em>"1:1 Square"</em>, <em>"Wide Screen"</em>, or aspect ratio pickers).<br>
+                                                    <span id="remix-closest-preset-${idx}" style="color:#e0c070; font-weight:bold;"></span>
+                                                </div>
+                                                <div style="display:flex; justify-content:flex-end; margin-top:2px;">
+                                                    <button type="button" class="glass-btn active-blue" onclick="window.jumpToResolutionInNodepad()" style="padding:3px 10px; font-size:0.75rem; height:24px; min-height:0;" title="Open Nodepad to check and edit nodes">
+                                                        ✏️ Open Nodepad to Check Resolution Nodes
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         `;
@@ -1792,7 +1867,10 @@
                     };
 
                     document.querySelectorAll('.remix-text-field').forEach(el => updateNode(el.dataset.nodeId, el.dataset.key || 'text', el.dataset.widgetIdx, el.value));
-                    document.querySelectorAll('.remix-seed-field').forEach(el => updateNode(el.dataset.nodeId, el.dataset.key, el.dataset.widgetIdx, parseFloat(el.value)));
+                    document.querySelectorAll('.remix-seed-field').forEach(el => {
+                        let v = el.dataset.origType === 'string' ? String(el.value) : parseFloat(el.value);
+                        updateNode(el.dataset.nodeId, el.dataset.key, el.dataset.widgetIdx, v);
+                    });
                     document.querySelectorAll('.remix-num-field').forEach(el => {
                         let v = el.step === '1' ? parseInt(el.value) : parseFloat(el.value);
                         if (el.dataset.origType === 'string') v = String(el.value);
@@ -3020,6 +3098,9 @@
                     if (window.setRemixView) window.setRemixView('adv');
                 }
 
+                if (window.setupDimensionSync) window.setupDimensionSync();
+                if (window.updateDimensionToolbarUI) window.updateDimensionToolbarUI();
+
             })
             .catch(err => {
                 content.innerHTML = `<div style="color:var(--danger-color); text-align:center; margin-top:20px;">Network Error: Failed to fetch workflow info.</div>`;
@@ -3089,10 +3170,44 @@ document.body.classList.remove('modal-open');
             });
 
             document.querySelectorAll('.remix-seed-field').forEach(el => {
-                let seedVal = parseFloat(el.value);
-                if (randomizeSeeds) seedVal = Math.floor(Math.random() * 999999999999999);
-                let m = { node_id: el.dataset.nodeId, key: el.dataset.key, value: seedVal, orig_value: el.dataset.origVal };
-                if (el.dataset.widgetIdx !== '') m.widget_index = parseInt(el.dataset.widgetIdx);
+                let origVal = el.dataset.origVal !== undefined ? el.dataset.origVal : el.value;
+                let origType = el.dataset.origType || (typeof origVal === 'string' && isNaN(Number(origVal)) ? 'string' : 'number');
+                let seedVal = el.value;
+                if (randomizeSeeds) {
+                    if (typeof window.generateRandomSeedValue === 'function') {
+                        seedVal = window.generateRandomSeedValue(origVal, origType);
+                    } else {
+                        const cleanDigits = String(origVal || '').replace(/[^0-9]/g, '');
+                        const numDigits = cleanDigits.length;
+                        if (numDigits >= 2 && numDigits <= 15) {
+                            const min = Math.pow(10, numDigits - 1);
+                            const max = Math.pow(10, numDigits) - 1;
+                            seedVal = Math.floor(Math.random() * (max - min + 1)) + min;
+                        } else {
+                            seedVal = Math.floor(Math.random() * 899999999) + 100000000;
+                        }
+                        if (origType === 'string') seedVal = String(seedVal);
+                    }
+                    el.value = seedVal;
+                } else {
+                    if (origType === 'string') {
+                        seedVal = String(el.value);
+                    } else if (origType === 'int' || origType === 'number') {
+                        seedVal = Number.isInteger(parseFloat(el.value)) ? parseInt(el.value, 10) : parseFloat(el.value);
+                    } else {
+                        seedVal = parseFloat(el.value);
+                    }
+                }
+                let m = {
+                    node_id: el.dataset.nodeId,
+                    key: (el.dataset.key && el.dataset.key !== 'undefined' && el.dataset.key !== 'null') ? el.dataset.key : null,
+                    value: seedVal,
+                    orig_value: el.dataset.origVal,
+                    orig_type: origType
+                };
+                if (el.dataset.widgetIdx !== undefined && el.dataset.widgetIdx !== '' && el.dataset.widgetIdx !== 'null') {
+                    m.widget_index = parseInt(el.dataset.widgetIdx, 10);
+                }
                 modifications.seeds.push(m);
             });
 
@@ -3304,9 +3419,15 @@ document.body.classList.remove('modal-open');
                         const iterFd = buildFormData(actionType, randomize);
                         
                         const res = await fetch('/galleryout/api/remix/submit', { method: 'POST', body: iterFd });
-                        const data = await res.json();
+                        let data;
+                        try {
+                            data = await res.json();
+                        } catch(parseErr) {
+                            const rawErrText = await res.text().catch(() => '');
+                            throw new Error(`Server returned HTTP ${res.status}: ${rawErrText || 'Invalid response'}`);
+                        }
                         
-                        if (data.status === 'success') {
+                        if (res.ok && data.status === 'success') {
                             if (i === genCount - 1) {
                                 let successMsg = genCount > 1
                                     ? `All ${genCount} jobs successfully queued in ComfyUI!`
@@ -3645,8 +3766,13 @@ document.body.classList.remove('modal-open');
             modifications.texts.push(m);
         });
         document.querySelectorAll('.remix-seed-field').forEach(el => {
-            let m = { node_id: el.dataset.nodeId, key: el.dataset.key, value: parseFloat(el.value), orig_value: el.dataset.origVal };
-            if (el.dataset.widgetIdx !== '') m.widget_index = parseInt(el.dataset.widgetIdx);
+            let origVal = el.dataset.origVal !== undefined ? el.dataset.origVal : el.value;
+            let origType = el.dataset.origType || (typeof origVal === 'string' && isNaN(Number(origVal)) ? 'string' : 'number');
+            let seedVal = origType === 'string' ? String(el.value) : parseFloat(el.value);
+            let m = { node_id: el.dataset.nodeId, key: (el.dataset.key && el.dataset.key !== 'undefined' && el.dataset.key !== 'null') ? el.dataset.key : null, value: seedVal, orig_value: el.dataset.origVal, orig_type: origType };
+            if (el.dataset.widgetIdx !== undefined && el.dataset.widgetIdx !== '' && el.dataset.widgetIdx !== 'null') {
+                m.widget_index = parseInt(el.dataset.widgetIdx, 10);
+            }
             modifications.seeds.push(m);
         });
         document.querySelectorAll('.remix-num-field').forEach(el => {
@@ -5039,6 +5165,341 @@ window.monitorComfyJob = function(jobId, targetUrl) {
         }
 
         window._showExportChoiceDialog(jsonStr, filename);
+    };
+
+
+    // --- SMART DIMENSION INHERITANCE, ASPECT RATIO CONTROL & NODEPAD ADVISOR ---
+    window._remixAspectRatioLocked = true;
+    window._remixSnapTo8 = true;
+    window._isSyncingDims = false;
+    window._remixRefImageDims = null;
+
+    window.getClosestAspectRatioPreset = function(ratio) {
+        if (!ratio || isNaN(ratio)) return '';
+        const presets = [
+            { name: '1:1 (Square)', r: 1.0 },
+            { name: '16:9 (Landscape / Widescreen)', r: 16/9 },
+            { name: '9:16 (Portrait / Story)', r: 9/16 },
+            { name: '4:3 (Standard Landscape)', r: 4/3 },
+            { name: '3:4 (Portrait)', r: 3/4 },
+            { name: '3:2 (Classic 35mm)', r: 3/2 },
+            { name: '2:3 (Vertical 35mm)', r: 2/3 },
+            { name: '21:9 (Cinematic Ultrawide)', r: 21/9 },
+            { name: '9:21 (Tall Ultrawide)', r: 9/21 }
+        ];
+
+        let closest = presets[0];
+        let minDiff = Math.abs(ratio - presets[0].r);
+
+        for (let i = 1; i < presets.length; i++) {
+            const diff = Math.abs(ratio - presets[i].r);
+            if (diff < minDiff) {
+                minDiff = diff;
+                closest = presets[i];
+            }
+        }
+        return closest.name;
+    };
+
+    window.jumpToResolutionInNodepad = function() {
+        window._rawReturnView = window._remixCurrentView || 'adv';
+        window.setRemixView('raw');
+        setTimeout(() => {
+            const searchInput = document.getElementById('remix-node-search');
+            if (searchInput) {
+                searchInput.value = '';
+                window.rawNodeEditor_renderList();
+                const clearBtn = document.getElementById('remix-search-clear');
+                if (clearBtn) clearBtn.style.display = 'none';
+                searchInput.focus();
+            }
+        }, 100);
+    };
+
+    window.handleRemixImageSelected = function(inputEl, imgIdx = 0) {
+        const file = inputEl.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const preview = inputEl.closest('.remix-field-row')?.querySelector('.remix-image-preview img');
+            if (preview) {
+                preview.style.display = 'block';
+                preview.src = e.target.result;
+            }
+
+            const imgObj = new Image();
+            imgObj.onload = function() {
+                const naturalW = imgObj.naturalWidth;
+                const naturalH = imgObj.naturalHeight;
+                window.registerReferenceImageDimensions(naturalW, naturalH, true, imgIdx);
+            };
+            imgObj.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    };
+
+    window.findDimensionFields = function() {
+        const numFields = Array.from(document.querySelectorAll('.remix-num-field'));
+        const widthInputs = [];
+        const heightInputs = [];
+
+        numFields.forEach(el => {
+            const key = (el.dataset.key || '').toLowerCase();
+            const row = el.closest('.remix-field-row');
+            const lbl = (row ? (row.querySelector('.lbl-text')?.textContent || '') : '').toLowerCase();
+            const nodeType = (row ? (row.querySelector('label')?.textContent || '') : '').toLowerCase();
+
+            // Width matching
+            const isWidth = key.includes('width') || lbl.includes('width') || key === 'w';
+
+            // Height / Length matching (handles Wan/I2V and custom resize nodes)
+            let isHeight = key.includes('height') || lbl.includes('height') || key === 'h';
+            if (!isHeight && (key.includes('length') || lbl.includes('length'))) {
+                if (!key.includes('frame') && !lbl.includes('frame') && !nodeType.includes('vhs')) {
+                    isHeight = true;
+                }
+            }
+
+            if (isWidth) widthInputs.push(el);
+            else if (isHeight) heightInputs.push(el);
+        });
+
+        return { widthInputs, heightInputs };
+    };
+
+    window.registerReferenceImageDimensions = function(imgW, imgH, isUserAction = false, imgIdx = 0) {
+        if (!imgW || !imgH) return;
+
+        const ratio = imgW / imgH;
+        window._remixRefImageDims = {
+            width: imgW,
+            height: imgH,
+            ratio: ratio
+        };
+
+        // Update resolution badges
+        document.querySelectorAll('[id^="remix-img-dim-badge-"]').forEach(badge => {
+            badge.style.display = 'inline-block';
+            badge.innerHTML = `📐 ${imgW} × ${imgH} px (${ratio.toFixed(2)}:1)`;
+        });
+
+        const dimFields = window.findDimensionFields();
+        const hasFormDimFields = (dimFields.widthInputs.length > 0 || dimFields.heightInputs.length > 0);
+
+        if (window.updateDimensionToolbarUI) window.updateDimensionToolbarUI();
+
+        // When user explicitly selects or uploads an image
+        if (isUserAction && hasFormDimFields) {
+            let updatedMessages = [];
+            const maxPairs = Math.max(dimFields.widthInputs.length, dimFields.heightInputs.length);
+
+            for (let i = 0; i < maxPairs; i++) {
+                const wInp = dimFields.widthInputs[i] || dimFields.widthInputs[0];
+                const hInp = dimFields.heightInputs[i] || dimFields.heightInputs[0];
+
+                const wVal = wInp ? (parseFloat(wInp.value) || 0) : null;
+                const hVal = hInp ? (parseFloat(hInp.value) || 0) : null;
+
+                if (wInp && hInp) {
+                    if (wVal > 0 && hVal > 0) {
+                        wInp.value = imgW;
+                        hInp.value = imgH;
+                        updatedMessages.push(`Width: ${imgW}px, Height: ${imgH}px`);
+                    } else if (wVal > 0 && hVal === 0) {
+                        wInp.value = imgW;
+                        updatedMessages.push(`Width: ${imgW}px (Height kept at 0 for auto aspect-ratio)`);
+                    } else if (hVal > 0 && wVal === 0) {
+                        hInp.value = imgH;
+                        updatedMessages.push(`Height: ${imgH}px (Width kept at 0 for auto aspect-ratio)`);
+                    } else {
+                        wInp.value = imgW;
+                        hInp.value = imgH;
+                        updatedMessages.push(`Width: ${imgW}px, Height: ${imgH}px`);
+                    }
+                    wInp.dispatchEvent(new Event('input', { bubbles: true }));
+                    hInp.dispatchEvent(new Event('input', { bubbles: true }));
+                } else if (wInp) {
+                    wInp.value = imgW;
+                    wInp.dispatchEvent(new Event('input', { bubbles: true }));
+                    updatedMessages.push(`Width: ${imgW}px`);
+                } else if (hInp) {
+                    hInp.value = imgH;
+                    hInp.dispatchEvent(new Event('input', { bubbles: true }));
+                    updatedMessages.push(`Height: ${imgH}px`);
+                }
+            }
+
+            if (updatedMessages.length > 0) {
+                showRemixStatus(`📐 Image selected! Inherited resolution: <strong>${imgW} × ${imgH} px</strong>.<br><small style="color:#aaa;">Updated fields: ${updatedMessages.join(', ')}</small>`, true, true);
+            }
+        }
+    };
+
+    window.setupDimensionSync = function() {
+        const { widthInputs, heightInputs } = window.findDimensionFields();
+        if (widthInputs.length === 0 && heightInputs.length === 0) return;
+
+        widthInputs.forEach((wInp, idx) => {
+            const hInp = heightInputs[idx] || heightInputs[0];
+            if (!hInp) return;
+
+            wInp.addEventListener('input', () => {
+                if (window._isSyncingDims || !window._remixAspectRatioLocked) return;
+                const wVal = parseFloat(wInp.value);
+                const hVal = parseFloat(hInp.value);
+                if (!wVal || wVal <= 0 || !hVal || hVal <= 0) return;
+
+                const ratio = window._remixRefImageDims?.ratio || (wVal / hVal);
+                if (!ratio || isNaN(ratio)) return;
+
+                window._isSyncingDims = true;
+                let newH = Math.round(wVal / ratio);
+                if (window._remixSnapTo8) newH = Math.round(newH / 8) * 8;
+                hInp.value = newH;
+                hInp.dispatchEvent(new Event('change', { bubbles: true }));
+                if (window.updateDimensionToolbarUI) window.updateDimensionToolbarUI();
+                window._isSyncingDims = false;
+            });
+        });
+
+        heightInputs.forEach((hInp, idx) => {
+            const wInp = widthInputs[idx] || widthInputs[0];
+            if (!wInp) return;
+
+            hInp.addEventListener('input', () => {
+                if (window._isSyncingDims || !window._remixAspectRatioLocked) return;
+                const hVal = parseFloat(hInp.value);
+                const wVal = parseFloat(wInp.value);
+                if (!hVal || hVal <= 0 || !wVal || wVal <= 0) return;
+
+                const ratio = window._remixRefImageDims?.ratio || (wVal / hVal);
+                if (!ratio || isNaN(ratio)) return;
+
+                window._isSyncingDims = true;
+                let newW = Math.round(hVal * ratio);
+                if (window._remixSnapTo8) newW = Math.round(newW / 8) * 8;
+                wInp.value = newW;
+                wInp.dispatchEvent(new Event('change', { bubbles: true }));
+                if (window.updateDimensionToolbarUI) window.updateDimensionToolbarUI();
+                window._isSyncingDims = false;
+            });
+        });
+    };
+
+    window.scaleDimensions = function(factor, imgIdx = 0) {
+        const { widthInputs, heightInputs } = window.findDimensionFields();
+        if (widthInputs.length === 0 && heightInputs.length === 0) return;
+
+        if (factor === 1.0 && window._remixRefImageDims) {
+            window.matchReferenceImageDimensions(imgIdx);
+            return;
+        }
+
+        const baseW = window._remixRefImageDims?.width || (widthInputs[0] ? parseFloat(widthInputs[0].value) : 1024);
+        const baseH = window._remixRefImageDims?.height || (heightInputs[0] ? parseFloat(heightInputs[0].value) : 1024);
+
+        let newW = Math.round(baseW * factor);
+        let newH = Math.round(baseH * factor);
+        if (window._remixSnapTo8) {
+            newW = Math.round(newW / 8) * 8;
+            newH = Math.round(newH / 8) * 8;
+        }
+
+        window._isSyncingDims = true;
+        widthInputs.forEach(wInp => {
+            const curW = parseFloat(wInp.value) || 0;
+            if (curW > 0 || (heightInputs[0] && parseFloat(heightInputs[0].value) === 0)) {
+                wInp.value = newW;
+                wInp.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        });
+        heightInputs.forEach(hInp => {
+            const curH = parseFloat(hInp.value) || 0;
+            if (curH > 0) {
+                hInp.value = newH;
+                hInp.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        });
+        window._isSyncingDims = false;
+        if (window.updateDimensionToolbarUI) window.updateDimensionToolbarUI();
+        showRemixStatus(`📐 Scaled dimensions to <strong>${newW} × ${newH} px</strong> (${factor}x).`, true, true);
+    };
+
+    window.matchReferenceImageDimensions = function(imgIdx = 0) {
+        if (!window._remixRefImageDims) return;
+        window.registerReferenceImageDimensions(window._remixRefImageDims.width, window._remixRefImageDims.height, true, imgIdx);
+    };
+
+    window.toggleAspectRatioLock = function(imgIdx = 0) {
+        window._remixAspectRatioLocked = !window._remixAspectRatioLocked;
+        if (window.updateDimensionToolbarUI) window.updateDimensionToolbarUI();
+    };
+
+    window.updateDimensionToolbarUI = function() {
+        const { widthInputs, heightInputs } = window.findDimensionFields();
+        const hasFormDimFields = (widthInputs.length > 0 || heightInputs.length > 0);
+
+        // Toggle visibility between Controls vs Fallback Notice
+        document.querySelectorAll('[id^="remix-img-dim-controls-"]').forEach(ctrl => {
+            ctrl.style.display = hasFormDimFields ? 'flex' : 'none';
+        });
+
+        document.querySelectorAll('[id^="remix-no-dim-notice-"]').forEach((notice, idx) => {
+            if (!hasFormDimFields && window._remixRefImageDims) {
+                notice.style.display = 'flex';
+                const presetSpan = document.getElementById(`remix-closest-preset-${idx}`);
+                if (presetSpan) {
+                    const closest = window.getClosestAspectRatioPreset(window._remixRefImageDims.ratio);
+                    presetSpan.innerHTML = `Closest standard preset: <strong>${closest}</strong> (${window._remixRefImageDims.ratio.toFixed(2)}:1)`;
+                }
+            } else {
+                notice.style.display = 'none';
+            }
+        });
+
+        if (!hasFormDimFields) return;
+
+        document.querySelectorAll('[id^="btn-lock-aspect-ratio"]').forEach(lockBtn => {
+            if (window._remixAspectRatioLocked) {
+                lockBtn.classList.add('active-blue');
+                lockBtn.innerHTML = '🔒 Lock Ratio';
+                lockBtn.title = 'Aspect ratio is locked. Resizing width or height will proportionally adjust the other.';
+            } else {
+                lockBtn.classList.remove('active-blue');
+                lockBtn.innerHTML = '🔓 Free Ratio';
+                lockBtn.title = 'Aspect ratio is free. You can set width and height independently (forced resize).';
+            }
+        });
+
+        document.querySelectorAll('[id^="btn-match-image-dim"]').forEach(matchBtn => {
+            if (window._remixRefImageDims) {
+                matchBtn.style.display = 'inline-block';
+                matchBtn.innerHTML = `📐 Match Image (${window._remixRefImageDims.width}×${window._remixRefImageDims.height})`;
+            } else {
+                matchBtn.style.display = 'none';
+            }
+        });
+
+        const wVal = widthInputs[0] ? parseFloat(widthInputs[0].value) : 0;
+        const hVal = heightInputs[0] ? parseFloat(heightInputs[0].value) : 0;
+
+        document.querySelectorAll('[id^="remix-aspect-ratio-label"]').forEach(ratioLbl => {
+            if (wVal > 0 && hVal > 0) {
+                const gcd = (a, b) => b ? gcd(b, a % b) : a;
+                const d = gcd(Math.round(wVal), Math.round(hVal));
+                const rw = Math.round(wVal) / (d || 1);
+                const rh = Math.round(hVal) / (d || 1);
+                const ratioDec = (wVal / hVal).toFixed(2);
+                ratioLbl.textContent = `${rw}:${rh} (${ratioDec})`;
+            } else if (wVal > 0 && hVal === 0) {
+                ratioLbl.textContent = `Auto Height (0)`;
+            } else if (hVal > 0 && wVal === 0) {
+                ratioLbl.textContent = `Auto Width (0)`;
+            } else {
+                ratioLbl.textContent = '';
+            }
+        });
     };
 
 </script>
