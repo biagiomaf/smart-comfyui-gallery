@@ -1,6 +1,37 @@
-<!-- Version: 2.24.2 - October 03, 2026 -->
+<!-- Version: 2.24.3 - October 17, 2026 -->
 <script id="changelog-data" type="text/markdown">
 # Changelog
+
+### **[2.24.3] - 2026-10-17**
+
+### 🚀 Highlights & Architectural Improvements
+* **Content-Addressed Thumbnail Caching (SHA-256) - enables blazing-fast speeds when moving files in batches**:
+  * Image thumbnails are now indexed by their SHA-256 file content digest rather than their file path and timestamp.
+  * **Two-tier Directory Sharding**: Thumbnails are stored in organized subfolders (`.thumbnails_cache/<variant>/ab/cd/<sha256>.webp`), significantly improving filesystem performance on systems with tens of thousands of media assets.
+  * **High-Efficiency WebP**: All image thumbnails (both static and animated) are generated as WebP, preserving alpha transparency, animation looping, and frame intervals while reducing cache disk footprint.
+  * **Configuration-Aware Cache Invalidation**: Thumbnail width and animation frame rate settings are embedded directly into the cache folder namespace, preventing stale or incorrectly scaled images without requiring sidecar files.
+
+* **Instant Metadata & Workflow Reuse for Duplicates**:
+  * When adding duplicates or moving images across folders, SmartGallery detects existing content hashes in the database. Node summaries, generation parameters, and workflow structures are re-linked instantly without re-parsing files.
+
+* **Non-Destructive Timestamp Handling**:
+  * Updating a file's timestamp (`mtime`) on disk without altering its actual image content no longer clears favorite stars or AI-generated annotations.
+
+* **Smart Thumbnail Garbage Collection**:
+  * Automated migration from legacy flat MD5-based thumbnails to the new hashed structure.
+  * Deleting assets cleans up associated thumbnail files on disk only if no other asset shares the exact same content hash.
+  * Startup maintenance sweeps unreferenced legacy cache entries safely.
+
+### 🐛 Bug Fixes & Refinements
+* **Folder Rename Path Resolution**:
+  * Fixed an issue where renaming a folder could inadvertently match sibling folders sharing similar prefix names.
+  * Nested subfolder paths and their database references are now cleanly reconstructed using relative path normalization.
+* **Scan Stream Keep-Alive**:
+  * Added periodic progress heartbeats to on-demand directory sync operations to prevent Server-Sent Event (SSE) timeouts on very large libraries.
+* **Database Schema Version 32**:
+  * Non-destructive migration adding indexed `content_sha256` support to the `files` table. All collections, tags, ratings, and comments remain completely intact.
+
+---
 
 ### **[2.24.2] - 2026-10-03**
 

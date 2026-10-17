@@ -5,7 +5,7 @@ endif
 
 .PHONY: all build_main build_exp build_core run kill buildx_rm docker_tag docker_push
 
-SMARTGALLERY_VERSION = 2.24.2
+SMARTGALLERY_VERSION = 2.24.3
 
 DOCKERFILE = Dockerfile
 DOCKER_TAG_PRE = smartgallery
@@ -193,3 +193,6 @@ multiarch_buildx_push:
 #
 # Icon conversion:
 # magick assets/logo.png -define icon:auto-resize=256,128,64,48,32,16 static/galleryout/favicon.ico
+
+# Load local development targets when available.
+-include Makefile.dev

@@ -1,4 +1,4 @@
-// Version: 2.24.2 - October 03, 2026
+// Version: 2.24.3 - October 17, 2026
 /* Generation Metadata Inspector & UI Renderer
  * Anchored inspector with Alt+M Pinning, Desktop Lightbox Drag & Drop, Auto-avoidance & Mobile Docking.
  */
