@@ -1,4 +1,4 @@
-# Version: 2.24.3 - October 17, 2026
+# Version: 2.24.4 - October 18, 2026
 # SmartGallery DAM for ComfyUI
 # Author: Biagio Maffettone © 2025-2026 — Free to use/modify with credit. Provided "as is". See license on GitHub.
 #
@@ -341,8 +341,8 @@ AI_MODELS_FOLDER_NAME = '.AImodels'
 ENABLE_DAM_MODE = True
 
 # --- APP INFO ---
-APP_VERSION = "2.24.3"
-APP_VERSION_DATE = "October 17, 2026"
+APP_VERSION = "2.24.4"
+APP_VERSION_DATE = "October 18, 2026"
 GITHUB_REPO_URL = "https://github.com/biagiomaf/smart-comfyui-gallery"
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/biagiomaf/smart-comfyui-gallery/main/smartgallery.py"
 
@@ -2960,6 +2960,68 @@ def full_sync_database(conn):
 
     print(f"INFO: Full scan completed in {time.time() - start_time:.2f} seconds.")
     
+# Waitress runs one process with multiple request threads. Keep ownership on the
+# server so disconnecting/reloading a browser cannot launch duplicate folder work.
+_sync_jobs = {}
+_sync_jobs_condition = threading.Condition()
+
+
+def stream_folder_sync(folder_path):
+    key = os.path.normcase(os.path.realpath(folder_path))
+    with _sync_jobs_condition:
+        job = _sync_jobs.get(key)
+        if job is None:
+            if len(_sync_jobs) >= 2:
+                job = None
+            else:
+                job = {'data': {'message': 'Checking folder for changes...', 'current': 0, 'total': 1},
+                       'revision': 0, 'done': False, 'progress_at': time.monotonic()}
+                _sync_jobs[key] = job
+
+                def run():
+                    try:
+                        for event in sync_folder_on_demand(folder_path):
+                            data = json.loads(event.removeprefix('data: '))
+                            with _sync_jobs_condition:
+                                job['data'] = data
+                                job['revision'] += 1
+                                if data.get('status') != 'waiting':
+                                    job['progress_at'] = time.monotonic()
+                                _sync_jobs_condition.notify_all()
+                    except Exception as exc:
+                        with _sync_jobs_condition:
+                            job['data'] = {'error': True, 'message': f'Sync failed: {exc}'}
+                    finally:
+                        with _sync_jobs_condition:
+                            job['done'] = True
+                            job['revision'] += 1
+                            _sync_jobs.pop(key, None)
+                            _sync_jobs_condition.notify_all()
+
+                try:
+                    threading.Thread(target=run, daemon=True, name='gallery-folder-sync').start()
+                except Exception:
+                    _sync_jobs.pop(key, None)
+                    raise
+
+    if job is None:
+        yield f"data: {json.dumps({'error': True, 'message': 'Two folders are already syncing. Try again after one finishes.'})}\n\n"
+        return
+
+    revision = -1
+    while True:
+        with _sync_jobs_condition:
+            _sync_jobs_condition.wait_for(
+                lambda: job['revision'] != revision or job['done'], timeout=5)
+            revision = job['revision']
+            data = dict(job['data'])
+            data['stalled_seconds'] = int(time.monotonic() - job['progress_at'])
+            done = job['done']
+        yield f"data: {json.dumps(data)}\n\n"
+        if done:
+            return
+
+
 def sync_folder_on_demand(folder_path):
     yield f"data: {json.dumps({'message': 'Checking folder for changes...', 'current': 0, 'total': 1})}\n\n"
     
@@ -2994,10 +3056,14 @@ def sync_folder_on_demand(folder_path):
         files_to_update = {path for path in (disk_filepaths & db_filepaths) if file_needs_processing(disk_files[path], db_files[path])}
         
         # Folder loading also cleans migrated entries outside the visible page.
+        last_cleanup_progress = time.monotonic()
         for path in (disk_filepaths & db_filepaths) - files_to_update:
             row = db_files[path]
             if row['type'] in ('image', 'animated_image') and row['content_sha256']:
                 cleanup_legacy_image_thumbnails(path, row['content_sha256'], row['mtime'])
+            if time.monotonic() - last_cleanup_progress >= 5:
+                yield f"data: {json.dumps({'message': 'Checking cached thumbnails...', 'current': 0, 'total': 1})}\n\n"
+                last_cleanup_progress = time.monotonic()
 
         if not files_to_add and not files_to_update and not files_to_delete:
             yield f"data: {json.dumps({'message': 'Folder is up-to-date.', 'status': 'no_changes', 'current': 1, 'total': 1})}\n\n"
@@ -3016,18 +3082,24 @@ def sync_folder_on_demand(folder_path):
             
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_sync_workers) as executor:
                 futures = {executor.submit(process_single_file, path): path for path in files_to_process}
-                for future in concurrent.futures.as_completed(futures):
-                    path = futures[future]
-                    processed_count += 1
-                    try:
-                        res = future.result(timeout=25)
-                        if res:
-                            data_to_upsert.append(res)
-                    except Exception as err:
-                        print(f"WARNING: Processing error on {os.path.basename(path)}: {err}")
-                    
-                    # Real-time progressive feedback to the client
-                    yield f"data: {json.dumps({'message': f'Processing {processed_count}/{total_files}: {os.path.basename(path)}', 'current': processed_count, 'total': total_files})}\n\n"
+                pending = set(futures)
+                while pending:
+                    done, pending = concurrent.futures.wait(
+                        pending, timeout=5, return_when=concurrent.futures.FIRST_COMPLETED)
+                    if not done:
+                        yield f"data: {json.dumps({'status': 'waiting', 'message': f'Processing files... ({processed_count}/{total_files} complete)', 'current': processed_count, 'total': total_files})}\n\n"
+                    for future in done:
+                        path = futures[future]
+                        processed_count += 1
+                        try:
+                            res = future.result()
+                            if res:
+                                data_to_upsert.append(res)
+                        except Exception as err:
+                            print(f"WARNING: Processing error on {os.path.basename(path)}: {err}")
+
+                        # Real-time progressive feedback to the client
+                        yield f"data: {json.dumps({'message': f'Processing {processed_count}/{total_files}: {os.path.basename(path)}', 'current': processed_count, 'total': total_files})}\n\n"
 
         with get_db_connection() as conn:
             if data_to_upsert:
@@ -3787,7 +3859,8 @@ def sync_status(folder_key):
     if folder_key not in folders:
         abort(404)
     folder_path = folders[folder_key]['path']
-    return Response(sync_folder_on_demand(folder_path), mimetype='text/event-stream')
+    return Response(stream_folder_sync(folder_path), mimetype='text/event-stream',
+                    headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
 @app.route('/galleryout/api/search_options')
 def api_search_options():

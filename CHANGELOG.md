@@ -1,5 +1,10 @@
 # Changelog
 
+### **[2.24.4] - 2026-10-18**
+
+### 🐛 Bug Fix 
+* **Sync Watchdog triggered: force releasing lock**
+
 ### **[2.24.3] - 2026-10-17**
 
 ### 🚀 Highlights & Architectural Improvements

@@ -158,7 +158,7 @@ Evolve your workflow from a simple collection of files into a structured, search
 
 ### 1.2 What's New in v2.24
 
-### 🚀 Highlights & Architectural Improvements [2.24.3] - 2026-10-17
+### 🚀 Highlights & Architectural Improvements [2.24.4] - 2026-10-18
 * **Content-Addressed Thumbnail Caching (SHA-256) - enables blazing-fast speeds when moving files in batches**
 
 ### 🚀 Features & Enhancements [v2.24.2] - 2026-10-03
@@ -346,7 +346,7 @@ There are two ways to run SmartGallery on Windows: using the ready-to-use **Port
 This version includes a fully self-contained environment. You do not need to install Python or any dependencies on your system—it is **completely plug-and-play**.
 
 **1. Download & Extract**
-* **Direct Download:** [SmartGallery-v2.24.3-Windows-Portable.zip](https://github.com/biagiomaf/smart-comfyui-gallery/releases/download/2.24.3/SmartGallery-v2.24.3-Windows-Portable.zip)
+* **Direct Download:** [SmartGallery-v2.24.4-Windows-Portable.zip](https://github.com/biagiomaf/smart-comfyui-gallery/releases/download/2.24.4/SmartGallery-v2.24.4-Windows-Portable.zip)
 * **Releases Page:** Alternatively, view all builds on the [Releases page](https://github.com/biagiomaf/smart-comfyui-gallery/releases/latest).
 * Extract the archive into a folder of your choice.
 
