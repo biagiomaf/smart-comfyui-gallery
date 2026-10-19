@@ -2641,11 +2641,11 @@ def get_dynamic_folder_config(force_refresh=False):
             rows = conn.execute("SELECT path FROM files WHERE type != 'document' AND LOWER(name) NOT LIKE '%.txt' AND LOWER(name) NOT LIKE '%.md'").fetchall()
             dir_counts = {}
             for r in rows:
-                f_dir = os.path.normpath(os.path.dirname(r['path'])).replace('\\', '/').lower().rstrip('/')
+                f_dir = os.path.normcase(os.path.normpath(os.path.dirname(r['path']))).replace('\\', '/').rstrip('/')
                 dir_counts[f_dir] = dir_counts.get(f_dir, 0) + 1
 
             for key, info in dynamic_config.items():
-                info_path_norm = os.path.normpath(info['path']).replace('\\', '/').lower().rstrip('/')
+                info_path_norm = os.path.normcase(os.path.normpath(info['path'])).replace('\\', '/').rstrip('/')
                 info['file_count'] = dir_counts.get(info_path_norm, 0)
 
             def _calc_descendant_count(key):
@@ -4024,7 +4024,7 @@ def ai_indexing_reset():
                 if folder_key in folders:
                     folder_path = folders[folder_key]['path']
                     # Normalize for robust DB lookup
-                    target_norm = os.path.normpath(folder_path).replace('\\', '/').lower()
+                    target_norm = os.path.normcase(os.path.normpath(folder_path)).replace('\\', '/')
                     if not target_norm.endswith('/'): target_norm += '/'
                     
                     # Fetch candidates to wipe
@@ -4032,14 +4032,14 @@ def ai_indexing_reset():
                     for row in cursor:
                         f_path = row['path']
                         # Normalize DB path
-                        f_path_norm = os.path.normpath(f_path).replace('\\', '/').lower()
+                        f_path_norm = os.path.normcase(os.path.normpath(f_path)).replace('\\', '/')
                         
                         is_match = False
                         if recursive:
                             if f_path_norm.startswith(target_norm): is_match = True
                         else:
                             # Strict parent check
-                            parent_norm = os.path.dirname(f_path_norm).replace('\\', '/').lower() + '/'
+                            parent_norm = os.path.dirname(f_path_norm).replace('\\', '/') + '/'
                             if parent_norm == target_norm: is_match = True
                             
                         if is_match:
