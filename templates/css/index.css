@@ -2167,6 +2167,89 @@ body.sidebar-minimized .sidebar #mount-folder-btn { display: none !important; }
     background: rgba(255, 255, 255, 0.2);
 }
 
+/* Compact, always-visible personal rating controls for desktop Lightbox culling. */
+#lightbox-quick-rating {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: 44px;
+    padding: 4px 6px;
+    border: 1px solid rgba(255, 193, 7, 0.42);
+    border-radius: 10px;
+    background: rgba(12, 12, 12, 0.82);
+    backdrop-filter: blur(10px);
+}
+
+/* Override the generic DAM div rule, which otherwise forces a vertical stack. */
+body.dam-mode-active #lightbox-quick-rating {
+    display: flex !important;
+    flex-direction: row !important;
+}
+
+#lightbox-toolbar #lightbox-quick-rating button {
+    position: relative;
+    min-width: 27px;
+    width: 27px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.25);
+    font-size: 1.1rem;
+    box-shadow: none;
+    backdrop-filter: none;
+}
+
+#lightbox-toolbar #lightbox-quick-rating .lightbox-rating-star::after {
+    content: attr(data-rating);
+    position: absolute;
+    right: 1px;
+    bottom: 0;
+    padding: 0 2px;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.72);
+    color: rgba(255, 255, 255, 0.72);
+    font: 700 0.52rem/1.1 monospace;
+}
+
+#lightbox-toolbar #lightbox-quick-rating .lightbox-rating-star:hover,
+#lightbox-toolbar #lightbox-quick-rating .lightbox-rating-star:focus-visible,
+#lightbox-toolbar #lightbox-quick-rating .lightbox-rating-star.active {
+    background: rgba(255, 193, 7, 0.12);
+    color: var(--favorite-color);
+    transform: translateY(-1px);
+}
+
+#lightbox-toolbar #lightbox-quick-rating .lightbox-rating-clear {
+    display: none;
+    margin-left: 3px;
+    color: rgba(255, 255, 255, 0.52);
+    font-size: 1rem;
+}
+
+#lightbox-toolbar #lightbox-quick-rating.has-rating .lightbox-rating-clear {
+    display: flex;
+}
+
+#lightbox-toolbar #lightbox-quick-rating .lightbox-rating-clear:hover,
+#lightbox-toolbar #lightbox-quick-rating .lightbox-rating-clear:focus-visible {
+    background: rgba(255, 80, 80, 0.16);
+    color: var(--danger-color);
+}
+
+#lightbox-quick-rating.is-saving {
+    opacity: 0.72;
+}
+
+#lightbox-toolbar #lightbox-quick-rating button:disabled {
+    cursor: wait;
+}
+
+@media (max-width: 1024px) {
+    body.dam-mode-active #lightbox-quick-rating { display: none !important; }
+}
+
 /* AI Caption Icon in Lightbox */
 #lightbox-caption-icon {
     color: var(--ai-color);
