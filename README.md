@@ -13,7 +13,7 @@
  
   <p>
     <a href="#21-installation"><b>🚀 Quick Install</b></a> •
-    <a href="#12-whats-new-in-v224"><b>✨ What's New (v2.24)</b></a> •
+    <a href="#12-whats-new-in-v225"><b>✨ What's New (v2.25)</b></a> •
     <a href="#-why-smartgallery-dam"><b>⚡ Core Features</b></a> •
     <a href="https://smartgallerydam.com"><b>🌐 Official Website</b></a> •
   </p>
@@ -156,31 +156,23 @@ Evolve your workflow from a simple collection of files into a structured, search
 
 ---
 
-### 1.2 What's New in v2.24
+### 1.2 What's New in v2.25
 
-### 🚀 Highlights & Architectural Improvements [2.24.4] - 2026-10-18
-* **Content-Addressed Thumbnail Caching (SHA-256) - enables blazing-fast speeds when moving files in batches**
+### 🚀 Search & Metadata Enhancements [v2.25] - 2026-11-26
+* **Full Search Support for AUTOMATIC1111, Forge & Civitai Images:**
+  * You can now search your **A1111**, **WebUI Forge**, and **Civitai** libraries directly using **`🎨 Prompt Keywords`** and **`⚙️ Workflow / Model Files`** (checkpoints, LoRAs, LyCORIS, VAEs, embeddings, ControlNet, upscalers, and ADetailer models)—with full support for AND/OR/Exclude operators (`,`, `;`, `!`, `"..."`), autocomplete suggestions, *"Did you mean?"*, Collections, and OmniQuery.
+  * **Hybrid ComfyUI + A1111/Civitai Support:** Images containing *both* a ComfyUI workflow and A1111/Civitai parameters are automatically combined so every prompt and model is searchable and clearly visible in both the <kbd>Shift</kbd>+<kbd>M</kbd> overlay and <kbd>I</kbd> **Full Asset Details**, while keeping ComfyUI Remix (<kbd>B</kbd>) and Node Summary (<kbd>N</kbd>) working seamlessly.
+  * **New `🧪 A1111 / Forge` Filter:** Quickly isolate A1111/Forge/Civitai assets from the **Filters** panel on both desktop and mobile (combine it with `🚫 No Workflow` to find pure non-ComfyUI images).
+  * **Zero-Effort Library Indexing & Better JPEG/WebP Support:** Improved metadata extraction for JPEG and WebP files (alongside PNGs). Existing libraries are indexed safely and automatically on first startup without touching your favorites, collections, ratings, or comments.
 
-### 🚀 Features & Enhancements [v2.24.2] - 2026-10-03
-* **Generation Data Overlay (`Shift+M`):** Added a toggleable overlay (via shortcut `Shift+M` or the *Settings & Info* menu) that displays key generation parameters on focused thumbnails in Grid View and inside the Lightbox. Supports both **ComfyUI** and **AUTOMATIC1111 (A1111 / WebUI)** metadata formats.
-* **Full Asset Details:** Added a dedicated **"Generation data"** tab inspecting structured generation parameters for both ComfyUI and A1111 assets.
-* **Remix Workflow (Auto-Form):** Enhanced input image resolution management with instant dimension inheritance, zero-dimension aspect ratio preservation, integrated aspect ratio locking (`🔒`/`🔓`), quick scaling, and guidance to Nodepad when preset resolution nodes are detected.  
+### 🚀 Highlights & New Features 
+* **Move Folders Directly from the Sidebar (`⋮ → 📁 Move`):** Reorganize folders and nested subfolders on the same local drive right from the sidebar while automatically preserving all favorites, collections, status tags, ratings, comments, and AI captions. Built-in safety checks protect mount roots and prevent accidental cross-drive or network moves.
+* **Create Folders Inside Move / Copy Dialogs:** Added an inline **`➕ New Folder`** bar (plus quick `➕` subfolder buttons) directly inside the Move/Copy dialog, with one-click **`Create & Move`** and **`Create & Copy`**—no more cancelling out, losing active filters, or re-selecting your files.
+* **Quick Subfolder Creation (`⋮ → ➕ New Subfolder`):** Create subfolders from any folder menu (including mounted folders) with instant live sidebar updates and no page reload.
+* **Keep Your DAM Data When Moving Files Outside SmartGallery:** Moving or renaming files in Windows Explorer, macOS Finder, or via terminal while SmartGallery is closed no longer wipes your ratings, comments, favorites, status tags, collections, or AI captions—SmartGallery automatically reconnects your metadata to the new location on the next startup (while keeping copied duplicates clean).
+* **Dedicated Migration Folder for Huge Galleries (50K–100K+ Files):** Moving a massive library to a new drive or NAS? Open the new [**`STORAGE_MIGRATION_SG_MIGRATE_PATHS/`**](./STORAGE_MIGRATION_SG_MIGRATE_PATHS/) folder in the repository! It contains the instant offline migration tool (`sg_migrate_paths.py` with dry-run preview and automatic safety backups) along with step-by-step guides (`SG_MIGRATE_PATHS_GUIDE.md` and `ADVANCED_STORAGE_NAS.md`) for multi-drive and NAS setups.
+* **⚡ Faster Startup Scans & Reliability Fixes:** Noticeably quicker startup scans on large 50K–100K+ galleries, plus fixes for Windows subfolder rename duplicates, pressing <kbd>M</kbd> after using Copy, and smooth batch operations on folders with 32K+ files.
 
-### [v2.24] - 2026-09-21
-- ⚡ [**ComfyUI Queue Deck (`Shift+Q`)**](docs/ComfyUI_Queue_Deck_manual.md): Introduces a unified mission control dashboard to monitor live progressive sampling steps (`Step X / Y (Z%)`), stream live video/image previews during generation, track driver-level VRAM & GPU compute loads (`nvidia-smi`), manage the execution queue (reorder, interrupt, delete, clear all), and inspect recent completed job graphs and metadata. Access it instantly via <kbd>Shift</kbd>+<kbd>Q</kbd> or from the **Tools** menu. 👉 READ the **[ComfyUI Queue Deck Manual](docs/ComfyUI_Queue_Deck_manual.md)** [**▶️ Look at the Video**](https://smartgallerydam.com/ComfyUI_Queue_Deck.mp4).
-- ✨ **Interactive Node JSON Inspector:** All node chips across both the **Full Asset Details Panel** (<kbd>I</kbd>) and the **Cluster Inspector** (<kbd>Shift</kbd>+<kbd>C</kbd>) are now interactive and clickable, opening a global viewer to inspect the raw JSON parameters and configuration for any individual node in the workflow.
-- 🐛 **Auto-Watch GPU Resource Optimization:** Resolved an issue where enabling the "Auto-watch" feature caused disproportionate GPU compute usage on the client side even while idle.
-
----
-
-> **Previous Highlights:**
-> - 📁 **Folder File Count Badges & Dynamic Tree Collapse:** Real-time file count badges across the directory tree in the sidebar and file management dialogs, with dynamic `+N` badges for nested subfolders.
-> - 🧬 [**Smart Asset Clustering & Visual Inspector (`Shift+C`)**](docs/Smart_Asset_Clustering_manual.md): Instantly group and compare media generated by identical ComfyUI graph architectures (`workflow_hash`) or identical positive prompts (`prompt_hash`). 👉 READ the **[Smart Asset Clustering Manual](docs/Smart_Asset_Clustering_manual.md)** [**▶️ Look at the Video**](https://smartgallerydam.com/SmartAssetClustering_02.mp4).  
-> - 📋 [**Full Asset Details Panel (<kbd>I</kbd> Key)**](docs/Asset_Info_Panel_manual.md): High-density two-tab diagnostic inspector for file metrics, Megapixel density, absolute disk paths vs. real symlink targets, and node execution flow. 👉 READ the **[Full Asset Details Manual](docs/Asset_Info_Panel_manual.md)**.
-> - 📝 [**Interactive Collection Notes & Production Briefs**](docs/Collection_Notes_manual.md): Attach rich Markdown production briefs (`.md` or `.txt`) to Virtual Collections. 👉 READ the **[Collection Notes Manual](docs/Collection_Notes_manual.md)**.
-> - 🧠 [**OmniQuery (AI-Powered SQL Explorer)**](docs/OmniQuery.md): Ask complex questions to your DAM in natural language via LLMs. 👉 READ the **[OmniQuery Manual](docs/OmniQuery.md)**.
-> - 🔌 [**LoRA Synergy™**](docs/LORA_SYNERGY.md): Offline LoRA matchmaker that reads safetensors headers to guarantee checkpoint compatibility and auto-wire nodes. 👉 READ the **[LoRA Synergy Manual](docs/LORA_SYNERGY.md)**.
-> - 📑 **List View with Audio Player:** High-density table layout with inline audio playback controls.
 
 > [!NOTE]
 > Read the **[Full Changelog](CHANGELOG.md)** so you don't miss out on all the quality-of-life improvements and bug fixes!
@@ -346,7 +338,7 @@ There are two ways to run SmartGallery on Windows: using the ready-to-use **Port
 This version includes a fully self-contained environment. You do not need to install Python or any dependencies on your system—it is **completely plug-and-play**.
 
 **1. Download & Extract**
-* **Direct Download:** [SmartGallery-v2.24.4-Windows-Portable.zip](https://github.com/biagiomaf/smart-comfyui-gallery/releases/download/2.24.4/SmartGallery-v2.24.4-Windows-Portable.zip)
+* **Direct Download:** [SmartGallery-v2.25-Windows-Portable.zip](https://github.com/biagiomaf/smart-comfyui-gallery/releases/download/2.25/SmartGallery-v2.25-Windows-Portable.zip)
 * **Releases Page:** Alternatively, view all builds on the [Releases page](https://github.com/biagiomaf/smart-comfyui-gallery/releases/latest).
 * Extract the archive into a folder of your choice.
 

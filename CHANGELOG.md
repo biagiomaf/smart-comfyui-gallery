@@ -1,5 +1,48 @@
 # Changelog
 
+### **[2.25] - 2026-11-26**
+
+### 🚀 Highlights & New Features
+* **Full Search Support for A1111, Forge & Civitai Images**:
+  * **Search Prompts & Resources**: Images generated with Automatic1111, WebUI Forge, or saved from Civitai are now fully searchable using **`🎨 Prompt Keywords`** and **`⚙️ Workflow / Model Files`** (checkpoints, LoRAs, LyCORIS, VAEs, embeddings, ControlNet, upscalers, and ADetailer models)—including AND/OR/Exclude operators (`,`, `;`, `!`, `"..."`), autocomplete suggestions, *"Did you mean?"*, Collections, and OmniQuery.
+  * **Hybrid ComfyUI + A1111/Civitai Images**: Files that contain *both* a ComfyUI workflow and A1111/Forge/Civitai tags are seamlessly combined for search and shown cleanly in both the **`Shift+M`** inspector and **`I`** Full Asset Details, while keeping real ComfyUI Remix (`B`), Node Summary (`N`), and workflow downloads (`W`) untouched.
+  * **New `🧪 A1111 / Forge` Filter**: Added a dedicated checkbox in the Filters panel (desktop & mobile) to quickly find all A1111/Forge/Civitai images (combine with `🚫 No Workflow` to filter pure non-ComfyUI images).
+  * **Automatic Safe Indexing**: Existing libraries are automatically scanned once at startup without affecting your favorites, collections, status tags, ratings, comments, or AI captions.
+* **Move Folders Directly from the Sidebar (`⋮ → 📁 Move`)**:
+  * Reorganize folders and nested subfolders directly from the folder menu on the same local drive while keeping all favorites, collections, status tags, ratings, comments, and AI data intact.
+  * **Mount-Aware Safety**: Works seamlessly on regular subfolders inside local mounts/junctions, while safely blocking mount roots, cross-drive moves, and network drives (with built-in guidance pointing to `sg_migrate_paths.py`).
+* **Create Folders Inside the Move / Copy Dialog**:
+  * Added an inline **`➕ New Folder`** bar (with a parent folder selector and per-folder `➕` buttons) inside the Move/Copy dialog—no more cancelling out, losing active filters, or re-selecting files. Includes one-click **`Create & Move`** / **`Create & Copy`**.
+* **Quick Subfolder Creation (`⋮ → ➕ New Subfolder`)**:
+  * Create subfolders directly from any folder's `⋮` menu (including mounted folders) with instant live sidebar updates and no page reload.
+* **Automatic DAM Data Preservation on External Moves**:
+  * Moving files outside SmartGallery (via Windows Explorer, macOS Finder, `robocopy`, `mv`, etc.) while SmartGallery is closed no longer wipes your favorites, collections, status tags, ratings, comments, or AI captions on the next startup.
+  * **How it works**: During the startup scan, before removing disappeared paths from the database, SmartGallery checks whether those files reappeared at a new location in the same scan and transfers all DAM metadata to the new path using a strict **1-to-1 unambiguous match**:
+    * **Images & Animations**: matched by their exact **`content_sha256`** file hash (independent of filename or timestamp changes).
+    * **Videos, Audio & Documents**: matched by their unique **`(type, name, size, duration, dimensions)`** signature.
+    * **Duplicates stay clean**: Because matching only triggers when the old path is gone from disk, *copying* a file to another folder (leaving the original in place) does **not** carry over ratings, comments, or collections to the duplicate.
+  * **Example**: Suppose `E:/ComfyUI/output/portrait_0042.png` has a `⭐ Favorite`, `Approved` status, a `5★` rating, and belongs to your `"Best Renders"` collection. If you close SmartGallery, move `portrait_0042.png` via Explorer into `E:/ComfyUI/output/Portfolio/Best/` (even renaming it to `hero_shot.png`), and restart SmartGallery, the startup scan matches its `content_sha256` against the removed entry and automatically re-attaches the favorite, `Approved` status, `5★` rating, comments, AI caption, and `"Best Renders"` collection to `hero_shot.png`.
+  * *(Note: For massive 5,000+ file or NAS migrations, SmartGallery prints a reminder recommending the offline `sg_migrate_paths.py` tool for instant `<1s` remapping without re-reading files over the network, while still preserving DAM data automatically if you continue.)*
+* **Massive NAS & Multi-Drive Migration Tool (`sg_migrate_paths.py`) + New Guides**:
+  * Added an offline, cross-platform migration utility for instant (`<1s`) database remapping when relocating large libraries (50K–100K+ files) across drives or NAS shares, complete with `--dry-run`, disk verification, automatic WAL-safe backups, and active-instance lock checks.
+  * Added [`ADVANCED_STORAGE_NAS.md`](STORAGE_MIGRATION_SG_MIGRATE_PATHS/ADVANCED_STORAGE_NAS.md) and [`SG_MIGRATE_PATHS_GUIDE.md`](STORAGE_MIGRATION_SG_MIGRATE_PATHS/SG_MIGRATE_PATHS_GUIDE.md) covering multi-drive setups, LAN workflows, and Windows Developer Mode / UAC tips.
+
+### ⚡ Performance & UI Refinements
+* **Much Faster Startup Scans on Large Libraries (50K–100K+ Files)**:
+  * Unchanged images missing a `content_sha256` hash now perform a fast parallel hash-only backfill at startup instead of re-parsing workflows or re-encoding all `.webp` thumbnails upfront (thumbnails continue migrating lazily on demand).
+  * Added database indexes on `collection_files`, `file_comments`, and `ai_indexing_queue` for instantaneous folder renames and moves.
+* **Better JPEG & WebP Metadata Reading**: Improved extraction of embedded generation info from JPEG and WebP files (in addition to PNGs), enhancing both search indexing and the `I` / `Shift+M` metadata panels.
+
+### 🐛 Bug Fixes
+* **Windows Subfolder Rename Duplicates**:
+  * Fixed a path-separator mismatch when renaming folders containing nested subfolders on Windows that caused duplicate gallery entries on refresh. Folder sync is now slash-agnostic and automatically cleans up any pre-existing slash duplicates.
+* **Keyboard Move (`M`) After Copy**:
+  * Fixed an issue where pressing `M` after previously opening the Copy dialog could keep the dialog in Copy mode instead of resetting to Move mode.
+* **Large-Folder & Foreign-Key Reliability**:
+  * Chunked batch SQLite operations to prevent variable-limit errors on folders with 32K+ files, added `ON UPDATE CASCADE` for ratings and comments, and made folder renames atomic between disk and database.
+
+---
+
 ### **[2.24.4] - 2026-10-18**
 
 ### 🐛 Bug Fix 

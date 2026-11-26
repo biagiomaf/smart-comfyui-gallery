@@ -1,4 +1,4 @@
-// Version: 2.24.4 - October 18, 2026
+// Version: 2.25 - November 26, 2026
 /* Generation Metadata Inspector & UI Renderer
  * Anchored inspector with Alt+M Pinning, Desktop Lightbox Drag & Drop, Auto-avoidance & Mobile Docking.
  */
@@ -66,31 +66,44 @@
         }
     }
 
+    // [PATCHED: a1111_search_integration_v4]
+    function escHtml(v) {
+        if (v === null || v === undefined) return '';
+        if (typeof escapeHTML === 'function') return escapeHTML(String(v));
+        return String(v).replace(/[&<>"']/g, ch => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[ch]));
+    }
+
     window.renderGenerationMetadataHTML = function(meta, message) {
         if (!meta) {
-            return `<div style="text-align:center; color:var(--text-muted,#888); padding:16px;">${message || 'No supported generation metadata found.'}</div>`;
+            const safeMsg = escHtml(message || 'No supported generation metadata found.');
+            return `<div style="text-align:center; color:var(--text-muted,#888); padding:16px;">${safeMsg}</div>`;
         }
 
         let html = '';
-        html += `<div style="font-size:0.75rem; text-transform:uppercase; color:var(--favorite-color,#ffc107); font-weight:bold; margin-bottom:8px;">${meta.source || 'Generation parameters'}</div>`;
+        const safeSource = escHtml(meta.source || 'Generation parameters');
+        html += `<div style="font-size:0.75rem; text-transform:uppercase; color:var(--favorite-color,#ffc107); font-weight:bold; margin-bottom:8px;">${safeSource}</div>`;
 
         // Checkpoint & LoRAs
         if (meta.model || (meta.loras && meta.loras.length > 0)) {
             html += `<div style="margin-bottom:10px;">
                 <div style="font-size:0.75rem; text-transform:uppercase; color:#aaa; font-weight:bold; margin-bottom:4px;">📦 Models & Resources</div>`;
             if (meta.model) {
+                const safeModel = escHtml(meta.model);
                 html += `
                 <div class="gm-resource">
-                    <span title="${meta.model}">${meta.model}</span>
+                    <span title="${safeModel}">${safeModel}</span>
                     <span class="gm-badge">Checkpoint</span>
                 </div>`;
             }
             if (meta.loras && meta.loras.length > 0) {
                 meta.loras.forEach(l => {
-                    const val = present(l.value) ? `<span class="gm-badge">${l.value}</span>` : '';
+                    const safeLoraName = escHtml(l.name);
+                    const val = present(l.value) ? `<span class="gm-badge">${escHtml(l.value)}</span>` : '';
                     html += `
                     <div class="gm-resource">
-                        <span title="${l.name}">${l.name}</span>
+                        <span title="${safeLoraName}">${safeLoraName}</span>
                         <div style="display:flex; gap:4px; align-items:center;">
                             <span class="gm-badge">LoRA</span>
                             ${val}
@@ -104,7 +117,7 @@
         // Prompts
         for (const [key, title, isPos] of [['positive_prompt', '✨ Positive Prompt', true], ['negative_prompt', '🚫 Negative Prompt', false]]) {
             if (!meta[key]) continue;
-            const textSafe = (typeof escapeHTML === 'function') ? escapeHTML(meta[key]) : meta[key];
+            const textSafe = escHtml(meta[key]);
             const isLong = meta[key].length > 180 || meta[key].split(/\r?\n/).length > 3;
 
             html += `
@@ -122,7 +135,7 @@
         let badgesHtml = '';
         for (const [k, lbl] of Object.entries(settingsLabels)) {
             if (present(meta[k])) {
-                badgesHtml += `<span class="gm-badge" style="background:rgba(255,255,255,0.06); color:#fff; border-color:rgba(255,255,255,0.15);">${lbl}: <strong>${meta[k]}</strong></span>`;
+                badgesHtml += `<span class="gm-badge" style="background:rgba(255,255,255,0.06); color:#fff; border-color:rgba(255,255,255,0.15);">${escHtml(lbl)}: <strong>${escHtml(meta[k])}</strong></span>`;
             }
         }
         if (badgesHtml) {

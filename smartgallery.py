@@ -1,4 +1,4 @@
-# Version: 2.24.4 - October 18, 2026
+# Version: 2.25 - November 26, 2026
 # SmartGallery DAM for ComfyUI
 # Author: Biagio Maffettone © 2025-2026 — Free to use/modify with credit. Provided "as is". See license on GitHub.
 #
@@ -341,8 +341,8 @@ AI_MODELS_FOLDER_NAME = '.AImodels'
 ENABLE_DAM_MODE = True
 
 # --- APP INFO ---
-APP_VERSION = "2.24.4"
-APP_VERSION_DATE = "October 18, 2026"
+APP_VERSION = "2.25"
+APP_VERSION_DATE = "November 26, 2026"
 GITHUB_REPO_URL = "https://github.com/biagiomaf/smart-comfyui-gallery"
 GITHUB_RAW_URL = "https://raw.githubusercontent.com/biagiomaf/smart-comfyui-gallery/main/smartgallery.py"
 
@@ -391,7 +391,8 @@ def key_to_path(key):
     except Exception: return None
 
 # --- DERIVED SETTINGS ---
-DB_SCHEMA_VERSION = 32
+# [PATCHED: a1111_search_integration_v4]
+DB_SCHEMA_VERSION = 35
 
 ### Image thumbnail cache
 # Image thumbnails use SHA256 content hashes in `.thumbnails_cache`, with two
@@ -447,7 +448,7 @@ def get_omniquery_dictionary(reset=False):
     FACTORY_PROMPT_BASE = f"""You are an expert SQLite database administrator. I will give you a natural language request, and you must return a valid SQLite query.
 
 DATABASE SCHEMA:
-- files: id(TEXT), path(TEXT), mtime(REAL unix_ts), last_scanned(REAL unix_ts), name(TEXT), type(TEXT: video/image/animated_image/audio), size(INTEGER), dimensions(TEXT: are the pixels example '640x480'), is_favorite(INTEGER: 1/0), has_workflow(INTEGER: 1/0), workflow_files(TEXT), workflow_prompt(TEXT), duration(TEXT: example 03:19 minutes:seconds) 
+- files: id(TEXT), path(TEXT), mtime(REAL unix_ts), last_scanned(REAL unix_ts), name(TEXT), type(TEXT: video/image/animated_image/audio), size(INTEGER), dimensions(TEXT: are the pixels example '640x480'), is_favorite(INTEGER: 1/0), has_workflow(INTEGER: 1/0), has_a1111(INTEGER: 1/0 for A1111/Forge/Civitai metadata, including hybrid ComfyUI+A1111 images), workflow_files(TEXT: merged ComfyUI and A1111/Forge/Civitai models/LoRAs/resources), workflow_prompt(TEXT: merged ComfyUI and A1111/Forge/Civitai prompts), duration(TEXT: example 03:19 minutes:seconds) 
 - collections: id(INTEGER), name(TEXT), type(TEXT:'user_album'/'system_flag'), is_public(INTEGER 1/0), shared_users(TEXT: comma-separated user_ids), parent_id(INTEGER: Unary relationship identifier for nested sub-collections using id key)
 - collection_files: collection_id(INTEGER), file_id(TEXT)
 - users: user_id(INTEGER), username(TEXT), full_name(TEXT), role(TEXT:'ADMIN','MANAGER','STAFF','USER','CUSTOMER','GUEST'), is_active(INTEGER), email(TEXT), phone_number(TEXT), start_date(DATE), expiry_date(DATE), last_login(REAL unix_ts)
@@ -1398,10 +1399,92 @@ def extract_workflow(filepath, target_type='ui'):
 
     return None
 
+MAX_A1111_METADATA_CHARS = 200000
+MAX_INDEXED_META_CHARS = 100000
+
+_A1111_MARKER_RE = re.compile(
+    r'\b(?:Steps|Sampler|CFG scale|Seed|Size|Model(?: hash)?|'
+    r'Negative prompt|Denoising strength|Schedule type|Distilled CFG Scale|'
+    r'VAE(?: hash)?|Lora hashes|Civitai resources|Version)\s*:',
+    re.IGNORECASE,
+)
+_A1111_LORA_TAG_RE = re.compile(
+    r'<(?:lora|lyco):([^:>]+):([+-]?(?:\d+(?:\.\d*)?|\.\d+))(?::[^>]*)?>',
+    re.IGNORECASE,
+)
+_A1111_STRIP_LORA_RE = re.compile(r'<(?:lora|lyco):[^>]+>', re.IGNORECASE)
+_A1111_SETTINGS_LINE_RE = re.compile(
+    r'^\s*(?:Steps|Sampler|CFG scale|Distilled CFG Scale|Seed|Size|'
+    r'Model(?: hash)?|Denoising strength|Clip skip|Schedule type|Version|'
+    r'VAE(?: hash)?|Lora hashes|TI hashes|Hashes|Civitai resources|'
+    r'Hires upscaler|Hires checkpoint)\s*:',
+    re.IGNORECASE,
+)
+_A1111_IGNORED_RESOURCE_VALUES = {
+    '', 'none', 'null', 'n/a', 'automatic', 'auto', 'latent',
+    'disabled', 'off', 'false', 'true', 'default'
+}
+
+
+def _decode_exif_user_comment(raw_val):
+    """Safely decode an EXIF UserComment (0x9286) supporting UNICODE UTF-16BE/LE and ASCII."""
+    if not raw_val:
+        return None
+    if isinstance(raw_val, str):
+        decoded = raw_val[:MAX_A1111_METADATA_CHARS].strip('\x00 ')
+        return decoded or None
+    if not isinstance(raw_val, bytes):
+        return None
+
+    # Bound raw bytes before decoding to prevent memory DoS on crafted files
+    raw_bytes = raw_val[:MAX_A1111_METADATA_CHARS * 2]
+    if raw_bytes.startswith(b'UNICODE\x00'):
+        payload = raw_bytes[8:]
+        if not payload:
+            return None
+        if payload.startswith((b'\xff\xfe', b'\xfe\xff')):
+            decoded = payload.decode('utf-16', errors='ignore')
+        else:
+            # Heuristic for BOM-less UTF-16: A1111/piexif typically writes UTF-16BE
+            sample = payload[:200]
+            even_nulls = sum(1 for b in sample[0::2] if b == 0)
+            odd_nulls = sum(1 for b in sample[1::2] if b == 0)
+            encoding = 'utf-16-be' if even_nulls >= odd_nulls else 'utf-16-le'
+            decoded = payload.decode(encoding, errors='ignore')
+        if '\x00' in decoded:
+            decoded = decoded.split('\x00', 1)[0]
+    elif raw_bytes.startswith(b'ASCII\x00\x00\x00'):
+        payload = raw_bytes[8:].split(b'\x00', 1)[0]
+        decoded = payload.decode('utf-8', errors='ignore')
+    elif raw_bytes.startswith(b'JIS\x00\x00\x00\x00\x00'):
+        payload = raw_bytes[8:].split(b'\x00', 1)[0]
+        decoded = payload.decode('shift_jis', errors='ignore')
+    else:
+        decoded = raw_bytes.decode('utf-8', errors='ignore')
+
+    decoded = decoded.replace('\x00', '').strip()[:MAX_A1111_METADATA_CHARS]
+    return decoded or None
+
+
+def _looks_like_a1111_infotext(candidate):
+    """Validate that an extracted EXIF string actually resembles A1111/Forge/Civitai infotext."""
+    if not candidate or not isinstance(candidate, str):
+        return False
+    trimmed = candidate.strip()
+    if not trimmed or trimmed.startswith('{'):
+        return False
+    lower_head = trimmed[:20].lower()
+    if lower_head.startswith(('workflow:', 'prompt:')):
+        return False
+    return bool(_A1111_MARKER_RE.search(trimmed))
+
+
 def extract_a1111_parameters(filepath):
     """
-    Extracts the raw WebUI Forge/A1111-style 'parameters' generation text embedded
-    in an image (PNG text chunk, or JPEG/WebP Exif UserComment). Returns None if absent.
+    Extracts the raw WebUI Forge/A1111/Civitai-style 'parameters' generation text embedded
+    in an image (PNG text chunk, or JPEG/WebP EXIF UserComment/ImageDescription).
+    Works identically on both pure A1111/Forge images and hybrid ComfyUI+A1111 images.
+    Returns None if absent.
     """
     ext = os.path.splitext(filepath)[1].lower()
     if ext not in ['.png', '.jpg', '.jpeg', '.webp']:
@@ -1409,35 +1492,60 @@ def extract_a1111_parameters(filepath):
 
     try:
         with Image.open(filepath) as img:
-            params = img.info.get('parameters')
-            if params and isinstance(params, str) and params.strip():
-                return params
+            # 1. PNG text chunks (supports case-insensitive 'parameters' as str or bytes)
+            for k, val in img.info.items():
+                if isinstance(k, str) and k.lower() == 'parameters' and val:
+                    if isinstance(val, bytes):
+                        val = val[:MAX_A1111_METADATA_CHARS * 2].decode('utf-8', errors='ignore')
+                    if isinstance(val, str):
+                        cleaned = val.replace('\x00', '').strip()[:MAX_A1111_METADATA_CHARS]
+                        if cleaned and not cleaned.startswith('{'):
+                            return cleaned
 
-            exif_data = img.info.get('exif')
-            if exif_data and isinstance(exif_data, bytes):
-                try:
-                    exif_str = exif_data.decode('utf-8', errors='ignore')
-                    marker = 'UNICODE\x00' if 'UNICODE\x00' in exif_str else None
-                    idx = exif_str.find('parameters')
-                    if idx != -1:
-                        candidate = exif_str[idx + len('parameters'):].lstrip('\x00: ')
-                        candidate = candidate.split('\x00\x00')[0].strip('\x00 ')
-                        if candidate.strip():
-                            return candidate
-                except Exception:
-                    pass
-
+            # 2. Standard EXIF lookup: check Exif sub-IFD (0x8769 -> 0x9286), root 0x9286, and 0x010e
             try:
                 exif_tags = img.getexif()
                 if exif_tags:
-                    user_comment = exif_tags.get(0x9286)
-                    if user_comment:
-                        if isinstance(user_comment, bytes):
-                            user_comment = user_comment.decode('utf-8', errors='ignore').strip('\x00 ')
-                        if isinstance(user_comment, str) and user_comment.strip():
-                            return user_comment
+                    candidates = []
+                    try:
+                        exif_ifd = exif_tags.get_ifd(0x8769)
+                        if exif_ifd and 0x9286 in exif_ifd:
+                            candidates.append(exif_ifd.get(0x9286))
+                    except Exception:
+                        pass
+                    if 0x9286 in exif_tags:
+                        candidates.append(exif_tags.get(0x9286))
+                    if 0x010e in exif_tags:
+                        candidates.append(exif_tags.get(0x010e))
+
+                    for raw_uc in candidates:
+                        decoded = _decode_exif_user_comment(raw_uc)
+                        if decoded and _looks_like_a1111_infotext(decoded):
+                            return decoded
             except Exception:
                 pass
+
+            # 3. Raw EXIF bytes fallback (handles non-standard WebP/JPEG EXIF headers)
+            exif_data = img.info.get('exif')
+            if exif_data and isinstance(exif_data, bytes):
+                bounded_exif = exif_data[:MAX_A1111_METADATA_CHARS * 2]
+                for prefix in (b'UNICODE\x00', b'ASCII\x00\x00\x00'):
+                    pos = bounded_exif.find(prefix)
+                    if pos != -1:
+                        decoded = _decode_exif_user_comment(bounded_exif[pos:])
+                        if decoded and _looks_like_a1111_infotext(decoded):
+                            return decoded
+
+                try:
+                    exif_str = bounded_exif.decode('utf-8', errors='ignore')
+                    idx = exif_str.find('parameters')
+                    if idx != -1:
+                        candidate = exif_str[idx + len('parameters'):].lstrip('\x00: ')
+                        candidate = candidate.split('\x00\x00')[0].strip('\x00 ')[:MAX_A1111_METADATA_CHARS]
+                        if candidate and _looks_like_a1111_infotext(candidate):
+                            return candidate
+                except Exception:
+                    pass
     except Exception:
         pass
 
@@ -1448,22 +1556,18 @@ def parse_webui_metadata_fields(text):
     """Parse A1111/Forge infotext without presentation markup; preserve numeric precision."""
     if not isinstance(text, str) or not text.strip():
         return None
-    lines = text.strip().split('\n')
+    bounded = text[:MAX_A1111_METADATA_CHARS].replace('\r\n', '\n').replace('\r', '\n').strip()
+    lines = bounded.split('\n')
     positive_prompt = ""
     negative_prompt = ""
     metadata_lines = []
     section = "positive"
-    settings_pattern = re.compile(
-        r'^\s*(?:Steps|Sampler|CFG scale|Seed|Size|Model(?: hash)?|'
-        r'Denoising strength|Clip skip|Schedule type|Version)\s*:',
-        re.IGNORECASE,
-    )
 
     for line in lines:
         if line.startswith("Negative prompt:"):
             section = "negative"
-            negative_prompt += line.replace("Negative prompt:", "").strip() + " "
-        elif settings_pattern.match(line):
+            negative_prompt += line.replace("Negative prompt:", "", 1).strip() + " "
+        elif _A1111_SETTINGS_LINE_RE.match(line):
             metadata_lines.append(line.strip())
             section = "done"
         elif section == "positive":
@@ -1480,23 +1584,267 @@ def parse_webui_metadata_fields(text):
     fields = {'source': 'A1111 / Forge', 'positive_prompt': positive_prompt,
               'negative_prompt': negative_prompt, 'loras': []}
     names = {'Steps': 'steps', 'Sampler': 'sampler', 'CFG scale': 'cfg',
-             'Seed': 'seed', 'Model': 'model', 'Model hash': 'model_hash',
-             'Denoising strength': 'denoise', 'Clip skip': 'clip_skip',
-             'Schedule type': 'scheduler', 'Version': 'version', 'Size': 'size'}
-    # Values may contain commas inside quoted extension settings.
-    pairs = re.finditer(r'(?:^|,\s*)([\w ]+):\s*("(?:[^"\\]|\\.)*"|[^,]*)', metadata_line)
+             'Distilled CFG Scale': 'cfg', 'Seed': 'seed', 'Model': 'model',
+             'Model hash': 'model_hash', 'Denoising strength': 'denoise',
+             'Clip skip': 'clip_skip', 'Schedule type': 'scheduler',
+             'Version': 'version', 'Size': 'size'}
+    # Values may contain commas inside quoted extension settings or JSON arrays/objects.
+    pairs = re.finditer(r'(?:^|,\s*)([\w ]+):\s*("(?:[^"\\]|\\.)*"|\[[^\]]*\]|\{[^}]*\}|[^,]*)', metadata_line)
     for match in pairs:
-        key = next((v for k, v in names.items() if k.lower() == match[1].strip().lower()), None)
-        if key:
+        raw_k = match[1].strip().lower()
+        key = next((v for k, v in names.items() if k.lower() == raw_k), None)
+        if key and (key != 'cfg' or 'cfg' not in fields):
             fields[key] = match[2].strip().strip('"')
     size = re.fullmatch(r'(\d+)\s*[xX]\s*(\d+)', fields.get('size', ''))
     if size:
         fields['width'], fields['height'] = size.groups()
-    for name, strength in re.findall(r'<lora:([^:>]+):([+-]?(?:\d+(?:\.\d*)?|\.\d+))>', text, re.I):
-        lora = {'name': name, 'value': strength}
-        if lora not in fields['loras']:
+    for name, strength in _A1111_LORA_TAG_RE.findall(bounded):
+        lora = {'name': name.strip(), 'value': strength}
+        if lora['name'] and lora not in fields['loras']:
             fields['loras'].append(lora)
     return fields
+
+
+def _is_valid_a1111_resource_token(token):
+    if not token or not isinstance(token, str):
+        return False
+    t = token.strip().strip('"\'').strip()
+    if not t or len(t) > 260:
+        return False
+    t_lower = t.lower()
+    if t_lower in _A1111_IGNORED_RESOURCE_VALUES:
+        return False
+    if re.fullmatch(r'[+-]?\d+(?:\.\d+)?', t):
+        return False
+    return True
+
+
+def extract_a1111_workflow_files_string(a1111_text):
+    """
+    Extracts checkpoints, LoRAs, LyCORIS, VAE, Refiner, Upscalers, ADetailer models,
+    ControlNet models, TI embeddings, Hashes JSON, and Civitai resources from A1111/Forge
+    infotext into the normalized ' ||| '-delimited format used for ComfyUI workflow_files.
+    """
+    if not a1111_text or not isinstance(a1111_text, str):
+        return ""
+
+    bounded = a1111_text[:MAX_A1111_METADATA_CHARS].replace('\r\n', '\n').replace('\r', '\n')
+    fields = parse_webui_metadata_fields(bounded)
+    if not fields:
+        return ""
+
+    found_tokens = set()
+
+    def _add_token(val):
+        if _is_valid_a1111_resource_token(val):
+            cleaned = val.strip().strip('"\'').strip()
+            found_tokens.add(normalize_smart_path(cleaned))
+
+    # 1. Primary checkpoint and prompt LoRAs/LyCORIS
+    if fields.get('model'):
+        _add_token(fields['model'])
+    for lora in fields.get('loras', []):
+        _add_token(lora.get('name'))
+
+    # 2. Extract settings section for extended resources (VAE, Refiner, Lora hashes, TI hashes, Hashes JSON, Civitai resources, ControlNet)
+    metadata_lines = []
+    in_settings = False
+    for line in bounded.split('\n'):
+        if _A1111_SETTINGS_LINE_RE.match(line):
+            in_settings = True
+            metadata_lines.append(line.strip())
+        elif in_settings:
+            metadata_lines.append(line.strip())
+    metadata_line = ", ".join(metadata_lines)
+
+    if metadata_line:
+        resource_keys = {
+            'model', 'vae', 'refiner', 'hires checkpoint', 'hires upscaler',
+            'adetailer model', 'adetailer model 2nd', 'adetailer model 3rd',
+            'adetailer checkpoint'
+        }
+        pairs = re.finditer(r'(?:^|,\s*)([\w ]+):\s*("(?:[^"\\]|\\.)*"|\[[^\]]*\]|\{[^}]*\}|[^,]*)', metadata_line)
+        for match in pairs:
+            k_norm = match.group(1).strip().lower()
+            raw_val = match.group(2).strip()
+
+            if k_norm in resource_keys:
+                _add_token(raw_val)
+            elif k_norm in ('lora hashes', 'ti hashes'):
+                inner = raw_val.strip('"')
+                for entry in inner.split(','):
+                    if ':' in entry:
+                        res_name = entry.rsplit(':', 1)[0].strip()
+                        _add_token(res_name)
+            elif k_norm == 'hashes' and raw_val.startswith('{') and raw_val.endswith('}'):
+                try:
+                    hash_map = json.loads(raw_val)
+                    if isinstance(hash_map, dict):
+                        for hk in hash_map.keys():
+                            if isinstance(hk, str) and ':' in hk:
+                                prefix, res_name = hk.split(':', 1)
+                                if prefix.strip().lower() in ('lora', 'lyco', 'embed', 'embedding', 'ti', 'checkpoint', 'model', 'vae'):
+                                    _add_token(res_name)
+                except Exception:
+                    pass
+            elif k_norm == 'civitai resources' and raw_val.startswith('[') and raw_val.endswith(']'):
+                try:
+                    res_list = json.loads(raw_val)
+                    if isinstance(res_list, list):
+                        for item in res_list:
+                            if isinstance(item, dict):
+                                _add_token(item.get('modelName'))
+                                _add_token(item.get('modelVersionName'))
+                except Exception:
+                    pass
+            elif k_norm.startswith('controlnet'):
+                inner = raw_val.strip('"')
+                cn_match = re.search(r'(?:^|,\s*)model:\s*([^,\]]+)', inner, re.IGNORECASE)
+                if cn_match:
+                    _add_token(cn_match.group(1))
+
+    if not found_tokens:
+        return ""
+    return " ||| ".join(sorted(found_tokens))[:MAX_INDEXED_META_CHARS]
+
+
+def extract_a1111_workflow_prompt_string(a1111_text):
+    """
+    Extracts searchable prompt text (positive + negative) from A1111/Forge infotext
+    into the same format used for ComfyUI workflow_prompt, stripping LoRA/LyCORIS tags.
+    """
+    if not a1111_text or not isinstance(a1111_text, str):
+        return ""
+
+    fields = parse_webui_metadata_fields(a1111_text)
+    if not fields:
+        return ""
+
+    parts = []
+    for key in ('positive_prompt', 'negative_prompt'):
+        raw_p = fields.get(key) or ''
+        if not raw_p:
+            continue
+        cleaned = _A1111_STRIP_LORA_RE.sub(' ', raw_p)
+        cleaned = re.sub(r'\s+', ' ', cleaned).strip(' ,')
+        if cleaned and len(cleaned) >= 3 and cleaned not in WORKFLOW_PROMPT_BLACKLIST:
+            if cleaned not in parts:
+                parts.append(cleaned)
+
+    if not parts:
+        return ""
+    return " , ".join(parts)[:MAX_INDEXED_META_CHARS]
+
+
+def _merge_workflow_files_strings(first_str, second_str):
+    """Merge two ' ||| '-delimited normalized resource strings without duplicates."""
+    tokens = set()
+    for raw in (first_str, second_str):
+        if not raw or not isinstance(raw, str):
+            continue
+        for item in raw.split(' ||| '):
+            cleaned = normalize_smart_path(item.strip())
+            if cleaned:
+                tokens.add(cleaned)
+    if not tokens:
+        return ""
+    return " ||| ".join(sorted(tokens))[:MAX_INDEXED_META_CHARS]
+
+
+def _merge_workflow_prompt_strings(first_str, second_str):
+    """
+    Merge two searchable prompt strings (e.g. ComfyUI + A1111/Forge/Civitai)
+    without duplicating identical or already-contained prompt segments.
+    """
+    a = (first_str or "").strip()
+    b = (second_str or "").strip()
+    if not a:
+        return b[:MAX_INDEXED_META_CHARS]
+    if not b:
+        return a[:MAX_INDEXED_META_CHARS]
+
+    a_lower = a.lower()
+    b_lower = b.lower()
+    if b_lower in a_lower:
+        return a[:MAX_INDEXED_META_CHARS]
+    if a_lower in b_lower:
+        return b[:MAX_INDEXED_META_CHARS]
+
+    existing_parts = [p.strip() for p in a.split(' , ') if p.strip()]
+    existing_lower = {p.lower() for p in existing_parts}
+    for seg in [p.strip() for p in b.split(' , ') if p.strip()]:
+        seg_l = seg.lower()
+        if seg_l not in existing_lower and seg_l not in a_lower:
+            existing_parts.append(seg)
+            existing_lower.add(seg_l)
+
+    return " , ".join(existing_parts)[:MAX_INDEXED_META_CHARS]
+
+
+def _extract_combined_generation_metadata(filepath, dimensions=None, has_workflow_hint=None):
+    """
+    Extract structured generation metadata from A1111/Forge infotext and/or ComfyUI API workflow.
+    For hybrid images containing both (e.g. Civitai / Image Saver), merges missing fields and
+    LoRAs cleanly and labels the source as 'ComfyUI + A1111 / Forge'.
+    """
+    raw_a1111 = extract_a1111_parameters(filepath)
+    a1111_meta = parse_webui_metadata_fields(raw_a1111) if raw_a1111 else None
+
+    comfy_meta = None
+    if has_workflow_hint is None or has_workflow_hint:
+        workflow_api = extract_workflow(filepath, target_type='api')
+        if workflow_api:
+            try:
+                data_wf = json.loads(workflow_api)
+                # The graph tracer expects the API node map, not UI links/widgets.
+                if isinstance(data_wf, dict) and 'nodes' not in data_wf:
+                    comfy_meta = ComfyMetadataParser(data_wf).parse()
+                    comfy_meta['source'] = 'ComfyUI'
+            except Exception:
+                comfy_meta = None
+
+    def _has_meaningful_data(m):
+        return bool(m and any(
+            m.get(k) is not None and m.get(k) != '' and m.get(k) != []
+            for k in ('positive_prompt', 'negative_prompt', 'model', 'loras', 'seed', 'steps', 'sampler')
+        ))
+
+    has_a1111 = _has_meaningful_data(a1111_meta)
+    has_comfy = _has_meaningful_data(comfy_meta)
+
+    if has_a1111 and has_comfy:
+        meta = dict(a1111_meta)
+        meta['source'] = 'ComfyUI + A1111 / Forge'
+        for k in ('positive_prompt', 'negative_prompt', 'model', 'seed', 'steps', 'cfg', 'sampler', 'scheduler', 'denoise', 'width', 'height'):
+            if not meta.get(k) and comfy_meta.get(k) is not None and comfy_meta.get(k) != '':
+                meta[k] = comfy_meta[k]
+        merged_loras = list(meta.get('loras') or [])
+        seen_loras = {str(l.get('name', '')).strip().lower() for l in merged_loras if isinstance(l, dict)}
+        for l in (comfy_meta.get('loras') or []):
+            if isinstance(l, dict):
+                lname = str(l.get('name', '')).strip().lower()
+                if lname and lname not in seen_loras:
+                    merged_loras.append(l)
+                    seen_loras.add(lname)
+        meta['loras'] = merged_loras
+    elif has_a1111:
+        meta = dict(a1111_meta)
+        if has_workflow_hint:
+            meta['source'] = 'ComfyUI + A1111 / Forge'
+    elif has_comfy:
+        meta = dict(comfy_meta)
+    else:
+        meta = None
+
+    if meta:
+        # JavaScript numbers cannot represent all seeds exactly.
+        if meta.get('seed') is not None:
+            meta['seed'] = str(meta['seed'])
+        if not meta.get('width') or not meta.get('height'):
+            dims = re.fullmatch(r'(\d+)x(\d+)', dimensions or '')
+            if dims:
+                meta['width'], meta['height'] = dims.groups()
+    return meta
 
 
 def parse_webui_metadata(text, include_emojis=True):
@@ -2136,7 +2484,7 @@ def find_image_metadata_by_sha256(digest, filepath):
     conn = get_db_connection()
     try:
         row = conn.execute("""SELECT type, duration, dimensions, has_workflow,
-            workflow_files, workflow_prompt, workflow_hash, prompt_hash
+            workflow_files, workflow_prompt, workflow_hash, prompt_hash, has_a1111
             FROM files WHERE content_sha256 = ? AND path != ?
             AND type IN ('image', 'animated_image') LIMIT 1""", (digest, filepath)).fetchone()
         return dict(row) if row else None
@@ -2149,7 +2497,31 @@ def file_needs_processing(stat, row):
             (row['type'] in ('image', 'animated_image') and not row['content_sha256']))
 
 
-def process_single_file(filepath):
+# [PATCHED: folder_rename_sync_fix_v1]
+_WORKER_KNOWN_SHA256 = None
+
+
+def _init_sync_worker(known_sha256):
+    global _WORKER_KNOWN_SHA256
+    _WORKER_KNOWN_SHA256 = known_sha256
+
+
+def _hash_only_single_file(item):
+    file_id, filepath, expected_mtime, expected_size = item
+    try:
+        st1 = os.stat(filepath)
+        if st1.st_mtime != expected_mtime or st1.st_size != expected_size or st1.st_size == 0:
+            return None
+        digest = image_cache_file_sha256(filepath)
+        st2 = os.stat(filepath)
+        if (st1.st_size, st1.st_mtime_ns) != (st2.st_size, st2.st_mtime_ns):
+            return None
+        return (digest, file_id)
+    except OSError:
+        return None
+
+
+def process_single_file(filepath, known_sha256=None):
     """
     Worker function to perform all heavy processing for a single file.
     Designed to be run in a parallel process pool.
@@ -2168,7 +2540,9 @@ def process_single_file(filepath):
         if os.path.splitext(filepath)[1].lower() in IMAGE_CACHE_EXTENSIONS:
             try:
                 content_sha256 = image_cache_file_sha256(filepath)
-                cached_metadata = find_image_metadata_by_sha256(content_sha256, filepath)
+                sha_set = known_sha256 if known_sha256 is not None else _WORKER_KNOWN_SHA256
+                if sha_set is None or content_sha256 in sha_set:
+                    cached_metadata = find_image_metadata_by_sha256(content_sha256, filepath)
             except (OSError, ValueError, sqlite3.Error) as exc:
                 print(f"WARNING: Image cache lookup failed: {exc}")
         metadata = cached_metadata or analyze_file_metadata(filepath)
@@ -2193,12 +2567,14 @@ def process_single_file(filepath):
         workflow_prompt_content = ""
         wf_hash = ""
         pr_hash = ""
+        has_a1111 = 0
         
         if cached_metadata:
             workflow_files_content = cached_metadata['workflow_files']
             workflow_prompt_content = cached_metadata['workflow_prompt']
             wf_hash = cached_metadata['workflow_hash']
             pr_hash = cached_metadata['prompt_hash']
+            has_a1111 = int(cached_metadata.get('has_a1111') or 0)
         elif metadata['has_workflow']:
             wf_json = extract_workflow(filepath, target_type='api')
             if not wf_json:
@@ -2208,6 +2584,20 @@ def process_single_file(filepath):
                 workflow_files_content = extract_workflow_files_string(wf_json)
                 workflow_prompt_content = extract_workflow_prompt_string(wf_json)
                 wf_hash, pr_hash = compute_workflow_hashes(filepath, wf_json=wf_json)
+
+        # Native A1111/Forge/Civitai metadata extraction & hybrid merge (keeps has_workflow intact)
+        if not cached_metadata and metadata['type'] in ('image', 'animated_image'):
+            a1111_raw = extract_a1111_parameters(filepath)
+            if a1111_raw:
+                has_a1111 = 1
+                a1111_files = extract_a1111_workflow_files_string(a1111_raw)
+                a1111_prompt = extract_a1111_workflow_prompt_string(a1111_raw)
+                if a1111_files:
+                    workflow_files_content = _merge_workflow_files_strings(workflow_files_content, a1111_files)
+                if a1111_prompt:
+                    workflow_prompt_content = _merge_workflow_prompt_strings(workflow_prompt_content, a1111_prompt)
+                    if workflow_prompt_content and not pr_hash:
+                        pr_hash = hashlib.md5(workflow_prompt_content.strip().lower().encode('utf-8')).hexdigest()
         
         final_stat = os.stat(filepath)
         if (initial_stat.st_size, initial_stat.st_mtime_ns) != (final_stat.st_size, final_stat.st_mtime_ns):
@@ -2227,7 +2617,7 @@ def process_single_file(filepath):
             metadata['has_workflow'], file_size, time.time(), 
             workflow_files_content, 
             workflow_prompt_content,
-            wf_hash, pr_hash, content_sha256
+            wf_hash, pr_hash, content_sha256, has_a1111
         )
     except Exception:
         return None
@@ -2461,7 +2851,8 @@ def init_db(conn=None):
             'ai_error': 'TEXT',
             'workflow_hash': "TEXT DEFAULT ''",
             'prompt_hash': "TEXT DEFAULT ''",
-            'content_sha256': 'TEXT'
+            'content_sha256': 'TEXT',
+            'has_a1111': 'INTEGER DEFAULT 0'
         }
 
         # Handle comments target migration
@@ -2473,6 +2864,56 @@ def init_db(conn=None):
                 conn.execute("ALTER TABLE file_comments ADD COLUMN target_audience TEXT DEFAULT 'public'")
         except Exception as e:
             print(f"WARNING: Could not migrate file_comments table: {e}")
+
+        for tbl_name, create_sql in [
+            ('file_ratings', """
+                CREATE TABLE file_ratings_new (
+                    file_id TEXT,
+                    client_uuid TEXT,
+                    rating INTEGER CHECK(rating >= 1 AND rating <= 5),
+                    created_at REAL,
+                    PRIMARY KEY (file_id, client_uuid),
+                    FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE ON UPDATE CASCADE
+                )
+            """),
+            ('file_comments', """
+                CREATE TABLE file_comments_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    file_id TEXT,
+                    client_uuid TEXT,
+                    author_name TEXT,
+                    comment_text TEXT,
+                    target_audience TEXT DEFAULT 'public',
+                    created_at REAL,
+                    FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE ON UPDATE CASCADE
+                )
+            """)
+        ]:
+            try:
+                row_ddl = conn.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (tbl_name,)).fetchone()
+                if row_ddl and row_ddl[0] and 'ON UPDATE CASCADE' not in row_ddl[0].upper():
+                    conn.commit()
+                    conn.execute("PRAGMA foreign_keys = OFF;")
+                    try:
+                        conn.execute(f"DROP TABLE IF EXISTS {tbl_name}_new")
+                        conn.execute(create_sql)
+                        cols_info = [r['name'] for r in conn.execute(f"PRAGMA table_info({tbl_name})").fetchall()]
+                        cols_csv = ', '.join(cols_info)
+                        conn.execute(f"INSERT INTO {tbl_name}_new ({cols_csv}) SELECT {cols_csv} FROM {tbl_name}")
+                        conn.execute(f"DROP TABLE {tbl_name}")
+                        conn.execute(f"ALTER TABLE {tbl_name}_new RENAME TO {tbl_name}")
+                        conn.commit()
+                    except Exception as mig_err:
+                        conn.rollback()
+                        print(f"WARNING: Could not migrate {tbl_name} foreign key: {mig_err}")
+                    finally:
+                        conn.execute("PRAGMA foreign_keys = ON;")
+            except Exception as mig_outer_err:
+                print(f"WARNING: Foreign key check failed for {tbl_name}: {mig_outer_err}")
+
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_collection_files_file_id ON collection_files(file_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_file_comments_file_id ON file_comments(file_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_ai_idx_file_id ON ai_indexing_queue(file_id)")
 
         # Handle collections public flag migration
         try:
@@ -2505,6 +2946,7 @@ def init_db(conn=None):
                     print(f"WARNING: Could not add column {col_name}: {e}")
 
         conn.execute("CREATE INDEX IF NOT EXISTS idx_files_content_sha256 ON files(content_sha256)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_files_has_a1111 ON files(has_a1111)")
 
         # 6. SCHEMA VERSION (Managed in check_and_update_workflow_hashes)
         pass
@@ -2774,21 +3216,165 @@ def background_watcher_task():
             
         time.sleep(10) # Faster check cycle (10s instead of 60s) to feel responsive
         
+# [PATCHED: dam_auto_migration_and_move_folder_v3]
+def _migrate_dam_data_on_sync(conn, safe_to_delete, newly_added_ids):
+    """
+    Preserves DAM metadata (favorites, collections, status flags, ratings, comments, AI captions)
+    when files are moved outside SmartGallery and seen as removed+added in the same sync.
+    """
+    if not safe_to_delete or not newly_added_ids:
+        return
+
+    from collections import defaultdict
+
+    old_rows = []
+    for i in range(0, len(safe_to_delete), 500):
+        chunk = safe_to_delete[i:i + 500]
+        ph = ','.join(['?'] * len(chunk))
+        rows = conn.execute(f"""
+            SELECT id, path, name, type, size, duration, dimensions,
+                   is_favorite, ai_last_scanned, ai_caption, ai_embedding, ai_error, content_sha256
+            FROM files
+            WHERE path IN ({ph})
+        """, chunk).fetchall()
+        old_rows.extend([dict(r) for r in rows])
+
+    if not old_rows:
+        return
+
+    old_ids = [r['id'] for r in old_rows]
+    has_dam_ids = set()
+    for r in old_rows:
+        if r['is_favorite'] or r['ai_caption'] or (r['ai_last_scanned'] or 0) > 0:
+            has_dam_ids.add(r['id'])
+
+    for i in range(0, len(old_ids), 500):
+        chunk = old_ids[i:i + 500]
+        ph = ','.join(['?'] * len(chunk))
+        for tbl in ('collection_files', 'file_ratings', 'file_comments'):
+            for row in conn.execute(f"SELECT DISTINCT file_id FROM {tbl} WHERE file_id IN ({ph})", chunk).fetchall():
+                has_dam_ids.add(row[0])
+
+    if not has_dam_ids:
+        return
+
+    new_rows = []
+    for i in range(0, len(newly_added_ids), 500):
+        chunk = newly_added_ids[i:i + 500]
+        ph = ','.join(['?'] * len(chunk))
+        rows = conn.execute(f"""
+            SELECT id, path, name, type, size, duration, dimensions, content_sha256
+            FROM files
+            WHERE id IN ({ph})
+        """, chunk).fetchall()
+        new_rows.extend([dict(r) for r in rows])
+
+    if not new_rows:
+        return
+
+    old_by_sha = defaultdict(list)
+    new_by_sha = defaultdict(list)
+    old_by_sha_name = defaultdict(list)
+    new_by_sha_name = defaultdict(list)
+    old_by_media_sig = defaultdict(list)
+    new_by_media_sig = defaultdict(list)
+
+    for r in old_rows:
+        if r['content_sha256']:
+            old_by_sha[r['content_sha256']].append(r)
+            old_by_sha_name[(r['content_sha256'], r['name'])].append(r)
+        else:
+            sig = (r['type'], r['name'], r['size'], r['duration'] or '', r['dimensions'] or '')
+            old_by_media_sig[sig].append(r)
+
+    for r in new_rows:
+        if r['content_sha256']:
+            new_by_sha[r['content_sha256']].append(r)
+            new_by_sha_name[(r['content_sha256'], r['name'])].append(r)
+        else:
+            sig = (r['type'], r['name'], r['size'], r['duration'] or '', r['dimensions'] or '')
+            new_by_media_sig[sig].append(r)
+
+    matches = []
+    matched_old_ids = set()
+    matched_new_ids = set()
+
+    for r in old_rows:
+        if r['id'] not in has_dam_ids:
+            continue
+        if r['content_sha256']:
+            sha = r['content_sha256']
+            if len(old_by_sha[sha]) == 1 and len(new_by_sha[sha]) == 1:
+                nr = new_by_sha[sha][0]
+                if nr['id'] != r['id'] and nr['id'] not in matched_new_ids:
+                    matches.append((r, nr['id']))
+                    matched_old_ids.add(r['id'])
+                    matched_new_ids.add(nr['id'])
+                    continue
+            key_sn = (sha, r['name'])
+            if len(old_by_sha_name[key_sn]) == 1 and len(new_by_sha_name[key_sn]) == 1:
+                nr = new_by_sha_name[key_sn][0]
+                if nr['id'] != r['id'] and nr['id'] not in matched_new_ids:
+                    matches.append((r, nr['id']))
+                    matched_old_ids.add(r['id'])
+                    matched_new_ids.add(nr['id'])
+        else:
+            sig = (r['type'], r['name'], r['size'], r['duration'] or '', r['dimensions'] or '')
+            if len(old_by_media_sig[sig]) == 1 and len(new_by_media_sig[sig]) == 1:
+                nr = new_by_media_sig[sig][0]
+                if nr['id'] != r['id'] and nr['id'] not in matched_new_ids:
+                    matches.append((r, nr['id']))
+                    matched_old_ids.add(r['id'])
+                    matched_new_ids.add(nr['id'])
+
+    if not matches:
+        return
+
+    for old_r, new_id in matches:
+        old_id = old_r['id']
+        conn.execute("""
+            UPDATE files
+            SET is_favorite = CASE WHEN is_favorite = 0 THEN ? ELSE is_favorite END,
+                ai_last_scanned = CASE WHEN (ai_last_scanned IS NULL OR ai_last_scanned = 0) THEN ? ELSE ai_last_scanned END,
+                ai_caption = COALESCE(ai_caption, ?),
+                ai_embedding = COALESCE(ai_embedding, ?),
+                ai_error = COALESCE(ai_error, ?)
+            WHERE id = ?
+        """, (
+            old_r['is_favorite'] or 0,
+            old_r['ai_last_scanned'] or 0,
+            old_r['ai_caption'],
+            old_r['ai_embedding'],
+            old_r['ai_error'],
+            new_id
+        ))
+        conn.execute("""
+            INSERT OR IGNORE INTO collection_files (collection_id, file_id, added_at)
+            SELECT collection_id, ?, added_at FROM collection_files WHERE file_id = ?
+        """, (new_id, old_id))
+        conn.execute("""
+            INSERT OR IGNORE INTO file_ratings (file_id, client_uuid, rating, created_at)
+            SELECT ?, client_uuid, rating, created_at FROM file_ratings WHERE file_id = ?
+        """, (new_id, old_id))
+        conn.execute("UPDATE file_comments SET file_id = ? WHERE file_id = ?", (new_id, old_id))
+
+    print(f"{Colors.GREEN}INFO: Preserved DAM metadata (favorites/collections/ratings/comments/AI) for {len(matches)} moved file(s).{Colors.RESET}")
+
+
 def full_sync_database(conn):
     print("INFO: Starting full file scan...")
     start_time = time.time()
 
     all_folders = get_dynamic_folder_config(force_refresh=True)
-    db_files = {row['path']: dict(row) for row in conn.execute('SELECT path, mtime, size, type, content_sha256 FROM files').fetchall()}
+    db_files = {row['path']: dict(row) for row in conn.execute('SELECT id, path, mtime, size, type, content_sha256 FROM files').fetchall()}
     
     disk_files = {}
     print("INFO: Scanning directories on disk...")
     
-    # Whitelist approach: Only index valid media files
     valid_extensions = {
-        '.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif', '.webp', '.gif',  # Images
-        '.mp4', '.mov', '.webm', '.mkv', '.avi', '.m4v', '.wmv', '.flv', '.mts', '.ts', # Videos
-        '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.aac', '.txt', '.md' # Audio & Docs
+        '.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif', '.webp', '.gif',
+        '.mp4', '.mov', '.webm', '.mkv', '.avi', '.m4v', '.wmv', '.flv', '.mts', '.ts',
+        '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.aac', '.txt', '.md'
     }
 
     for folder_data in all_folders.values():
@@ -2797,12 +3383,9 @@ def full_sync_database(conn):
         try:
             for name in os.listdir(folder_path):
                 filepath = os.path.join(folder_path, name)
-                
-                # Check extension against whitelist
                 _, ext = os.path.splitext(name)
                 if os.path.isfile(filepath) and ext.lower() in valid_extensions:
                     disk_files[filepath] = os.stat(filepath)
-                    
         except OSError as e:
             print(f"WARNING: Could not access folder {folder_path}: {e}")
             
@@ -2812,26 +3395,67 @@ def full_sync_database(conn):
     to_delete = db_paths - disk_paths
     to_add = disk_paths - db_paths
     to_check = disk_paths & db_paths
-    to_update = {path for path in to_check if file_needs_processing(disk_files[path], db_files[path])}
-    
-    files_to_process = list(to_add.union(to_update))
-    # debug if files_to_process: print(f"{Colors.YELLOW}DEBUG - File to process: {files_to_process}{Colors.RESET}")
+
+    MASS_MIGRATION_THRESHOLD = 5000
+    if len(to_delete) >= MASS_MIGRATION_THRESHOLD and len(to_add) >= MASS_MIGRATION_THRESHOLD:
+        print(f"\n{Colors.YELLOW}{Colors.BOLD}NOTICE: Large move/migration detected ({len(to_delete)} removed, {len(to_add)} added).{Colors.RESET}")
+        print(f"{Colors.YELLOW}For massive NAS/drive migrations, using the dedicated external tool 'sg_migrate_paths.py' (see SG_MIGRATE_PATHS_GUIDE.md) is recommended for instant DB remapping without re-hashing over the network.{Colors.RESET}")
+        print(f"{Colors.CYAN}Proceeding with automatic DAM-safe sync...{Colors.RESET}\n")
+
+    to_reprocess = {
+        path for path in to_check
+        if disk_files[path].st_mtime != db_files[path]['mtime'] or disk_files[path].st_size != db_files[path]['size']
+    }
+    to_hash_only = [
+        (db_files[path]['id'], path, db_files[path]['mtime'], db_files[path]['size'])
+        for path in to_check
+        if disk_files[path].st_mtime == db_files[path]['mtime']
+        and disk_files[path].st_size == db_files[path]['size']
+        and db_files[path]['type'] in ('image', 'animated_image')
+        and not db_files[path]['content_sha256']
+    ]
+
+    if to_hash_only:
+        print(f"INFO: Backfilling SHA256 hashes for {len(to_hash_only)} unchanged images...")
+        hash_results = []
+        with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_PARALLEL_WORKERS) as executor:
+            futures = [executor.submit(_hash_only_single_file, item) for item in to_hash_only]
+            with tqdm(total=len(to_hash_only), desc="Hashing images") as pbar:
+                for future in concurrent.futures.as_completed(futures):
+                    try:
+                        res = future.result()
+                        if res:
+                            hash_results.append(res)
+                    except Exception as e:
+                        print(f"\nWARNING: Hash backfill error: {e}")
+                    pbar.update(1)
+        if hash_results:
+            for i in range(0, len(hash_results), BATCH_SIZE):
+                batch = hash_results[i:i + BATCH_SIZE]
+                conn.executemany("UPDATE files SET content_sha256 = ? WHERE id = ?", batch)
+                conn.commit()
+
+    known_sha256s = {
+        r[0] for r in conn.execute(
+            "SELECT DISTINCT content_sha256 FROM files WHERE content_sha256 IS NOT NULL AND type IN ('image', 'animated_image')"
+        ).fetchall()
+    }
+
+    newly_added_ids = []
+    files_to_process = list(to_add.union(to_reprocess))
     if files_to_process:
         print(f"INFO: Processing {len(files_to_process)} files in parallel using up to {MAX_PARALLEL_WORKERS or 'all'} CPU cores...")
         
         results = []
-        # --- CORRECT BLOCK FOR PROGRESS BAR ---
-        with concurrent.futures.ProcessPoolExecutor(max_workers=MAX_PARALLEL_WORKERS) as executor:
-            # Submit all jobs to the pool and get future objects
+        with concurrent.futures.ProcessPoolExecutor(
+            max_workers=MAX_PARALLEL_WORKERS,
+            initializer=_init_sync_worker,
+            initargs=(known_sha256s,)
+        ) as executor:
             futures = {executor.submit(process_single_file, path): path for path in files_to_process}
             
-            # Create the progress bar with the correct total
             with tqdm(total=len(files_to_process), desc="Processing files") as pbar:
-                # Iterate over the jobs as they are COMPLETED
                 for future in concurrent.futures.as_completed(futures):
-                    # --- FAULT TOLERANCE FIX ---
-                    # If a single file causes a C-level segfault (e.g. OpenCV/Pillow on corrupted media), 
-                    # it throws a BrokenProcessPool exception. We catch it to save the rest of the gallery.
                     try:
                         result = future.result()
                         if result:
@@ -2842,16 +3466,16 @@ def full_sync_database(conn):
                         file_path_failed = futures[future]
                         print(f"\nWARNING: Unhandled error processing {os.path.basename(file_path_failed)}: {e}")
                     
-                    # Update the bar by 1 step for each completed job
                     pbar.update(1)
 
         if results:
+            newly_added_ids = [r[0] for r in results if r[1] in to_add]
             print(f"INFO: Inserting {len(results)} processed records into the database...")
             for i in range(0, len(results), BATCH_SIZE):
                 batch = results[i:i + BATCH_SIZE]
                 conn.executemany("""
-                    INSERT INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned, workflow_files, workflow_prompt, workflow_hash, prompt_hash, content_sha256)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned, workflow_files, workflow_prompt, workflow_hash, prompt_hash, content_sha256, has_a1111)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(id) DO UPDATE SET
                         path = excluded.path,
                         name = excluded.name,
@@ -2866,8 +3490,8 @@ def full_sync_database(conn):
                         workflow_hash = excluded.workflow_hash,
                         prompt_hash = excluded.prompt_hash,
                         content_sha256 = excluded.content_sha256,
+                        has_a1111 = excluded.has_a1111,
                         
-                        -- CONDITIONAL LOGIC:
                         is_favorite = CASE 
                             WHEN ((files.content_sha256 IS NOT NULL AND excluded.content_sha256 IS NOT NULL AND files.content_sha256 != excluded.content_sha256) OR ((files.content_sha256 IS NULL OR excluded.content_sha256 IS NULL) AND (files.mtime != excluded.mtime OR files.size != excluded.size))) THEN 0
                             ELSE files.is_favorite                     
@@ -2888,7 +3512,6 @@ def full_sync_database(conn):
                             ELSE files.ai_last_scanned 
                         END,
 
-                        -- Update mtime at the end
                         mtime = excluded.mtime
                 """, batch) 
                 conn.commit()
@@ -2897,28 +3520,21 @@ def full_sync_database(conn):
     if to_delete:
         print(f"INFO: Detecting disconnected drives before cleanup...")
         
-        # 1. Identify Offline Mounts
-        # We fetch all configured mount points to check if their root is accessible
         mount_rows = conn.execute("SELECT path FROM mounted_folders").fetchall()
         offline_prefixes = []
         
         for row in mount_rows:
             m_path = row['path']
-            # If the mount root itself is missing, assume the drive is offline.
-            # note: os.path.exists returns False for broken symlinks/junctions
             if not os.path.exists(m_path):
                 print(f"{Colors.YELLOW}WARN: Mount point seems offline: {m_path}{Colors.RESET}")
                 offline_prefixes.append(m_path)
 
-        # 2. Filter files to delete
-        # Only delete files if they do NOT belong to an offline mount
         safe_to_delete = []
         protected_count = 0
         
         for path_to_remove in to_delete:
             is_protected = False
             for offline_root in offline_prefixes:
-                # Check if file path starts with the offline root path
                 if path_to_remove.startswith(offline_root):
                     is_protected = True
                     break
@@ -2931,7 +3547,6 @@ def full_sync_database(conn):
         if protected_count > 0:
             print(f"{Colors.YELLOW}PROTECTION ACTIVE: Skipped deletion of {protected_count} files because their source drive appears offline.{Colors.RESET}")
 
-        # 3. Proceed with safe deletion (protecting collection notes from being purged)
         if safe_to_delete:
             notes_dir_smart = os.path.normpath(os.path.join(BASE_SMARTGALLERY_PATH, '.collection_notes')).lower()
             notes_dir_out = os.path.normpath(os.path.join(BASE_OUTPUT_PATH, '.collection_notes')).lower()
@@ -2947,12 +3562,13 @@ def full_sync_database(conn):
             safe_to_delete = real_to_delete
 
         if safe_to_delete:
+            _migrate_dam_data_on_sync(conn, safe_to_delete, newly_added_ids)
+
             print(f"INFO: Removing {len(safe_to_delete)} obsolete file entries from the database...")
             
             paths_to_remove = [(p,) for p in safe_to_delete]
             conn.executemany("DELETE FROM files WHERE path = ?", paths_to_remove)
             
-            # Clean AI Queue for validly deleted files
             std_paths_to_remove = [(get_standardized_path(p),) for p in safe_to_delete]
             conn.executemany("DELETE FROM ai_indexing_queue WHERE file_path = ?", std_paths_to_remove)
             
@@ -3027,7 +3643,11 @@ def sync_folder_on_demand(folder_path):
     
     try:
         disk_files = {}
-        valid_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.mp4', '.mkv', '.webm', '.mov', '.avi', '.mp3', '.wav', '.ogg', '.flac', '.txt', '.md'}
+        valid_extensions = {
+            '.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif', '.webp', '.gif',
+            '.mp4', '.mov', '.webm', '.mkv', '.avi', '.m4v', '.wmv', '.flv', '.mts', '.ts',
+            '.mp3', '.wav', '.ogg', '.flac', '.m4a', '.aac', '.txt', '.md'
+        }
         if os.path.isdir(folder_path):
             last_scan_progress = time.monotonic()
             with os.scandir(folder_path) as entries:
@@ -3044,96 +3664,185 @@ def sync_folder_on_demand(folder_path):
                                 disk_files[entry.path] = stat
                     except OSError:
                         pass
-        
-        with get_db_connection() as conn:
-            db_files_query = conn.execute("SELECT path, mtime, size, type, content_sha256 FROM files WHERE path LIKE ?", (folder_path + os.sep + '%',)).fetchall()
-            db_files = {row['path']: dict(row) for row in db_files_query if os.path.normpath(os.path.dirname(row['path'])) == os.path.normpath(folder_path)}
-        
-        disk_filepaths = set(disk_files.keys())
-        db_filepaths = set(db_files.keys())
-        files_to_add = disk_filepaths - db_filepaths
-        files_to_delete = db_filepaths - disk_filepaths
-        files_to_update = {path for path in (disk_filepaths & db_filepaths) if file_needs_processing(disk_files[path], db_files[path])}
-        
-        # Folder loading also cleans migrated entries outside the visible page.
-        last_cleanup_progress = time.monotonic()
-        for path in (disk_filepaths & db_filepaths) - files_to_update:
-            row = db_files[path]
-            if row['type'] in ('image', 'animated_image') and row['content_sha256']:
-                cleanup_legacy_image_thumbnails(path, row['content_sha256'], row['mtime'])
-            if time.monotonic() - last_cleanup_progress >= 5:
-                yield f"data: {json.dumps({'message': 'Checking cached thumbnails...', 'current': 0, 'total': 1})}\n\n"
-                last_cleanup_progress = time.monotonic()
 
-        if not files_to_add and not files_to_update and not files_to_delete:
+        disk_by_norm = {
+            os.path.normcase(os.path.normpath(p)): (p, st)
+            for p, st in disk_files.items()
+        }
+
+        norm_folder_slash = os.path.normpath(folder_path).replace('\\', '/').rstrip('/')
+        like_escaped = norm_folder_slash.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '/%'
+        target_dir_norm = os.path.normcase(os.path.normpath(folder_path))
+
+        with get_db_connection() as conn:
+            db_files_query = conn.execute(
+                "SELECT id, path, mtime, size, type, content_sha256 FROM files WHERE REPLACE(path, '\\', '/') LIKE ? ESCAPE '\\'",
+                (like_escaped,)
+            ).fetchall()
+
+            db_by_norm = {}
+            duplicate_db_paths = []
+            for row in db_files_query:
+                r_path = row['path']
+                if os.path.normcase(os.path.normpath(os.path.dirname(r_path))) == target_dir_norm:
+                    n_key = os.path.normcase(os.path.normpath(r_path))
+                    if n_key in db_by_norm:
+                        existing_row = db_by_norm[n_key]
+                        disk_match = disk_by_norm.get(n_key)
+                        if disk_match and r_path == disk_match[0] and existing_row['path'] != disk_match[0]:
+                            duplicate_db_paths.append(existing_row['path'])
+                            db_by_norm[n_key] = dict(row)
+                        else:
+                            duplicate_db_paths.append(r_path)
+                    else:
+                        db_by_norm[n_key] = dict(row)
+
+            known_sha256s = {
+                r[0] for r in conn.execute(
+                    "SELECT DISTINCT content_sha256 FROM files WHERE content_sha256 IS NOT NULL AND type IN ('image', 'animated_image')"
+                ).fetchall()
+            }
+
+        disk_norm_keys = set(disk_by_norm.keys())
+        db_norm_keys = set(db_by_norm.keys())
+
+        files_to_add = [disk_by_norm[k][0] for k in (disk_norm_keys - db_norm_keys)]
+        files_to_delete = [db_by_norm[k]['path'] for k in (db_norm_keys - disk_norm_keys)] + duplicate_db_paths
+
+        files_to_update = []
+        files_to_hash_only = []
+        path_fixes = []
+        path_fix_collisions = []
+        last_cleanup_progress = time.monotonic()
+
+        for k in (disk_norm_keys & db_norm_keys):
+            disk_path, stat = disk_by_norm[k]
+            row = db_by_norm[k]
+            effective_id = row['id']
+
+            if disk_path != row['path']:
+                canonical_id = hashlib.md5(disk_path.encode()).hexdigest()
+                if canonical_id != row['id']:
+                    path_fix_collisions.append(canonical_id)
+                path_fixes.append((canonical_id, disk_path, row['id']))
+                effective_id = canonical_id
+
+            if stat.st_mtime != row['mtime'] or stat.st_size != row['size']:
+                files_to_update.append(disk_path)
+            elif row['type'] in ('image', 'animated_image') and not row['content_sha256']:
+                files_to_hash_only.append((effective_id, disk_path, row['mtime'], row['size']))
+            else:
+                if row['type'] in ('image', 'animated_image') and row['content_sha256']:
+                    cleanup_legacy_image_thumbnails(disk_path, row['content_sha256'], row['mtime'])
+                if time.monotonic() - last_cleanup_progress >= 5:
+                    yield f"data: {json.dumps({'message': 'Checking cached thumbnails...', 'current': 0, 'total': 1})}\n\n"
+                    last_cleanup_progress = time.monotonic()
+
+        if not files_to_add and not files_to_update and not files_to_delete and not files_to_hash_only and not path_fixes:
             yield f"data: {json.dumps({'message': 'Folder is up-to-date.', 'status': 'no_changes', 'current': 1, 'total': 1})}\n\n"
             return
 
-        files_to_process = list(files_to_add.union(files_to_update))
-        total_files = len(files_to_process)
+        files_to_process = files_to_add + files_to_update
+        total_files = len(files_to_process) + len(files_to_hash_only)
         data_to_upsert = []
-        
+        hash_updates = []
+        processed_count = 0
+
         if total_files > 0:
             yield f"data: {json.dumps({'message': f'Found {total_files} new/modified file(s). Processing...', 'current': 0, 'total': total_files})}\n\n"
-            
-            # Use ThreadPoolExecutor to prevent POSIX fork deadlocks inside Waitress WSGI threads
             max_sync_workers = min(8, max(1, total_files))
-            processed_count = 0
-            
-            with concurrent.futures.ThreadPoolExecutor(max_workers=max_sync_workers) as executor:
-                futures = {executor.submit(process_single_file, path): path for path in files_to_process}
-                pending = set(futures)
-                while pending:
-                    done, pending = concurrent.futures.wait(
-                        pending, timeout=5, return_when=concurrent.futures.FIRST_COMPLETED)
-                    if not done:
-                        yield f"data: {json.dumps({'status': 'waiting', 'message': f'Processing files... ({processed_count}/{total_files} complete)', 'current': processed_count, 'total': total_files})}\n\n"
-                    for future in done:
-                        path = futures[future]
-                        processed_count += 1
-                        try:
-                            res = future.result()
-                            if res:
-                                data_to_upsert.append(res)
-                        except Exception as err:
-                            print(f"WARNING: Processing error on {os.path.basename(path)}: {err}")
 
-                        # Real-time progressive feedback to the client
-                        yield f"data: {json.dumps({'message': f'Processing {processed_count}/{total_files}: {os.path.basename(path)}', 'current': processed_count, 'total': total_files})}\n\n"
+            if files_to_hash_only:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=max_sync_workers) as executor:
+                    futures = {executor.submit(_hash_only_single_file, item): item[1] for item in files_to_hash_only}
+                    pending = set(futures)
+                    while pending:
+                        done, pending = concurrent.futures.wait(
+                            pending, timeout=5, return_when=concurrent.futures.FIRST_COMPLETED)
+                        if not done:
+                            yield f"data: {json.dumps({'status': 'waiting', 'message': f'Hashing images... ({processed_count}/{total_files} complete)', 'current': processed_count, 'total': total_files})}\n\n"
+                        for future in done:
+                            path = futures[future]
+                            processed_count += 1
+                            try:
+                                res = future.result()
+                                if res:
+                                    hash_updates.append(res)
+                            except Exception as err:
+                                print(f"WARNING: Hash error on {os.path.basename(path)}: {err}")
+                            yield f"data: {json.dumps({'message': f'Processing {processed_count}/{total_files}: {os.path.basename(path)}', 'current': processed_count, 'total': total_files})}\n\n"
+
+            if files_to_process:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=max_sync_workers) as executor:
+                    futures = {executor.submit(process_single_file, path, known_sha256s): path for path in files_to_process}
+                    pending = set(futures)
+                    while pending:
+                        done, pending = concurrent.futures.wait(
+                            pending, timeout=5, return_when=concurrent.futures.FIRST_COMPLETED)
+                        if not done:
+                            yield f"data: {json.dumps({'status': 'waiting', 'message': f'Processing files... ({processed_count}/{total_files} complete)', 'current': processed_count, 'total': total_files})}\n\n"
+                        for future in done:
+                            path = futures[future]
+                            processed_count += 1
+                            try:
+                                res = future.result()
+                                if res:
+                                    data_to_upsert.append(res)
+                            except Exception as err:
+                                print(f"WARNING: Processing error on {os.path.basename(path)}: {err}")
+
+                            yield f"data: {json.dumps({'message': f'Processing {processed_count}/{total_files}: {os.path.basename(path)}', 'current': processed_count, 'total': total_files})}\n\n"
 
         with get_db_connection() as conn:
-            if data_to_upsert:
-                conn.executemany("""
-                    INSERT INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned, workflow_files, workflow_prompt, workflow_hash, prompt_hash, content_sha256)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(id) DO UPDATE SET
-                        path = excluded.path,
-                        name = excluded.name,
-                        type = excluded.type,
-                        duration = excluded.duration,
-                        dimensions = excluded.dimensions,
-                        has_workflow = excluded.has_workflow,
-                        size = excluded.size,
-                        last_scanned = excluded.last_scanned,
-                        workflow_files = excluded.workflow_files,
-                        workflow_prompt = excluded.workflow_prompt,
-                        workflow_hash = excluded.workflow_hash,
-                        prompt_hash = excluded.prompt_hash,
-                        content_sha256 = excluded.content_sha256,
-                        is_favorite = CASE WHEN ((files.content_sha256 IS NOT NULL AND excluded.content_sha256 IS NOT NULL AND files.content_sha256 != excluded.content_sha256) OR ((files.content_sha256 IS NULL OR excluded.content_sha256 IS NULL) AND (files.mtime != excluded.mtime OR files.size != excluded.size))) THEN 0 ELSE files.is_favorite END,
-                        ai_caption = CASE WHEN ((files.content_sha256 IS NOT NULL AND excluded.content_sha256 IS NOT NULL AND files.content_sha256 != excluded.content_sha256) OR ((files.content_sha256 IS NULL OR excluded.content_sha256 IS NULL) AND (files.mtime != excluded.mtime OR files.size != excluded.size))) THEN NULL ELSE files.ai_caption END,
-                        ai_embedding = CASE WHEN ((files.content_sha256 IS NOT NULL AND excluded.content_sha256 IS NOT NULL AND files.content_sha256 != excluded.content_sha256) OR ((files.content_sha256 IS NULL OR excluded.content_sha256 IS NULL) AND (files.mtime != excluded.mtime OR files.size != excluded.size))) THEN NULL ELSE files.ai_embedding END,
-                        ai_last_scanned = CASE WHEN ((files.content_sha256 IS NOT NULL AND excluded.content_sha256 IS NOT NULL AND files.content_sha256 != excluded.content_sha256) OR ((files.content_sha256 IS NULL OR excluded.content_sha256 IS NULL) AND (files.mtime != excluded.mtime OR files.size != excluded.size))) THEN 0 ELSE files.ai_last_scanned END,
-                        mtime = excluded.mtime
-                """, data_to_upsert) 
-                
             if files_to_delete:
-                del_placeholders = ','.join(['?'] * len(files_to_delete))
-                conn.execute(f"DELETE FROM files WHERE path IN ({del_placeholders})", list(files_to_delete))
+                for i in range(0, len(files_to_delete), 500):
+                    chunk = files_to_delete[i:i + 500]
+                    del_placeholders = ','.join(['?'] * len(chunk))
+                    conn.execute(f"DELETE FROM files WHERE path IN ({del_placeholders})", chunk)
+
+            if path_fixes:
+                old_fix_ids = {old_id for _, _, old_id in path_fixes}
+                safe_collisions = [cid for cid in path_fix_collisions if cid not in old_fix_ids]
+                for i in range(0, len(safe_collisions), 500):
+                    chunk = safe_collisions[i:i + 500]
+                    ph = ','.join(['?'] * len(chunk))
+                    conn.execute(f"DELETE FROM files WHERE id IN ({ph})", chunk)
+                conn.executemany("UPDATE files SET id = ?, path = ? WHERE id = ?", path_fixes)
+
+            if hash_updates:
+                for i in range(0, len(hash_updates), BATCH_SIZE):
+                    conn.executemany("UPDATE files SET content_sha256 = ? WHERE id = ?", hash_updates[i:i + BATCH_SIZE])
+
+            if data_to_upsert:
+                for i in range(0, len(data_to_upsert), BATCH_SIZE):
+                    conn.executemany("""
+                        INSERT INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned, workflow_files, workflow_prompt, workflow_hash, prompt_hash, content_sha256, has_a1111)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(id) DO UPDATE SET
+                            path = excluded.path,
+                            name = excluded.name,
+                            type = excluded.type,
+                            duration = excluded.duration,
+                            dimensions = excluded.dimensions,
+                            has_workflow = excluded.has_workflow,
+                            size = excluded.size,
+                            last_scanned = excluded.last_scanned,
+                            workflow_files = excluded.workflow_files,
+                            workflow_prompt = excluded.workflow_prompt,
+                            workflow_hash = excluded.workflow_hash,
+                            prompt_hash = excluded.prompt_hash,
+                            content_sha256 = excluded.content_sha256,
+                            has_a1111 = excluded.has_a1111,
+                            is_favorite = CASE WHEN ((files.content_sha256 IS NOT NULL AND excluded.content_sha256 IS NOT NULL AND files.content_sha256 != excluded.content_sha256) OR ((files.content_sha256 IS NULL OR excluded.content_sha256 IS NULL) AND (files.mtime != excluded.mtime OR files.size != excluded.size))) THEN 0 ELSE files.is_favorite END,
+                            ai_caption = CASE WHEN ((files.content_sha256 IS NOT NULL AND excluded.content_sha256 IS NOT NULL AND files.content_sha256 != excluded.content_sha256) OR ((files.content_sha256 IS NULL OR excluded.content_sha256 IS NULL) AND (files.mtime != excluded.mtime OR files.size != excluded.size))) THEN NULL ELSE files.ai_caption END,
+                            ai_embedding = CASE WHEN ((files.content_sha256 IS NOT NULL AND excluded.content_sha256 IS NOT NULL AND files.content_sha256 != excluded.content_sha256) OR ((files.content_sha256 IS NULL OR excluded.content_sha256 IS NULL) AND (files.mtime != excluded.mtime OR files.size != excluded.size))) THEN NULL ELSE files.ai_embedding END,
+                            ai_last_scanned = CASE WHEN ((files.content_sha256 IS NOT NULL AND excluded.content_sha256 IS NOT NULL AND files.content_sha256 != excluded.content_sha256) OR ((files.content_sha256 IS NULL OR excluded.content_sha256 IS NULL) AND (files.mtime != excluded.mtime OR files.size != excluded.size))) THEN 0 ELSE files.ai_last_scanned END,
+                            mtime = excluded.mtime
+                    """, data_to_upsert[i:i + BATCH_SIZE])
 
             conn.commit()
 
-        if data_to_upsert or files_to_delete:
+        if data_to_upsert or files_to_delete or path_fixes:
             yield f"data: {json.dumps({'message': 'Sync complete. Reloading...', 'status': 'reloading', 'current': total_files, 'total': total_files})}\n\n"
         else:
             yield f"data: {json.dumps({'message': 'Folder is up-to-date.', 'status': 'no_changes', 'current': total_files, 'total': total_files})}\n\n"
@@ -4827,6 +5536,7 @@ def gallery_view(folder_key):
                         params.append(param)
             if request.args.get('favorites') == 'true': conditions.append("is_favorite = 1")
             if request.args.get('no_workflow') == 'true': conditions.append("has_workflow = 0")
+            if request.args.get('a1111_only') == 'true': conditions.append("has_a1111 = 1")
             if request.args.get('no_ai_caption') == 'true': 
                 conditions.append("(ai_caption IS NULL OR ai_caption = '')")
 
@@ -5024,6 +5734,7 @@ def gallery_view(folder_key):
     if selected_rating_ranges: active_filters_count += 1
     if request.args.get('favorites') == 'true': active_filters_count += 1
     if request.args.get('no_workflow') == 'true': active_filters_count += 1
+    if request.args.get('a1111_only') == 'true': active_filters_count += 1
     if ENABLE_AI_SEARCH and request.args.get('no_ai_caption') == 'true': active_filters_count += 1
     if is_global_search or is_recursive: active_filters_count += 1
 
@@ -5278,8 +5989,8 @@ def background_rescan_worker(job_id, files_to_process):
 
             if results:
                 conn.executemany("""
-                    INSERT INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned, workflow_files, workflow_prompt, workflow_hash, prompt_hash, content_sha256)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO files (id, path, mtime, name, type, duration, dimensions, has_workflow, size, last_scanned, workflow_files, workflow_prompt, workflow_hash, prompt_hash, content_sha256, has_a1111)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(id) DO UPDATE SET
                         path = excluded.path,
                         name = excluded.name,
@@ -5294,6 +6005,7 @@ def background_rescan_worker(job_id, files_to_process):
                         workflow_hash = excluded.workflow_hash,
                         prompt_hash = excluded.prompt_hash,
                         content_sha256 = excluded.content_sha256,
+                        has_a1111 = excluded.has_a1111,
                         is_favorite = CASE WHEN ((files.content_sha256 IS NOT NULL AND excluded.content_sha256 IS NOT NULL AND files.content_sha256 != excluded.content_sha256) OR ((files.content_sha256 IS NULL OR excluded.content_sha256 IS NULL) AND (files.mtime != excluded.mtime OR files.size != excluded.size))) THEN 0 ELSE files.is_favorite END,
                         ai_caption = CASE WHEN ((files.content_sha256 IS NOT NULL AND excluded.content_sha256 IS NOT NULL AND files.content_sha256 != excluded.content_sha256) OR ((files.content_sha256 IS NULL OR excluded.content_sha256 IS NULL) AND (files.mtime != excluded.mtime OR files.size != excluded.size))) THEN NULL ELSE files.ai_caption END,
                         ai_embedding = CASE WHEN ((files.content_sha256 IS NOT NULL AND excluded.content_sha256 IS NOT NULL AND files.content_sha256 != excluded.content_sha256) OR ((files.content_sha256 IS NULL OR excluded.content_sha256 IS NULL) AND (files.mtime != excluded.mtime OR files.size != excluded.size))) THEN NULL ELSE files.ai_embedding END,
@@ -5379,28 +6091,57 @@ def check_rescan_status(job_id):
     # Return copy of job data
     return jsonify(job)
     
+# [PATCHED: create_folder_in_move_dialog_v1]
 @app.route('/galleryout/create_folder', methods=['POST'])
 @management_api_only
 def create_folder():
-    data = request.json
+    data = request.get_json(silent=True) or {}
     parent_key = data.get('parent_key', '_root_')
 
-    raw_name = data.get('folder_name', '').strip()
-    folder_name = re.sub(r'[\\/:*?"<>|]', '', raw_name)
-    
-    if not folder_name or folder_name in ['.', '..']: 
+    raw_name = data.get('folder_name', '')
+    if not isinstance(raw_name, str):
         return jsonify({'status': 'error', 'message': 'Invalid folder name provided.'}), 400
-        
+    raw_name = raw_name.strip()
+    folder_name = re.sub(r'[\\/:*?"<>|\x00-\x1f]', '', raw_name).strip()
+    if os.name == 'nt':
+        folder_name = folder_name.rstrip('. ')
+
+    if not folder_name or folder_name in ['.', '..']:
+        return jsonify({'status': 'error', 'message': 'Invalid folder name provided.'}), 400
+
     folders = get_dynamic_folder_config()
-    if parent_key not in folders: return jsonify({'status': 'error', 'message': 'Parent folder not found.'}), 404
+    if parent_key not in folders:
+        return jsonify({'status': 'error', 'message': 'Parent folder not found.'}), 404
     parent_path = folders[parent_key]['path']
     new_folder_path = os.path.join(parent_path, folder_name)
+
+    parent_os_path = os.path.normpath(parent_path)
+    new_os_path = os.path.normpath(new_folder_path)
+    if os.path.dirname(new_os_path) != parent_os_path or os.path.basename(new_os_path) != folder_name:
+        return jsonify({'status': 'error', 'message': 'Invalid folder name provided.'}), 400
+
     try:
-        os.makedirs(new_folder_path, exist_ok=False)
-        sync_folder_on_demand(parent_path)
-        return jsonify({'status': 'success', 'message': f'Folder "{folder_name}" created successfully.'})
-    except FileExistsError: return jsonify({'status': 'error', 'message': 'Folder already exists.'}), 400
-    except Exception as e: return jsonify({'status': 'error', 'message': str(e)}), 500
+        os.makedirs(new_os_path, exist_ok=False)
+        refreshed_folders = get_dynamic_folder_config(force_refresh=True)
+        parent_rel = folders[parent_key].get('relative_path', '')
+        new_rel = f"{parent_rel}/{folder_name}" if parent_rel else folder_name
+        new_folder_key = path_to_key(new_rel)
+        if new_folder_key not in refreshed_folders:
+            for child_key in refreshed_folders.get(parent_key, {}).get('children', []):
+                if refreshed_folders.get(child_key, {}).get('display_name') == folder_name:
+                    new_folder_key = child_key
+                    break
+        return jsonify({
+            'status': 'success',
+            'message': f'Folder "{folder_name}" created successfully.',
+            'new_folder_key': new_folder_key,
+            'parent_key': parent_key,
+            'folders': refreshed_folders
+        })
+    except FileExistsError:
+        return jsonify({'status': 'error', 'message': 'Folder already exists.'}), 400
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/galleryout/mount_folder', methods=['POST'])
 @management_api_only
@@ -5733,112 +6474,425 @@ def serve_zip_file(filename):
 @app.route('/galleryout/rename_folder/<string:folder_key>', methods=['POST'])
 @management_api_only
 def rename_folder(folder_key):
-    if folder_key in PROTECTED_FOLDER_KEYS: return jsonify({'status': 'error', 'message': 'This folder cannot be renamed.'}), 403
-    
-    raw_name = request.json.get('new_name', '').strip()
-    new_name = re.sub(r'[\\/:*?"<>|]', '', raw_name)
-    
-    if not new_name or new_name in ['.', '..']: 
+    if folder_key in PROTECTED_FOLDER_KEYS:
+        return jsonify({'status': 'error', 'message': 'This folder cannot be renamed.'}), 403
+
+    req_data = request.get_json(silent=True) or {}
+    raw_name = req_data.get('new_name', '')
+    if not isinstance(raw_name, str):
         return jsonify({'status': 'error', 'message': 'Invalid name.'}), 400
-        
+    raw_name = raw_name.strip()
+    new_name = re.sub(r'[\\/:*?"<>|\x00-\x1f]', '', raw_name).strip()
+    if os.name == 'nt':
+        new_name = new_name.rstrip('. ')
+
+    if not new_name or new_name in ['.', '..']:
+        return jsonify({'status': 'error', 'message': 'Invalid name.'}), 400
+
     folders = get_dynamic_folder_config()
-    if folder_key not in folders: return jsonify({'status': 'error', 'message': 'Folder not found.'}), 400
-    
-    # 1. GET EXACT FOLDER PATH FROM CONFIG (Usually has forward slashes '/')
+    if folder_key not in folders:
+        return jsonify({'status': 'error', 'message': 'Folder not found.'}), 400
+    if folders[folder_key].get('is_mount'):
+        return jsonify({'status': 'error', 'message': 'Mounted folders cannot be renamed.'}), 403
+
     old_folder_path = folders[folder_key]['path']
-    
-    # 2. CONSTRUCT NEW FOLDER PATH (Preserving forward slashes structure)
-    # We do NOT use os.path.join here for the folder part because it might force backslashes on Windows,
-    # breaking consistency with get_dynamic_folder_config which enforces '/'.
-    # We strip the last segment and append the new name.
+
     if '/' in old_folder_path:
         parent_dir = old_folder_path.rsplit('/', 1)[0]
-        new_folder_path = f"{parent_dir}/{new_name}"
+        if not parent_dir:
+            parent_dir = '/'
+        elif os.name == 'nt' and len(parent_dir) == 2 and parent_dir[1] == ':':
+            parent_dir = parent_dir + '/'
+        new_folder_path = f"{parent_dir.rstrip('/')}/{new_name}"
     else:
-        # Fallback for systems strictly using backslash (unlikely given your logs, but safe)
         parent_dir = os.path.dirname(old_folder_path)
         new_folder_path = os.path.join(parent_dir, new_name)
-    
-    # Check existence (using normpath for OS safety check)
-    if os.path.exists(os.path.normpath(new_folder_path)): 
-        return jsonify({'status': 'error', 'message': 'A folder with this name already exists.'}), 400
-    
+
+    old_os_path = os.path.normpath(old_folder_path)
+    new_os_path = os.path.normpath(new_folder_path)
+
+    if os.path.dirname(new_os_path) != os.path.normpath(parent_dir) or os.path.basename(new_os_path) != new_name:
+        return jsonify({'status': 'error', 'message': 'Invalid destination path.'}), 400
+
+    if new_os_path == old_os_path:
+        return jsonify({'status': 'error', 'message': 'Folder name unchanged.'}), 400
+
+    if os.path.exists(new_os_path):
+        is_same_target = False
+        try:
+            is_same_target = os.path.samefile(old_os_path, new_os_path)
+        except OSError:
+            is_same_target = (os.path.normcase(old_os_path) == os.path.normcase(new_os_path))
+        if not is_same_target:
+            return jsonify({'status': 'error', 'message': 'A folder with this name already exists.'}), 400
+
     try:
         with get_db_connection() as conn:
-            all_files_cursor = conn.execute("SELECT id, path FROM files")
-            
-            update_data = []
-            ids_to_clean_collisions = []
-            
-            # Prepare check
             is_windows = (os.name == 'nt')
-            check_old = old_folder_path.lower() if is_windows else old_folder_path
-            
-            for row in all_files_cursor:
+            old_norm_slash = old_os_path.replace('\\', '/').rstrip('/')
+            old_cmp = old_norm_slash.lower() if is_windows else old_norm_slash
+
+            like_escaped = old_norm_slash.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '/%'
+            candidate_rows = conn.execute(
+                "SELECT id, path FROM files WHERE REPLACE(path, '\\', '/') LIKE ? ESCAPE '\\'",
+                (like_escaped,)
+            ).fetchall()
+
+            if is_windows and not candidate_rows:
+                candidate_rows = conn.execute("SELECT id, path FROM files").fetchall()
+
+            update_data = []
+            old_ids_set = set()
+            seen_new_ids = {}
+            duplicate_old_ids = []
+            queue_updates = []
+
+            for row in candidate_rows:
                 current_path = row['path']
-                check_curr = current_path.lower() if is_windows else current_path
-                
-                # Check containment
-                if check_curr.startswith(check_old.rstrip('/\\') + os.sep) or check_curr.startswith(check_old.rstrip('/\\') + '/'):
-                    
-                    # 1. EXTRACT FILENAME
-                    # We rely on os.path.basename. It works on "C:/A/B\file.txt" correctly on Windows.
-                    filename = os.path.basename(current_path)
-                    
-                    # 2. CONSTRUCT NEW PATH EXACTLY LIKE THE SCANNER DOES
-                    # Scanner logic: os.path.join(folder_path_from_config, filename)
-                    # This produces "C:/.../NewName\filename.ext" on Windows.
-                    relative_path = os.path.relpath(current_path, old_folder_path)
-                    new_file_path = os.path.join(new_folder_path, relative_path)
-                    
-                    # 3. GENERATE ID
+                curr_norm_slash = os.path.normpath(current_path).replace('\\', '/')
+                curr_cmp = curr_norm_slash.lower() if is_windows else curr_norm_slash
+
+                if curr_cmp.startswith(old_cmp + '/'):
+                    rel_slash = curr_norm_slash[len(old_norm_slash) + 1:]
+                    if '/' in rel_slash:
+                        rel_dir, filename = rel_slash.rsplit('/', 1)
+                        target_folder = f"{new_folder_path}/{rel_dir}"
+                    else:
+                        filename = rel_slash
+                        target_folder = new_folder_path
+
+                    new_file_path = os.path.join(target_folder, filename)
                     new_id = hashlib.md5(new_file_path.encode()).hexdigest()
-                    
-                    update_data.append((new_id, new_file_path, row['id']))
-                    ids_to_clean_collisions.append(new_id)
+                    old_id = row['id']
 
-            # Cleanup Ghost records
-            if ids_to_clean_collisions:
-                placeholders = ','.join(['?'] * len(ids_to_clean_collisions))
-                conn.execute(f"DELETE FROM files WHERE id IN ({placeholders})", ids_to_clean_collisions)
+                    if new_id in seen_new_ids:
+                        duplicate_old_ids.append(old_id)
+                        continue
 
-            # Physical Rename (Use normpath for OS call to be safe)
-            os.rename(os.path.normpath(old_folder_path), os.path.normpath(new_folder_path))
-            
-            # Atomic DB Update
-            if update_data: 
+                    seen_new_ids[new_id] = old_id
+                    old_ids_set.add(old_id)
+                    if new_id != old_id or new_file_path != current_path:
+                        update_data.append((new_id, new_file_path, old_id))
+                        queue_updates.append((
+                            get_standardized_path(new_file_path),
+                            new_id,
+                            get_standardized_path(current_path),
+                            old_id
+                        ))
+
+            ids_to_clean_collisions = [nid for nid in seen_new_ids.keys() if nid not in old_ids_set]
+
+            all_ids_to_delete = duplicate_old_ids + ids_to_clean_collisions
+            for i in range(0, len(all_ids_to_delete), 500):
+                chunk = all_ids_to_delete[i:i + 500]
+                placeholders = ','.join(['?'] * len(chunk))
+                conn.execute(f"DELETE FROM files WHERE id IN ({placeholders})", chunk)
+
+            if update_data:
                 conn.executemany("UPDATE files SET id = ?, path = ? WHERE id = ?", update_data)
-            
-            # Update Watch List
+
+            if queue_updates:
+                conn.executemany(
+                    "UPDATE OR REPLACE ai_indexing_queue SET file_path = ?, file_id = ? WHERE file_path = ? OR file_id = ?",
+                    queue_updates
+                )
+
             watched_folders = conn.execute("SELECT path FROM ai_watched_folders").fetchall()
             for row in watched_folders:
                 w_path = row['path']
-                w_check = w_path.lower() if is_windows else w_path
-                
-                if w_check == check_old:
+                w_norm_slash = os.path.normpath(w_path).replace('\\', '/').rstrip('/')
+                w_cmp = w_norm_slash.lower() if is_windows else w_norm_slash
+
+                if w_cmp == old_cmp:
                     conn.execute("UPDATE ai_watched_folders SET path = ? WHERE path = ?", (new_folder_path, w_path))
-                elif w_check.startswith(check_old.rstrip('/\\') + os.sep) or w_check.startswith(check_old.rstrip('/\\') + '/'):
-                    # Subfolder logic: simple string replace to preserve structure
-                    # We use standard string replacement which works because we enforced '/' structure above
-                    if is_windows:
-                        # Case insensitive replace is tricky, let's assume structure holds
-                        # We reconstruct the tail
-                        suffix = w_path[len(old_folder_path):]
-                        new_w_path = new_folder_path + suffix
-                        conn.execute("UPDATE ai_watched_folders SET path = ? WHERE path = ?", (new_w_path, w_path))
-                    else:
-                        new_w_path = w_path.replace(old_folder_path, new_folder_path, 1)
-                        conn.execute("UPDATE ai_watched_folders SET path = ? WHERE path = ?", (new_w_path, w_path))
+                elif w_cmp.startswith(old_cmp + '/'):
+                    rel_w = w_norm_slash[len(old_norm_slash) + 1:]
+                    new_w_path = f"{new_folder_path}/{rel_w}"
+                    conn.execute("UPDATE ai_watched_folders SET path = ? WHERE path = ?", (new_w_path, w_path))
+
+            try:
+                os.rename(old_os_path, new_os_path)
+            except Exception:
+                conn.rollback()
+                raise
 
             conn.commit()
-            
+
         get_dynamic_folder_config(force_refresh=True)
         return jsonify({'status': 'success', 'message': 'Folder renamed.'})
-        
-    except Exception as e: 
+
+    except Exception as e:
         print(f"Rename Error: {e}")
         return jsonify({'status': 'error', 'message': f'Error: {e}'}), 500
-        
+
+# [PATCHED: smart_local_move_folder_v4_1]
+def _clean_realpath(path_str):
+    rp = os.path.realpath(path_str)
+    if os.name == 'nt':
+        if rp.startswith('\\\\?\\UNC\\'):
+            rp = '\\\\' + rp[8:]
+        elif rp.startswith('\\\\?\\'):
+            rp = rp[4:]
+    return os.path.normpath(rp)
+
+
+def _is_link_or_junction(path_str):
+    try:
+        if os.path.islink(path_str):
+            return True
+        st = os.lstat(path_str)
+        if hasattr(st, 'st_file_attributes') and (st.st_file_attributes & 0x400):
+            return True
+    except OSError:
+        return True
+    return False
+
+
+def _is_network_path(real_path):
+    if os.name == 'nt':
+        if real_path.startswith('\\\\'):
+            return True
+        drive, _ = os.path.splitdrive(real_path)
+        if drive:
+            try:
+                import ctypes
+                drive_root = drive.rstrip('\\/') + '\\'
+                drive_type = ctypes.windll.kernel32.GetDriveTypeW(drive_root)
+                if drive_type in (0, 1, 4):
+                    return True
+            except Exception:
+                pass
+        return False
+
+    remote_fs = {
+        'cifs', 'smb', 'smb3', 'smbfs', 'nfs', 'nfs4',
+        'sshfs', 'fuse.sshfs', 'fuse.rclone', 'davfs', 'fuse.davfs',
+        'ncpfs', 'afs', 'coda'
+    }
+    if os.path.isfile('/proc/mounts'):
+        try:
+            best_len = -1
+            best_fstype = ''
+            norm_p = os.path.normpath(real_path)
+            with open('/proc/mounts', 'r', encoding='utf-8', errors='ignore') as f:
+                for line in f:
+                    parts = line.split()
+                    if len(parts) >= 3:
+                        mnt = parts[1].replace('\\040', ' ')
+                        fstype = parts[2].lower()
+                        if norm_p == mnt or (mnt == '/' and norm_p.startswith('/')) or norm_p.startswith(mnt.rstrip('/') + '/'):
+                            if len(mnt) > best_len:
+                                best_len = len(mnt)
+                                best_fstype = fstype
+            if best_fstype in remote_fs:
+                return True
+        except Exception:
+            pass
+        return False
+
+    if sys.platform == 'darwin':
+        try:
+            res = subprocess.run(['df', '-P', real_path], capture_output=True, text=True, timeout=4)
+            if res.returncode == 0:
+                lines = [ln.strip() for ln in res.stdout.splitlines() if ln.strip()]
+                if len(lines) >= 2:
+                    fs_src = lines[-1].split()[0]
+                    if fs_src.startswith('//') or (':' in fs_src and not fs_src.startswith('/')):
+                        return True
+        except Exception:
+            pass
+
+    return False
+
+
+@app.route('/galleryout/move_folder/<string:folder_key>', methods=['POST'])
+@management_api_only
+def move_folder(folder_key):
+    if folder_key in PROTECTED_FOLDER_KEYS:
+        return jsonify({'status': 'error', 'message': 'This protected folder cannot be moved.'}), 403
+
+    req_data = request.get_json(silent=True) or {}
+    dest_parent_key = req_data.get('destination_parent_key', '').strip()
+    if not dest_parent_key:
+        return jsonify({'status': 'error', 'message': 'Destination folder is required.'}), 400
+
+    folders = get_dynamic_folder_config(force_refresh=True)
+    if folder_key not in folders:
+        return jsonify({'status': 'error', 'message': 'Source folder not found.'}), 404
+    if dest_parent_key not in folders:
+        return jsonify({'status': 'error', 'message': 'Destination folder not found.'}), 404
+
+    if folders[folder_key].get('is_mount'):
+        return jsonify({'status': 'error', 'message': 'Mount root folders cannot be moved (you can move regular subfolders inside local mounts).'}), 403
+
+    old_folder_path = folders[folder_key]['path']
+    dest_folder_slash = folders[dest_parent_key]['path']
+    folder_name = folders[folder_key]['display_name']
+
+    old_os_path = os.path.normpath(old_folder_path)
+    dest_os_path = os.path.normpath(dest_folder_slash)
+
+    if _is_link_or_junction(old_os_path):
+        return jsonify({'status': 'error', 'message': 'Symlinks and Windows junctions themselves cannot be moved.'}), 403
+
+    old_real = _clean_realpath(old_os_path)
+    dest_real = _clean_realpath(dest_os_path)
+
+    if not os.path.isdir(old_real) or not os.path.isdir(dest_real):
+        return jsonify({'status': 'error', 'message': 'Source or destination folder does not exist on disk.'}), 404
+
+    if _is_network_path(old_real) or _is_network_path(dest_real):
+        return jsonify({
+            'status': 'error',
+            'message': 'Cannot move folders on network/remote drives from the web UI. To relocate folders on a network drive without losing favorites, collections, ratings, or comments, stop ALL SmartGallery instances, move the folder on disk, and run the offline utility sg_migrate_paths.py (see SG_MIGRATE_PATHS_GUIDE.md).'
+        }), 403
+
+    if os.path.normcase(os.path.dirname(old_os_path)) == os.path.normcase(dest_os_path):
+        return jsonify({'status': 'error', 'message': 'Folder is already inside the selected destination.'}), 400
+
+    old_real_cmp = os.path.normcase(old_real)
+    dest_real_cmp = os.path.normcase(dest_real)
+    if dest_real_cmp == old_real_cmp or dest_real_cmp.startswith(old_real_cmp.rstrip(os.sep) + os.sep):
+        return jsonify({'status': 'error', 'message': 'Cannot move a folder into itself or one of its subfolders.'}), 400
+
+    try:
+        if os.stat(old_real).st_dev != os.stat(dest_real).st_dev:
+            return jsonify({
+                'status': 'error',
+                'message': 'Cannot move folders across different drives or volumes from the web UI. To move a folder to another drive/volume without losing favorites, collections, ratings, or comments, stop ALL SmartGallery instances, move the folder on disk, and run the offline utility sg_migrate_paths.py (see SG_MIGRATE_PATHS_GUIDE.md).'
+            }), 400
+    except OSError as e:
+        return jsonify({'status': 'error', 'message': f'Filesystem check failed: {e}'}), 500
+
+    dest_prefix = dest_folder_slash.rstrip('/')
+    new_folder_path = f"{dest_prefix}/{folder_name}" if dest_prefix else f"/{folder_name}"
+    new_real = os.path.normpath(os.path.join(dest_real, folder_name))
+
+    if os.path.dirname(new_real) != dest_real or os.path.basename(new_real) != folder_name:
+        return jsonify({'status': 'error', 'message': 'Invalid destination path.'}), 400
+
+    if os.path.exists(new_real):
+        return jsonify({'status': 'error', 'message': f'A folder named "{folder_name}" already exists in the destination.'}), 400
+
+    try:
+        with get_db_connection() as conn:
+            is_windows = (os.name == 'nt')
+            old_norm_slash = old_os_path.replace('\\', '/').rstrip('/')
+            old_cmp = old_norm_slash.lower() if is_windows else old_norm_slash
+
+            mount_rows = conn.execute("SELECT path FROM mounted_folders").fetchall()
+            for mr in mount_rows:
+                mp_norm = os.path.normpath(mr['path']).replace('\\', '/').rstrip('/')
+                mp_cmp = mp_norm.lower() if is_windows else mp_norm
+                if mp_cmp == old_cmp or mp_cmp.startswith(old_cmp + '/'):
+                    return jsonify({'status': 'error', 'message': 'Cannot move a folder that contains a mounted link.'}), 403
+
+            like_escaped = old_norm_slash.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '/%'
+            candidate_rows = conn.execute(
+                "SELECT id, path FROM files WHERE REPLACE(path, '\\', '/') LIKE ? ESCAPE '\\'",
+                (like_escaped,)
+            ).fetchall()
+
+            if is_windows and not candidate_rows:
+                candidate_rows = conn.execute("SELECT id, path FROM files").fetchall()
+
+            update_data = []
+            old_ids_set = set()
+            seen_new_ids = {}
+            duplicate_old_ids = []
+            queue_updates = []
+
+            for row in candidate_rows:
+                current_path = row['path']
+                curr_norm_slash = os.path.normpath(current_path).replace('\\', '/')
+                curr_cmp = curr_norm_slash.lower() if is_windows else curr_norm_slash
+
+                if curr_cmp.startswith(old_cmp + '/'):
+                    rel_slash = curr_norm_slash[len(old_norm_slash) + 1:]
+                    if '/' in rel_slash:
+                        rel_dir, filename = rel_slash.rsplit('/', 1)
+                        target_folder = f"{new_folder_path}/{rel_dir}"
+                    else:
+                        filename = rel_slash
+                        target_folder = new_folder_path
+
+                    new_file_path = os.path.join(target_folder, filename)
+                    new_id = hashlib.md5(new_file_path.encode()).hexdigest()
+                    old_id = row['id']
+
+                    if new_id in seen_new_ids:
+                        duplicate_old_ids.append(old_id)
+                        continue
+
+                    seen_new_ids[new_id] = old_id
+                    old_ids_set.add(old_id)
+                    if new_id != old_id or new_file_path != current_path:
+                        update_data.append((new_id, new_file_path, old_id))
+                        queue_updates.append((
+                            get_standardized_path(new_file_path),
+                            new_id,
+                            get_standardized_path(current_path),
+                            old_id
+                        ))
+
+            ids_to_clean_collisions = [nid for nid in seen_new_ids.keys() if nid not in old_ids_set]
+            all_ids_to_delete = duplicate_old_ids + ids_to_clean_collisions
+            for i in range(0, len(all_ids_to_delete), 500):
+                chunk = all_ids_to_delete[i:i + 500]
+                placeholders = ','.join(['?'] * len(chunk))
+                conn.execute(f"DELETE FROM files WHERE id IN ({placeholders})", chunk)
+
+            if update_data:
+                conn.executemany("UPDATE files SET id = ?, path = ? WHERE id = ?", update_data)
+
+            if queue_updates:
+                conn.executemany(
+                    "UPDATE OR REPLACE ai_indexing_queue SET file_path = ?, file_id = ? WHERE file_path = ? OR file_id = ?",
+                    queue_updates
+                )
+
+            watched_folders = conn.execute("SELECT path FROM ai_watched_folders").fetchall()
+            for row in watched_folders:
+                w_path = row['path']
+                w_norm_slash = os.path.normpath(w_path).replace('\\', '/').rstrip('/')
+                w_cmp = w_norm_slash.lower() if is_windows else w_norm_slash
+
+                if w_cmp == old_cmp:
+                    conn.execute("UPDATE ai_watched_folders SET path = ? WHERE path = ?", (new_folder_path, w_path))
+                elif w_cmp.startswith(old_cmp + '/'):
+                    rel_w = w_norm_slash[len(old_norm_slash) + 1:]
+                    new_w_path = f"{new_folder_path}/{rel_w}"
+                    conn.execute("UPDATE ai_watched_folders SET path = ? WHERE path = ?", (new_w_path, w_path))
+
+            try:
+                os.rename(old_real, new_real)
+            except Exception:
+                conn.rollback()
+                raise
+
+            conn.commit()
+
+        refreshed_folders = get_dynamic_folder_config(force_refresh=True)
+        dest_rel = folders[dest_parent_key].get('relative_path', '')
+        new_rel = f"{dest_rel}/{folder_name}" if dest_rel else folder_name
+        new_folder_key = path_to_key(new_rel)
+        if new_folder_key not in refreshed_folders:
+            for child_key in refreshed_folders.get(dest_parent_key, {}).get('children', []):
+                if refreshed_folders.get(child_key, {}).get('display_name') == folder_name:
+                    new_folder_key = child_key
+                    break
+
+        return jsonify({
+            'status': 'success',
+            'message': f'Folder "{folder_name}" moved successfully.',
+            'new_folder_key': new_folder_key
+        })
+
+    except Exception as e:
+        print(f"Move Folder Error: {e}")
+        return jsonify({'status': 'error', 'message': f'Error moving folder: {e}'}), 500
+
+
 @app.route('/galleryout/delete_folder/<string:folder_key>', methods=['POST'])
 @management_api_only
 def delete_folder(folder_key):
@@ -5954,7 +7008,7 @@ def move_batch():
                     SELECT 
                         path, name, size, has_workflow, is_favorite, type, duration, dimensions,
                         ai_last_scanned, ai_caption, ai_embedding, ai_error, workflow_files, workflow_prompt,
-                        workflow_hash, prompt_hash, content_sha256
+                        workflow_hash, prompt_hash, content_sha256, has_a1111
                     FROM files WHERE id = ?
                 """
                 file_info_row = conn.execute(query_fetch, (file_id,)).fetchone()
@@ -5984,7 +7038,8 @@ def move_batch():
                     'workflow_prompt': file_info['workflow_prompt'],
                     'workflow_hash': file_info.get('workflow_hash', ''),
                     'prompt_hash': file_info.get('prompt_hash', ''),
-                    'content_sha256': file_info.get('content_sha256')
+                    'content_sha256': file_info.get('content_sha256'),
+                    'has_a1111': int(file_info.get('has_a1111') or 0)
                 }
                 
                 # Check Source vs Dest (OS Agnostic comparison)
@@ -6027,7 +7082,7 @@ def move_batch():
                             type = ?, duration = ?, dimensions = ?,
                             ai_last_scanned = ?, ai_caption = ?, ai_embedding = ?, ai_error = ?,
                             workflow_files = ?, workflow_prompt = ?,
-                            workflow_hash = ?, prompt_hash = ?, content_sha256 = ?
+                            workflow_hash = ?, prompt_hash = ?, content_sha256 = ?, has_a1111 = ?
                         WHERE id = ?
                     """
                     conn.execute(query_merge, (
@@ -6037,7 +7092,7 @@ def move_batch():
                         meta['ai_last_scanned'], meta['ai_caption'], meta['ai_embedding'], meta['ai_error'],
                         meta['workflow_files'], 
                         meta['workflow_prompt'],
-                        meta['workflow_hash'], meta['prompt_hash'], meta['content_sha256'],
+                        meta['workflow_hash'], meta['prompt_hash'], meta['content_sha256'], meta['has_a1111'],
                         new_id
                     ))
                     conn.execute("DELETE FROM files WHERE id = ?", (file_id,))
@@ -6119,8 +7174,8 @@ def copy_batch():
                         id, path, mtime, name, type, duration, dimensions, has_workflow, 
                         size, is_favorite, last_scanned, workflow_files, workflow_prompt,
                         ai_last_scanned, ai_caption, ai_embedding, ai_error,
-                        workflow_hash, prompt_hash, content_sha256
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        workflow_hash, prompt_hash, content_sha256, has_a1111
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     new_id, final_dest_path, new_mtime, final_filename, 
                     file_info['type'], file_info['duration'], file_info['dimensions'], 
@@ -6129,7 +7184,8 @@ def copy_batch():
                     file_info['last_scanned'], 
                     file_info['workflow_files'], file_info['workflow_prompt'],
                     file_info['ai_last_scanned'], file_info['ai_caption'], file_info['ai_embedding'], file_info['ai_error'],
-                    file_info.get('workflow_hash', ''), file_info.get('prompt_hash', ''), file_info.get('content_sha256')
+                    file_info.get('workflow_hash', ''), file_info.get('prompt_hash', ''), file_info.get('content_sha256'),
+                    int(file_info.get('has_a1111') or 0)
                 ))
                 
                 copied_count += 1
@@ -6289,7 +7345,7 @@ def rename_file(file_id):
                 SELECT 
                     path, name, size, has_workflow, is_favorite, type, duration, dimensions,
                     ai_last_scanned, ai_caption, ai_embedding, ai_error, workflow_files, workflow_prompt,
-                    workflow_hash, prompt_hash, content_sha256
+                    workflow_hash, prompt_hash, content_sha256, has_a1111
                 FROM files WHERE id = ?
             """
             file_info_row = conn.execute(query_fetch, (file_id,)).fetchone()
@@ -6317,7 +7373,8 @@ def rename_file(file_id):
                 'workflow_prompt': file_info['workflow_prompt'],
                 'workflow_hash': file_info.get('workflow_hash', ''),
                 'prompt_hash': file_info.get('prompt_hash', ''),
-                    'content_sha256': file_info.get('content_sha256')
+                'content_sha256': file_info.get('content_sha256'),
+                'has_a1111': int(file_info.get('has_a1111') or 0)
             }
             
             # Extension logic
@@ -6351,7 +7408,7 @@ def rename_file(file_id):
                         type = ?, duration = ?, dimensions = ?,
                         ai_last_scanned = ?, ai_caption = ?, ai_embedding = ?, ai_error = ?,
                         workflow_files = ?, workflow_prompt = ?,
-                        workflow_hash = ?, prompt_hash = ?, content_sha256 = ?
+                        workflow_hash = ?, prompt_hash = ?, content_sha256 = ?, has_a1111 = ?
                     WHERE id = ?
                 """
                 conn.execute(query_merge, (
@@ -6361,7 +7418,7 @@ def rename_file(file_id):
                     meta['ai_last_scanned'], meta['ai_caption'], meta['ai_embedding'], meta['ai_error'],
                     meta['workflow_files'], 
                     meta['workflow_prompt'],
-                    meta['workflow_hash'], meta['prompt_hash'], meta['content_sha256'],
+                    meta['workflow_hash'], meta['prompt_hash'], meta['content_sha256'], meta['has_a1111'],
                     new_id
                 ))
                 conn.execute("DELETE FROM files WHERE id = ?", (file_id,))
@@ -6643,7 +7700,7 @@ def serve_thumbnail(file_id):
                     raise OSError('Image changed during processing')
                 columns = ('id', 'path', 'mtime', 'name', 'type', 'duration', 'dimensions',
                            'has_workflow', 'size', 'last_scanned', 'workflow_files',
-                           'workflow_prompt', 'workflow_hash', 'prompt_hash', 'content_sha256')
+                           'workflow_prompt', 'workflow_hash', 'prompt_hash', 'content_sha256', 'has_a1111')
                 refreshed = dict(zip(columns, processed))
                 with get_db_connection() as conn:
                     assignments = ', '.join(column + ' = ?' for column in columns[2:])
@@ -8043,27 +9100,11 @@ def get_generation_metadata(file_id):
     if not info:
         return jsonify({'message': 'File not found.'}), 404
     try:
-        raw = extract_a1111_parameters(info['path'])
-        meta = parse_webui_metadata_fields(raw) if raw else None
-        if meta is None:
-            workflow = extract_workflow(info['path'], target_type='api')
-            if workflow:
-                data = json.loads(workflow)
-                # The graph tracer expects the API node map, not UI links/widgets.
-                if isinstance(data, dict) and 'nodes' not in data:
-                    meta = ComfyMetadataParser(data).parse()
-                    meta['source'] = 'ComfyUI'
-        if meta and not any(meta.get(k) is not None and meta.get(k) != '' and meta.get(k) != []
-                            for k in ('positive_prompt', 'negative_prompt', 'model', 'loras', 'seed', 'steps', 'sampler')):
-            meta = None
-        if meta:
-            # JavaScript numbers cannot represent all seeds exactly.
-            if meta.get('seed') is not None:
-                meta['seed'] = str(meta['seed'])
-            if not meta.get('width') or not meta.get('height'):
-                dims = re.fullmatch(r'(\d+)x(\d+)', info.get('dimensions') or '')
-                if dims:
-                    meta['width'], meta['height'] = dims.groups()
+        meta = _extract_combined_generation_metadata(
+            info['path'],
+            dimensions=info.get('dimensions'),
+            has_workflow_hint=bool(info.get('has_workflow'))
+        )
         response = jsonify({'metadata': meta})
         response.headers['Cache-Control'] = 'no-store'
         return response
@@ -8098,6 +9139,9 @@ def get_file_full_details(file_id):
 
             if should_strip_metadata():
                 file_data['has_workflow'] = 0
+                file_data['has_a1111'] = 0
+                file_data['workflow_files'] = ''
+                file_data['workflow_prompt'] = ''
 
             generation_metadata_text = None
             if not should_strip_metadata() and file_data.get('type') in ('image', 'animated_image'):
@@ -8106,29 +9150,15 @@ def get_file_full_details(file_id):
                     generation_metadata_text = parse_webui_metadata(raw_params)
             file_data['generation_metadata'] = generation_metadata_text
 
-            # Extract structured generation metadata for Full Asset Details modal
+            # Extract structured generation metadata for Full Asset Details modal (supports hybrid ComfyUI+A1111)
             structured_gen_metadata = None
             if not should_strip_metadata():
                 try:
-                    raw_a1111 = extract_a1111_parameters(file_data['path'])
-                    structured_gen_metadata = parse_webui_metadata_fields(raw_a1111) if raw_a1111 else None
-                    if structured_gen_metadata is None and file_data.get('has_workflow'):
-                        workflow_api = extract_workflow(file_data['path'], target_type='api')
-                        if workflow_api:
-                            data_wf = json.loads(workflow_api)
-                            if isinstance(data_wf, dict) and 'nodes' not in data_wf:
-                                structured_gen_metadata = ComfyMetadataParser(data_wf).parse()
-                                structured_gen_metadata['source'] = 'ComfyUI'
-                    if structured_gen_metadata and not any(structured_gen_metadata.get(k) is not None and structured_gen_metadata.get(k) != '' and structured_gen_metadata.get(k) != []
-                                        for k in ('positive_prompt', 'negative_prompt', 'model', 'loras', 'seed', 'steps', 'sampler')):
-                        structured_gen_metadata = None
-                    if structured_gen_metadata:
-                        if structured_gen_metadata.get('seed') is not None:
-                            structured_gen_metadata['seed'] = str(structured_gen_metadata['seed'])
-                        if not structured_gen_metadata.get('width') or not structured_gen_metadata.get('height'):
-                            dims_match = re.fullmatch(r'(\d+)x(\d+)', file_data.get('dimensions') or '')
-                            if dims_match:
-                                structured_gen_metadata['width'], structured_gen_metadata['height'] = dims_match.groups()
+                    structured_gen_metadata = _extract_combined_generation_metadata(
+                        file_data['path'],
+                        dimensions=file_data.get('dimensions'),
+                        has_workflow_hint=bool(file_data.get('has_workflow'))
+                    )
                 except Exception as e:
                     print(f"Full details structured metadata extraction notice: {e}")
                     structured_gen_metadata = None
@@ -8226,10 +9256,10 @@ def get_file_full_details(file_id):
                                 })
                     except Exception: pass
 
-                if file_data.get('workflow_files'):
-                    for item in file_data['workflow_files'].split(' ||| '):
-                        if item.strip():
-                            models_used.append(os.path.basename(item.strip()))
+            if not should_strip_metadata() and file_data.get('workflow_files'):
+                for item in file_data['workflow_files'].split(' ||| '):
+                    if item.strip():
+                        models_used.append(os.path.basename(item.strip()))
 
             return jsonify({
                 'status': 'success',
@@ -8711,6 +9741,10 @@ def collection_view(coll_id):
         
     if request.args.get('no_workflow') == 'true': 
         conditions.append("f.has_workflow = 0")
+        active_filters_count += 1
+
+    if request.args.get('a1111_only') == 'true':
+        conditions.append("f.has_a1111 = 1")
         active_filters_count += 1
         
     if ENABLE_AI_SEARCH and request.args.get('no_ai_caption') == 'true': 
@@ -11445,7 +12479,7 @@ def compute_workflow_hashes(filepath, wf_json=None):
 
         return workflow_hash, prompt_hash
     except Exception:
-        return '',  
+        return '', ''
 
 def backfill_audio_durations(conn=None):
     """
@@ -11564,12 +12598,18 @@ def backfill_unhashed_workflows(conn=None, force_all=False):
             wf_json = extract_workflow(fpath, target_type='api')
             if not wf_json:
                 wf_json = extract_workflow(fpath, target_type='ui')
-            if not wf_json:
-                return ('', '', '', '', fid)
-            wf_files = extract_workflow_files_string(wf_json)
-            wf_prompt = extract_workflow_prompt_string(wf_json)
-            wf_h, pr_h = compute_workflow_hashes(fpath, wf_json=wf_json)
-            return (wf_files, wf_prompt, wf_h, pr_h, fid)
+            wf_files = extract_workflow_files_string(wf_json) if wf_json else ''
+            wf_prompt = extract_workflow_prompt_string(wf_json) if wf_json else ''
+            wf_h, pr_h = compute_workflow_hashes(fpath, wf_json=wf_json) if wf_json else ('', '')
+            has_a1111 = 0
+            a1111_raw = extract_a1111_parameters(fpath)
+            if a1111_raw:
+                has_a1111 = 1
+                wf_files = _merge_workflow_files_strings(wf_files, extract_a1111_workflow_files_string(a1111_raw))
+                wf_prompt = _merge_workflow_prompt_strings(wf_prompt, extract_a1111_workflow_prompt_string(a1111_raw))
+                if wf_prompt and not pr_h:
+                    pr_h = hashlib.md5(wf_prompt.strip().lower().encode('utf-8')).hexdigest()
+            return (wf_files, wf_prompt, wf_h, pr_h, has_a1111, fid)
 
         results = []
         completed = 0
@@ -11598,7 +12638,8 @@ def backfill_unhashed_workflows(conn=None, force_all=False):
                 batch = results[i:i + batch_size]
                 conn.executemany("""
                     UPDATE files 
-                    SET workflow_files = ?, workflow_prompt = ?, workflow_hash = ?, prompt_hash = ? 
+                    SET workflow_files = ?, workflow_prompt = ?, workflow_hash = ?, prompt_hash = ?,
+                        has_a1111 = CASE WHEN ? = 1 THEN 1 ELSE has_a1111 END
                     WHERE id = ?
                 """, batch)
                 conn.commit()
@@ -11613,22 +12654,122 @@ def backfill_unhashed_workflows(conn=None, force_all=False):
         if close_conn and conn:
             conn.close()
 
+def backfill_a1111_metadata(conn=None):
+    """
+    One-time non-destructive migration that indexes and merges A1111/Forge/Civitai
+    metadata (models, LoRAs, prompts, and has_a1111 flag) for all existing images,
+    including hybrid images that contain both a ComfyUI workflow and A1111 metadata.
+    Never alters has_workflow, favorites, collections, ratings, comments, or AI data.
+    """
+    close_conn = False
+    if conn is None:
+        conn = get_db_connection()
+        close_conn = True
+
+    try:
+        rows = conn.execute("""
+            SELECT id, path, has_workflow, workflow_files, workflow_prompt, prompt_hash FROM files
+            WHERE (
+                  (has_a1111 IS NULL OR has_a1111 = 0)
+                  OR (has_a1111 = 1 AND has_workflow = 1)
+              )
+              AND type IN ('image', 'animated_image')
+              AND (
+                  LOWER(name) LIKE '%.png' OR
+                  LOWER(name) LIKE '%.jpg' OR
+                  LOWER(name) LIKE '%.jpeg' OR
+                  LOWER(name) LIKE '%.webp'
+              )
+        """).fetchall()
+        if not rows:
+            print(f"{Colors.BLUE}INFO: [A1111 Search] No pending images to scan.{Colors.RESET}", flush=True)
+            return 0
+
+        candidates = [
+            (r['id'], r['path'], r['workflow_files'] or '', r['workflow_prompt'] or '', r['prompt_hash'] or '')
+            for r in rows if os.path.exists(r['path'])
+        ]
+        total_candidates = len(candidates)
+        if total_candidates == 0:
+            print(f"{Colors.BLUE}INFO: [A1111 Search] No accessible images on disk to scan.{Colors.RESET}", flush=True)
+            return 0
+
+        print(f"{Colors.BLUE}INFO: [A1111 Search] Scanning {total_candidates} images for A1111/Forge/Civitai metadata (including hybrids)...{Colors.RESET}", flush=True)
+
+        def _work(item):
+            fid, fpath, existing_files, existing_prompt, existing_pr_hash = item
+            a1111_raw = extract_a1111_parameters(fpath)
+            if not a1111_raw:
+                return None
+            a1111_files = extract_a1111_workflow_files_string(a1111_raw)
+            a1111_prompt = extract_a1111_workflow_prompt_string(a1111_raw)
+            merged_files = _merge_workflow_files_strings(existing_files, a1111_files)
+            merged_prompt = _merge_workflow_prompt_strings(existing_prompt, a1111_prompt)
+            pr_hash = existing_pr_hash or (hashlib.md5(merged_prompt.strip().lower().encode('utf-8')).hexdigest() if merged_prompt else '')
+            return (1, merged_files, merged_prompt, pr_hash, fid)
+
+        results = []
+        completed = 0
+        last_reported_pct = -1
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_PARALLEL_WORKERS) as executor:
+            futures = [executor.submit(_work, item) for item in candidates]
+            for future in concurrent.futures.as_completed(futures):
+                completed += 1
+                try:
+                    res = future.result()
+                    if res:
+                        results.append(res)
+                except Exception:
+                    pass
+
+                pct = int((completed / total_candidates) * 100)
+                if pct % 5 == 0 and pct != last_reported_pct:
+                    last_reported_pct = pct
+                    msg = f"[A1111 Search Progress] Scanned {completed}/{total_candidates} images ({pct}%) - indexed {len(results)}..."
+                    print(chr(13) + "   " + msg, end="", flush=True)
+
+        if results:
+            batch_size = BATCH_SIZE if BATCH_SIZE > 0 else 500
+            for i in range(0, len(results), batch_size):
+                batch = results[i:i + batch_size]
+                conn.executemany("""
+                    UPDATE files
+                    SET has_a1111 = ?, workflow_files = ?, workflow_prompt = ?, prompt_hash = ?
+                    WHERE id = ?
+                """, batch)
+                conn.commit()
+
+        print()
+        print(f"{Colors.GREEN}SUCCESS: [A1111 Search] Indexed/merged A1111/Forge metadata for {len(results)}/{total_candidates} images!{Colors.RESET}", flush=True)
+        return len(results)
+    except Exception as e:
+        print(f"ERROR in backfill_a1111_metadata: {e}")
+        return 0
+    finally:
+        if close_conn and conn:
+            conn.close()
+
+
 def check_and_update_workflow_hashes(conn):
     """
-    Checks PRAGMA user_version. If < 31, performs a one-time migration
-    recomputing workflow_hash and prompt_hash for all workflow files,
-    then updates PRAGMA user_version to DB_SCHEMA_VERSION.
+    Checks PRAGMA user_version. Runs non-destructive one-time migrations:
+    - < 31: recomputes ComfyUI workflow_hash and prompt_hash for workflow files
+    - < 35: indexes & merges A1111/Forge/Civitai metadata (including hybrid ComfyUI+A1111 images)
+    Then updates PRAGMA user_version to DB_SCHEMA_VERSION.
     """
     try:
         cur = conn.execute("PRAGMA user_version")
         current_ver = cur.fetchone()[0]
         
         if current_ver < DB_SCHEMA_VERSION:
-            print(f"{Colors.YELLOW}INFO: Database schema version ({current_ver}) < {DB_SCHEMA_VERSION}. Running one-time hash alignment migration...{Colors.RESET}")
+            print(f"{Colors.YELLOW}INFO: Database schema version ({current_ver}) < {DB_SCHEMA_VERSION}. Running one-time metadata migration...{Colors.RESET}")
             backfill_unhashed_workflows(conn, force_all=current_ver < 31)
+            if current_ver < 35:
+                backfill_a1111_metadata(conn)
             conn.execute(f"PRAGMA user_version = {DB_SCHEMA_VERSION}")
             conn.commit()
-            print(f"{Colors.GREEN}INFO: Hash alignment complete. Database updated to schema version {DB_SCHEMA_VERSION}.{Colors.RESET}")
+            print(f"{Colors.GREEN}INFO: Migration complete. Database updated to schema version {DB_SCHEMA_VERSION}.{Colors.RESET}")
         else:
             # Normal startup: only process newly added files that lack hashes
             backfill_unhashed_workflows(conn, force_all=False)
