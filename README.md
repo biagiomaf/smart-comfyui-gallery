@@ -99,7 +99,7 @@ SmartGallery DAM is *ComfyUI-aware* (it reads workflows, extracts prompts, under
 
 1.  [**OVERVIEW & CONCEPTS**](#1-overview--concepts)
     *   [1.1 What is SmartGallery DAM?](#11-what-is-smartgallery-dam)
-    *   [1.2 What's New in v2.24](#12-whats-new-in-v224)
+    *   [1.2 What's New in v2.25](#12-whats-new-in-v225)
     *   [1.3 Core Features](#13-core-features)
     *   [1.4 Use Case Scenarios](#14-use-case-scenarios)
 2.  [**SETUP & CONFIGURATION**](#2-setup--configuration)
